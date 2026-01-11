@@ -20,17 +20,9 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
     // Calculate collapse progress (0.0 to 1.0)
     final double progress = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
     
-    // Animate dimensions based on progress
-    final double cardHeight = 120.0 - (progress * 50); // From 120 to 70
-    final double iconSize = 48.0 - (progress * 24); // From 32 to 20 approx range
-    final double fontSize = 11.0 - (progress * 11.0); // Fade out text completely or shrink? User said "chota hojaye" but maintain visibility. Let's make it 9.
-    
-    // User requested "card ki size 4 dp he to flod hoke 2 dp hojaye". 
-    // This is metaphorical for "Shrink by half".
-    
     return Container(
-      color: Theme.of(context).scaffoldBackgroundColor, // Match background to hide content behind
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      color: Theme.of(context).scaffoldBackgroundColor, 
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 2), // Reduced vertical padding to 2
       child: Center(
         child: Container(
           decoration: BoxDecoration(
@@ -46,7 +38,7 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
           ),
           padding: EdgeInsets.symmetric(
             horizontal: 16, 
-            vertical: 12 - (progress * 4) // Reduce padding slightly
+            vertical: 10 - (progress * 5) 
           ), 
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -67,10 +59,10 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
     bool isActive = currentStep >= step;
     bool isCurrent = currentStep == step;
     
-    // Scale down Size
-    double size = 32.0 - (progress * 10); // 32 -> 22
-    double iconScale = 16.0 - (progress * 4); // 16 -> 12
-    double fontSize = 11.0 - (progress * 3); // 11 -> 8
+    // Scale ranges
+    double size = 32.0 - (progress * 14); // 32 -> 18
+    double iconScale = 16.0 - (progress * 6); // 16 -> 10
+    double fontSize = 11.0 - (progress * 4); // 11 -> 7
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -91,10 +83,10 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
               : isActive ? Icon(Icons.check, size: iconScale, color: Colors.white) : Text('${step + 1}', style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold, color: Colors.grey.shade400)),
           ),
         ),
-        if (progress < 0.6) ...[
+        if (progress < 0.8) ...[ // Hide text slightly earlier to prevent overflow
           SizedBox(height: 6 - (progress * 6)),
           Opacity(
-              opacity: (1.0 - progress * 1.5).clamp(0.0, 1.0),
+              opacity: (1.0 - progress * 2.0).clamp(0.0, 1.0), // Fade out fast
               child: Text(label, style: TextStyle(
                 fontSize: fontSize, 
                 color: isActive ? AppTheme.primaryColor : Colors.grey.shade500,
@@ -117,10 +109,10 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
   }
 
   @override
-  double get maxExtent => 110.0; // Normal Height
+  double get maxExtent => 85.0; // Reduced from 110
 
   @override
-  double get minExtent => 70.0; // Collapsed Height
+  double get minExtent => 50.0; // Reduced from 70
 
   @override
   bool shouldRebuild(covariant CollapsingStepIndicator oldDelegate) {
