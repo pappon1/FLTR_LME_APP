@@ -8,6 +8,7 @@ import '../../models/course_model.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../services/bunny_cdn_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'components/collapsing_step_indicator.dart';
 import '../../utils/app_theme.dart';
 import 'dart:convert';
 import 'package:flutter/services.dart';
@@ -235,25 +236,6 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         key: _formKey,
         child: Column(
           children: [
-            // Step Indicator (Visible only in Normal Mode)
-            AnimatedSize(
-              duration: 300.ms,
-              curve: Curves.easeInOut,
-              alignment: Alignment.topCenter,
-              child: SizedBox(
-                width: double.infinity,
-                child: (!_isDragModeActive && !_isSelectionMode)
-                   ? Container(
-                       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
-                       decoration: BoxDecoration(
-                         color: Theme.of(context).cardColor,
-                       ),
-                       child: _buildStepIndicator(),
-                     )
-                   : const SizedBox.shrink(),
-              ),
-            ),
-
             Expanded(
               child: PageView(
                 controller: _pageController,
@@ -410,8 +392,16 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   Widget _buildStep1Basic() {
     return CustomScrollView(
       slivers: [
+        SliverPersistentHeader(
+          delegate: CollapsingStepIndicator(
+            currentStep: 0,
+            isSelectionMode: false,
+            isDragMode: false
+          ),
+          pinned: true,
+        ),
         SliverPadding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
           sliver: SliverToBoxAdapter(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -660,9 +650,45 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       children: [
         CustomScrollView(
           slivers: [
-            SliverPadding(
-              padding: EdgeInsets.fromLTRB(24, (_isSelectionMode || _isDragModeActive) ? 20 : 72, 24, 24),
-              sliver: _courseContents.isEmpty 
+             SliverPersistentHeader(
+               delegate: CollapsingStepIndicator(
+                 currentStep: 1,
+                 isSelectionMode: _isSelectionMode,
+                 isDragMode: _isDragModeActive
+               ),
+               pinned: true,
+             ),
+             
+             // Dynamic helper to ensure FAB scrolls with content and doesn't block header
+             if (!_isSelectionMode && !_isDragModeActive)
+               SliverToBoxAdapter(
+                 child: Align(
+                   alignment: Alignment.centerRight,
+                   child: Padding(
+                     padding: const EdgeInsets.only(top: 12, right: 24, bottom: 0),
+                     child: InkWell(
+                        onTap: _showAddContentMenu,
+                        borderRadius: BorderRadius.circular(30),
+                        child: Container(
+                          height: 50,
+                          width: 50,
+                          decoration: BoxDecoration(
+                            color: AppTheme.primaryColor,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(color: AppTheme.primaryColor.withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 4))
+                            ],
+                          ),
+                          child: const Icon(Icons.add, color: Colors.white, size: 28),
+                        ),
+                      ),
+                   ),
+                 ),
+               ),
+
+             SliverPadding(
+               padding: EdgeInsets.fromLTRB(24, (_isSelectionMode || _isDragModeActive) ? 20 : 12, 24, 24),
+               sliver: _courseContents.isEmpty 
                   ? SliverToBoxAdapter(
                       child: Container(
                         height: 300,
@@ -800,27 +826,6 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         ),
 
 
-        if (!_isSelectionMode && !_isDragModeActive)
-            Positioned(
-              top: 12,
-              right: 24,
-              child: InkWell(
-                onTap: _showAddContentMenu,
-                borderRadius: BorderRadius.circular(30),
-                child: Container(
-                  height: 50,
-                  width: 50,
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(color: AppTheme.primaryColor.withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 4))
-                    ],
-                  ),
-                  child: const Icon(Icons.add, color: Colors.white, size: 28),
-                ),
-              ),
-            ),
       ],
     );
   }
@@ -1045,8 +1050,16 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   Widget _buildStep3Advance() {
     return CustomScrollView(
       slivers: [
+        SliverPersistentHeader(
+          delegate: CollapsingStepIndicator(
+            currentStep: 2,
+            isSelectionMode: false,
+            isDragMode: false
+          ),
+          pinned: true,
+        ),
         SliverPadding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
           sliver: SliverToBoxAdapter(
             child: Column(
               children: [
