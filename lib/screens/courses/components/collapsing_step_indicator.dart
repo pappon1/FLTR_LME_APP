@@ -68,8 +68,8 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
       mainAxisSize: MainAxisSize.min,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        AnimatedContainer(
-          duration: 100.ms,
+        // Using Container instead of AnimatedContainer to prevent layout lag during fast scrolls
+        Container(
           height: size,
           width: size,
           decoration: BoxDecoration(
@@ -83,10 +83,10 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
               : isActive ? Icon(Icons.check, size: iconScale, color: Colors.white) : Text('${step + 1}', style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold, color: Colors.grey.shade400)),
           ),
         ),
-        if (progress < 0.8) ...[ // Hide text slightly earlier to prevent overflow
+        if (progress < 0.8) ...[ 
           SizedBox(height: 6 - (progress * 6)),
           Opacity(
-              opacity: (1.0 - progress * 2.0).clamp(0.0, 1.0), // Fade out fast
+              opacity: (1.0 - progress * 2.0).clamp(0.0, 1.0), 
               child: Text(label, style: TextStyle(
                 fontSize: fontSize, 
                 color: isActive ? AppTheme.primaryColor : Colors.grey.shade500,
