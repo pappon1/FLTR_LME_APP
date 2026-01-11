@@ -721,7 +721,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                                 ),
                               ),
 
-                              if (!_isSelectionMode)
+                              if (!_isSelectionMode && !_isDragModeActive)
                               Positioned(
                                 right: 0,
                                 top: 0,
