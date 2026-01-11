@@ -1,0 +1,21 @@
+REQUIRED FIREBASE INDEXES
+
+The app is seeing "FAILED_PRECONDITION" errors because Firestore needs "Indexes" for high-performance sorting and filtering.
+Please click the links below to automatically create these indexes in your Firebase Console.
+
+1. Fix for "Users" (Audience Selection):
+collection: users
+fields: role (Ascending), createdAt (Descending)
+URL: https://console.firebase.google.com/v1/r/project/official-mobile-engineer/firestore/indexes?create_composite=ClZwcm9qZWN0cy9vZmZpY2lhbC1tb2JpbGUtZW5naW5lZXIvZGF0YWJhc2VzLyhkZWZhdWx0KS9jb2xsZWN0aW9uR3JvdXBzL3VzZXJzL2luZGV4ZXMvXxABGggKBHJvbGUQARoNCgljcmVhdGVkQXQQAhoMCghfX25hbWVfXxAC
+
+2. Fix for "Received Messages" (Chat/Downloads/Payment Tabs):
+collection: admin_notifications
+fields: type (Ascending), timestamp (Descending)
+URL: https://console.firebase.google.com/v1/r/project/official-mobile-engineer/firestore/indexes?create_composite=CmRwcm9qZWN0cy9vZmZpY2lhbC1tb2JpbGUtZW5naW5lZXIvZGF0YWJhc2VzLyhkZWZhdWx0KS9jb2xsZWN0aW9uR3JvdXBzL2FkbWluX25vdGlmaWNhdGlvbnMvaW5kZXhlcy9fEAEaCAoEdHlwZRABGg0KCXRpbWVzdGFtcBACGgwKCF9fbmFtZV9fEAI
+
+INSTRUCTIONS:
+1. Click each link.
+2. Log in to Firebase if asked.
+3. Click "Create Index".
+4. Wait 5-10 minutes.
+5. Restart the App. The errors will disappear.

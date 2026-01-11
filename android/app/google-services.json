@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1014977122104",
+    "project_id": "official-mobile-engineer",
+    "storage_bucket": "official-mobile-engineer.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1014977122104:android:2228c2f88e0b931269bbcd",
+        "android_client_info": {
+          "package_name": "com.officialmobileengineer.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCOP4Udsulcpujh8OanH_FkVdGA8KP06qE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
