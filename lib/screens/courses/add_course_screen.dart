@@ -378,7 +378,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
 
   Widget _buildNavButtons() {
     return Padding(
-      padding: const EdgeInsets.only(top: 32, bottom: 24),
+      padding: EdgeInsets.only(top: 32, bottom: 12 + MediaQuery.of(context).padding.bottom),
       child: Row(
         children: [
           if (_currentStep > 0)
@@ -405,107 +405,116 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   // --- STEPS REWRITTEN ---
 
   Widget _buildStep1Basic() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // 1. Image
-          const Text('Course Cover (16:9 Size)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-          const SizedBox(height: 10),
-          GestureDetector(
-            onTap: _pickImage,
-            child: AspectRatio(
-              aspectRatio: 16 / 9, // 16:9 Ratio
-              child: Container(
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Theme.of(context).scaffoldBackgroundColor,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: _thumbnailImage == null ? Colors.grey.shade300 : AppTheme.primaryColor.withOpacity(0.5), width: _thumbnailImage == null ? 1 : 2),
-                  image: _thumbnailImage != null
-                      ? DecorationImage(image: FileImage(_thumbnailImage!), fit: BoxFit.cover)
-                      : null,
-                ),
-                child: _thumbnailImage == null
-                    ? Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.add_photo_alternate_rounded, size: 48, color: AppTheme.primaryColor.withOpacity(0.8)),
-                          const SizedBox(height: 8),
-                          Text('Select 16:9 Image', style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
-                        ],
-                      )
-                    : null,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight - 48), // Subtract padding
+            child: IntrinsicHeight(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                   // 1. Image
+                  const Text('Course Cover (16:9 Size)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  const SizedBox(height: 10),
+                  GestureDetector(
+                    onTap: _pickImage,
+                    child: AspectRatio(
+                      aspectRatio: 16 / 9, // 16:9 Ratio
+                      child: Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).scaffoldBackgroundColor,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: _thumbnailImage == null ? Colors.grey.shade300 : AppTheme.primaryColor.withOpacity(0.5), width: _thumbnailImage == null ? 1 : 2),
+                          image: _thumbnailImage != null
+                              ? DecorationImage(image: FileImage(_thumbnailImage!), fit: BoxFit.cover)
+                              : null,
+                        ),
+                        child: _thumbnailImage == null
+                            ? Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.add_photo_alternate_rounded, size: 48, color: AppTheme.primaryColor.withOpacity(0.8)),
+                                  const SizedBox(height: 8),
+                                  Text('Select 16:9 Image', style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
+                                ],
+                              )
+                            : null,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+
+                  // 2. Title
+                  _buildTextField(
+                    controller: _titleController, 
+                    label: 'Course Title', 
+                    icon: Icons.title, 
+                    maxLength: 35
+                  ),
+
+                  // 3. Description
+                  _buildTextField(
+                    controller: _descController,
+                    label: 'Description',
+                    maxLines: 5,
+                    alignTop: true, 
+                  ),
+
+                  // 4. Pricing (Row of 3)
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                       Expanded(child: _buildTextField(controller: _mrpController, label: 'MRP', icon: Icons.currency_rupee, keyboardType: TextInputType.number)),
+                       const SizedBox(width: 8),
+                       Expanded(child: _buildTextField(controller: _discountAmountController, label: 'Discount ₹', icon: Icons.remove_circle_outline, keyboardType: TextInputType.number)),
+                       const SizedBox(width: 8),
+                       Expanded(child: _buildTextField(controller: _finalPriceController, label: 'Final', icon: Icons.currency_rupee, keyboardType: TextInputType.number, readOnly: true)),
+                    ],
+                  ),
+
+                  // 5. Category & Type
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: _selectedCategory,
+                          decoration: InputDecoration(labelText: 'Category', floatingLabelBehavior: FloatingLabelBehavior.always, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), filled: true, fillColor: Theme.of(context).cardColor),
+                          items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                          onChanged: (v) => setState(() => _selectedCategory = v),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          value: _difficulty,
+                          decoration: InputDecoration(labelText: 'Course Type', floatingLabelBehavior: FloatingLabelBehavior.always, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), filled: true, fillColor: Theme.of(context).cardColor),
+                          items: _difficultyLevels.map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
+                          onChanged: (v) => setState(() => _difficulty = v!),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  DropdownButtonFormField<int>(
+                     value: _newBatchDurationDays,
+                     decoration: InputDecoration(labelText: 'New Badge Duration', floatingLabelBehavior: FloatingLabelBehavior.always, prefixIcon: const Icon(Icons.timer_outlined), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), filled: true, fillColor: Theme.of(context).cardColor),
+                     items: const [DropdownMenuItem(value: 30, child: Text('1 Month')), DropdownMenuItem(value: 60, child: Text('2 Months')), DropdownMenuItem(value: 90, child: Text('3 Months'))],
+                     onChanged: (v) => setState(() => _newBatchDurationDays = v!),
+                  ),
+
+                  const Spacer(),
+                  // BUTTONS
+                  _buildNavButtons(),
+                ],
               ),
             ),
           ),
-          const SizedBox(height: 24),
-
-          // 2. Title
-          _buildTextField(
-            controller: _titleController, 
-            label: 'Course Title', 
-            icon: Icons.title, 
-            maxLength: 35
-          ),
-
-          // 3. Description
-          _buildTextField(
-            controller: _descController,
-            label: 'Description',
-            // No icon as requested
-            maxLines: 5,
-            alignTop: true, 
-          ),
-
-          // 4. Pricing (Row of 3)
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-               Expanded(child: _buildTextField(controller: _mrpController, label: 'MRP', icon: Icons.currency_rupee, keyboardType: TextInputType.number)),
-               const SizedBox(width: 8),
-               Expanded(child: _buildTextField(controller: _discountAmountController, label: 'Discount ₹', icon: Icons.remove_circle_outline, keyboardType: TextInputType.number)),
-               const SizedBox(width: 8),
-               Expanded(child: _buildTextField(controller: _finalPriceController, label: 'Final', icon: Icons.currency_rupee, keyboardType: TextInputType.number, readOnly: true)),
-            ],
-          ),
-
-          // 5. Category & Type
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _selectedCategory,
-                  decoration: InputDecoration(labelText: 'Category', floatingLabelBehavior: FloatingLabelBehavior.always, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), filled: true, fillColor: Theme.of(context).cardColor),
-                  items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
-                  onChanged: (v) => setState(() => _selectedCategory = v),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _difficulty,
-                  decoration: InputDecoration(labelText: 'Course Type', floatingLabelBehavior: FloatingLabelBehavior.always, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), filled: true, fillColor: Theme.of(context).cardColor),
-                  items: _difficultyLevels.map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
-                  onChanged: (v) => setState(() => _difficulty = v!),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          
-          DropdownButtonFormField<int>(
-             value: _newBatchDurationDays,
-             decoration: InputDecoration(labelText: 'New Badge Duration', floatingLabelBehavior: FloatingLabelBehavior.always, prefixIcon: const Icon(Icons.timer_outlined), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), filled: true, fillColor: Theme.of(context).cardColor),
-             items: const [DropdownMenuItem(value: 30, child: Text('1 Month')), DropdownMenuItem(value: 60, child: Text('2 Months')), DropdownMenuItem(value: 90, child: Text('3 Months'))],
-             onChanged: (v) => setState(() => _newBatchDurationDays = v!),
-          ),
-
-          // BUTTONS
-          _buildNavButtons(),
-        ],
-      ),
+        );
+      }
     );
   }
 
@@ -768,14 +777,15 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                       },
                     ),
             ),
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(children: [
-                   const SizedBox(height: 24),
-                   _buildNavButtons(),
-                ]),
-              ),
+            SliverFillRemaining(
+               hasScrollBody: false,
+               child: Align(
+                 alignment: Alignment.bottomCenter,
+                 child: Padding(
+                   padding: const EdgeInsets.symmetric(horizontal: 24),
+                   child: _buildNavButtons(),
+                 ),
+               ),
             ),
           ],
         ),
@@ -1024,23 +1034,33 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
 
 
   Widget _buildStep3Advance() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        children: [
-           _buildTextField(controller: _durationController, label: 'Total Duration (e.g. 12 Hours)', icon: Icons.timer),
-           const SizedBox(height: 20),
-           SwitchListTile(
-             title: const Text('Publish Course'),
-             subtitle: const Text('Make this course visible to students immediately'),
-             value: _isPublished,
-             onChanged: (v) => setState(() => _isPublished = v),
-             activeColor: AppTheme.primaryColor,
-           ),
-           
-           _buildNavButtons(),
-        ],
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight - 48), // Padding
+            child: IntrinsicHeight(
+              child: Column(
+                children: [
+                   _buildTextField(controller: _durationController, label: 'Total Duration (e.g. 12 Hours)', icon: Icons.timer),
+                   const SizedBox(height: 20),
+                   SwitchListTile(
+                     title: const Text('Publish Course'),
+                     subtitle: const Text('Make this course visible to students immediately'),
+                     value: _isPublished,
+                     onChanged: (v) => setState(() => _isPublished = v),
+                     activeColor: AppTheme.primaryColor,
+                   ),
+                   
+                   const Spacer(),
+                   _buildNavButtons(),
+                ],
+              ),
+            ),
+          ),
+        );
+      }
     );
   }
 
