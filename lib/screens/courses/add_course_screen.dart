@@ -646,7 +646,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         CustomScrollView(
           slivers: [
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+              padding: const EdgeInsets.fromLTRB(24, 72, 24, 24),
               sliver: _courseContents.isEmpty 
                   ? SliverToBoxAdapter(
                       child: Container(
