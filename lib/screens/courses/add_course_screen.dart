@@ -294,7 +294,10 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
           iconTheme: const IconThemeData(color: Colors.white),
           leading: IconButton(
             icon: const Icon(Icons.close),
-            onPressed: () => setState(() => _isSelectionMode = false),
+            onPressed: () => setState(() {
+               _isSelectionMode = false;
+               _selectedIndices.clear();
+            }),
           ),
           title: Text('${_selectedIndices.length} Selected', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
           actions: [
@@ -534,7 +537,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       setState(() {
          if (_selectedIndices.contains(index)) {
             _selectedIndices.remove(index);
-            if (_selectedIndices.isEmpty) _isSelectionMode = false;
+            // Removed auto-close logic: if (_selectedIndices.isEmpty) _isSelectionMode = false;
          } else {
             _selectedIndices.add(index);
          }
@@ -705,9 +708,12 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                                   leading: CircleAvatar(backgroundColor: color.withValues(alpha: 0.1), child: Icon(icon, color: color, size: 20)),
                                   title: Text(item['name'], style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? AppTheme.primaryColor : null)),
                                   trailing: _isSelectionMode
-                                    ? (isSelected 
-                                        ? Icon(Icons.check_circle, color: AppTheme.primaryColor)
-                                        : Icon(Icons.circle_outlined, color: Colors.grey))
+                                    ? GestureDetector(
+                                        onTap: () => _toggleSelection(index),
+                                        child: isSelected 
+                                          ? Icon(Icons.check_circle, color: AppTheme.primaryColor)
+                                          : const Icon(Icons.circle_outlined, color: Colors.grey),
+                                      )
                                     : const SizedBox(width: 48), 
                                 ),
                               ),
