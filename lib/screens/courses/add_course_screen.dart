@@ -150,17 +150,21 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     */
   }
 
-  void _nextStep() {
+  void _nextStep() async {
     if (_validateCurrentStep()) {
       if (_currentStep < 2) {
-        _pageController.nextPage(duration: 300.ms, curve: Curves.easeInOut);
+        FocusScope.of(context).unfocus();
+        await Future.delayed(const Duration(milliseconds: 50));
+        _pageController.nextPage(duration: 250.ms, curve: Curves.easeInOut);
       }
     }
   }
 
-  void _prevStep() {
+  void _prevStep() async {
     if (_currentStep > 0) {
-      _pageController.previousPage(duration: 300.ms, curve: Curves.easeInOut);
+      FocusScope.of(context).unfocus();
+      await Future.delayed(const Duration(milliseconds: 50));
+      _pageController.previousPage(duration: 250.ms, curve: Curves.easeInOut);
     }
   }
 

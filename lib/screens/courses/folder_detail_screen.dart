@@ -320,54 +320,96 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
           ]
         ],
       ),
-      body: Stack(
-        children: [
+      body: CustomScrollView(
+        slivers: [
+          // Add Button (Top Right aligned, scrolls with content)
+          SliverToBoxAdapter(
+            child: (!_isSelectionMode)
+             ? Align(
+                alignment: Alignment.centerRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 12, right: 24, bottom: 0),
+                  child: InkWell(
+                     onTap: _showAddContentMenu,
+                     borderRadius: BorderRadius.circular(30),
+                     child: Container(
+                       height: 50,
+                       width: 50,
+                       decoration: BoxDecoration(
+                         color: AppTheme.primaryColor,
+                         shape: BoxShape.circle,
+                         boxShadow: [
+                           BoxShadow(color: AppTheme.primaryColor.withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 4))
+                         ],
+                       ),
+                       child: const Icon(Icons.add, color: Colors.white, size: 28),
+                     ),
+                   ),
+                ),
+              )
+             : const SizedBox.shrink(),
+          ),
+
+          // Content List
           _contents.isEmpty
-            ? const Center(child: Text('No content in this folder'))
-            : ListView.separated(
-                itemCount: _contents.length,
-                padding: const EdgeInsets.all(16),
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final item = _contents[index];
-                  final isSelected = _selectedIndices.contains(index);
-                  IconData icon; Color color;
-                  switch(item['type']) {
-                    case 'folder': icon = Icons.folder; color = Colors.orange; break;
-                    case 'video': icon = Icons.video_library; color = Colors.red; break;
-                    case 'pdf': icon = Icons.picture_as_pdf; color = Colors.redAccent; break;
-                    case 'image': icon = Icons.image; color = Colors.purple; break;
-                    default: icon = Icons.insert_drive_file; color = Colors.blue;
-                  }
-                  return ListTile(
-                    tileColor: isSelected ? AppTheme.primaryColor.withOpacity(0.1) : Theme.of(context).cardColor,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: isSelected ? AppTheme.primaryColor : Colors.grey.shade200, width: isSelected ? 2 : 1)),
-                    onLongPress: () => _enterSelectionMode(index),
-                    onTap: () => _handleContentTap(item, index),
-                    leading: CircleAvatar(backgroundColor: color.withOpacity(0.1), child: Icon(icon, color: color, size: 20)),
-                    title: Text(item['name'], style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? AppTheme.primaryColor : null)),
-                    trailing: _isSelectionMode 
-                      ? (isSelected ? const Icon(Icons.check_circle, color: Colors.blue) : const Icon(Icons.circle_outlined)) 
-                      : PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_vert),
-                          onSelected: (value) {
-                            if (value == 'rename') _renameContent(index);
-                            if (value == 'remove') _confirmRemoveContent(index);
-                          },
-                          itemBuilder: (context) => [
-                            const PopupMenuItem(value: 'rename', child: Text('Rename')),
-                            const PopupMenuItem(value: 'remove', child: Text('Remove', style: TextStyle(color: Colors.red))),
-                          ],
-                        ),
-                  );
-                },
-              ),
-          if (!_isSelectionMode)
-            Positioned(
-              bottom: 24,
-              right: 24,
-              child: FloatingActionButton(onPressed: _showAddContentMenu, backgroundColor: AppTheme.primaryColor, child: const Icon(Icons.add, color: Colors.white)),
-            ),
+             ? SliverFillRemaining(
+                 hasScrollBody: false,
+                 child: Center(
+                   child: Column(
+                     mainAxisAlignment: MainAxisAlignment.center,
+                     children: [
+                       Icon(Icons.folder_open, size: 64, color: Colors.grey.shade300),
+                       const SizedBox(height: 16),
+                       Text('No content in this folder', style: TextStyle(color: Colors.grey.shade400)),
+                     ],
+                   ),
+                 ),
+               )
+             : SliverPadding(
+                 padding: EdgeInsets.fromLTRB(16, (_isSelectionMode) ? 20 : 12, 16, 24),
+                 sliver: SliverList(
+                   delegate: SliverChildBuilderDelegate(
+                     (context, index) {
+                        final item = _contents[index];
+                        final isSelected = _selectedIndices.contains(index);
+                        IconData icon; Color color;
+                        switch(item['type']) {
+                          case 'folder': icon = Icons.folder; color = Colors.orange; break;
+                          case 'video': icon = Icons.video_library; color = Colors.red; break;
+                          case 'pdf': icon = Icons.picture_as_pdf; color = Colors.redAccent; break;
+                          case 'image': icon = Icons.image; color = Colors.purple; break;
+                          default: icon = Icons.insert_drive_file; color = Colors.blue;
+                        }
+                        
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: ListTile(
+                            tileColor: isSelected ? AppTheme.primaryColor.withOpacity(0.1) : Theme.of(context).cardColor,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: isSelected ? AppTheme.primaryColor : Colors.grey.shade200, width: isSelected ? 2 : 1)),
+                            onLongPress: () => _enterSelectionMode(index),
+                            onTap: () => _handleContentTap(item, index),
+                            leading: CircleAvatar(backgroundColor: color.withOpacity(0.1), child: Icon(icon, color: color, size: 20)),
+                            title: Text(item['name'], style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? AppTheme.primaryColor : null)),
+                            trailing: _isSelectionMode 
+                              ? (isSelected ? const Icon(Icons.check_circle, color: Colors.blue) : const Icon(Icons.circle_outlined)) 
+                              : PopupMenuButton<String>(
+                                  icon: const Icon(Icons.more_vert),
+                                  onSelected: (value) {
+                                    if (value == 'rename') _renameContent(index);
+                                    if (value == 'remove') _confirmRemoveContent(index);
+                                  },
+                                  itemBuilder: (context) => [
+                                    const PopupMenuItem(value: 'rename', child: Text('Rename')),
+                                    const PopupMenuItem(value: 'remove', child: Text('Remove', style: TextStyle(color: Colors.red))),
+                                  ],
+                                ),
+                          ),
+                        );
+                     },
+                     childCount: _contents.length,
+                   ),
+                 ),
+               ),
         ],
       ),
     );
