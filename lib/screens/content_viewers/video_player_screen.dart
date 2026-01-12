@@ -73,8 +73,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _hideTimer?.cancel();
     if (_showControls && _isPlaying) {
       _hideTimer = Timer(const Duration(seconds: 3), () {
-        if (mounted && _isPlaying) {
-          setState(() => _showControls = false);
+        if (mounted && _isPlaying && _showControls) {
+          setState(() {
+            _showControls = false;
+            // Hide System UI when controls hide in landscape
+            if (_isLandscape) {
+               SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+            }
+          });
         }
       });
     }
@@ -85,6 +91,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       _showControls = !_showControls;
       if (_showControls) {
         _startHideTimer();
+        // Show System UI
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      } else {
+        // Hide System UI in landscape
+        if (_isLandscape) {
+           SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+        }
       }
     });
   }
@@ -121,8 +134,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
-
     return WillPopScope(
       onWillPop: () async {
         if (_isLandscape) {
@@ -134,90 +145,271 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       child: Scaffold(
         backgroundColor: const Color(0xFF0A0E27),
         body: SafeArea(
-          child: Column(
-            children: [
-              // Header
-              _buildHeader(),
-              
-              // Video Player Section
-              SizedBox(
-                width: size.width,
-                height: _isLandscape ? size.height : size.width * 9 / 16,
-                child: Stack(
-                  children: [
-                    // Video
-                    Video(controller: controller, controls: (state) => const SizedBox()),
-                    
-                    // Tap Area
-                    Positioned.fill(
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.translucent,
-                        onTap: _toggleControls,
-                        child: Container(color: Colors.transparent),
-                      ),
-                    ),
-
-                    // Controls
-                    if (_showControls) _buildVideoControls(),
-                  ],
-                ),
-              ),
-              
-              // Seekbar Section
-              Container(
-                color: const Color(0xFF0A0E27),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                child: _buildSeekbar(),
-              ),
-              
-              // Control Icons Row
-              Container(
-                color: const Color(0xFF0A0E27),
-                padding: const EdgeInsets.only(left: 20, right: 20, bottom: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _buildControlIcon(Icons.speed, "${_playbackSpeed}x", () {}),
-                    _buildControlIcon(Icons.closed_caption, _currentSubtitle == "Off" ? "Subtitle" : _currentSubtitle, () {}),
-                    _buildControlIcon(Icons.settings, _currentQuality, () {}),
-                    _buildControlIcon(Icons.lock_outline, "Lock", () {}),
-                    _buildControlIcon(Icons.fullscreen, "Landscape", _toggleOrientation),
-                  ],
-                ),
-              ),
-              
-              const SizedBox(height: 4),
-              
-              // Playlist Section
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Padding(
-                      padding: EdgeInsets.fromLTRB(20, 8, 20, 8),
-                      child: Text(
-                        'Up Next',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        itemCount: _playlist.length,
-                        itemBuilder: (context, i) => _buildPlaylistItem(_playlist[i], i),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+          top: !_isLandscape,
+          bottom: !_isLandscape,
+          child: _isLandscape ? _buildLandscapeLayout() : _buildPortraitLayout(),
         ),
       ),
+    );
+  }
+
+  Widget _buildPortraitLayout() {
+    final size = MediaQuery.of(context).size;
+    final videoHeight = size.width * 9 / 16;
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildHeader(),
+          SizedBox(
+            width: size.width,
+            height: videoHeight,
+            child: Stack(
+              children: [
+                Video(controller: controller, controls: (state) => const SizedBox()),
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: _toggleControls,
+                    child: Container(color: Colors.transparent),
+                  ),
+                ),
+                if (_showControls) _buildVideoControls(),
+              ],
+            ),
+          ),
+          Container(
+            color: const Color(0xFF0A0E27),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            child: _buildSeekbar(),
+          ),
+          Container(
+            color: const Color(0xFF0A0E27),
+            padding: const EdgeInsets.only(left: 20, right: 20, bottom: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildControlIcon(Icons.speed, "${_playbackSpeed}x", () {}),
+                _buildControlIcon(Icons.closed_caption, _currentSubtitle == "Off" ? "Subtitle" : _currentSubtitle, () {}),
+                _buildControlIcon(Icons.settings, _currentQuality, () {}),
+                _buildControlIcon(Icons.lock_outline, "Lock", () {}),
+                _buildControlIcon(Icons.fullscreen, "Landscape", _toggleOrientation),
+              ],
+            ),
+          ),
+          const SizedBox(height: 4),
+          const Padding(
+            padding: EdgeInsets.fromLTRB(20, 8, 20, 8),
+            child: Text(
+              'Up Next',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          ListView.builder(
+            physics: const NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            itemCount: _playlist.length,
+            itemBuilder: (context, i) => _buildPlaylistItem(_playlist[i], i),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLandscapeLayout() {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Video(
+          controller: controller,
+          controls: (state) => const SizedBox(),
+          fit: BoxFit.contain,
+        ),
+        Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: _toggleControls,
+            child: Container(color: Colors.transparent),
+          ),
+        ),
+        if (_showControls) ...[
+          // Top Gradient & Header
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Colors.black87, Colors.transparent],
+                ),
+              ),
+              padding: const EdgeInsets.fromLTRB(16, 24, 16, 40),
+              child: SafeArea(
+                bottom: false,
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white),
+                      onPressed: _toggleOrientation,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        widget.videoTitle,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          
+          // Center Controls
+          Center(
+            child: _buildVideoControls(),
+          ),
+          
+          // Bottom Gradient & Seekbar/Controls
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [Colors.black87, Colors.transparent],
+                ),
+              ),
+              padding: const EdgeInsets.fromLTRB(32, 40, 32, 24),
+              child: SafeArea(
+                top: false,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildSeekbar(),
+                    const SizedBox(height: 16),
+                    // Landscape Controls Row - Equidistant
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _buildControlIcon(Icons.speed, "${_playbackSpeed}x", () {}),
+                        _buildControlIcon(Icons.closed_caption, _currentSubtitle == "Off" ? "Subtitle" : _currentSubtitle, () {}),
+                        _buildControlIcon(Icons.settings, _currentQuality, () {}),
+                        _buildControlIcon(Icons.lock_outline, "Lock", () {}),
+                        _buildControlIcon(Icons.fullscreen_exit, "Portrait", _toggleOrientation),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildLandscapeOverlays() {
+    return Stack(
+      children: [
+        // Top Gradient & Header
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Colors.black87, Colors.transparent],
+              ),
+            ),
+            padding: const EdgeInsets.fromLTRB(16, 24, 16, 40),
+            child: SafeArea(
+              bottom: false,
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: _toggleOrientation,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      widget.videoTitle,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        
+        // Center Controls
+        Center(child: _buildVideoControls()),
+        
+        // Bottom Gradient & Seekbar/Controls
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.bottomCenter,
+                end: Alignment.topCenter,
+                colors: [Colors.black87, Colors.transparent],
+              ),
+            ),
+            padding: const EdgeInsets.fromLTRB(32, 40, 32, 24),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildSeekbar(),
+                  const SizedBox(height: 16),
+                  // Landscape Controls Row - Equidistant
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildControlIcon(Icons.speed, "${_playbackSpeed}x", () {}),
+                      _buildControlIcon(Icons.closed_caption, _currentSubtitle == "Off" ? "Subtitle" : _currentSubtitle, () {}),
+                      _buildControlIcon(Icons.settings, _currentQuality, () {}),
+                      _buildControlIcon(Icons.lock_outline, "Lock", () {}),
+                      _buildControlIcon(Icons.fullscreen_exit, "Portrait", _toggleOrientation),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
