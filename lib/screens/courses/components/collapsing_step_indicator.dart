@@ -15,10 +15,10 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    if (isSelectionMode || isDragMode) return const SizedBox.shrink();
+    if (isSelectionMode || isDragMode) return const SizedBox(height: 0.1);
 
     // Calculate collapse progress (0.0 to 1.0)
-    final double progress = (shrinkOffset / (maxExtent - minExtent)).clamp(0.0, 1.0);
+    final double progress = (shrinkOffset / (maxExtent - minExtent + 0.01)).clamp(0.0, 1.0);
     
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor, 
@@ -109,10 +109,10 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
   }
 
   @override
-  double get maxExtent => 85.0; // Reduced from 110
+  double get maxExtent => (isSelectionMode || isDragMode) ? 0.1 : 85.0;
 
   @override
-  double get minExtent => 50.0; // Reduced from 70
+  double get minExtent => (isSelectionMode || isDragMode) ? 0.1 : 50.0;
 
   @override
   bool shouldRebuild(covariant CollapsingStepIndicator oldDelegate) {

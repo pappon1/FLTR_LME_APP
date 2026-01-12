@@ -9,13 +9,15 @@ import '../../providers/dashboard_provider.dart';
 import '../../services/bunny_cdn_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'components/collapsing_step_indicator.dart';
+import 'folder_detail_screen.dart';
 import '../../utils/app_theme.dart';
 import 'dart:convert';
 import 'package:flutter/services.dart';
+import '../../screens/content_viewers/image_viewer_screen.dart';
+import '../../screens/content_viewers/video_player_screen.dart';
+import '../../screens/content_viewers/pdf_viewer_screen.dart';
 
-// Global Clipboard for Cross-Folder Operations
-List<Map<String, dynamic>>? _globalClipboardItems;
-String _globalClipboardAction = '';
+import '../../utils/clipboard_manager.dart';
 
 class AddCourseScreen extends StatefulWidget {
   const AddCourseScreen({super.key});
@@ -284,8 +286,17 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
           title: Text('${_selectedIndices.length} Selected', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
           actions: [
             TextButton(
-                onPressed: _courseContents.length == _selectedIndices.length ? () => setState(() => _selectedIndices.clear()) : _selectAll,
-                child: Text(_courseContents.length == _selectedIndices.length ? 'Unselect All' : 'Select All', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white))
+                onPressed: () {
+                   setState(() {
+                      if (_selectedIndices.length == _courseContents.length) {
+                         _selectedIndices.clear();
+                      } else {
+                         _selectedIndices.clear();
+                         for(int i=0; i<_courseContents.length; i++) _selectedIndices.add(i);
+                      }
+                   });
+                },
+                child: Text(_selectedIndices.length == _courseContents.length ? 'Unselect All' : 'Select All', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white))
             ),
             IconButton(icon: const Icon(Icons.copy), onPressed: () => _handleBulkCopyCut(false)),
             IconButton(icon: const Icon(Icons.delete, color: Colors.redAccent), onPressed: _handleBulkDelete),
@@ -599,11 +610,8 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       }
       
       setState(() {
-         // Deep Copy to Global Clipboard
-         _globalClipboardItems = itemsToCopy.map((e) => Map<String, dynamic>.from(jsonDecode(jsonEncode(e)))).toList();
-         _globalClipboardAction = isCut ? 'cut' : 'copy';
-         
          if (isCut) {
+            ContentClipboard.cut(itemsToCopy);
             final List<int> revIndices = indices.reversed.toList();
             for (int i in revIndices) {
                _courseContents.removeAt(i);
@@ -611,6 +619,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
             _isSelectionMode = false;
             _selectedIndices.clear();
          } else {
+            ContentClipboard.copy(itemsToCopy);
             _isSelectionMode = false;
             _selectedIndices.clear();
          }
@@ -629,28 +638,16 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     });
   }
 
-  void _handleContentTap(Map<String, dynamic> item, int index) {
-      if (_isSelectionMode) {
-         _toggleSelection(index);
-      } else if (item['type'] == 'folder') {
-        Navigator.push(
-          context, 
-          MaterialPageRoute(
-            builder: (_) => FolderDetailScreen(
-              folderName: item['name'],
-              contentList: (item['contents'] as List?)?.cast<Map<String, dynamic>>() ?? [],
-            )
-          )
-        ).then((_) => setState((){}));
-      }
-  }
+
 
   Widget _buildStep2Content() {
     return Stack(
       children: [
         CustomScrollView(
+          key: const ValueKey('step2_scroll_view'),
           slivers: [
              SliverPersistentHeader(
+               key: const ValueKey('step2_header'),
                delegate: CollapsingStepIndicator(
                  currentStep: 1,
                  isSelectionMode: _isSelectionMode,
@@ -660,36 +657,39 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
              ),
              
              // Dynamic helper to ensure FAB scrolls with content and doesn't block header
-             if (!_isSelectionMode && !_isDragModeActive)
-               SliverToBoxAdapter(
-                 child: Align(
-                   alignment: Alignment.centerRight,
-                   child: Padding(
-                     padding: const EdgeInsets.only(top: 12, right: 24, bottom: 0),
-                     child: InkWell(
-                        onTap: _showAddContentMenu,
-                        borderRadius: BorderRadius.circular(30),
-                        child: Container(
-                          height: 50,
-                          width: 50,
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryColor,
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(color: AppTheme.primaryColor.withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 4))
-                            ],
-                          ),
-                          child: const Icon(Icons.add, color: Colors.white, size: 28),
-                        ),
-                      ),
-                   ),
-                 ),
-               ),
+             SliverToBoxAdapter(
+               child: (!_isSelectionMode && !_isDragModeActive)
+                 ? Align(
+                    alignment: Alignment.centerRight,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 12, right: 24, bottom: 0),
+                      child: InkWell(
+                         onTap: _showAddContentMenu,
+                         borderRadius: BorderRadius.circular(30),
+                         child: Container(
+                           height: 50,
+                           width: 50,
+                           decoration: BoxDecoration(
+                             color: AppTheme.primaryColor,
+                             shape: BoxShape.circle,
+                             boxShadow: [
+                               BoxShadow(color: AppTheme.primaryColor.withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 4))
+                             ],
+                           ),
+                           child: const Icon(Icons.add, color: Colors.white, size: 28),
+                         ),
+                       ),
+                    ),
+                  )
+                 : const SizedBox.shrink(),
+             ),
 
              SliverPadding(
+               key: const ValueKey('step2_content_padding'),
                padding: EdgeInsets.fromLTRB(24, (_isSelectionMode || _isDragModeActive) ? 20 : 12, 24, 24),
                sliver: _courseContents.isEmpty 
                   ? SliverToBoxAdapter(
+                      key: const ValueKey('add_course_empty_state'),
                       child: Container(
                         height: 300,
                         alignment: Alignment.center,
@@ -704,6 +704,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                       ),
                     )
                   : SliverReorderableList(
+                       key: const ValueKey('course_content_reorderable_list'),
                       itemCount: _courseContents.length,
                       onReorder: _onReorder,
                       itemBuilder: (context, index) {
@@ -830,6 +831,34 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     );
   }
 
+  void _handleContentTap(Map<String, dynamic> item, int index) {
+      if (_isSelectionMode) {
+          _toggleSelection(index);
+          return;
+      }
+      
+      String path = item['path'];
+      String type = item['type'];
+
+      if (type == 'folder') {
+          Navigator.push(
+            context, 
+            MaterialPageRoute(
+              builder: (_) => FolderDetailScreen(
+                folderName: item['name'],
+                contentList: (item['contents'] as List?)?.cast<Map<String, dynamic>>() ?? [],
+              )
+            )
+          ).then((_) => setState(() {}));
+      } else if (type == 'image') {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => ImageViewerScreen(filePath: path)));
+      } else if (type == 'video') {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => VideoPlayerScreen(videoPath: path)));
+      } else if (type == 'pdf') {
+          Navigator.push(context, MaterialPageRoute(builder: (_) => PDFViewerScreen(filePath: path)));
+      }
+  }
+
   void _renameContent(int index) {
       TextEditingController renameController = TextEditingController(text: _courseContents[index]['name']);
       showDialog(
@@ -893,20 +922,20 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   }
 
   void _pasteContent() {
-    if (_globalClipboardItems == null || _globalClipboardItems!.isEmpty) {
+    if (ContentClipboard.isEmpty) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Clipboard is empty')));
       return;
     }
 
     setState(() {
-      for (var item in _globalClipboardItems!) {
+      for (var item in ContentClipboard.items!) {
          var newItem = Map<String, dynamic>.from(jsonDecode(jsonEncode(item)));
          newItem['name'] = '${newItem['name']} (Copy)';
          _courseContents.add(newItem);
       }
     });
     
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${_globalClipboardItems!.length} items pasted')));
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${ContentClipboard.items!.length} items pasted')));
   }
 
   void _showAddContentMenu() {
@@ -1142,541 +1171,4 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   }
 }
 
-class _StepIndicatorDelegate extends SliverPersistentHeaderDelegate {
-  final double minHeight;
-  final double maxHeight;
-  final Widget Function(double shrinkage) childBuilder;
 
-  _StepIndicatorDelegate({
-    required this.minHeight,
-    required this.maxHeight,
-    required this.childBuilder,
-  });
-
-  @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
-    // Calculate shrinkage factor (0.0 to 1.0)
-    double shrinkage = (shrinkOffset / (maxHeight - minHeight)).clamp(0.0, 1.0);
-    
-    return Container(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      // Use Align to ensure content stays centered/bottom as it shrinks
-      alignment: Alignment.bottomCenter,
-      child: SizedBox(
-        // Ensure height never goes below minHeight to prevent overflow
-        height: (maxHeight - shrinkOffset).clamp(minHeight, maxHeight),
-        child: childBuilder(shrinkage),
-      ),
-    );
-  }
-
-  @override
-  double get maxExtent => maxHeight;
-
-  @override
-  double get minExtent => minHeight;
-
-  @override
-  bool shouldRebuild(covariant _StepIndicatorDelegate oldDelegate) {
-    return maxHeight != oldDelegate.maxExtent || 
-           minHeight != oldDelegate.minExtent;
-  }
-}
-
-
-
-
-class FolderDetailScreen extends StatefulWidget {
-  final String folderName;
-  final List<Map<String, dynamic>> contentList;
-
-  const FolderDetailScreen({super.key, required this.folderName, required this.contentList});
-
-  @override
-  State<FolderDetailScreen> createState() => _FolderDetailScreenState();
-}
-
-class _FolderDetailScreenState extends State<FolderDetailScreen> {
-  late List<Map<String, dynamic>> _contents;
-  bool _isSelectionMode = false;
-  final Set<int> _selectedIndices = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _contents = widget.contentList;
-  }
-
-  void _refresh() => setState(() {});
-
-  // MARK: - Bulk Selection Helpers
-  void _enterSelectionMode(int index) {
-      HapticFeedback.heavyImpact();
-      setState(() {
-        _isSelectionMode = true;
-        _selectedIndices.clear();
-        _selectedIndices.add(index);
-      });
-  }
-
-  void _toggleSelection(int index) {
-      if (!_isSelectionMode) return;
-      HapticFeedback.heavyImpact();
-      setState(() {
-         if (_selectedIndices.contains(index)) {
-            _selectedIndices.remove(index);
-            if (_selectedIndices.isEmpty) _isSelectionMode = false;
-         } else {
-            _selectedIndices.add(index);
-         }
-      });
-  }
-
-  void _selectAll() {
-    setState(() {
-      _selectedIndices.clear();
-      for(int i=0; i<_contents.length; i++) _selectedIndices.add(i);
-    });
-  }
-
-  void _handleBulkDelete() {
-     if (_selectedIndices.isEmpty) return;
-     showDialog(
-       context: context,
-       builder: (context) => AlertDialog(
-         title: const Text('Delete Items?'),
-         content: Text('Are you sure you want to delete ${_selectedIndices.length} items?'),
-         actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-            TextButton(
-              onPressed: () {
-                 final List<int> indices = _selectedIndices.toList()..sort((a, b) => b.compareTo(a));
-                 setState(() {
-                    for (int i in indices) {
-                       if (i < _contents.length) _contents.removeAt(i);
-                    }
-                    _isSelectionMode = false;
-                    _selectedIndices.clear();
-                 });
-                 Navigator.pop(context);
-              },
-              child: const Text('Delete', style: TextStyle(color: Colors.red)),
-            )
-         ],
-       )
-     );
-  }
-
-  void _handleBulkCopyCut(bool isCut) {
-      if (_selectedIndices.isEmpty) return;
-      
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(isCut ? 'Cut Items?' : 'Copy Items?'),
-          content: Text('${isCut ? 'Cut' : 'Copy'} ${_selectedIndices.length} items to clipboard?'),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-            TextButton(onPressed: () {
-                _performCopyCut(isCut);
-                Navigator.pop(context);
-            }, child: Text(isCut ? 'Cut' : 'Copy'))
-          ]
-        )
-      );
-  }
-
-  void _performCopyCut(bool isCut) {
-      final List<int> indices = _selectedIndices.toList()..sort((a, b) => a.compareTo(b));
-      List<Map<String, dynamic>> itemsToCopy = [];
-      for (int i in indices) {
-         if (i < _contents.length) itemsToCopy.add(_contents[i]);
-      }
-      
-      setState(() {
-         // Deep Copy to Global Clipboard
-         _globalClipboardItems = itemsToCopy.map((e) => Map<String, dynamic>.from(jsonDecode(jsonEncode(e)))).toList();
-         _globalClipboardAction = isCut ? 'cut' : 'copy';
-         
-         if (isCut) {
-            final List<int> revIndices = indices.reversed.toList();
-            for (int i in revIndices) {
-               _contents.removeAt(i);
-            }
-            _isSelectionMode = false;
-            _selectedIndices.clear();
-         } else {
-            _isSelectionMode = false;
-            _selectedIndices.clear();
-         }
-      });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${itemsToCopy.length} items ${isCut ? 'Cut' : 'Copied'}')));
-  }
- 
-  void _renameContent(int index) {
-      TextEditingController renameController = TextEditingController(text: _contents[index]['name']);
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Rename Content'),
-          content: TextField(
-            controller: renameController,
-            decoration: const InputDecoration(hintText: 'Enter new name', border: OutlineInputBorder()),
-            autofocus: true,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (renameController.text.trim().isNotEmpty) {
-                  setState(() {
-                    _contents[index]['name'] = renameController.text.trim();
-                  });
-                  Navigator.pop(context);
-                }
-              },
-              child: const Text('Rename'),
-            ),
-          ],
-        ),
-      );
-  }
-
-  void _confirmRemoveContent(int index) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Remove Content'),
-        content: Text('Are you sure you want to remove "${_contents[index]['name']}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              setState(() {
-                _contents.removeAt(index);
-              });
-              Navigator.pop(context);
-            },
-            child: const Text('Remove', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Legacy fallback for simple copy
-  void _handleClipboardAction(String action) {
-     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Long press items to select multiple, then use top menu.')));
-  }
-
-  void _pasteContent() {
-    if (_globalClipboardItems == null || _globalClipboardItems!.isEmpty) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Clipboard is empty')));
-      return;
-    }
-
-    setState(() {
-      for (var item in _globalClipboardItems!) {
-         var newItem = Map<String, dynamic>.from(jsonDecode(jsonEncode(item)));
-         newItem['name'] = '${newItem['name']} (Copy)';
-         _contents.add(newItem);
-      }
-    });
-    
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${_globalClipboardItems!.length} items pasted')));
-  }
-
-  IconData _getIconForType(String type) {
-    switch(type) {
-      case 'folder': return Icons.folder;
-      case 'video': return Icons.video_library;
-      case 'pdf': return Icons.picture_as_pdf;
-      case 'image': return Icons.image;
-      case 'zip': return Icons.folder_zip;
-      default: return Icons.insert_drive_file;
-    }
-  }
-
-  void _showCreateFolderDialog() {
-    final folderNameController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('New Folder'),
-        content: TextField(
-          controller: folderNameController,
-          autofocus: true,
-          decoration: InputDecoration(
-            labelText: 'Folder Name', 
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            filled: true,
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.grey))),
-          ElevatedButton(
-            onPressed: () {
-              if (folderNameController.text.trim().isNotEmpty) {
-                setState(() {
-                  _contents.add({
-                    'type': 'folder', 
-                    'name': folderNameController.text.trim(),
-                    'contents': <Map<String, dynamic>>[],
-                  });
-                });
-                Navigator.pop(context);
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
-            child: const Text('Create', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _pickContentFile(String type, FileType fileType, [List<String>? allowedExtensions]) async {
-    try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: fileType,
-        allowedExtensions: allowedExtensions,
-        allowMultiple: true, 
-      );
-
-      if (result != null) {
-        List<String> invalidFiles = [];
-        setState(() {
-          for (var file in result.files) {
-             if (file.path == null) continue;
-
-             String ext = file.extension?.toLowerCase() ?? '';
-             if (allowedExtensions != null && !allowedExtensions.contains(ext)) {
-                 invalidFiles.add(file.name);
-                 continue;
-             }
-
-             _contents.add({
-                'type': type,
-                'name': file.name,
-                'path': file.path,
-             });
-          }
-        });
-
-        if (mounted && invalidFiles.isNotEmpty) {
-           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-             content: Text('Skipped ${invalidFiles.length} invalid files.'), 
-             backgroundColor: Colors.orange
-           ));
-        }
-      }
-    } catch (e) {
-      debugPrint('Error picking file: $e');
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-    }
-  }
-
-  void _showAddContentMenu() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 10),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Add to Folder', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 24),
-              Wrap(
-                spacing: 24,
-                runSpacing: 24,
-                alignment: WrapAlignment.center,
-                children: [
-                  _buildOptionItem(Icons.create_new_folder, 'Folder', Colors.orange, () => _showCreateFolderDialog()),
-                  _buildOptionItem(Icons.video_library, 'Video', Colors.red, () => _pickContentFile('video', FileType.custom, ['mp4', 'mkv'])),
-                  _buildOptionItem(Icons.picture_as_pdf, 'PDF', Colors.redAccent, () => _pickContentFile('pdf', FileType.custom, ['pdf'])),
-                  _buildOptionItem(Icons.image, 'Image', Colors.purple, () => _pickContentFile('image', FileType.custom, ['jpg', 'jpeg', 'png', 'webp'])),
-                  _buildOptionItem(Icons.folder_zip, 'Zip', Colors.blueGrey, () => _pickContentFile('zip', FileType.custom, ['zip', 'rar'])),
-                  _buildOptionItem(Icons.content_paste, 'Paste', Colors.grey, _pasteContent),
-                ],
-              ),
-              const SizedBox(height: 16),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildOptionItem(IconData icon, String label, Color color, VoidCallback onTap) {
-    return InkWell(
-      onTap: () { Navigator.pop(context); onTap(); },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
-            child: Icon(icon, color: color, size: 28),
-          ),
-          const SizedBox(height: 8),
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: _isSelectionMode 
-         ? AppBar(
-             backgroundColor: AppTheme.primaryColor,
-             iconTheme: const IconThemeData(color: Colors.white),
-             leading: IconButton(icon: const Icon(Icons.close), onPressed: () => setState(() { _isSelectionMode = false; _selectedIndices.clear(); })),
-             title: Text('${_selectedIndices.length} Selected', style: const TextStyle(color: Colors.white, fontSize: 18)),
-             actions: [
-                TextButton(
-                    onPressed: _contents.length == _selectedIndices.length ? () => setState(() => _selectedIndices.clear()) : _selectAll,
-                    child: Text(
-                      _contents.length == _selectedIndices.length ? 'Unselect All' : 'Select All',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)
-                    )
-                ),
-                TextButton(
-                    onPressed: () => _handleBulkCopyCut(false),
-                    child: const Text('Copy', style: TextStyle(color: Colors.white))
-                ),
-                IconButton(tooltip: 'Delete', icon: const Icon(Icons.delete, color: Colors.red), onPressed: _handleBulkDelete),
-             ],
-           )
-         : AppBar(
-             title: Text(widget.folderName),
-           ),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 72, 24, 24),
-            child: _contents.isEmpty 
-              ? Container(
-                  height: 300,
-                  alignment: Alignment.center,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.folder_open, size: 64, color: Colors.grey.shade300),
-                      const SizedBox(height: 16),
-                      Text('Empty Folder', style: TextStyle(color: Colors.grey.shade400)),
-                    ],
-                  ),
-                )
-              : ListView.separated(
-                  padding: EdgeInsets.zero,
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _contents.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final item = _contents[index];
-                    final isSelected = _selectedIndices.contains(index);
-                    IconData icon;
-                    Color color;
-                    
-                    switch(item['type']) {
-                      case 'folder': icon = Icons.folder; color = Colors.orange; break;
-                      case 'video': icon = Icons.video_library; color = Colors.red; break;
-                      case 'pdf': icon = Icons.picture_as_pdf; color = Colors.redAccent; break;
-                      case 'image': icon = Icons.image; color = Colors.purple; break;
-                      case 'zip': icon = Icons.folder_zip; color = Colors.blueGrey; break;
-                      default: icon = Icons.insert_drive_file; color = Colors.blue;
-                    }
-
-                    return ListTile(
-                      tileColor: isSelected ? AppTheme.primaryColor.withOpacity(0.1) : Theme.of(context).cardColor,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12), 
-                        side: BorderSide(color: isSelected ? AppTheme.primaryColor : Colors.grey.shade200, width: isSelected ? 2 : 1)
-                      ),
-                      onLongPress: () => _enterSelectionMode(index),
-                      onTap: () {
-                          if (_isSelectionMode) {
-                             _toggleSelection(index);
-                          } else if (item['type'] == 'folder') {
-                            Navigator.push(
-                              context, 
-                              MaterialPageRoute(
-                                builder: (_) => FolderDetailScreen(
-                                  folderName: item['name'],
-                                  contentList: (item['contents'] as List?)?.cast<Map<String, dynamic>>() ?? [],
-                                )
-                              )
-                            ).then((_) => _refresh());
-                          }
-                      },
-                      leading: CircleAvatar(backgroundColor: color.withOpacity(0.1), child: Icon(icon, color: color, size: 20)),
-                      title: Text(item['name'], style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? AppTheme.primaryColor : null)),
-                      trailing: _isSelectionMode
-                        ? (isSelected 
-                            ? Icon(Icons.check_circle, color: AppTheme.primaryColor)
-                            : Icon(Icons.circle_outlined, color: Colors.grey))
-                        : PopupMenuButton<String>(
-                        icon: const Icon(Icons.more_vert),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        onSelected: (value) {
-                          if (value == 'rename') _renameContent(index);
-                          if (value == 'remove') _confirmRemoveContent(index);
-                        },
-                        itemBuilder: (context) => [
-                          const PopupMenuItem(
-                            value: 'rename', 
-                            child: Row(children: [Icon(Icons.edit, size: 20), SizedBox(width: 12), Text('Rename')])
-                          ),
-                          const PopupMenuItem(
-                            value: 'remove', 
-                            child: Row(children: [Icon(Icons.delete, color: Colors.red, size: 20), SizedBox(width: 12), Text('Remove', style: TextStyle(color: Colors.red))])
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
-          ),
-          
-          if (!_isSelectionMode)
-            Positioned(
-              top: 10,
-              right: 24,
-              child: InkWell(
-                onTap: _showAddContentMenu,
-                borderRadius: BorderRadius.circular(30),
-                child: Container(
-                  height: 50,
-                  width: 50,
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(color: AppTheme.primaryColor.withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 4))
-                    ],
-                  ),
-                  child: const Icon(Icons.add, color: Colors.white, size: 28),
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}
