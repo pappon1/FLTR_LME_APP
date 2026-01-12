@@ -293,7 +293,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       } else if (item['type'] == 'image' && path != null) {
           Navigator.push(context, MaterialPageRoute(builder: (_) => ImageViewerScreen(filePath: path)));
       } else if (item['type'] == 'video' && path != null) {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => VideoPlayerScreen(videoPath: path)));
+          Navigator.push(context, MaterialPageRoute(builder: (_) => VideoPlayerScreen(videoPath: path, videoTitle: item['name'] ?? 'Video')));
       } else if (item['type'] == 'pdf' && path != null) {
           Navigator.push(context, MaterialPageRoute(builder: (_) => PDFViewerScreen(filePath: path)));
       }

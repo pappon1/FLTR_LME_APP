@@ -1,207 +1,454 @@
-import 'dart:io';
-import 'package:flick_video_player/flick_video_player.dart';
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
 import 'package:flutter/services.dart';
-import 'package:screen_brightness/screen_brightness.dart';
-import 'package:flutter_volume_controller/flutter_volume_controller.dart';
-import '../../utils/app_theme.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   final String videoPath;
-  final bool isNetwork;
+  final String videoTitle;
 
-  const VideoPlayerScreen({super.key, required this.videoPath, this.isNetwork = false});
+  const VideoPlayerScreen({
+    super.key,
+    required this.videoPath,
+    required this.videoTitle,
+  });
 
   @override
   State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
 }
 
 class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
-  late FlickManager flickManager;
-  bool _isLoading = true;
-  double _volumeValue = 0.5;
-  double _brightnessValue = 0.5;
-  bool _showOverlay = false;
-  String? _overlayLabel;
-  IconData? _overlayIcon;
+  late final Player player;
+  late final VideoController controller;
+
+  bool _isPlaying = false;
+  bool _showControls = true;
+  bool _isLandscape = false;
+  bool _isDraggingSeekbar = false;
+
+  double _playbackSpeed = 1.0;
+  String _currentQuality = "480p";
+  String _currentSubtitle = "Off";
+  bool _isLocked = false;
+
+  Timer? _hideTimer;
+
+  final _playlist = [
+    {'title': '04. Summary & Quiz', 'duration': '05:45', 'watched': true},
+    {'title': '05. Final Project Overview', 'duration': '12:20', 'watched': false},
+    {'title': '06. Deployment Guide', 'duration': '08:15', 'watched': false},
+    {'title': '07. Bonus Content', 'duration': '22:00', 'watched': false},
+  ];
 
   @override
   void initState() {
     super.initState();
-    _initializePlayer();
-    _initSettings();
-  }
-
-  Future<void> _initSettings() async {
-    try {
-      _brightnessValue = await ScreenBrightness().current;
-      double? volume = await FlutterVolumeController.getVolume();
-      if (volume != null) _volumeValue = volume;
-    } catch (e) {
-      debugPrint("Error getting initial settings: $e");
-    }
-  }
-
-  void _initializePlayer() {
-    VideoPlayerController controller;
-    if (widget.isNetwork) {
-      controller = VideoPlayerController.networkUrl(Uri.parse(widget.videoPath));
-    } else {
-      controller = VideoPlayerController.file(File(widget.videoPath));
-    }
-
-    flickManager = FlickManager(
-      videoPlayerController: controller,
-      autoPlay: true,
-    );
+    player = Player();
+    controller = VideoController(player);
     
-    setState(() {
-      _isLoading = false;
+    player.open(Media(widget.videoPath)).catchError((e) {
+      debugPrint('Error opening video: $e');
     });
+    
+    player.stream.playing.listen((p) {
+      if (mounted) {
+        setState(() => _isPlaying = p);
+      }
+    });
+    
+    _startHideTimer();
   }
 
   @override
   void dispose() {
-    flickManager.dispose();
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
+    _hideTimer?.cancel();
+    player.dispose();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     super.dispose();
   }
 
-  void _onVerticalDragUpdate(DragUpdateDetails details, Size size) {
-    double delta = -details.primaryDelta! / size.height;
-    if (details.localPosition.dx < size.width / 2) {
-      // Brightness (Left side)
-      _brightnessValue = (_brightnessValue + delta).clamp(0.0, 1.0);
-      ScreenBrightness().setScreenBrightness(_brightnessValue);
-      _showTempOverlay("Brightness", Icons.wb_sunny_rounded, _brightnessValue);
-    } else {
-      // Volume (Right side)
-      _volumeValue = (_volumeValue + delta).clamp(0.0, 1.0);
-      FlutterVolumeController.setVolume(_volumeValue);
-      _showTempOverlay("Volume", Icons.volume_up_rounded, _volumeValue);
+  void _startHideTimer() {
+    _hideTimer?.cancel();
+    if (_showControls && _isPlaying) {
+      _hideTimer = Timer(const Duration(seconds: 3), () {
+        if (mounted && _isPlaying) {
+          setState(() => _showControls = false);
+        }
+      });
     }
   }
 
-  void _showTempOverlay(String label, IconData icon, double value) {
+  void _toggleControls() {
     setState(() {
-      _showOverlay = true;
-      _overlayLabel = "${(value * 100).toInt()}%";
-      _overlayIcon = icon;
+      _showControls = !_showControls;
+      if (_showControls) {
+        _startHideTimer();
+      }
     });
-    Future.delayed(const Duration(milliseconds: 800), () {
-      if (mounted) setState(() => _showOverlay = false);
-    });
+  }
+
+  void _togglePlayPause() {
+    player.playOrPause();
+    _startHideTimer();
+  }
+
+  void _seekRelative(int seconds) {
+    final current = player.state.position;
+    final total = player.state.duration;
+    
+    var newPos = current + Duration(seconds: seconds);
+    if (newPos < Duration.zero) newPos = Duration.zero;
+    if (newPos > total) newPos = total;
+    
+    player.seek(newPos);
+  }
+
+  void _toggleOrientation() {
+    setState(() => _isLandscape = !_isLandscape);
+    if (_isLandscape) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ]);
+    } else {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: _isLoading 
-        ? const Center(child: CircularProgressIndicator(color: Colors.white))
-        : LayoutBuilder(
-            builder: (context, constraints) {
-              return Stack(
-                children: [
-                  GestureDetector(
-                    onVerticalDragUpdate: (details) => _onVerticalDragUpdate(details, constraints.biggest),
-                    onDoubleTapDown: (details) {
-                        final dx = details.localPosition.dx;
-                        final width = constraints.biggest.width;
-                        if (dx < width / 3) {
-                          // Rewind
-                          flickManager.flickControlManager?.seekBackward(const Duration(seconds: 10));
-                          _showTempOverlay("Rewind", Icons.fast_rewind, 0);
-                        } else if (dx > width * 2/3) {
-                          // Fast forward
-                          flickManager.flickControlManager?.seekForward(const Duration(seconds: 10));
-                          _showTempOverlay("Forward", Icons.fast_forward, 0);
-                        }
-                    },
-                    child: FlickVideoPlayer(
-                      flickManager: flickManager,
-                      flickVideoWithControls: FlickVideoWithControls(
-                        controls: FlickPortraitControls(
-                          progressBarSettings: FlickProgressBarSettings(
-                            playedColor: AppTheme.primaryColor,
-                            handleColor: AppTheme.primaryColor,
-                            height: 4,
-                          ),
-                        ),
-                        videoFit: BoxFit.contain,
-                      ),
-                      flickVideoWithControlsFullscreen: const FlickVideoWithControls(
-                        controls: FlickLandscapeControls(),
-                        videoFit: BoxFit.contain,
-                      ),
-                    ),
-                  ),
+    final size = MediaQuery.of(context).size;
 
-                  // Center Overlay for Gestures
-                  if (_showOverlay)
-                  Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(_overlayIcon, color: Colors.white, size: 40),
-                          const SizedBox(height: 8),
-                          Text(_overlayLabel ?? "", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                        ],
+    return WillPopScope(
+      onWillPop: () async {
+        if (_isLandscape) {
+          _toggleOrientation();
+          return false;
+        }
+        return true;
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFF0A0E27),
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Header
+              _buildHeader(),
+              
+              // Video Player Section
+              SizedBox(
+                width: size.width,
+                height: _isLandscape ? size.height : size.width * 9 / 16,
+                child: Stack(
+                  children: [
+                    // Video
+                    Video(controller: controller, controls: (state) => const SizedBox()),
+                    
+                    // Tap Area
+                    Positioned.fill(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: _toggleControls,
+                        child: Container(color: Colors.transparent),
                       ),
                     ),
-                  ),
-                  
-                  // Top Controls
-                  Positioned(
-                    top: 40,
-                    left: 20,
-                    right: 20,
-                    child: Row(
-                      children: [
-                        CircleAvatar(
-                          backgroundColor: Colors.black45,
-                          child: IconButton(
-                            icon: const Icon(Icons.arrow_back, color: Colors.white),
-                            onPressed: () => Navigator.pop(context),
-                          ),
-                        ),
-                        const Spacer(),
-                        _buildSpeedButton(),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            }
+
+                    // Controls
+                    if (_showControls) _buildVideoControls(),
+                  ],
+                ),
+              ),
+              
+              // Seekbar Section
+              Container(
+                color: const Color(0xFF0A0E27),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                child: _buildSeekbar(),
+              ),
+              
+              // Control Icons Row
+              Container(
+                color: const Color(0xFF0A0E27),
+                padding: const EdgeInsets.only(left: 20, right: 20, bottom: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildControlIcon(Icons.speed, "${_playbackSpeed}x", () {}),
+                    _buildControlIcon(Icons.closed_caption, _currentSubtitle == "Off" ? "Subtitle" : _currentSubtitle, () {}),
+                    _buildControlIcon(Icons.settings, _currentQuality, () {}),
+                    _buildControlIcon(Icons.lock_outline, "Lock", () {}),
+                    _buildControlIcon(Icons.fullscreen, "Landscape", _toggleOrientation),
+                  ],
+                ),
+              ),
+              
+              const SizedBox(height: 8),
+              
+              // Playlist Section
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: _playlist.length,
+                  itemBuilder: (context, i) => _buildPlaylistItem(_playlist[i], i),
+                ),
+              ),
+            ],
           ),
+        ),
+      ),
     );
   }
 
-  Widget _buildSpeedButton() {
-     return PopupMenuButton<double>(
-        icon: const CircleAvatar(
-          backgroundColor: Colors.black45,
-          child: Icon(Icons.speed, color: Colors.white),
-        ),
-        onSelected: (speed) {
-          flickManager.flickVideoManager?.videoPlayerController?.setPlaybackSpeed(speed);
-        },
-        itemBuilder: (context) => [
-          const PopupMenuItem(value: 0.5, child: Text('0.5x')),
-          const PopupMenuItem(value: 1.0, child: Text('Normal')),
-          const PopupMenuItem(value: 1.5, child: Text('1.5x')),
-          const PopupMenuItem(value: 2.0, child: Text('2.0x')),
+  Widget _buildHeader() {
+    return Container(
+      color: const Color(0xFF0A0E27),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              widget.videoTitle,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
         ],
-     );
+      ),
+    );
+  }
+
+  Widget _buildVideoControls() {
+    return Center(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // -10s
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.replay_10, color: Colors.white, size: 32),
+                onPressed: () => _seekRelative(-10),
+              ),
+              const Text('-10s', style: TextStyle(color: Colors.white, fontSize: 12)),
+            ],
+          ),
+          const SizedBox(width: 32),
+          
+          // Play/Pause
+          GestureDetector(
+            onTap: _togglePlayPause,
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.15),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+              ),
+              child: Icon(
+                _isPlaying ? Icons.pause : Icons.play_arrow,
+                color: Colors.white,
+                size: 32,
+              ),
+            ),
+          ),
+          const SizedBox(width: 32),
+          
+          // +10s
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.forward_10, color: Colors.white, size: 32),
+                onPressed: () => _seekRelative(10),
+              ),
+              const Text('+10s', style: TextStyle(color: Colors.white, fontSize: 12)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSeekbar() {
+    return StreamBuilder<Duration>(
+      stream: player.stream.position,
+      builder: (context, snapshot) {
+        final pos = snapshot.data ?? Duration.zero;
+        final dur = player.state.duration;
+        final maxSeconds = dur.inSeconds > 0 ? dur.inSeconds.toDouble() : 1.0;
+        final currentSeconds = pos.inSeconds.toDouble().clamp(0.0, maxSeconds);
+
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                trackHeight: 4,
+                thumbShape: RoundSliderThumbShape(
+                  enabledThumbRadius: _isDraggingSeekbar ? 9 : 7,
+                ),
+                activeTrackColor: const Color(0xFF22C55E),
+                inactiveTrackColor: Colors.grey[800],
+                thumbColor: Colors.white,
+                overlayShape: SliderComponentShape.noOverlay,
+              ),
+              child: Slider(
+                value: currentSeconds,
+                min: 0,
+                max: maxSeconds,
+                onChangeStart: (_) {
+                  setState(() => _isDraggingSeekbar = true);
+                },
+                onChanged: (v) {
+                  player.seek(Duration(seconds: v.toInt()));
+                },
+                onChangeEnd: (_) {
+                  setState(() => _isDraggingSeekbar = false);
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    _formatDuration(pos),
+                    style: const TextStyle(color: Color(0xFF22C55E), fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    _formatDuration(dur),
+                    style: const TextStyle(color: Color(0xFF22C55E), fontSize: 13, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildControlIcon(IconData icon, String label, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 22),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white, fontSize: 10),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlaylistItem(Map<String, dynamic> item, int index) {
+    final isWatched = item['watched'] == true;
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          // Thumbnail with progress
+          Stack(
+            children: [
+              Container(
+                width: 150,
+                height: 85,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E293B),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Center(
+                  child: Icon(Icons.play_circle_outline, color: Colors.white, size: 40),
+                ),
+              ),
+              // Progress bar at bottom
+              if (isWatched)
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: Container(
+                    height: 3,
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(8),
+                        bottomRight: Radius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          // Title and duration
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item['title'],
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      item['duration'],
+                      style: TextStyle(color: Colors.grey[500], fontSize: 13),
+                    ),
+                    if (isWatched) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: Colors.green.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'Watched',
+                          style: TextStyle(color: Colors.green, fontSize: 11),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDuration(Duration d) {
+    String two(int n) => n.toString().padLeft(2, "0");
+    return "${two(d.inMinutes)}:${two(d.inSeconds.remainder(60))}";
   }
 }

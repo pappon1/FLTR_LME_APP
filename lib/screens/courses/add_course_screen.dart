@@ -858,7 +858,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       } else if (type == 'image') {
           Navigator.push(context, MaterialPageRoute(builder: (_) => ImageViewerScreen(filePath: path)));
       } else if (type == 'video') {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => VideoPlayerScreen(videoPath: path)));
+          Navigator.push(context, MaterialPageRoute(builder: (_) => VideoPlayerScreen(videoPath: path, videoTitle: item['name'] ?? 'Video')));
       } else if (type == 'pdf') {
           Navigator.push(context, MaterialPageRoute(builder: (_) => PDFViewerScreen(filePath: path)));
       }

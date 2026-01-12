@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
-import 'package:chewie/chewie.dart';
-import 'package:flutter/services.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
 
 class CustomVideoPlayer extends StatefulWidget {
   final String videoUrl;
@@ -18,8 +17,8 @@ class CustomVideoPlayer extends StatefulWidget {
 }
 
 class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
-  late VideoPlayerController _videoPlayerController;
-  ChewieController? _chewieController;
+  late final Player player;
+  late final VideoController controller;
   bool _isInit = false;
 
   @override
@@ -29,59 +28,34 @@ class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
   }
 
   Future<void> _initPlayer() async {
-    _videoPlayerController = VideoPlayerController.networkUrl(Uri.parse(widget.videoUrl));
-    await _videoPlayerController.initialize();
+    player = Player();
+    controller = VideoController(player);
     
-    _chewieController = ChewieController(
-      videoPlayerController: _videoPlayerController,
-      autoPlay: widget.autoPlay,
-      looping: false,
-      aspectRatio: _videoPlayerController.value.aspectRatio,
-      allowFullScreen: true,
-      allowedScreenSleep: false,
-      deviceOrientationsAfterFullScreen: [DeviceOrientation.portraitUp],
-      materialProgressColors: ChewieProgressColors(
-        playedColor: Colors.red,
-        handleColor: Colors.redAccent,
-        backgroundColor: Colors.grey,
-        bufferedColor: Colors.white.withOpacity(0.5)
-      ),
-      placeholder: const Center(child: CircularProgressIndicator()),
-      errorBuilder: (context, errorMessage) {
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.error, color: Colors.white, size: 42),
-              const SizedBox(height: 10),
-              Text(
-                "Video loading failed.\n$errorMessage", 
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white)
-              ),
-            ],
-          ),
-        );
-      },
-    );
-
-    if (mounted) {
-      setState(() {
-        _isInit = true;
-      });
+    try {
+      await player.open(Media(widget.videoUrl));
+      if (widget.autoPlay) {
+        await player.play();
+      }
+      
+      if (mounted) {
+        setState(() {
+          _isInit = true;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error initializing video: $e');
     }
   }
 
   @override
   void dispose() {
-    _videoPlayerController.dispose();
-    _chewieController?.dispose();
+    player.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (!_isInit || _chewieController == null) {
+    if (!_isInit) {
       return Container(
         height: 200,
         color: Colors.black,
@@ -93,7 +67,12 @@ class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
       color: Colors.black,
       height: 220,
       width: double.infinity,
-      child: Chewie(controller: _chewieController!),
+      child: Video(
+        controller: controller,
+        controls: (state) {
+          return MaterialVideoControls(state);
+        },
+      ),
     );
   }
 }
