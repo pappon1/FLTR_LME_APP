@@ -246,9 +246,9 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                    setState(() => _currentStep = idx);
                 },
                 children: [
-                  _buildStep1Basic(),
-                  _buildStep2Content(),
-                  _buildStep3Advance(),
+                  KeepAliveWrapper(child: _buildStep1Basic()),
+                  KeepAliveWrapper(child: _buildStep2Content()),
+                  KeepAliveWrapper(child: _buildStep3Advance()),
                 ],
               ),
             ),
@@ -836,8 +836,9 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
           _toggleSelection(index);
           return;
       }
+      HapticFeedback.lightImpact();
       
-      String path = item['path'];
+      String path = item['path'] ?? '';
       String type = item['type'];
 
       if (type == 'folder') {
@@ -1168,6 +1169,25 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         ),
       ),
     );
+  }
+}
+
+class KeepAliveWrapper extends StatefulWidget {
+  final Widget child;
+  const KeepAliveWrapper({super.key, required this.child});
+
+  @override
+  State<KeepAliveWrapper> createState() => _KeepAliveWrapperState();
+}
+
+class _KeepAliveWrapperState extends State<KeepAliveWrapper> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }
 
