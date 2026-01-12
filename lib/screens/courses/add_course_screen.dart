@@ -840,7 +840,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
           _toggleSelection(index);
           return;
       }
-      HapticFeedback.lightImpact();
+      // HapticFeedback.lightImpact(); // Removed as requested - no feedback on content tap
       
       String path = item['path'] ?? '';
       String type = item['type'];

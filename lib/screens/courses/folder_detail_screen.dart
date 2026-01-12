@@ -286,7 +286,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
 
   void _handleContentTap(Map<String, dynamic> item, int index) {
       if (_isSelectionMode) { _toggleSelection(index); return; }
-      HapticFeedback.lightImpact();
+      // HapticFeedback.lightImpact(); // Removed as requested - no feedback on content tap
       String? path = item['path'];
       if (item['type'] == 'folder') {
           Navigator.push(context, MaterialPageRoute(builder: (_) => FolderDetailScreen(folderName: item['name'], contentList: (item['contents'] as List?)?.cast<Map<String, dynamic>>() ?? []))).then((_) => _refresh());
