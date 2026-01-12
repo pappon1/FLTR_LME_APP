@@ -186,14 +186,32 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 ),
               ),
               
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               
               // Playlist Section
               Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: _playlist.length,
-                  itemBuilder: (context, i) => _buildPlaylistItem(_playlist[i], i),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(20, 8, 20, 8),
+                      child: Text(
+                        'Up Next',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        itemCount: _playlist.length,
+                        itemBuilder: (context, i) => _buildPlaylistItem(_playlist[i], i),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
