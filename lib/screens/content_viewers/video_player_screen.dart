@@ -216,11 +216,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   Future<void> _toggleOrientation() async {
     if (_isLocked && _isLandscape) return;
     
-    // 1. Show Black Overlay immediately
+    // 1. Enter Transition State: Hides video, shows black background
     setState(() => _isSwitchingOrientation = true);
     
-    // Small delay to let the overlay render
-    await Future.delayed(const Duration(milliseconds: 50));
+    // Small delay to allow the UI to render the black frame BEFORE the OS starts rotating
+    // This ensures the screenshot the OS stretches is just pure black.
+    await Future.delayed(const Duration(milliseconds: 100));
 
     if (_isLandscape) {
       // To Portrait
@@ -237,10 +238,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       setState(() => _isLandscape = true);
     }
 
-    // 2. Keep overlay for animation duration
+    // 2. Wait for the rotation animation to complete
+    // Standard Android rotation is ~300-500ms
     await Future.delayed(const Duration(milliseconds: 600));
 
-    // 3. Remove overlay
+    // 3. Exit Transition State: Reveal video
     if (mounted) {
       setState(() => _isSwitchingOrientation = false);
     }
@@ -264,27 +266,37 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       },
       child: Stack(
         children: [
-          Scaffold(
-            backgroundColor: Colors.black,
-            body: SafeArea(
-              // In landscape, we want valid safe area for controls but full screen for video.
-              // We handle this inside local layout widgets.
-              // Actually for portrait we want safe area.
-              // For landscape, we want NO safe area on the root, but applied specifically where needed.
-              top: !_isLandscape,
-              bottom: !_isLandscape,
-              left: !_isLandscape,
-              right: !_isLandscape,
-              child: _isLandscape ? _buildLandscapeLayout() : _buildPortraitLayout(),
+          // Main Content
+          // We wrap it in Opacity to hide it completely during transition!
+          // This prevents the OS from capturing the video frame for the rotation animation
+          Opacity(
+            opacity: _isSwitchingOrientation ? 0.0 : 1.0,
+            child: Scaffold(
+              backgroundColor: Colors.black,
+              body: SafeArea(
+                top: !_isLandscape,
+                bottom: !_isLandscape,
+                left: !_isLandscape,
+                right: !_isLandscape,
+                child: _isLandscape ? _buildLandscapeLayout() : _buildPortraitLayout(),
+              ),
             ),
           ),
           
+          // Force Black Background with Spinner during transition
           if (_isSwitchingOrientation)
             Positioned.fill(
               child: Container(
                 color: Colors.black,
                 child: const Center(
-                  child: CircularProgressIndicator(color: Colors.white),
+                  child: SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 3,
+                    ),
+                  ),
                 ),
               ),
             ),
