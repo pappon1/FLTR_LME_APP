@@ -244,12 +244,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         return true;
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFF0A0E27),
-        body: SafeArea(
-          top: !_isLandscape,
-          bottom: !_isLandscape,
-          child: _isLandscape ? _buildLandscapeLayout() : _buildPortraitLayout(),
-        ),
+        backgroundColor: Colors.black, // Changed to black as requested
+        body: _isLandscape 
+            ? _buildLandscapeLayout() 
+            : SafeArea(child: _buildPortraitLayout()),
       ),
     );
   }
@@ -335,7 +333,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 _buildControlIcon(Icons.closed_caption, _currentSubtitle == "Off" ? "Subtitle" : _currentSubtitle, () => setState(() => _currentSubtitle = _currentSubtitle == 'Off' ? 'Eng' : 'Off')),
                 _buildControlIcon(Icons.settings, _currentQuality, () {}),
                 _buildControlIcon(Icons.lock_outline, "Lock", () {
-                   // Lock only makes sense in fullscreen landscape usually, but if user wants it here
                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lock available in Landscape mode')));
                 }),
                 _buildControlIcon(Icons.fullscreen, "Landscape", _toggleOrientation),
@@ -346,9 +343,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           const SizedBox(height: 4),
           
           // Playlist Header
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 8, 20, 8),
-            child: Text(
+          Container(
+            width: double.infinity,
+            color: const Color(0xFF0F172A),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+            child: const Text(
               'Up Next',
               style: TextStyle(
                 color: Colors.white,
@@ -359,12 +358,15 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           ),
           
           // Real Playlist Items
-          ListView.builder(
-            physics: const NeverScrollableScrollPhysics(),
-            shrinkWrap: true,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            itemCount: widget.playlist.length,
-            itemBuilder: (context, i) => _buildPlaylistItem(widget.playlist[i], i),
+          Container(
+            color: const Color(0xFF0F172A),
+            child: ListView.builder(
+              physics: const NeverScrollableScrollPhysics(),
+              shrinkWrap: true,
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              itemCount: widget.playlist.length,
+              itemBuilder: (context, i) => _buildPlaylistItem(widget.playlist[i], i),
+            ),
           ),
         ],
       ),
@@ -375,11 +377,21 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        Video(
-          controller: controller,
-          controls: (state) => const SizedBox(),
-          fit: BoxFit.contain,
+        // 1. Video Layer (No SafeArea, creates usage of full screen)
+        Center(
+          child: AspectRatio(
+            aspectRatio: player.state.width != null && player.state.height != null && player.state.height! > 0
+              ? player.state.width! / player.state.height!
+              : 16 / 9,
+            child: Video(
+              controller: controller,
+              controls: (state) => const SizedBox(),
+              fit: BoxFit.contain,
+            ),
+          ),
         ),
+
+        // 2. Gesture Layer
         Positioned.fill(
           child: GestureDetector(
             behavior: HitTestBehavior.translucent,
@@ -387,129 +399,131 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
             child: Container(color: Colors.transparent),
           ),
         ),
+
+        // 3. Controls Layer (With SafeArea for notches)
         if (_showControls || (_isLocked && _isLandscape)) ...[
-           // Lock Mode Overlay
-           if (_isLocked) ...[
-              Positioned(
-                 bottom: 40,
-                 right: 40,
-                 child: _buildGlassButton(
-                   icon: Icons.lock_open, 
-                   label: "Unlock", 
-                   onTap: _toggleLock
-                 ),
-               ),
-               Center(
-                 child: Icon(Icons.lock, size: 50, color: Colors.white.withOpacity(0.5)),
-               )
-           ] else ...[
-             // Normal Landscape Controls
-              Positioned(
-                top: 0, left: 0, right: 0,
-                child: Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Colors.black87, Colors.transparent],
-                    ),
-                  ),
-                  padding: const EdgeInsets.fromLTRB(16, 24, 16, 40),
-                  child: SafeArea(
-                    bottom: false,
-                    child: Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.arrow_back, color: Colors.white),
-                          onPressed: _toggleOrientation,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _currentTitle,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            overflow: TextOverflow.ellipsis,
+           SafeArea(
+             child: Stack(
+              children: [
+                 // Lock Mode Overlay
+                 if (_isLocked) ...[
+                    Positioned(
+                       bottom: 40,
+                       right: 40,
+                       child: _buildGlassButton(
+                         icon: Icons.lock_open, 
+                         label: "Unlock", 
+                         onTap: _toggleLock
+                       ),
+                     ),
+                     Center(
+                       child: Icon(Icons.lock, size: 50, color: Colors.white.withValues(alpha: 0.5)),
+                     )
+                 ] else ...[
+                   // Normal Landscape Controls
+                    Positioned(
+                      top: 0, left: 0, right: 0,
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [Colors.black87, Colors.transparent],
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-
-              Center(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                      IconButton(
-                        icon: const Icon(Icons.replay_10, color: Colors.white, size: 40),
-                        onPressed: () => _seekRelative(-10),
-                      ),
-                      const SizedBox(width: 40),
-                      GestureDetector(
-                        onTap: _togglePlayPause,
-                        child: Container(
-                          padding: const EdgeInsets.all(20),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.15),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
-                          ),
-                          child: Icon(
-                            _isPlaying ? Icons.pause : Icons.play_arrow,
-                            color: Colors.white,
-                            size: 48,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 40),
-                      IconButton(
-                        icon: const Icon(Icons.forward_10, color: Colors.white, size: 40),
-                        onPressed: () => _seekRelative(10),
-                      ),
-                  ],
-                ),
-              ),
-
-              Positioned(
-                bottom: 0, left: 0, right: 0,
-                child: Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                      colors: [Colors.black87, Colors.transparent],
-                    ),
-                  ),
-                  padding: const EdgeInsets.fromLTRB(32, 40, 32, 24),
-                  child: SafeArea(
-                    top: false,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _buildSeekbar(isPortrait: false),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        padding: const EdgeInsets.fromLTRB(16, 24, 16, 40),
+                        child: Row(
                           children: [
-                            _buildControlIcon(Icons.speed, "${_playbackSpeed}x", _showSpeedMenu),
-                            _buildControlIcon(Icons.closed_caption, _currentSubtitle == "Off" ? "Subtitle" : _currentSubtitle, () => setState(() => _currentSubtitle = _currentSubtitle == 'Off' ? 'Eng' : 'Off')),
-                            _buildControlIcon(Icons.settings, _currentQuality, () {}),
-                            _buildControlIcon(Icons.lock_outline, "Lock", _toggleLock),
-                            _buildControlIcon(Icons.fullscreen_exit, "Portrait", _toggleOrientation),
+                            IconButton(
+                              icon: const Icon(Icons.arrow_back, color: Colors.white),
+                              onPressed: _toggleOrientation,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _currentTitle,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              ),
-           ]
-        ]
+
+                    Center(
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                            IconButton(
+                              icon: const Icon(Icons.replay_10, color: Colors.white, size: 40),
+                              onPressed: () => _seekRelative(-10),
+                            ),
+                            const SizedBox(width: 40),
+                            GestureDetector(
+                              onTap: _togglePlayPause,
+                              child: Container(
+                                padding: const EdgeInsets.all(20),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.15),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
+                                ),
+                                child: Icon(
+                                  _isPlaying ? Icons.pause : Icons.play_arrow,
+                                  color: Colors.white,
+                                  size: 48,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 40),
+                            IconButton(
+                              icon: const Icon(Icons.forward_10, color: Colors.white, size: 40),
+                              onPressed: () => _seekRelative(10),
+                            ),
+                        ],
+                      ),
+                    ),
+
+                    Positioned(
+                      bottom: 0, left: 0, right: 0,
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.bottomCenter,
+                            end: Alignment.topCenter,
+                            colors: [Colors.black87, Colors.transparent],
+                          ),
+                        ),
+                        padding: const EdgeInsets.fromLTRB(32, 40, 32, 24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _buildSeekbar(isPortrait: false),
+                            const SizedBox(height: 16),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                _buildControlIcon(Icons.speed, "${_playbackSpeed}x", _showSpeedMenu),
+                                _buildControlIcon(Icons.closed_caption, _currentSubtitle == "Off" ? "Subtitle" : _currentSubtitle, () => setState(() => _currentSubtitle = _currentSubtitle == 'Off' ? 'Eng' : 'Off')),
+                                _buildControlIcon(Icons.settings, _currentQuality, () {}),
+                                _buildControlIcon(Icons.lock_outline, "Lock", _toggleLock),
+                                _buildControlIcon(Icons.fullscreen_exit, "Portrait", _toggleOrientation),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                 ]
+              ],
+             ),
+           )
+        ],
       ],
     );
   }
