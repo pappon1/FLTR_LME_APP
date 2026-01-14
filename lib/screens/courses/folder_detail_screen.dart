@@ -293,7 +293,14 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       } else if (item['type'] == 'image' && path != null) {
           Navigator.push(context, MaterialPageRoute(builder: (_) => ImageViewerScreen(filePath: path)));
       } else if (item['type'] == 'video' && path != null) {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => VideoPlayerScreen(videoPath: path, videoTitle: item['name'] ?? 'Video')));
+          // CREATE PLAYLIST: Filter only video items
+          final videoList = _contents.where((element) => element['type'] == 'video' && element['path'] != null).toList();
+          final initialIndex = videoList.indexOf(item);
+          
+          Navigator.push(context, MaterialPageRoute(builder: (_) => VideoPlayerScreen(
+            playlist: videoList, 
+            initialIndex: initialIndex >= 0 ? initialIndex : 0,
+          )));
       } else if (item['type'] == 'pdf' && path != null) {
           Navigator.push(context, MaterialPageRoute(builder: (_) => PDFViewerScreen(filePath: path)));
       }
