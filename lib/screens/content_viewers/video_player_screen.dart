@@ -107,10 +107,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     super.dispose();
   }
 
-  void _startHideTimer() {
+  void _startHideTimer([Duration duration = const Duration(seconds: 4), bool forcePlayCheck = false]) {
     _hideTimer?.cancel();
-    if (_showControls && _isPlaying && !_isLocked) {
-      _hideTimer = Timer(const Duration(seconds: 4), () {
+    if (_showControls && (_isPlaying || forcePlayCheck) && !_isLocked) {
+      _hideTimer = Timer(duration, () {
         if (mounted && _isPlaying && _showControls && !_isDraggingSeekbar) {
           setState(() {
             _showControls = false;
@@ -333,7 +333,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   child: Container(color: Colors.transparent),
                 ),
               ),
-              if (_showControls) ...[
+              if (_showControls && !_isDraggingSeekbar) ...[
                  Center(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -520,58 +520,59 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                       ),
                     ),
 
-                    Center(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                            // Replay 10s
-                            GestureDetector(
-                              onTap: () => _seekRelative(-10),
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: const BoxDecoration(
-                                  color: Colors.black54,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(Icons.replay_10, color: Colors.white, size: 36),
-                              ),
-                            ),
-                            const SizedBox(width: 32),
-                            
-                            // Play/Pause button
-                            GestureDetector(
-                              onTap: _togglePlayPause,
-                              child: Container(
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: Colors.black54,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white30, width: 1),
-                                ),
-                                child: Icon(
-                                  _isPlaying ? Icons.pause : Icons.play_arrow,
-                                  color: Colors.white,
-                                  size: 48,
+                    if (!_isDraggingSeekbar)
+                      Center(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                              // Replay 10s
+                              GestureDetector(
+                                onTap: () => _seekRelative(-10),
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.black54,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.replay_10, color: Colors.white, size: 36),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 32),
-                            
-                            // Forward 10s
-                            GestureDetector(
-                              onTap: () => _seekRelative(10),
-                              child: Container(
-                                padding: const EdgeInsets.all(12),
-                                decoration: const BoxDecoration(
-                                  color: Colors.black54,
-                                  shape: BoxShape.circle,
+                              const SizedBox(width: 32),
+                              
+                              // Play/Pause button
+                              GestureDetector(
+                                onTap: _togglePlayPause,
+                                child: Container(
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black54,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.white30, width: 1),
+                                  ),
+                                  child: Icon(
+                                    _isPlaying ? Icons.pause : Icons.play_arrow,
+                                    color: Colors.white,
+                                    size: 48,
+                                  ),
                                 ),
-                                child: const Icon(Icons.forward_10, color: Colors.white, size: 36),
                               ),
-                            ),
-                        ],
+                              const SizedBox(width: 32),
+                              
+                              // Forward 10s
+                              GestureDetector(
+                                onTap: () => _seekRelative(10),
+                                child: Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.black54,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.forward_10, color: Colors.white, size: 36),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
 
                     Positioned(
                       bottom: 0, left: 0, right: 0,
@@ -733,9 +734,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   player.seek(Duration(milliseconds: (v * 1000).toInt())).then((_) {
                      if (_wasPlayingBeforeDrag) {
                        player.play();
+                       // Restart timer immediately with shorter duration (0.7s)
+                       _startHideTimer(const Duration(milliseconds: 700), true);
                      }
                   });
-                  _startHideTimer();
                 },
               ),
             ),
