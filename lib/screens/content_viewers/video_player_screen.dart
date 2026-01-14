@@ -158,7 +158,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1E293B),
+      backgroundColor: const Color(0xFF121212), // Pure Dark Grey
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -366,13 +366,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           
           // Controls Below Video (Original Style)
           Container(
-            color: const Color(0xFF0A0E27),
+            color: Colors.black, // Pure black
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             child: _buildSeekbar(isPortrait: true),
           ),
           
           Container(
-            color: const Color(0xFF0A0E27),
+            color: Colors.black, // Pure black
             padding: const EdgeInsets.only(left: 20, right: 20, bottom: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -393,7 +393,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           // Playlist Header
           Container(
             width: double.infinity,
-            color: const Color(0xFF0F172A),
+            color: Colors.black, // Pure black
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
             child: const Text(
               'Up Next',
@@ -407,7 +407,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           
           // Real Playlist Items
           Container(
-            color: const Color(0xFF0F172A),
+            color: Colors.black, // Pure black
             child: ListView.builder(
               physics: const NeverScrollableScrollPhysics(),
               shrinkWrap: true,
@@ -579,7 +579,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   Widget _buildHeader() {
     return Container(
-      color: const Color(0xFF0A0E27),
+      color: Colors.black, // Pure black
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
