@@ -330,19 +330,29 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          IconButton(
-                            icon: const Icon(Icons.replay_10, color: Colors.white, size: 32),
-                            onPressed: () => _seekRelative(-10),
+                          // Replay 10s
+                          GestureDetector(
+                            onTap: () => _seekRelative(-10),
+                            child: Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: const BoxDecoration(
+                                color: Colors.black54,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.replay_10, color: Colors.white, size: 28),
+                            ),
                           ),
-                          const SizedBox(width: 32),
+                          const SizedBox(width: 24),
+                          
+                          // Play/Pause
                           GestureDetector(
                             onTap: _togglePlayPause,
                             child: Container(
-                              padding: const EdgeInsets.all(14),
+                              padding: const EdgeInsets.all(10), // Reduced size
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.15),
+                                color: Colors.black54, // Visible on white
                                 shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+                                border: Border.all(color: Colors.white30, width: 1),
                               ),
                               child: Icon(
                                 _isPlaying ? Icons.pause : Icons.play_arrow,
@@ -351,10 +361,19 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 32),
-                          IconButton(
-                            icon: const Icon(Icons.forward_10, color: Colors.white, size: 32),
-                            onPressed: () => _seekRelative(10),
+                          const SizedBox(width: 24),
+                          
+                          // Forward 10s
+                          GestureDetector(
+                            onTap: () => _seekRelative(10),
+                            child: Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: const BoxDecoration(
+                                color: Colors.black54,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.forward_10, color: Colors.white, size: 28),
+                            ),
                           ),
                         ],
                       ),
@@ -508,19 +527,29 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                            IconButton(
-                              icon: const Icon(Icons.replay_10, color: Colors.white, size: 40),
-                              onPressed: () => _seekRelative(-10),
+                            // Replay 10s
+                            GestureDetector(
+                              onTap: () => _seekRelative(-10),
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: const BoxDecoration(
+                                  color: Colors.black54,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.replay_10, color: Colors.white, size: 36),
+                              ),
                             ),
-                            const SizedBox(width: 40),
+                            const SizedBox(width: 32),
+                            
+                            // Play/Pause
                             GestureDetector(
                               onTap: _togglePlayPause,
                               child: Container(
-                                padding: const EdgeInsets.all(20),
+                                padding: const EdgeInsets.all(16), // Reduced from 20
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.15),
+                                  color: Colors.black54, // Visible on white
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+                                  border: Border.all(color: Colors.white30, width: 1),
                                 ),
                                 child: Icon(
                                   _isPlaying ? Icons.pause : Icons.play_arrow,
@@ -529,10 +558,19 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 40),
-                            IconButton(
-                              icon: const Icon(Icons.forward_10, color: Colors.white, size: 40),
-                              onPressed: () => _seekRelative(10),
+                            const SizedBox(width: 32),
+                            
+                            // Forward 10s
+                            GestureDetector(
+                              onTap: () => _seekRelative(10),
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: const BoxDecoration(
+                                  color: Colors.black54,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.forward_10, color: Colors.white, size: 36),
+                              ),
                             ),
                         ],
                       ),
