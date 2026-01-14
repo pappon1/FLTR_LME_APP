@@ -640,9 +640,35 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     );
   }
 
-  // Time tracking for seek throttling
-  DateTime _lastSeekTime = DateTime.now();
+  // State for optimized seeking (Smart Scrubbing)
+  bool _isSeeking = false;
+  double? _pendingSeekValue;
   bool _wasPlayingBeforeDrag = false;
+
+  Future<void> _processSeekLoop() async {
+    if (_isSeeking) return;
+    _isSeeking = true;
+
+    try {
+      while (_pendingSeekValue != null) {
+        // Capture the latest target
+        final targetSeconds = _pendingSeekValue!;
+        // Clear pending so we know if a new one comes in during the await
+        _pendingSeekValue = null;
+        
+        // Perform the seek
+        await player.seek(Duration(milliseconds: (targetSeconds * 1000).toInt()));
+      }
+    } catch (e) {
+      debugPrint("Seek error: $e");
+    } finally {
+      _isSeeking = false;
+      // Double check in case a race condition added a value right at the end
+      if (_pendingSeekValue != null) {
+        _processSeekLoop();
+      }
+    }
+  }
 
   Widget _buildSeekbar({required bool isPortrait}) {
     return StreamBuilder<Duration>(
@@ -651,7 +677,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         final pos = snapshot.data ?? Duration.zero;
         final dur = player.state.duration;
         
-        // Use milliseconds for higher precision
         final maxSeconds = dur.inMilliseconds.toDouble() / 1000.0;
         final currentSeconds = _dragValue ?? (pos.inMilliseconds.toDouble() / 1000.0);
 
@@ -674,7 +699,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 min: 0,
                 max: maxSeconds > 0 ? maxSeconds : 1.0,
                 onChangeStart: (v) {
-                  // Pause playback to ensure smooth seeking without decoder conflict
+                  // Pause to free up resources for seeking
                   _wasPlayingBeforeDrag = player.state.playing;
                   player.pause();
                   
@@ -684,18 +709,17 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   });
                 },
                 onChanged: (v) {
-                  // Update UI immediately
+                  // Instant UI update
                   setState(() {
                     _dragValue = v;
                   });
                   
-                  // Ultra-Low Latency Throttle (~60fps)
-                  // media_kit handles rapid seeking well, so we can update very frequently
-                  // This ensures the video keeps up with fast finger movement
-                  final now = DateTime.now();
-                  if (now.difference(_lastSeekTime).inMilliseconds > 16) {
-                    _lastSeekTime = now;
-                    player.seek(Duration(milliseconds: (v * 1000).toInt()));
+                  // Optimised Seeking:
+                  // Store the latest value. If the player is busy seeking, it will pick this up next.
+                  // If it's idle, we start the loop.
+                  _pendingSeekValue = v;
+                  if (!_isSeeking) {
+                    _processSeekLoop();
                   }
                 },
                 onChangeEnd: (v) {
@@ -703,10 +727,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                     _isDraggingSeekbar = false;
                     _dragValue = null;
                   });
+                  _pendingSeekValue = null; // Clear queue
                   
                   // Final precise seek
                   player.seek(Duration(milliseconds: (v * 1000).toInt())).then((_) {
-                     // Restore playback if it was playing before drag
                      if (_wasPlayingBeforeDrag) {
                        player.play();
                      }
