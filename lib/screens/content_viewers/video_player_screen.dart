@@ -34,6 +34,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   bool _isLandscape = false;
   bool _isDraggingSeekbar = false;
   bool _isLocked = false;
+  bool _isSwitchingOrientation = false; // Transition state
   Timer? _hideTimer;
 
   // Placeholder for quality/subtitle just for UI visuals as requested
@@ -212,18 +213,36 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _startHideTimer();
   }
 
-  void _toggleOrientation() {
+  Future<void> _toggleOrientation() async {
     if (_isLocked && _isLandscape) return;
-    setState(() => _isLandscape = !_isLandscape);
+    
+    // 1. Show Black Overlay immediately
+    setState(() => _isSwitchingOrientation = true);
+    
+    // Small delay to let the overlay render
+    await Future.delayed(const Duration(milliseconds: 50));
+
     if (_isLandscape) {
+      // To Portrait
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+      setState(() => _isLandscape = false);
+    } else {
+      // To Landscape
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-      SystemChrome.setPreferredOrientations([
+      await SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
       ]);
-    } else {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+      setState(() => _isLandscape = true);
+    }
+
+    // 2. Keep overlay for animation duration
+    await Future.delayed(const Duration(milliseconds: 600));
+
+    // 3. Remove overlay
+    if (mounted) {
+      setState(() => _isSwitchingOrientation = false);
     }
   }
 
@@ -243,11 +262,33 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         }
         return true;
       },
-      child: Scaffold(
-        backgroundColor: Colors.black, // Changed to black as requested
-        body: _isLandscape 
-            ? _buildLandscapeLayout() 
-            : SafeArea(child: _buildPortraitLayout()),
+      child: Stack(
+        children: [
+          Scaffold(
+            backgroundColor: Colors.black,
+            body: SafeArea(
+              // In landscape, we want valid safe area for controls but full screen for video.
+              // We handle this inside local layout widgets.
+              // Actually for portrait we want safe area.
+              // For landscape, we want NO safe area on the root, but applied specifically where needed.
+              top: !_isLandscape,
+              bottom: !_isLandscape,
+              left: !_isLandscape,
+              right: !_isLandscape,
+              child: _isLandscape ? _buildLandscapeLayout() : _buildPortraitLayout(),
+            ),
+          ),
+          
+          if (_isSwitchingOrientation)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black,
+                child: const Center(
+                  child: CircularProgressIndicator(color: Colors.white),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -377,7 +418,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        // 1. Video Layer (No SafeArea, creates usage of full screen)
+         // 1. Video Layer (Centered, Aspect Ratio respected)
         Center(
           child: AspectRatio(
             aspectRatio: player.state.width != null && player.state.height != null && player.state.height! > 0
@@ -391,7 +432,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           ),
         ),
 
-        // 2. Gesture Layer
+        // 2. Gesture Detector for Controls
         Positioned.fill(
           child: GestureDetector(
             behavior: HitTestBehavior.translucent,
@@ -399,13 +440,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
             child: Container(color: Colors.transparent),
           ),
         ),
-
-        // 3. Controls Layer (With SafeArea for notches)
+        
+        // 3. Controls and Overlays
         if (_showControls || (_isLocked && _isLandscape)) ...[
+           // Wrap controls in SafeArea for Landscape to avoid notches
            SafeArea(
              child: Stack(
-              children: [
-                 // Lock Mode Overlay
+               children: [
+                  // Lock Mode Overlay
                  if (_isLocked) ...[
                     Positioned(
                        bottom: 40,
@@ -417,7 +459,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                        ),
                      ),
                      Center(
-                       child: Icon(Icons.lock, size: 50, color: Colors.white.withValues(alpha: 0.5)),
+                       child: Icon(Icons.lock, size: 50, color: Colors.white.withOpacity(0.5)),
                      )
                  ] else ...[
                    // Normal Landscape Controls
@@ -469,9 +511,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                               child: Container(
                                 padding: const EdgeInsets.all(20),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.15),
+                                  color: Colors.white.withOpacity(0.15),
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
+                                  border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
                                 ),
                                 child: Icon(
                                   _isPlaying ? Icons.pause : Icons.play_arrow,
@@ -520,10 +562,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                       ),
                     ),
                  ]
-              ],
+               ],
              ),
            )
-        ],
+        ]
       ],
     );
   }
