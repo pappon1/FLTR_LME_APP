@@ -693,7 +693,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 activeTrackColor: const Color(0xFF22C55E),
                 inactiveTrackColor: Colors.grey[800],
                 thumbColor: Colors.white,
-                overlayShape: SliderComponentShape.noOverlay,
+                // Large transparent overlay for bigger touch target
+                overlayColor: Colors.transparent, 
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 24.0),
               ),
               child: Slider(
                 value: currentSeconds.clamp(0.0, maxSeconds > 0 ? maxSeconds : 1.0),
