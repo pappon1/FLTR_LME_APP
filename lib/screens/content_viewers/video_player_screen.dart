@@ -4,6 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:flutter_volume_controller/flutter_volume_controller.dart';
+import 'package:screen_brightness/screen_brightness.dart';
+import '../../widgets/video_thumbnail_widget.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   final List<Map<String, dynamic>> playlist;
@@ -55,12 +59,27 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   List<String> _subtitles = ["Off", "English", "Bengali", "Hindi"];
   List<String> _qualities = ["Auto", "480p", "720p", "1080p", "1920p"];
 
+  // Gesture State
+  double _volume = 0.5;
+  double _brightness = 0.5;
+  bool _showVolumeLabel = false;
+  bool _showBrightnessLabel = false;
+  Timer? _volumeTimer;
+  Timer? _brightnessTimer;
+  final ScrollController _playlistScrollController = ScrollController();
+
 
   @override
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
     
+    // Feature: Prevent Screen Sleep
+    WakelockPlus.enable();
+
+    // Feature: Initialize Volume/Brightness
+    _initVolumeBrightness();
+
     // Initialize Player
     player = Player();
     controller = VideoController(player);
@@ -91,6 +110,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _startHideTimer();
   }
 
+  Future<void> _initVolumeBrightness() async {
+    try {
+      _volume = await FlutterVolumeController.getVolume() ?? 0.5;
+      _brightness = await ScreenBrightness().current;
+      setState(() {});
+    } catch (e) {
+      debugPrint("Error initializing controls: $e");
+    }
+  }
+
   Future<void> _playVideo(int index) async {
     if (index < 0 || index >= widget.playlist.length) return;
 
@@ -98,6 +127,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       _currentIndex = index;
       _showControls = true;
     });
+    
+    // Feature: Playlist Auto Scroll
+    _scrollToCurrent();
 
     try {
       final item = widget.playlist[index];
@@ -108,6 +140,104 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       }
     } catch (e) {
       debugPrint('Error playing video: $e');
+      if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
+           SnackBar(content: Text('Error playing video: $e'), backgroundColor: Colors.red),
+         );
+      }
+    }
+  }
+  
+  // Gesture State Tracks
+  bool _isVerticalDrag = false;
+
+  void _onVerticalDragStart(DragStartDetails details) {
+    _isVerticalDrag = true;
+  }
+
+  void _onHorizontalDragStart(DragStartDetails details) {
+    _isVerticalDrag = false;
+  }
+
+  Future<void> _onVerticalDragUpdate(DragUpdateDetails details) async {
+    // Block if it started as a horizontal drag (though GestureDetector usually handles this separation, explicit checks help)
+    // Actually, simply relying on onVerticalDragUpdate is usually enough if onHorizontal isn't consuming it.
+    // However, user wants to BLOCK vertical gestures if the user is swiping horizontally.
+    // The issue is likely that slight vertical movement during a horizontal swipe triggers this.
+    
+    // To fix this robustly:
+    // We check the primary delta. If the user is moving more horizontally than vertically, ignore.
+    // But DragUpdateDetails in onVerticalDragUpdate only gives vertical delta usually if the detector is purely vertical.
+    
+    // Better approach: Use onScale or check pure deltas.
+    // But since we are inside onVerticalDragUpdate, the system has already decided it's a vertical drag?
+    // User says "horizontal gesture karne se ye dono gesture kam nehi karna chaiye".
+    // This means if I am seeking (horizontal), volume/brightness shouldn't change.
+    
+    // Since we don't have a horizontal drag handler on this SAME detector, Flutter might be lenient.
+    // Let's enforce that we ONLY respond if we are sure it's vertical.
+    
+    final width = MediaQuery.of(context).size.width;
+    final dx = details.localPosition.dx;
+    final delta = details.primaryDelta ?? 0;
+    
+    // If delta is very small, ignore
+    if (delta.abs() < 0.5) return;
+
+    // Sensitivity
+    final double sensitivity = 0.01;
+
+    if (dx > width / 2) {
+      // Right Side -> Volume
+      _volume -= delta * sensitivity;
+      if (_volume <= 0) { _volume = 0; }
+      if (_volume >= 1) { _volume = 1; }
+
+      await FlutterVolumeController.setVolume(_volume);
+
+      setState(() {
+        _showVolumeLabel = true;
+        _showBrightnessLabel = false;
+      });
+      _volumeTimer?.cancel();
+      _volumeTimer = Timer(const Duration(seconds: 1), () {
+         if (mounted) setState(() => _showVolumeLabel = false);
+      });
+
+    } else {
+      // Left Side -> Brightness
+      _brightness -= delta * sensitivity;
+      if (_brightness <= 0) { _brightness = 0; }
+      if (_brightness >= 1) { _brightness = 1; }
+
+      try {
+        await ScreenBrightness().setScreenBrightness(_brightness);
+      } catch(e) { debugPrint("Brightness Error: $e"); }
+
+      setState(() {
+        _showBrightnessLabel = true;
+        _showVolumeLabel = false;
+      });
+      _brightnessTimer?.cancel();
+      _brightnessTimer = Timer(const Duration(seconds: 1), () {
+        if (mounted) setState(() => _showBrightnessLabel = false);
+      });
+    }
+  }
+
+  final GlobalKey _videoGestureKey = GlobalKey();
+
+  void _scrollToCurrent() {
+    if (_playlistScrollController.hasClients) {
+       Future.delayed(const Duration(milliseconds: 100), () {
+          if (_playlistScrollController.hasClients) {
+             _playlistScrollController.animateTo(
+               _currentIndex * 100.0, 
+               duration: const Duration(milliseconds: 300), 
+               curve: Curves.easeInOut
+             );
+          }
+       });
     }
   }
 
@@ -115,6 +245,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   void dispose() {
     _hideTimer?.cancel();
     _unlockHideTimer?.cancel();
+    _volumeTimer?.cancel();
+    _brightnessTimer?.cancel();
+    _playlistScrollController.dispose();
+    
+    // Feature: Restore System State
+    WakelockPlus.disable();
+    ScreenBrightness().resetScreenBrightness();
+    
     player.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
@@ -425,9 +563,18 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                               _toggleControls();
                            }
                         },
+                        onVerticalDragUpdate: _isLocked ? null : _onVerticalDragUpdate,
+                        onHorizontalDragUpdate: (details) {
+                          // Consume horizontal drag to prevent vertical mistakenly acting?
+                          // Or better, if we want future seek, we can implement it here.
+                          // For now, doing nothing effectively blocks "vertical" interpretation if the user moves diagonally closer to horizontal.
+                        },
                         child: Container(color: Colors.transparent),
                       ),
                     ),
+
+                    // Volume/Brightness Overlay
+                    Positioned.fill(child: _buildGestureOverlay()),
 
                     // Play/Pause Controls (Only if Unlocked)
                     if (!_isLocked)
@@ -704,13 +851,19 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         ),
 
         // 2. Gesture Detector
+        // 2. Gesture Detector
         Positioned.fill(
           child: GestureDetector(
             behavior: HitTestBehavior.translucent,
             onTap: _toggleControls,
+            onVerticalDragUpdate: _isLocked ? null : _onVerticalDragUpdate,
+            onHorizontalDragUpdate: (details) {}, 
             child: Container(color: Colors.transparent),
           ),
         ),
+
+        // Gesture Overlay
+        Positioned.fill(child: _buildGestureOverlay()),
         
         // 3. Controls
            SafeArea(
@@ -1275,6 +1428,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   Widget _buildPlaylistItem(Map<String, dynamic> item, int index) {
     final isPlaying = index == _currentIndex;
+    final path = item['path'] as String?;
     
     return InkWell(
       onTap: () => _playVideo(index), 
@@ -1293,14 +1447,26 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                     borderRadius: BorderRadius.circular(8),
                     border: isPlaying ? Border.all(color: const Color(0xFF22C55E), width: 2) : null,
                   ),
-                  child: Center(
-                    child: Icon(
-                        isPlaying ? Icons.equalizer : Icons.play_circle_outline, 
-                        color: isPlaying ? const Color(0xFF22C55E) : Colors.white, 
-                        size: 40
+                  clipBehavior: Clip.antiAlias,
+                  child: path != null 
+                    ? VideoThumbnailWidget(videoPath: path, fit: BoxFit.cover)
+                    : Center(
+                        child: Icon(
+                            isPlaying ? Icons.equalizer : Icons.play_circle_outline, 
+                            color: isPlaying ? const Color(0xFF22C55E) : Colors.white, 
+                            size: 40
+                        ),
+                      ),
+                ),
+                if (isPlaying)
+                  Positioned.fill(
+                    child: Container(
+                      color: Colors.black45,
+                      child: const Center(
+                        child: Icon(Icons.play_circle_fill, color: Color(0xFF22C55E), size: 30),
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
             const SizedBox(width: 12),
@@ -1451,5 +1617,94 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         ),
       ],
     );
+  }
+  Widget _buildGestureOverlay() {
+      return Stack(
+          children: [
+             // Brightness Slider (Left)
+             if (_showBrightnessLabel)
+              Positioned(
+                 left: 20,
+                 top: 0,
+                 bottom: 0,
+                 child: Center(
+                   child: Container(
+                     width: 40,
+                     height: 160,
+                     decoration: BoxDecoration(
+                       color: Colors.black54,
+                       borderRadius: BorderRadius.circular(20),
+                     ),
+                     child: Column(
+                       mainAxisAlignment: MainAxisAlignment.end,
+                       children: [
+                         const Padding(padding: EdgeInsets.only(top: 10), child: Icon(Icons.wb_sunny, color: Colors.white, size: 20)),
+                         Expanded(
+                             child: RotatedBox(
+                               quarterTurns: -1,
+                               child: SliderTheme(
+                                 data: SliderTheme.of(context).copyWith(
+                                    trackHeight: 4,
+                                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 0),
+                                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 0),
+                                    activeTrackColor: Colors.white,
+                                    inactiveTrackColor: Colors.white24,
+                                 ),
+                                 child: Slider(
+                                   value: _brightness,
+                                   onChanged: (v) {}, 
+                                 ),
+                               ),
+                             )
+                         ),
+                       ],
+                     ),
+                   ),
+                 ),
+              ),
+
+             // Volume Slider (Right)
+             if (_showVolumeLabel)
+              Positioned(
+                 right: 20,
+                 top: 0,
+                 bottom: 0,
+                 child: Center(
+                   child: Container(
+                     width: 40,
+                     height: 160,
+                     decoration: BoxDecoration(
+                       color: Colors.black54,
+                       borderRadius: BorderRadius.circular(20),
+                     ),
+                     child: Column(
+                       mainAxisAlignment: MainAxisAlignment.end,
+                       children: [
+                         const Padding(padding: EdgeInsets.only(top: 10), child: Icon(Icons.volume_up, color: Colors.white, size: 20)),
+                         Expanded(
+                             child: RotatedBox(
+                               quarterTurns: -1,
+                               child: SliderTheme(
+                                 data: SliderTheme.of(context).copyWith(
+                                    trackHeight: 4,
+                                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 0),
+                                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 0),
+                                    activeTrackColor: const Color(0xFF22C55E),
+                                    inactiveTrackColor: Colors.white24,
+                                 ),
+                                 child: Slider(
+                                   value: _volume,
+                                   onChanged: (v) {}, 
+                                 ),
+                               ),
+                             )
+                         ),
+                       ],
+                     ),
+                   ),
+                 ),
+              ),
+          ],
+      );
   }
 }
