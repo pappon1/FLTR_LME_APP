@@ -47,6 +47,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   String? _activeTray; // 'quality', 'speed', 'subtitle'
   Timer? _trayHideTimer;
   bool _showSpeedPresets = false;
+  bool _isDraggingSpeedSlider = false;
 
   // Feature State
   String _currentQuality = "Auto";
@@ -1200,18 +1201,24 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                inactiveTrackColor: Colors.grey[800],
                thumbColor: Colors.white,
                trackHeight: 2,
-               thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5), // Smaller
-               overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
+               thumbShape: RoundSliderThumbShape(enabledThumbRadius: _isDraggingSpeedSlider ? 9 : 5), // Dynamic Size
+               overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
             ),
             child: Slider(
               value: _playbackSpeed,
               min: 0.5,
               max: 3.0,
               divisions: 50,
+              onChangeStart: (v) {
+                setState(() => _isDraggingSpeedSlider = true);
+              },
+              onChangeEnd: (v) {
+                 setState(() => _isDraggingSpeedSlider = false);
+                 _startHideTimer();
+              },
               onChanged: (v) {
                 setState(() => _playbackSpeed = v);
                 player.setRate(v);
-                _startTrayHideTimer();
               },
             ),
           ),
