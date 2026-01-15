@@ -36,6 +36,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   bool _isLocked = false;
   Timer? _hideTimer;
   
+  // Lock UI State
+  bool _isUnlockControlsVisible = false;
+  Timer? _unlockHideTimer;
+
   // Local state for smooth seeking
   double? _dragValue;
 
@@ -101,6 +105,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   void dispose() {
     _hideTimer?.cancel();
+    _unlockHideTimer?.cancel();
     player.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
@@ -125,14 +130,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   void _toggleControls() {
-    if (_isLocked && _isLandscape) {
-       // Only show lock button if locked and user taps
-       if (!_showControls) {
-         setState(() => _showControls = true);
-         _startHideTimer();
-       } else {
-         setState(() => _showControls = false);
-       }
+    if (_isLocked) {
+       _handleLockedTap();
        return;
     }
 
@@ -198,8 +197,46 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   void _toggleLock() {
     setState(() {
       _isLocked = !_isLocked;
+      if (_isLocked) {
+        // Enforce lock state
+        _showControls = false;
+        // Show Unlock UI initially
+        _isUnlockControlsVisible = true; 
+        _startUnlockHideTimer();
+        // Force Immersive Mode
+        if (_isLandscape) {
+           SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+        }
+      } else {
+        // Unlock
+        _unlockHideTimer?.cancel();
+        _isUnlockControlsVisible = false;
+        _showControls = true;
+        _startHideTimer();
+        // Restore Edge to Edge (or immersive if controls hide later)
+        SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      }
     });
-    _startHideTimer();
+  }
+
+  void _startUnlockHideTimer() {
+    _unlockHideTimer?.cancel();
+    _unlockHideTimer = Timer(const Duration(seconds: 1), () {
+      if (mounted && _isLocked) {
+        setState(() {
+          _isUnlockControlsVisible = false;
+        });
+      }
+    });
+  }
+
+  void _handleLockedTap() {
+    // If hidden, show it. If shown, reset timer?
+    // User said: "screen ke kisis bhi jaga pe touch kare to us lock icon dike"
+    setState(() {
+       _isUnlockControlsVisible = true;
+    });
+    _startUnlockHideTimer();
   }
 
   void _seekRelative(int seconds) {
@@ -313,124 +350,256 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     final videoHeight = size.width * 9 / 16;
 
     // Fixed column with expanded scrollable playlist at the bottom
+    // Determine visibility based on Lock State
+    // If locked: Visible only when `_isUnlockControlsVisible` is true.
+    // If unlocked: Visible when `_showControls` is true.
+    final isInterfaceVisible = _isLocked ? _isUnlockControlsVisible : _showControls;
+
+    // Fixed column with expanded scrollable playlist at the bottom
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Header (Fixed)
-        _buildHeader(),
-        
-        // Video Player Area (Fixed)
-        SizedBox(
-          width: size.width,
-          height: videoHeight,
-          child: Stack(
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Video(controller: controller, controls: (state) => const SizedBox()),
-              Positioned.fill(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-                  onTap: _toggleControls,
-                  child: Container(color: Colors.transparent),
-                ),
-              ),
-              if (_showControls && !_isDraggingSeekbar) ...[
-                 Center(
+               // Header (Fixed) - Always takes space, but content hides if needed
+               // If Locked: Back button hidden, Text visible (if interface visible)
+               AnimatedOpacity(
+                 duration: const Duration(milliseconds: 300),
+                 opacity: isInterfaceVisible ? 1.0 : 0.0,
+                 child: Container(
+                    color: Colors.black, 
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                          // Replay 10s
-                          GestureDetector(
-                            onTap: () => _seekRelative(-10),
-                            child: Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: const BoxDecoration(
-                                color: Colors.black54,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.replay_10, color: Colors.white, size: 28),
+                        // Back Button (Hide if locked)
+                        Opacity(
+                          opacity: _isLocked ? 0.0 : 1.0,
+                          child: IgnorePointer(
+                            ignoring: _isLocked,
+                            child: IconButton(
+                              icon: const Icon(Icons.arrow_back, color: Colors.white),
+                              onPressed: () => Navigator.pop(context),
                             ),
                           ),
-                          const SizedBox(width: 24),
-                          
-                          // Play/Pause
-                          GestureDetector(
-                            onTap: _togglePlayPause,
-                            child: Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: Colors.black54,
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white30, width: 1),
-                              ),
-                              child: Icon(
-                                _isPlaying ? Icons.pause : Icons.play_arrow,
-                                color: Colors.white,
-                                size: 32,
-                              ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _currentTitle,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
                             ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(width: 24),
-                          
-                          // Forward 10s
-                          GestureDetector(
-                            onTap: () => _seekRelative(10),
-                            child: Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: const BoxDecoration(
-                                color: Colors.black54,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.forward_10, color: Colors.white, size: 28),
-                            ),
-                          ),
+                        ),
                       ],
                     ),
-                 )
-              ]
-            ],
-          ),
-        ),
-        
-        // Fixed Controls Area
-        Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              color: Colors.black, // Pure Black
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              child: _buildSeekbar(isPortrait: true),
-            ),
-            
-            Container(
-              color: Colors.black, // Pure Black
-              padding: const EdgeInsets.only(left: 20, right: 20, bottom: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildControlIcon(Icons.speed, "${_playbackSpeed}x", _showSpeedMenu),
-                  _buildControlIcon(Icons.closed_caption, _currentSubtitle == "Off" ? "Subtitle" : _currentSubtitle, () => setState(() => _currentSubtitle = _currentSubtitle == 'Off' ? 'Eng' : 'Off')),
-                  _buildControlIcon(Icons.settings, _currentQuality, () {}),
-                  _buildControlIcon(Icons.lock_outline, "Lock", () {
-                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lock available in Landscape mode')));
-                  }),
-                  _buildControlIcon(Icons.fullscreen, "Landscape", _toggleOrientation),
-                ],
+                 ),
+               ),
+              
+              // Video Player Area (Fixed)
+              SizedBox(
+                width: size.width,
+                height: videoHeight,
+                child: Stack(
+                  children: [
+                    Video(controller: controller, controls: (state) => const SizedBox()),
+                    
+                    // Locked Dark Overlay (Behind controls)
+                    if (_isLocked)
+                    Positioned.fill(
+                      child: Container(color: Colors.black54),
+                    ),
+
+                    // Gesture Detector
+                    Positioned.fill(
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: () {
+                           if (_isLocked) {
+                              _handleLockedTap();
+                           } else {
+                              _toggleControls();
+                           }
+                        },
+                        child: Container(color: Colors.transparent),
+                      ),
+                    ),
+
+                    // Play/Pause Controls (Only if Unlocked)
+                    if (!_isLocked)
+                      IgnorePointer(
+                        ignoring: !isInterfaceVisible,
+                        child: AnimatedOpacity(
+                          duration: const Duration(milliseconds: 300),
+                          opacity: isInterfaceVisible ? 1.0 : 0.0,
+                          child: Center(
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                    // Replay 10s
+                                    GestureDetector(
+                                      onTap: () => _seekRelative(-10),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.black54,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.replay_10, color: Colors.white, size: 28),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 24),
+                                    
+                                    // Play/Pause
+                                    GestureDetector(
+                                      onTap: _togglePlayPause,
+                                      child: Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black54,
+                                          shape: BoxShape.circle,
+                                          border: Border.all(color: Colors.white30, width: 1),
+                                        ),
+                                        child: Icon(
+                                          _isPlaying ? Icons.pause : Icons.play_arrow,
+                                          color: Colors.white,
+                                          size: 32,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 24),
+                                    
+                                    // Forward 10s
+                                    GestureDetector(
+                                      onTap: () => _seekRelative(10),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: const BoxDecoration(
+                                          color: Colors.black54,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(Icons.forward_10, color: Colors.white, size: 28),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                           ),
+                        ),
+                      )
+                  ],
+                ),
               ),
-            ),
-            // Light separator to indicate playlist start
-            const Divider(height: 1, color: Colors.white10),
-          ],
-        ),
-        
-        // Scrollable Playlist (Expanded to fill remaining space)
-        Expanded(
-          child: Container(
-            color: Colors.black, // Pure black
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-              itemCount: widget.playlist.length,
-              itemBuilder: (context, i) => _buildPlaylistItem(widget.playlist[i], i),
-            ),
+              
+              // Fixed Controls Area
+              AnimatedOpacity(
+                 duration: const Duration(milliseconds: 300),
+                 opacity: (_isLocked && !_isUnlockControlsVisible) ? 0.0 : 1.0,
+                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Seekbar
+                    // If Locked: Hide Slider, Show Timings. If Unlocked: Show Both.
+                    Container(
+                      color: Colors.black, // Pure Black
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                      child: _buildSeekbar(isPortrait: true, hideSlider: _isLocked),
+                    ),
+                    
+                    Container(
+                      color: Colors.black, // Pure Black
+                      padding: const EdgeInsets.only(left: 20, right: 20, bottom: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                           // Speed
+                           Opacity(opacity: _isLocked ? 0.0 : 1.0, child: IgnorePointer(ignoring: _isLocked, child: _buildControlIcon(Icons.speed, "${_playbackSpeed}x", _showSpeedMenu))),
+                           // Subtitle
+                           Opacity(opacity: _isLocked ? 0.0 : 1.0, child: IgnorePointer(ignoring: _isLocked, child: _buildControlIcon(Icons.closed_caption, _currentSubtitle == "Off" ? "Subtitle" : _currentSubtitle, () => setState(() => _currentSubtitle = _currentSubtitle == 'Off' ? 'Eng' : 'Off')))),
+                           // Settings
+                           Opacity(opacity: _isLocked ? 0.0 : 1.0, child: IgnorePointer(ignoring: _isLocked, child: _buildControlIcon(Icons.settings, _currentQuality, () {}))),
+                           
+                           // Lock Button (Double Size when locked)
+                           GestureDetector(
+                              onTap: () {
+                                if (!_isLocked) {
+                                  _toggleLock();
+                                } else {
+                                  _handleLockedTap();
+                                }
+                              },
+                              onDoubleTap: _isLocked ? _toggleLock : null,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 300),
+                                    child: Icon(
+                                      _isLocked ? Icons.lock : Icons.lock_open, 
+                                      color: Colors.white, 
+                                      size: _isLocked ? 44 : 22 // Doubled size when locked
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  if (!_isLocked)
+                                  const Text(
+                                    "Lock",
+                                    style: TextStyle(color: Colors.white, fontSize: 10),
+                                  ),
+                                  if (_isLocked && _isUnlockControlsVisible)
+                                    const Padding(
+                                      padding: EdgeInsets.only(top: 4),
+                                      child: Text(
+                                        "Double tap\nto unlock",
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold 
+                                        ),
+                                      ),
+                                    )
+                                ],
+                              ),
+                           ),
+
+                           // Landscape
+                           Opacity(opacity: _isLocked ? 0.0 : 1.0, child: IgnorePointer(ignoring: _isLocked, child: _buildControlIcon(Icons.fullscreen, "Landscape", _toggleOrientation))),
+                        ],
+                      ),
+                    ),
+                    // Light separator to indicate playlist start
+                    if (!_isLocked)
+                     const Divider(height: 1, color: Colors.white10),
+                  ],
+                ),
+              ),
+              
+              // Scrollable Playlist (Expanded to fill remaining space)
+              // If Locked: Show Black Space. If Unlocked: Show List.
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    if (_isLocked) _handleLockedTap();
+                  },
+                  child: Container(
+                    color: Colors.black, // Pure black
+                    width: double.infinity,
+                    child: _isLocked 
+                       ? null // No watermark text, pure black
+                       : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                          itemCount: widget.playlist.length,
+                          itemBuilder: (context, i) => _buildPlaylistItem(widget.playlist[i], i),
+                        ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -472,18 +641,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                children: [
                   // Lock Mode Overlay
                  if (_isLocked) ...[
-                    Positioned(
-                       bottom: 40,
-                       right: 40,
-                       child: _buildGlassButton(
-                         icon: Icons.lock_open, 
-                         label: "Unlock", 
-                         onTap: _toggleLock
-                       ),
-                     ),
-                     Center(
-                       child: Icon(Icons.lock, size: 50, color: Colors.white.withOpacity(0.5)),
-                     )
+                      _buildLockOverlay(),
                  ] else ...[
                    // Normal Landscape Controls
                     Positioned(
@@ -671,7 +829,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     }
   }
 
-  Widget _buildSeekbar({required bool isPortrait}) {
+  Widget _buildSeekbar({required bool isPortrait, bool hideSlider = false}) {
     return StreamBuilder<Duration>(
       stream: player.stream.position,
       builder: (context, snapshot) {
@@ -684,6 +842,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         return Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (!hideSlider)
             SliderTheme(
               data: SliderTheme.of(context).copyWith(
                 trackHeight: 4,
@@ -750,11 +909,21 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 children: [
                   Text(
                     _formatDuration(Duration(milliseconds: (currentSeconds * 1000).toInt())),
-                    style: const TextStyle(color: Color(0xFF22C55E), fontSize: 13, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      color: const Color(0xFF22C55E), 
+                      fontSize: 13, 
+                      fontWeight: FontWeight.w600,
+                      shadows: hideSlider ? [const Shadow(color: Colors.black, blurRadius: 2)] : null,
+                    ),
                   ),
                   Text(
                     _formatDuration(dur),
-                    style: const TextStyle(color: Color(0xFF22C55E), fontSize: 13, fontWeight: FontWeight.w600),
+                    style: TextStyle(
+                      color: const Color(0xFF22C55E), 
+                      fontSize: 13, 
+                      fontWeight: FontWeight.w600,
+                      shadows: hideSlider ? [const Shadow(color: Colors.black, blurRadius: 2)] : null,
+                    ),
                   ),
                 ],
               ),
@@ -874,5 +1043,91 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   String _formatDuration(Duration d) {
     String two(int n) => n.toString().padLeft(2, "0");
     return "${two(d.inMinutes)}:${two(d.inSeconds.remainder(60))}";
+  }
+  // --- Reusable Lock Overlay ---
+  Widget _buildLockOverlay() {
+    return Stack(
+      children: [
+        // Catch taps to show/hide the lock UI
+        Positioned.fill(
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: _handleLockedTap,
+            child: Container(color: Colors.transparent),
+          ),
+        ),
+        
+        IgnorePointer(
+          ignoring: !_isUnlockControlsVisible,
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 300),
+            opacity: _isUnlockControlsVisible ? 1.0 : 0.0,
+            child: Stack(
+              children: [
+                  // 1. Dim Overlay
+                  Positioned.fill(
+                    child: Container(color: Colors.black54),
+                  ),
+                  
+                  // 2. Title (Top Center)
+                  Positioned(
+                    top: 40, 
+                    left: 20, 
+                    right: 20,
+                    child: Text(
+                      _currentTitle,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        shadows: [Shadow(color: Colors.black, blurRadius: 4)],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+
+                  // 3. Lock Icon (Center)
+                  Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        GestureDetector(
+                          onDoubleTap: _toggleLock,
+                          onTap: _handleLockedTap,
+                          child: Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.1),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white30),
+                            ),
+                            child: const Icon(Icons.lock, size: 40, color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // 4. Instructions (Bottom)
+                  const Positioned(
+                    bottom: 60,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Text(
+                        "Double tap to unlock",
+                        style: TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
