@@ -8,6 +8,7 @@ import 'package:media_kit_video/media_kit_video.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:volume_controller/volume_controller.dart';
 import 'package:screen_brightness/screen_brightness.dart';
+import 'package:sensors_plus/sensors_plus.dart';
 import '../../widgets/video_thumbnail_widget.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
@@ -70,6 +71,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
   Timer? _volumeTimer;
   Timer? _brightnessTimer;
   final ScrollController _playlistScrollController = ScrollController();
+  
+  // Sensor State
+  StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
+  DeviceOrientation? _lastSensorOrientation;
+
 
 
   @override
@@ -123,6 +129,33 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
     }
     
     _startHideTimer();
+    
+    // Feature: Sensor Rotation
+    _initSensor();
+  }
+
+  void _initSensor() {
+    _accelerometerSubscription = accelerometerEventStream().listen((event) {
+      if (!mounted) return;
+      if (!_isLandscape) return; // Only control rotation when in manual landscape mode
+
+      const double threshold = 5.0; // Lowered threshold slightly for better responsiveness
+
+      // x > threshold => Landscape Left (Top of phone to left) - Gravity on positive X
+      // x < -threshold => Landscape Right (Top of phone to right) - Gravity on negative X
+      
+      if (event.x > threshold) {
+        if (_lastSensorOrientation != DeviceOrientation.landscapeLeft) {
+          SystemChrome.setPreferredOrientations([DeviceOrientation.landscapeLeft]);
+          _lastSensorOrientation = DeviceOrientation.landscapeLeft;
+        }
+      } else if (event.x < -threshold) {
+         if (_lastSensorOrientation != DeviceOrientation.landscapeRight) {
+           SystemChrome.setPreferredOrientations([DeviceOrientation.landscapeRight]);
+           _lastSensorOrientation = DeviceOrientation.landscapeRight;
+         }
+      }
+    }); // End Listen
   }
 
   Future<void> _initVolumeBrightness() async {
@@ -289,6 +322,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
     _unlockHideTimer?.cancel();
     _volumeTimer?.cancel();
     _brightnessTimer?.cancel();
+    _accelerometerSubscription?.cancel();
     _playlistScrollController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     VolumeController.instance.removeListener();
@@ -494,7 +528,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
       // Enable system UI first to avoid weird jumps back to portrait
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-      setState(() => _isLandscape = false);
+      setState(() {
+        _isLandscape = false;
+        _lastSensorOrientation = null;
+      });
     } else {
       // To Landscape
       // In Landscape, we want immersive mode to prevent status bar from pushing the layout
