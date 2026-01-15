@@ -1573,14 +1573,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
-                  if (item['type'] == 'video' && item['path'] != null)
-                  Text(
-                    item['path'].toString().split(Platform.pathSeparator).last,
-                    style: TextStyle(color: Colors.grey[500], fontSize: 13),
-                    maxLines: 1, 
-                    overflow: TextOverflow.ellipsis,
-                  ),
                 ],
               ),
             ),
