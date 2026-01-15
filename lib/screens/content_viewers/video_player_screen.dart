@@ -1155,45 +1155,52 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          GestureDetector(
-             onTap: () => setState(() => _showSpeedPresets = !_showSpeedPresets),
-             child: Row(
-               mainAxisSize: MainAxisSize.min,
-               children: [
-                 Text("${_playbackSpeed.toStringAsFixed(2)}x", style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)), // Smaller Font
-                 const Icon(Icons.arrow_drop_down, color: Colors.white, size: 18),
-               ],
-             )
+          Theme(
+            data: Theme.of(context).copyWith(
+              popupMenuTheme: const PopupMenuThemeData(
+                color: Color(0xFF202020),
+                textStyle: TextStyle(color: Colors.white),
+              ),
+            ),
+            child: PopupMenuButton<double>(
+              initialValue: _playbackSpeed,
+              offset: const Offset(0, 40),
+              tooltip: 'Playback Speed',
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              onSelected: (s) {
+                player.setRate(s);
+                setState(() => _playbackSpeed = s);
+                _startTrayHideTimer();
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      "${_playbackSpeed.toStringAsFixed(2)}x", 
+                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)
+                    ),
+                    const Icon(Icons.arrow_drop_down, color: Colors.white, size: 18),
+                  ],
+                ),
+              ),
+              itemBuilder: (context) => [0.5, 1.0, 1.25, 1.5, 2.0, 3.0].map((s) => 
+                PopupMenuItem<double>(
+                  value: s,
+                  height: 32, // Compact items
+                  child: Text(
+                    "${s}x", 
+                    style: TextStyle(
+                      color: _playbackSpeed == s ? const Color(0xFF22C55E) : Colors.white, 
+                      fontSize: 13,
+                      fontWeight: _playbackSpeed == s ? FontWeight.bold : FontWeight.normal
+                    )
+                  ),
+                )
+              ).toList(),
+            ),
           ),
-          if (_showSpeedPresets)
-             Container(
-               margin: const EdgeInsets.only(top: 8, bottom: 8),
-               child: Wrap(
-                 spacing: 6, // Compact
-                 runSpacing: 6,
-                 children: [0.5, 1.0, 1.25, 1.5, 2.0, 3.0].map((s) => 
-                   GestureDetector(
-                     onTap: () {
-                       player.setRate(s);
-                       setState(() {
-                          _playbackSpeed = s;
-                          _showSpeedPresets = false;
-                       });
-                       _startTrayHideTimer();
-                     },
-                     child: Container(
-                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                       decoration: BoxDecoration(
-                         color: _playbackSpeed == s ? const Color(0xFF22C55E) : Colors.grey[900],
-                         borderRadius: BorderRadius.circular(4),
-                         border: Border.all(color: Colors.white12),
-                       ),
-                       child: Text("${s}x", style: const TextStyle(color: Colors.white, fontSize: 11)), // Compact
-                     ),
-                   )
-                 ).toList(),
-               ),
-             ),
           
           SliderTheme(
             data: SliderTheme.of(context).copyWith(
