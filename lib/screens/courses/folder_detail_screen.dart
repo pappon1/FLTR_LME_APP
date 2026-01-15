@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
+import 'dart:io';
 import 'package:file_picker/file_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/clipboard_manager.dart';
 import '../content_viewers/image_viewer_screen.dart';
@@ -26,7 +28,136 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _contents = widget.contentList;
+    // Create a mutable copy of the list to ensure we don't modify the parent's reference directly (or fail if it's immutable)
+    _contents = List.from(widget.contentList);
+    _loadPersistentContent();
+  }
+  
+  @override
+  void didUpdateWidget(FolderDetailScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.contentList != oldWidget.contentList) {
+       // If parent updates the list, we restart from the new list and re-apply persistence
+       setState(() {
+         _contents = List.from(widget.contentList);
+       });
+       _loadPersistentContent();
+    }
+  }
+  
+  // --- Persistence Logic ---
+  Future<void> _loadPersistentContent() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.reload(); // Ensure we have the latest data from disk
+      
+      // Sanitizing key: Removing spaces and symbols just in case
+      final sanitizedName = widget.folderName.replaceAll(RegExp('[^a-zA-Z0-9]'), '_');
+      final key = 'draft_final_$sanitizedName'; 
+      
+      final String? jsonString = prefs.getString(key);
+      debugPrint("Attempting to load draft from key: $key");
+      
+      if (jsonString != null && jsonString.isNotEmpty) {
+          final List<dynamic> decoded = jsonDecode(jsonString);
+          if (decoded.isEmpty) {
+             debugPrint("Draft is empty for key: $key");
+             return;
+          }
+
+          // We only want to restore items that ARE NOT already in the list (from server)
+          // Identify items by path
+          final Set<String> existingPaths = _contents
+              .where((e) => e['path'] != null)
+              .map((e) => e['path'].toString())
+              .toSet();
+          
+          bool hasChanges = false;
+          int loadedCount = 0;
+
+          for (var item in decoded) {
+             final mapItem = Map<String, dynamic>.from(item);
+             final path = mapItem['path'];
+             
+             // Ensure it's marked as local so it stays in future saves
+             mapItem['isLocal'] = true;
+
+             if (path != null) {
+                if (!existingPaths.contains(path)) {
+                   _contents.add(mapItem);
+                   existingPaths.add(path); 
+                   hasChanges = true;
+                   loadedCount++;
+                }
+             } else if (mapItem['type'] == 'folder') {
+                // For local folders, check by name
+                bool exists = _contents.any((e) => e['type'] == 'folder' && e['name'] == mapItem['name']);
+                if (!exists) {
+                    _contents.add(mapItem);
+                    hasChanges = true;
+                    loadedCount++;
+                }
+             }
+          }
+          
+          if (hasChanges && mounted) {
+             setState(() {});
+             ScaffoldMessenger.of(context).showSnackBar(
+               SnackBar(
+                 content: Text('✅ Restored $loadedCount items from draft'), 
+                 duration: const Duration(seconds: 2),
+                 backgroundColor: Colors.blueGrey.shade800,
+                 behavior: SnackBarBehavior.floating,
+               ),
+             );
+          }
+      } else {
+         debugPrint("No draft found for key: $key");
+      }
+    } catch (e) {
+      debugPrint("Error loading saved content: $e");
+    }
+  }
+
+  Future<void> _savePersistentContent({bool showFeedback = false}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final sanitizedName = widget.folderName.replaceAll(RegExp('[^a-zA-Z0-9]'), '_');
+      final key = 'draft_final_$sanitizedName';
+      
+      // We ONLY save items that are local additions (marked by us)
+      // This prevents saving server-side items into local shared_prefs
+      final localItems = _contents.where((e) => e['isLocal'] == true).toList();
+      
+      if (localItems.isEmpty) {
+         // If no local items, clear the key to avoid loading stale data
+         await prefs.remove(key);
+         if (showFeedback && mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No local items to save.')));
+         }
+         return;
+      }
+
+      final String jsonString = jsonEncode(localItems);
+      final bool success = await prefs.setString(key, jsonString);
+      
+      if (success && mounted && showFeedback) {
+         ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('💾 Draft Saved (${localItems.length} items)'), 
+              duration: const Duration(seconds: 1),
+              backgroundColor: Colors.green.shade700,
+              behavior: SnackBarBehavior.floating,
+            )
+         );
+      }
+      debugPrint("Saved ${localItems.length} items to $key. Success: $success");
+    } catch (e) {
+       debugPrint("Save error: $e");
+       if (showFeedback && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error saving: $e'), backgroundColor: Colors.red));
+       }
+    }
   }
 
   void _refresh() => setState(() {});
@@ -76,9 +207,10 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                     for (int i in indices) {
                        if (i < _contents.length) _contents.removeAt(i);
                     }
-                    _isSelectionMode = false;
+                     _isSelectionMode = false;
                     _selectedIndices.clear();
                  });
+                 _savePersistentContent();
                  Navigator.pop(context);
               },
               child: const Text('Delete', style: TextStyle(color: Colors.red)),
@@ -166,6 +298,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
               onPressed: () {
                 if (renameController.text.trim().isNotEmpty) {
                   setState(() { _contents[index]['name'] = renameController.text.trim(); });
+                  _savePersistentContent();
                   Navigator.pop(context);
                 }
               },
@@ -187,6 +320,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
           TextButton(
             onPressed: () {
               setState(() { _contents.removeAt(index); });
+              _savePersistentContent();
               Navigator.pop(context);
             },
             child: const Text('Remove', style: TextStyle(color: Colors.red)),
@@ -260,7 +394,8 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
           ElevatedButton(
             onPressed: () {
               if (folderNameController.text.trim().isNotEmpty) {
-                setState(() { _contents.add({'type': 'folder', 'name': folderNameController.text.trim(), 'contents': <Map<String, dynamic>>[]}); });
+                setState(() { _contents.add({'type': 'folder', 'name': folderNameController.text.trim(), 'contents': <Map<String, dynamic>>[], 'isLocal': true}); });
+                _savePersistentContent();
                 Navigator.pop(context);
               }
             },
@@ -277,9 +412,10 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       if (result != null) {
         setState(() {
           for (var file in result.files) {
-            if (file.path != null) _contents.add({'type': type, 'name': file.name, 'path': file.path});
+            if (file.path != null) _contents.add({'type': type, 'name': file.name, 'path': file.path, 'isLocal': true});
           }
         });
+        _savePersistentContent();
       }
     } catch (e) { debugPrint('Error picking file: $e'); }
   }
@@ -308,7 +444,14 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return WillPopScope(
+      onWillPop: () async {
+         await _savePersistentContent();
+         // Pass data back just in case parent supports it
+         Navigator.pop(context, _contents);
+         return false; // We handled the pop manually
+      },
+      child: Scaffold(
       appBar: AppBar(
         backgroundColor: _isSelectionMode ? AppTheme.primaryColor : null,
         iconTheme: IconThemeData(color: _isSelectionMode ? Colors.white : null),
@@ -419,6 +562,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                ),
         ],
       ),
+     ),
     );
   }
 }

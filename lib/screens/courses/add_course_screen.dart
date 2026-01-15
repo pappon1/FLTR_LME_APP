@@ -18,6 +18,7 @@ import '../../screens/content_viewers/video_player_screen.dart';
 import '../../screens/content_viewers/pdf_viewer_screen.dart';
 
 import '../../utils/clipboard_manager.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AddCourseScreen extends StatefulWidget {
   const AddCourseScreen({super.key});
@@ -68,6 +69,73 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     super.initState();
     _mrpController.addListener(_calculateFinalPrice);
     _discountAmountController.addListener(_calculateFinalPrice);
+    
+    // Auto-save listeners for basic info
+    _titleController.addListener(_saveCourseDraft);
+    _descController.addListener(_saveCourseDraft);
+    _mrpController.addListener(_saveCourseDraft);
+    _discountAmountController.addListener(_saveCourseDraft);
+    
+    // Load Draft
+    _loadCourseDraft();
+  }
+
+  // --- Persistence Logic ---
+  Future<void> _loadCourseDraft() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final String? jsonString = prefs.getString('course_creation_draft');
+      if (jsonString != null) {
+         final Map<String, dynamic> draft = jsonDecode(jsonString);
+         
+         setState(() {
+            _titleController.text = draft['title'] ?? '';
+            _descController.text = draft['desc'] ?? '';
+            _mrpController.text = draft['mrp'] ?? '';
+            _discountAmountController.text = draft['discount'] ?? '';
+            _selectedCategory = draft['category'];
+            _difficulty = draft['difficulty'] ?? 'Beginner';
+            
+            if (draft['contents'] != null) {
+               _courseContents.clear();
+               _courseContents.addAll(List<Map<String, dynamic>>.from(draft['contents']));
+            }
+         });
+         
+         if (mounted && _courseContents.isNotEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Restored course draft'), backgroundColor: Colors.teal.shade700)
+            );
+         }
+      }
+    } catch (e) {
+       debugPrint("Error loading draft: $e");
+    }
+  }
+
+  Future<void> _saveCourseDraft() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final Map<String, dynamic> draft = {
+         'title': _titleController.text,
+         'desc': _descController.text,
+         'mrp': _mrpController.text,
+         'discount': _discountAmountController.text,
+         'category': _selectedCategory,
+         'difficulty': _difficulty,
+         'contents': _courseContents,
+      };
+      
+      await prefs.setString('course_creation_draft', jsonEncode(draft));
+      debugPrint("Course Draft Saved");
+    } catch (e) {
+       debugPrint("Error saving draft: $e");
+    }
+  }
+
+  Future<void> _clearCourseDraft() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('course_creation_draft');
   }
 
   void _calculateFinalPrice() {
@@ -236,9 +304,14 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: _buildAppBar(),
-      body: Form(
+    return WillPopScope(
+      onWillPop: () async {
+         await _saveCourseDraft();
+         return true; 
+      },
+      child: Scaffold(
+        appBar: _buildAppBar(),
+        body: Form(
         key: _formKey,
         child: Column(
           children: [
@@ -259,6 +332,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
           ],
         ),
       ),
+     ),
     );
   }
 
@@ -578,6 +652,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                     _isSelectionMode = false;
                     _selectedIndices.clear();
                  });
+                 _saveCourseDraft();
                  Navigator.pop(context);
               },
               child: const Text('Delete', style: TextStyle(color: Colors.red)),
@@ -835,18 +910,18 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     );
   }
 
-  void _handleContentTap(Map<String, dynamic> item, int index) {
+  void _handleContentTap(Map<String, dynamic> item, int index) async {
       if (_isSelectionMode) {
           _toggleSelection(index);
           return;
       }
-      // HapticFeedback.lightImpact(); // Removed as requested - no feedback on content tap
       
       String path = item['path'] ?? '';
       String type = item['type'];
 
       if (type == 'folder') {
-          Navigator.push(
+          // Pass data back from subfolder to update main draft
+          final result = await Navigator.push(
             context, 
             MaterialPageRoute(
               builder: (_) => FolderDetailScreen(
@@ -854,14 +929,19 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                 contentList: (item['contents'] as List?)?.cast<Map<String, dynamic>>() ?? [],
               )
             )
-          ).then((_) => setState(() {}));
+          );
+          
+          if (result != null && result is List<Map<String, dynamic>>) {
+             setState(() {
+                _courseContents[index]['contents'] = result;
+             });
+             _saveCourseDraft();
+          }
       } else if (type == 'image') {
           Navigator.push(context, MaterialPageRoute(builder: (_) => ImageViewerScreen(filePath: path)));
       } else if (type == 'video') {
-          // CREATE PLAYLIST: Filter only video items
           final videoList = _courseContents.where((element) => element['type'] == 'video').toList();
           final initialIndex = videoList.indexOf(item);
-          
           Navigator.push(context, MaterialPageRoute(builder: (_) => VideoPlayerScreen(
             playlist: videoList, 
             initialIndex: initialIndex >= 0 ? initialIndex : 0,
@@ -893,6 +973,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                   setState(() {
                     _courseContents[index]['name'] = renameController.text.trim();
                   });
+                  _saveCourseDraft();
                   Navigator.pop(context);
                 }
               },
@@ -919,6 +1000,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
               setState(() {
                 _courseContents.removeAt(index);
               });
+              _saveCourseDraft();
               Navigator.pop(context);
             },
             child: const Text('Remove', style: TextStyle(color: Colors.red)),
@@ -1030,9 +1112,11 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                   _courseContents.add({
                     'type': 'folder', 
                     'name': folderNameController.text.trim(),
-                    'contents': <Map<String, dynamic>>[], // Initialize contents list
+                    'contents': <Map<String, dynamic>>[],
+                    'isLocal': true,
                   });
                 });
+                _saveCourseDraft();
                 Navigator.pop(context);
               }
             },
@@ -1069,9 +1153,11 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                 'type': type,
                 'name': file.name,
                 'path': file.path,
+                'isLocal': true,
              });
           }
         });
+        _saveCourseDraft();
 
         if (mounted && invalidFiles.isNotEmpty) {
            ScaffoldMessenger.of(context).showSnackBar(SnackBar(

@@ -1263,41 +1263,44 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   Widget _buildTray() {
-    // 2. Fix Tray Overflow & Styling
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 350), // Prevent full width
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.95), // Slightly transparent floating look
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white12),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      margin: const EdgeInsets.symmetric(horizontal: 16), // Margin from screen edges
-      child: Stack(
-        children: [
-           // TRAY CONTENT
-           Padding(
-             padding: const EdgeInsets.only(right: 30), // Space for close button
-             child: _buildTrayContent(),
-           ),
-
-           // CLOSE BUTTON (Absolute in Tray)
-           Positioned(
-             right: 0,
-             top: 0,
-             bottom: 0,
-             child: Center(
-               child: GestureDetector(
-                 onTap: () => setState(() => _activeTray = null),
-                 child: Container(
-                   padding: const EdgeInsets.all(4),
-                   decoration: const BoxDecoration(color: Colors.white10, shape: BoxShape.circle),
-                   child: const Icon(Icons.close, color: Colors.white, size: 14),
+    return Listener(
+      onPointerDown: (_) => _startTrayHideTimer(),
+      onPointerMove: (_) => _startTrayHideTimer(),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 350), 
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.95), 
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white12),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        margin: const EdgeInsets.symmetric(horizontal: 16), 
+        child: Stack(
+          children: [
+             // TRAY CONTENT
+             Padding(
+               padding: const EdgeInsets.only(right: 30), // Space for close button
+               child: _buildTrayContent(),
+             ),
+  
+             // CLOSE BUTTON (Absolute in Tray)
+             Positioned(
+               right: 0,
+               top: 0,
+               bottom: 0,
+               child: Center(
+                 child: GestureDetector(
+                   onTap: () => setState(() => _activeTray = null),
+                   child: Container(
+                     padding: const EdgeInsets.all(4),
+                     decoration: const BoxDecoration(color: Colors.white10, shape: BoxShape.circle),
+                     child: const Icon(Icons.close, color: Colors.white, size: 14),
+                   ),
                  ),
                ),
              ),
-           ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1374,7 +1377,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               },
               onChangeEnd: (v) {
                  setState(() => _isDraggingSpeedSlider = false);
-                 _startHideTimer();
+                  _startTrayHideTimer();
               },
               onChanged: (v) {
                 setState(() => _playbackSpeed = v);
@@ -1402,9 +1405,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                  setState(() {
                    if (_activeTray == 'quality') _currentQuality = item;
                    else _currentSubtitle = item;
-                   _activeTray = null; // Close tray immediately selection
+                   // _activeTray = null; // Removed to keep tray open as requested
                  });
-                 _startHideTimer(); // Resume main timer
+                 _startTrayHideTimer(); // Reset tray timer instead of main timer
                },
                child: Container(
                  margin: const EdgeInsets.symmetric(horizontal: 4),
