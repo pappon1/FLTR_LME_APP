@@ -6,9 +6,10 @@ import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
-import 'package:volume_controller/volume_controller.dart';
+import 'package:flutter_volume_controller/flutter_volume_controller.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:sensors_plus/sensors_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/video_thumbnail_widget.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
@@ -76,7 +77,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
   StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
   DeviceOrientation? _lastSensorOrientation;
 
-
+  // Progress State
+  Map<String, double> _videoProgress = {}; // key: path, value: ratio (0.0 to 1.0)
+  late SharedPreferences _prefs;
+  bool _prefsInitialized = false;
+  StreamSubscription? _posSubscription;
+  DateTime? _lastSaveTime;
 
   @override
   void initState() {
@@ -91,7 +97,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
     _initVolumeBrightness();
     
     // Start listening to volume changes immediately
-    VolumeController.instance.addListener((volume) {
+    FlutterVolumeController.addListener((volume) {
       // ONLY update state if the user is NOT actively swiping.
       // This prevents the "jerking" where the system's discrete volume steps
       // fight with the smooth double value from the gesture.
@@ -132,6 +138,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
     
     // Feature: Sensor Rotation
     _initSensor();
+    
+    // Feature: Progress Tracking
+    _initProgress();
   }
 
   void _initSensor() {
@@ -161,11 +170,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
   Future<void> _initVolumeBrightness() async {
     try {
       // Capture the REAL initial volume before any app-specific changes
-      _initialSystemVolume = await VolumeController.instance.getVolume();
+      _initialSystemVolume = await FlutterVolumeController.getVolume() ?? 0.5;
       _volume = _initialSystemVolume;
       _brightness = await ScreenBrightness().current;
       
-      VolumeController.instance.showSystemUI = false;
+      FlutterVolumeController.updateShowSystemUI(false);
       if (mounted) setState(() {});
     } catch (e) {}
   }
@@ -187,6 +196,20 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
       
       if (path != null) {
         await player.open(Media(path), play: true);
+        
+        // Resume from saved progress
+        if (_prefsInitialized) {
+          final progress = _videoProgress[path];
+          if (progress != null && progress > 0 && progress < 0.95) {
+             // Wait for duration to be available before seeking precisely
+             // For simplicity, we can try seeking immediately after open, 
+             // MediaKit usually handles this well.
+             
+             // Wait for a small duration if needed, or listen for duration change
+             // Let's use a small delay or a one-time listener
+             _resumeProgress(path, progress);
+          }
+        }
       }
     } catch (e) {
       debugPrint('Error playing video: $e');
@@ -194,6 +217,23 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
          ScaffoldMessenger.of(context).showSnackBar(
            SnackBar(content: Text('Error playing video: $e'), backgroundColor: Colors.red),
          );
+      }
+    }
+  }
+
+  void _resumeProgress(String path, double ratio) async {
+    // Wait until duration is loaded
+    int attempts = 0;
+    while (player.state.duration <= Duration.zero && attempts < 20) {
+      await Future.delayed(const Duration(milliseconds: 100));
+      attempts++;
+    }
+
+    if (player.state.duration > Duration.zero) {
+      final targetMs = (player.state.duration.inMilliseconds * ratio).toInt();
+      // Don't resume if it's almost at the end
+      if (targetMs < player.state.duration.inMilliseconds - 5000) {
+        await player.seek(Duration(milliseconds: targetMs));
       }
     }
   }
@@ -247,7 +287,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
       if ((newVolume - _volume).abs() > 0.01 || newVolume == 0 || newVolume == 1) {
         _volume = newVolume;
         _isChangingVolumeViaGesture = true;
-        VolumeController.instance.setVolume(_volume);
+        FlutterVolumeController.setVolume(_volume);
 
         setState(() {
           _showVolumeLabel = true;
@@ -300,19 +340,71 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
     }
   }
 
+  Future<void> _initProgress() async {
+    _prefs = await SharedPreferences.getInstance();
+    _prefsInitialized = true;
+    
+    // Load existing progress for all videos in playlist
+    Map<String, double> loadedProgress = {};
+    for (var item in widget.playlist) {
+      final path = item['path'] as String?;
+      if (path != null) {
+        final key = 'progress_$path';
+        final saved = _prefs.getDouble(key);
+        if (saved != null) {
+          loadedProgress[path] = saved;
+        }
+      }
+    }
+    
+    if (mounted) {
+      setState(() {
+        _videoProgress = loadedProgress;
+      });
+    }
+
+    // Start tracking position
+    _posSubscription = player.stream.position.listen((pos) {
+      _handlePositionUpdate(pos);
+    });
+  }
+
+  void _handlePositionUpdate(Duration pos) {
+    if (!_prefsInitialized) return;
+    final dur = player.state.duration;
+    if (dur <= Duration.zero) return;
+
+    final ratio = pos.inMilliseconds / dur.inMilliseconds;
+    final currentPath = widget.playlist[_currentIndex]['path'] as String?;
+    
+    if (currentPath != null) {
+      // Update local state
+      setState(() {
+        _videoProgress[currentPath] = ratio;
+      });
+
+      // Periodic save (e.g., every 5 seconds)
+      final now = DateTime.now();
+      if (_lastSaveTime == null || now.difference(_lastSaveTime!) > const Duration(seconds: 5)) {
+        _lastSaveTime = now;
+        _prefs.setDouble('progress_$currentPath', ratio);
+      }
+    }
+  }
+
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
       // Revert volume when app goes to background
-      VolumeController.instance.setVolume(_initialSystemVolume);
-      VolumeController.instance.showSystemUI = true;
+      FlutterVolumeController.setVolume(_initialSystemVolume);
+      FlutterVolumeController.updateShowSystemUI(true);
       
       // Safety hit
       Future.delayed(const Duration(milliseconds: 300), () {
-        VolumeController.instance.setVolume(_initialSystemVolume);
+        FlutterVolumeController.setVolume(_initialSystemVolume);
       });
     } else if (state == AppLifecycleState.resumed) {
-      VolumeController.instance.showSystemUI = false;
+      FlutterVolumeController.updateShowSystemUI(false);
     }
   }
 
@@ -322,21 +414,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
     _unlockHideTimer?.cancel();
     _volumeTimer?.cancel();
     _brightnessTimer?.cancel();
+    _posSubscription?.cancel();
     _accelerometerSubscription?.cancel();
     _playlistScrollController.dispose();
     WidgetsBinding.instance.removeObserver(this);
-    VolumeController.instance.removeListener();
+    FlutterVolumeController.removeListener();
     
     // Feature: Restore System State
     WakelockPlus.disable();
-    ScreenBrightness().resetScreenBrightness();
-    VolumeController.instance.setVolume(_initialSystemVolume);
-    VolumeController.instance.showSystemUI = true;
-    
-    // Multiple hits to ensure it sticks
-    Future.delayed(const Duration(milliseconds: 100), () => VolumeController.instance.setVolume(_initialSystemVolume));
-    Future.delayed(const Duration(milliseconds: 300), () => VolumeController.instance.setVolume(_initialSystemVolume));
-    
     player.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
@@ -1554,6 +1639,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
   Widget _buildPlaylistItem(Map<String, dynamic> item, int index) {
     final isPlaying = index == _currentIndex;
     final path = item['path'] as String?;
+    final progress = _videoProgress[path] ?? 0.0;
     
     return InkWell(
       onTap: () => _playVideo(index), 
@@ -1573,15 +1659,36 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
                     border: isPlaying ? Border.all(color: const Color(0xFF22C55E), width: 2) : null,
                   ),
                   clipBehavior: Clip.antiAlias,
-                  child: path != null 
-                    ? VideoThumbnailWidget(videoPath: path, fit: BoxFit.cover)
-                    : Center(
-                        child: Icon(
-                            isPlaying ? Icons.equalizer : Icons.play_circle_outline, 
-                            color: isPlaying ? const Color(0xFF22C55E) : Colors.white, 
-                            size: 40
+                  child: Stack(
+                    children: [
+                      path != null 
+                        ? VideoThumbnailWidget(videoPath: path, fit: BoxFit.cover)
+                        : Center(
+                            child: Icon(
+                                isPlaying ? Icons.equalizer : Icons.play_circle_outline, 
+                                color: isPlaying ? const Color(0xFF22C55E) : Colors.white, 
+                                size: 40
+                            ),
+                          ),
+                      
+                      // Progress Bar at the bottom
+                      if (progress > 0)
+                        Positioned(
+                          bottom: 0,
+                          left: 0,
+                          right: 0,
+                          child: Container(
+                            height: 3,
+                            color: Colors.white24,
+                            alignment: Alignment.centerLeft,
+                            child: FractionallySizedBox(
+                              widthFactor: progress.clamp(0.0, 1.0),
+                              child: Container(color: Colors.red),
+                            ),
+                          ),
                         ),
-                      ),
+                    ],
+                  ),
                 ),
                 if (isPlaying)
                   Positioned.fill(
