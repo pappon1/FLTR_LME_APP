@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
-import 'package:flutter_volume_controller/flutter_volume_controller.dart';
+import 'package:volume_controller/volume_controller.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import '../../widgets/video_thumbnail_widget.dart';
 
@@ -23,7 +23,7 @@ class VideoPlayerScreen extends StatefulWidget {
   State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
 }
 
-class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
+class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindingObserver {
   late final Player player;
   late final VideoController controller;
 
@@ -61,6 +61,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   // Gesture State
   double _volume = 0.5;
+  double _initialSystemVolume = 0.5;
+  bool _isChangingVolumeViaGesture = false; 
   double _brightness = 0.5;
   bool _showVolumeLabel = false;
   bool _showBrightnessLabel = false;
@@ -73,12 +75,24 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   void initState() {
     super.initState();
     _currentIndex = widget.initialIndex;
+    WidgetsBinding.instance.addObserver(this);
     
     // Feature: Prevent Screen Sleep
     WakelockPlus.enable();
 
     // Feature: Initialize Volume/Brightness
     _initVolumeBrightness();
+    
+    // Start listening to volume changes immediately
+    VolumeController.instance.addListener((volume) {
+      // ONLY update state if the user is NOT actively swiping.
+      // This prevents the "jerking" where the system's discrete volume steps
+      // fight with the smooth double value from the gesture.
+      if (!_isChangingVolumeViaGesture) {
+        _volume = volume;
+        if (mounted) setState(() {});
+      }
+    });
 
     // Initialize Player
     player = Player();
@@ -112,12 +126,14 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   Future<void> _initVolumeBrightness() async {
     try {
-      _volume = await FlutterVolumeController.getVolume() ?? 0.5;
+      // Capture the REAL initial volume before any app-specific changes
+      _initialSystemVolume = await VolumeController.instance.getVolume();
+      _volume = _initialSystemVolume;
       _brightness = await ScreenBrightness().current;
-      setState(() {});
-    } catch (e) {
-      debugPrint("Error initializing controls: $e");
-    }
+      
+      VolumeController.instance.showSystemUI = false;
+      if (mounted) setState(() {});
+    } catch (e) {}
   }
 
   Future<void> _playVideo(int index) async {
@@ -189,39 +205,48 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
     if (dx > width / 2) {
       // Right Side -> Volume
-      _volume -= delta * sensitivity;
-      if (_volume <= 0) { _volume = 0; }
-      if (_volume >= 1) { _volume = 1; }
+      double newVolume = _volume - (delta * sensitivity);
+      if (newVolume <= 0) { newVolume = 0; }
+      if (newVolume >= 1) { newVolume = 1; }
+      
+      // Only update if change is significant to prevent hardware lag/jerking
+      if ((newVolume - _volume).abs() > 0.01 || newVolume == 0 || newVolume == 1) {
+        _volume = newVolume;
+        _isChangingVolumeViaGesture = true;
+        VolumeController.instance.setVolume(_volume);
 
-      await FlutterVolumeController.setVolume(_volume);
-
-      setState(() {
-        _showVolumeLabel = true;
-        _showBrightnessLabel = false;
-      });
-      _volumeTimer?.cancel();
-      _volumeTimer = Timer(const Duration(seconds: 1), () {
-         if (mounted) setState(() => _showVolumeLabel = false);
-      });
+        setState(() {
+          _showVolumeLabel = true;
+          _showBrightnessLabel = false;
+        });
+        _volumeTimer?.cancel();
+        _volumeTimer = Timer(const Duration(seconds: 2), () {
+           _isChangingVolumeViaGesture = false;
+           if (mounted) setState(() => _showVolumeLabel = false);
+        });
+      }
 
     } else {
       // Left Side -> Brightness
-      _brightness -= delta * sensitivity;
-      if (_brightness <= 0) { _brightness = 0; }
-      if (_brightness >= 1) { _brightness = 1; }
+      double newBrightness = _brightness - (delta * sensitivity);
+      if (newBrightness <= 0) { newBrightness = 0; }
+      if (newBrightness >= 1) { newBrightness = 1; }
 
-      try {
-        await ScreenBrightness().setScreenBrightness(_brightness);
-      } catch(e) { debugPrint("Brightness Error: $e"); }
+      if ((newBrightness - _brightness).abs() > 0.01 || newBrightness == 0 || newBrightness == 1) {
+        _brightness = newBrightness;
+        try {
+          ScreenBrightness().setScreenBrightness(_brightness);
+        } catch(e) {}
 
-      setState(() {
-        _showBrightnessLabel = true;
-        _showVolumeLabel = false;
-      });
-      _brightnessTimer?.cancel();
-      _brightnessTimer = Timer(const Duration(seconds: 1), () {
-        if (mounted) setState(() => _showBrightnessLabel = false);
-      });
+        setState(() {
+          _showBrightnessLabel = true;
+          _showVolumeLabel = false;
+        });
+        _brightnessTimer?.cancel();
+        _brightnessTimer = Timer(const Duration(seconds: 2), () {
+          if (mounted) setState(() => _showBrightnessLabel = false);
+        });
+      }
     }
   }
 
@@ -242,16 +267,40 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+      // Revert volume when app goes to background
+      VolumeController.instance.setVolume(_initialSystemVolume);
+      VolumeController.instance.showSystemUI = true;
+      
+      // Safety hit
+      Future.delayed(const Duration(milliseconds: 300), () {
+        VolumeController.instance.setVolume(_initialSystemVolume);
+      });
+    } else if (state == AppLifecycleState.resumed) {
+      VolumeController.instance.showSystemUI = false;
+    }
+  }
+
+  @override
   void dispose() {
     _hideTimer?.cancel();
     _unlockHideTimer?.cancel();
     _volumeTimer?.cancel();
     _brightnessTimer?.cancel();
     _playlistScrollController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    VolumeController.instance.removeListener();
     
     // Feature: Restore System State
     WakelockPlus.disable();
     ScreenBrightness().resetScreenBrightness();
+    VolumeController.instance.setVolume(_initialSystemVolume);
+    VolumeController.instance.showSystemUI = true;
+    
+    // Multiple hits to ensure it sticks
+    Future.delayed(const Duration(milliseconds: 100), () => VolumeController.instance.setVolume(_initialSystemVolume));
+    Future.delayed(const Duration(milliseconds: 300), () => VolumeController.instance.setVolume(_initialSystemVolume));
     
     player.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
