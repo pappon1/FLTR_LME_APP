@@ -43,9 +43,17 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   // Local state for smooth seeking
   double? _dragValue;
 
-  // Placeholder for quality/subtitle just for UI visuals as requested
+  // Tray State
+  String? _activeTray; // 'quality', 'speed', 'subtitle'
+  Timer? _trayHideTimer;
+  bool _showSpeedPresets = false;
+
+  // Feature State
   String _currentQuality = "Auto";
-  String _currentSubtitle = "Off";
+  String _currentSubtitle = "Off"; 
+  List<String> _subtitles = ["Off", "English", "Bengali", "Hindi"];
+  List<String> _qualities = ["Auto", "480p", "720p", "1080p", "1920p"];
+
 
   @override
   void initState() {
@@ -114,9 +122,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   void _startHideTimer([Duration duration = const Duration(seconds: 4), bool forcePlayCheck = false]) {
     _hideTimer?.cancel();
-    if (_showControls && (_isPlaying || forcePlayCheck) && !_isLocked) {
+    if (_showControls && (_isPlaying || forcePlayCheck) && !_isLocked && _activeTray == null) {
       _hideTimer = Timer(duration, () {
-        if (mounted && _isPlaying && _showControls && !_isDraggingSeekbar) {
+        if (mounted && _isPlaying && _showControls && !_isDraggingSeekbar && _activeTray == null) {
           setState(() {
             _showControls = false;
             // Hide System UI when controls hide in landscape
@@ -128,6 +136,35 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       });
     }
   }
+
+  void _startTrayHideTimer() {
+    _trayHideTimer?.cancel();
+    _trayHideTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted) {
+        setState(() {
+          _activeTray = null;
+          _showSpeedPresets = false;
+        });
+        _startHideTimer();
+      }
+    });
+  }
+
+  void _toggleTray(String tray) {
+    setState(() {
+      if (_activeTray == tray) {
+        _activeTray = null;
+        _showSpeedPresets = false;
+        _startHideTimer();
+      } else {
+        _activeTray = tray;
+        _showSpeedPresets = false;
+        _hideTimer?.cancel(); // Stop main hide timer while tray is open
+        _startTrayHideTimer();
+      }
+    });
+  }
+
 
   void _toggleControls() {
     if (_isLocked) {
@@ -153,45 +190,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     _startHideTimer();
   }
 
-  // --- Feature Implementation: Speed Control ---
-  void _showSpeedMenu() {
-    // Stop hide timer while menu is open
-    _hideTimer?.cancel();
-    
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: const Color(0xFF121212), // Pure Dark Grey
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-             const Padding(
-               padding: EdgeInsets.only(left: 20, bottom: 10),
-               child: Text('Playback Speed', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-             ),
-             ...[0.5, 0.75, 1.0, 1.25, 1.5, 2.0].map((speed) => ListTile(
-              leading: Icon(
-                Icons.check, 
-                color: _playbackSpeed == speed ? const Color(0xFF22C55E) : Colors.transparent
-              ),
-              title: Text('${speed}x', style: const TextStyle(color: Colors.white)),
-              onTap: () {
-                player.setRate(speed);
-                setState(() => _playbackSpeed = speed);
-                Navigator.pop(context);
-                _startHideTimer();
-              },
-             )),
-          ],
-        ),
-      ),
-    ).then((_) => _startHideTimer());
-  }
+  // Speed Menu replaced by Tray System
+
 
   // --- Feature Implementation: Lock ---
   void _toggleLock() {
@@ -362,11 +362,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-               // Header (Fixed) - Always takes space, but content hides if needed
-               // If Locked: Back button hidden, Text visible (if interface visible)
+               // Header (Fixed)
                AnimatedOpacity(
                  duration: const Duration(milliseconds: 300),
-                 opacity: isInterfaceVisible ? 1.0 : 0.0,
+                 opacity: _isLocked ? 0.5 : 1.0, // Always visible if unlocked
                  child: Container(
                     color: Colors.black, 
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -494,93 +493,169 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 ),
               ),
               
+              // Subtitle Safe Area (Black Bar) - Pushes controls down
+              if (_currentSubtitle != "Off" && !_isLandscape)
+                 Container(height: 40, color: Colors.black),
+
               // Fixed Controls Area
-              AnimatedOpacity(
-                 duration: const Duration(milliseconds: 300),
-                 opacity: (_isLocked && !_isUnlockControlsVisible) ? 0.0 : 1.0,
-                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Seekbar
-                    // If Locked: Hide Slider, Show Timings. If Unlocked: Show Both.
-                    Container(
+              // Stack to allow Tray to float over icons without shifting layout
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Seekbar
+                  AnimatedOpacity(
+                    duration: const Duration(milliseconds: 300),
+                    opacity: 1.0, // Always visible
+                    child: Container(
                       color: Colors.black, // Pure Black
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                       child: _buildSeekbar(isPortrait: true, hideSlider: _isLocked),
                     ),
-                    
-                    Container(
-                      color: Colors.black, // Pure Black
-                      padding: const EdgeInsets.only(left: 20, right: 20, bottom: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                           // Speed
-                           Opacity(opacity: _isLocked ? 0.0 : 1.0, child: IgnorePointer(ignoring: _isLocked, child: _buildControlIcon(Icons.speed, "${_playbackSpeed}x", _showSpeedMenu))),
-                           // Subtitle
-                           Opacity(opacity: _isLocked ? 0.0 : 1.0, child: IgnorePointer(ignoring: _isLocked, child: _buildControlIcon(Icons.closed_caption, _currentSubtitle == "Off" ? "Subtitle" : _currentSubtitle, () => setState(() => _currentSubtitle = _currentSubtitle == 'Off' ? 'Eng' : 'Off')))),
-                           // Settings
-                           Opacity(opacity: _isLocked ? 0.0 : 1.0, child: IgnorePointer(ignoring: _isLocked, child: _buildControlIcon(Icons.settings, _currentQuality, () {}))),
-                           
-                           // Lock Button (Double Size when locked)
-                           GestureDetector(
-                              onTap: () {
-                                if (!_isLocked) {
-                                  _toggleLock();
-                                } else {
-                                  _handleLockedTap();
-                                }
-                              },
-                              onDoubleTap: _isLocked ? _toggleLock : null,
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  AnimatedContainer(
-                                    duration: const Duration(milliseconds: 300),
-                                    child: Icon(
-                                      _isLocked ? Icons.lock : Icons.lock_open, 
-                                      color: Colors.white, 
-                                      size: _isLocked ? 44 : 22 // Doubled size when locked
-                                    ),
-                                  ),
-                                  const SizedBox(height: 3),
-                                  if (!_isLocked)
-                                  const Text(
-                                    "Lock",
-                                    style: TextStyle(color: Colors.white, fontSize: 10),
-                                  ),
-                                  if (_isLocked && _isUnlockControlsVisible)
-                                    const Padding(
-                                      padding: EdgeInsets.only(top: 4),
-                                      child: Text(
-                                        "Double tap\nto unlock",
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.bold 
-                                        ),
-                                      ),
-                                    )
-                                ],
-                              ),
-                           ),
+                  ),
 
-                           // Landscape
-                           Opacity(opacity: _isLocked ? 0.0 : 1.0, child: IgnorePointer(ignoring: _isLocked, child: _buildControlIcon(Icons.fullscreen, "Landscape", _toggleOrientation))),
-                        ],
-                      ),
-                    ),
-                    // Light separator to indicate playlist start
-                    if (!_isLocked)
-                     const Divider(height: 1, color: Colors.white10),
-                  ],
-                ),
+                  // Icons Row + Floating Tray
+                  Stack(
+                    alignment: Alignment.bottomCenter, // Anchor at bottom
+                    clipBehavior: Clip.none, // Allow tray to float out
+                    children: [
+                        // The Icons Row (Base)
+                        Container(
+                          color: Colors.black, // Pure Black
+                          padding: const EdgeInsets.only(left: 20, right: 20, bottom: 8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                                // Speed
+                               AnimatedOpacity(
+                                 duration: const Duration(milliseconds: 300),
+                                 opacity: _isLocked ? 0.0 : 1.0,
+                                 child: IgnorePointer(
+                                   ignoring: _isLocked, 
+                                   child: _buildControlIcon(
+                                      Icons.speed, 
+                                      "${_playbackSpeed.toStringAsFixed(2)}x", 
+                                      () => _toggleTray('speed'), 
+                                      isActive: _activeTray == 'speed' || _playbackSpeed != 1.0,
+                                      onReset: () => setState(() { _playbackSpeed = 1.0; player.setRate(1.0); }),
+                                   )
+                                 ),
+                               ),
+                               // Subtitle
+                               AnimatedOpacity(
+                                 duration: const Duration(milliseconds: 300),
+                                 opacity: _isLocked ? 0.0 : 1.0,
+                                 child: IgnorePointer(
+                                   ignoring: _isLocked, 
+                                   child: _buildControlIcon(
+                                      Icons.closed_caption, 
+                                      _currentSubtitle == "Off" ? "Subtitle" : _currentSubtitle, 
+                                      () => _toggleTray('subtitle'), 
+                                      isActive: _activeTray == 'subtitle' || _currentSubtitle != 'Off',
+                                      onReset: () => setState(() => _currentSubtitle = "Off"),
+                                   )
+                                 ),
+                               ),
+                               // Settings
+                               AnimatedOpacity(
+                                 duration: const Duration(milliseconds: 300),
+                                 opacity: _isLocked ? 0.0 : 1.0,
+                                 child: IgnorePointer(
+                                   ignoring: _isLocked, 
+                                   child: _buildControlIcon(
+                                      Icons.settings, 
+                                      _currentQuality, 
+                                      () => _toggleTray('quality'), 
+                                      isActive: _activeTray == 'quality' || _currentQuality != "Auto",
+                                      onReset: () => setState(() => _currentQuality = "Auto"),
+                                   )
+                                 ),
+                               ),
+                               
+                                // Lock Button
+                               // Logic: If Locked -> Always visible (1.0 or 0.2). If Unlocked -> Follow controls (1.0 or 0.0)
+                               AnimatedOpacity(
+                                 duration: const Duration(milliseconds: 300),
+                                 opacity: _isLocked ? (_isUnlockControlsVisible ? 1.0 : 0.0) : 1.0,
+                                 child: GestureDetector(
+                                    onTap: () {
+                                      if (!_isLocked) {
+                                        _toggleLock();
+                                      } else {
+                                        _handleLockedTap();
+                                      }
+                                    },
+                                    onDoubleTap: _isLocked ? _toggleLock : null,
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        AnimatedContainer(
+                                          duration: const Duration(milliseconds: 300),
+                                          child: Icon(
+                                            _isLocked ? Icons.lock : Icons.lock_open, 
+                                            color: Colors.white, 
+                                            size: _isLocked ? 44 : 22 
+                                          ),
+                                        ),
+                                        const SizedBox(height: 3),
+                                        if (!_isLocked)
+                                        const Text(
+                                          "Lock",
+                                          style: TextStyle(color: Colors.white, fontSize: 10),
+                                        ),
+                                        if (_isLocked && _isUnlockControlsVisible)
+                                          const Padding(
+                                            padding: EdgeInsets.only(top: 4),
+                                            child: Text(
+                                              "Double tap\nto unlock",
+                                              textAlign: TextAlign.center,
+                                              style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.bold 
+                                              ),
+                                            ),
+                                          )
+                                      ],
+                                    ),
+                                 ),
+                               ),
+
+                               // Landscape
+                               AnimatedOpacity(
+                                 duration: const Duration(milliseconds: 300),
+                                 opacity: _isLocked ? 0.0 : 1.0,
+                                 child: IgnorePointer(
+                                   ignoring: _isLocked, 
+                                   child: _buildControlIcon(Icons.fullscreen, "Landscape", _toggleOrientation)
+                                 ),
+                               ),
+                            ],
+                          ),
+                        ),
+
+                        // FLOATING TRAY (Positioned relative to the row)
+                        // "bottom: 100%" implies it sits directly on top of the icons container
+                        if (_activeTray != null)
+                          Positioned(
+                              bottom: 0, // Overlap the icons directly (Front layer)
+                              left: 0, 
+                              right: 0,
+                              child: Center(child: _buildTray()), 
+                          ),
+                    ],
+                  ),
+
+                  // Light separator
+                  AnimatedOpacity(
+                     duration: const Duration(milliseconds: 300),
+                     opacity: (_isLocked ? 0.0 : (_showControls ? 1.0 : 0.0)),
+                     child: const Divider(height: 1, color: Colors.white10)
+                  ),
+                ],
               ),
+
               
               // Scrollable Playlist (Expanded to fill remaining space)
-              // If Locked: Show Black Space. If Unlocked: Show List.
               Expanded(
                 child: GestureDetector(
                   onTap: () {
@@ -590,7 +665,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                     color: Colors.black, // Pure black
                     width: double.infinity,
                     child: _isLocked 
-                       ? null // No watermark text, pure black
+                       ? null 
                        : ListView.builder(
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                           itemCount: widget.playlist.length,
@@ -599,11 +674,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   ),
                 ),
               ),
+             
             ],
           ),
         ),
       ],
     );
+
   }
 
   // Restore Landscape Layout
@@ -635,7 +712,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         ),
         
         // 3. Controls
-        if (_showControls || (_isLocked && _isLandscape)) ...[
            SafeArea(
              child: Stack(
                children: [
@@ -646,41 +722,48 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                    // Normal Landscape Controls
                     Positioned(
                       top: 0, left: 0, right: 0,
-                      child: Container(
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Colors.black87, Colors.transparent],
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 300),
+                        opacity: _isLocked ? 0.5 : 1.0, 
+                        child: Container(
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Colors.black87, Colors.transparent],
+                            ),
                           ),
-                        ),
-                        padding: const EdgeInsets.fromLTRB(16, 24, 16, 40),
-                        child: Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.arrow_back, color: Colors.white),
-                              onPressed: _toggleOrientation,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                _currentTitle,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                overflow: TextOverflow.ellipsis,
+                          padding: const EdgeInsets.fromLTRB(16, 24, 16, 40),
+                          child: Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                                onPressed: _toggleOrientation,
                               ),
-                            ),
-                          ],
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _currentTitle,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
 
                     if (!_isDraggingSeekbar)
                       Center(
-                        child: Row(
+                        child: AnimatedOpacity(
+                          duration: const Duration(milliseconds: 300),
+                          opacity: _isLocked ? 0.0 : (_showControls ? 1.0 : 0.0),
+                          child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                               // Replay 10s
@@ -731,6 +814,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                           ],
                         ),
                       ),
+                      ),
 
                     Positioned(
                       bottom: 0, left: 0, right: 0,
@@ -743,19 +827,82 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                           ),
                         ),
                         padding: const EdgeInsets.fromLTRB(32, 40, 32, 24),
-                        child: Column(
+                  child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             _buildSeekbar(isPortrait: false),
-                            const SizedBox(height: 16),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            
+                            // Stack for Icons + Tray Overlay
+                            Stack(
+                              alignment: Alignment.bottomCenter,
+                              clipBehavior: Clip.none, // Allow tray to float out if needed
                               children: [
-                                _buildControlIcon(Icons.speed, "${_playbackSpeed}x", _showSpeedMenu),
-                                _buildControlIcon(Icons.closed_caption, _currentSubtitle == "Off" ? "Subtitle" : _currentSubtitle, () => setState(() => _currentSubtitle = _currentSubtitle == 'Off' ? 'Eng' : 'Off')),
-                                _buildControlIcon(Icons.settings, _currentQuality, () {}),
-                                _buildControlIcon(Icons.lock_outline, "Lock", _toggleLock),
-                                _buildControlIcon(Icons.fullscreen_exit, "Portrait", _toggleOrientation),
+                                // Icons Row (Base)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 16),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      // Speed
+                                      AnimatedOpacity(
+                                         duration: const Duration(milliseconds: 300),
+                                         opacity: _isLocked ? 0.0 : 1.0,
+                                         child: _buildControlIcon(
+                                            Icons.speed, 
+                                            "${_playbackSpeed.toStringAsFixed(2)}x", 
+                                            () => _toggleTray('speed'), 
+                                            isActive: _activeTray == 'speed' || _playbackSpeed != 1.0,
+                                            onReset: () => setState(() { _playbackSpeed = 1.0; player.setRate(1.0); }),
+                                         ),
+                                      ),
+                                      // Subtitle
+                                      AnimatedOpacity(
+                                         duration: const Duration(milliseconds: 300),
+                                         opacity: _isLocked ? 0.0 : 1.0,
+                                         child: _buildControlIcon(
+                                            Icons.closed_caption, 
+                                            _currentSubtitle == "Off" ? "Subtitle" : _currentSubtitle, 
+                                            () => _toggleTray('subtitle'), 
+                                            isActive: _activeTray == 'subtitle' || _currentSubtitle != 'Off',
+                                            onReset: () => setState(() => _currentSubtitle = "Off"),
+                                         ),
+                                      ),
+                                      // Quality
+                                      AnimatedOpacity(
+                                         duration: const Duration(milliseconds: 300),
+                                         opacity: _isLocked ? 0.0 : 1.0,
+                                         child: _buildControlIcon(
+                                            Icons.settings, 
+                                            _currentQuality, 
+                                            () => _toggleTray('quality'), 
+                                            isActive: _activeTray == 'quality' || _currentQuality != "Auto",
+                                            onReset: () => setState(() => _currentQuality = "Auto"),
+                                         ),
+                                      ),
+                                      // Lock
+                                      AnimatedOpacity(
+                                         duration: const Duration(milliseconds: 300),
+                                         opacity: _isLocked ? (_isUnlockControlsVisible ? 1.0 : 0.0) : 1.0,
+                                         child: _buildControlIcon(Icons.lock_outline, "Lock", _toggleLock),
+                                      ),
+                                      // Landscape
+                                      AnimatedOpacity(
+                                         duration: const Duration(milliseconds: 300),
+                                         opacity: _isLocked ? 0.0 : 1.0,
+                                         child: _buildControlIcon(Icons.fullscreen_exit, "Portrait", _toggleOrientation),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+
+                                // Tray Overlay (Floating)
+                                if (_activeTray != null)
+                                  Positioned(
+                                    bottom: 0, // Overlap the icons
+                                    left: 0,
+                                    right: 0,
+                                    child: Center(child: _buildTray()),
+                                  ),
                               ],
                             ),
                           ],
@@ -766,7 +913,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                ],
              ),
            )
-        ]
       ],
     );
   }
@@ -895,37 +1041,42 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   player.seek(Duration(milliseconds: (v * 1000).toInt())).then((_) {
                      if (_wasPlayingBeforeDrag) {
                        player.play();
-                       // Restart timer immediately with shorter duration (0.7s)
                        _startHideTimer(const Duration(milliseconds: 700), true);
                      }
                   });
                 },
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    _formatDuration(Duration(milliseconds: (currentSeconds * 1000).toInt())),
-                    style: TextStyle(
-                      color: const Color(0xFF22C55E), 
-                      fontSize: 13, 
-                      fontWeight: FontWeight.w600,
-                      shadows: hideSlider ? [const Shadow(color: Colors.black, blurRadius: 2)] : null,
+            
+            if (hideSlider) const SizedBox(height: 10),
+
+            Opacity(
+              opacity: hideSlider ? 0.7 : 1.0,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      _formatDuration(Duration(milliseconds: (currentSeconds * 1000).toInt())),
+                      style: const TextStyle(
+                        color: Colors.white, 
+                        fontSize: 13, 
+                        fontWeight: FontWeight.w600,
+                        shadows: [Shadow(color: Colors.black, blurRadius: 2)],
+                      ),
                     ),
-                  ),
-                  Text(
-                    _formatDuration(dur),
-                    style: TextStyle(
-                      color: const Color(0xFF22C55E), 
-                      fontSize: 13, 
-                      fontWeight: FontWeight.w600,
-                      shadows: hideSlider ? [const Shadow(color: Colors.black, blurRadius: 2)] : null,
+                    Text(
+                      _formatDuration(dur),
+                      style: TextStyle(
+                        color: const Color(0xFF22C55E), 
+                        fontSize: 13, 
+                        fontWeight: FontWeight.w600,
+                        shadows: hideSlider ? [const Shadow(color: Colors.black, blurRadius: 2)] : null,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
@@ -934,13 +1085,19 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     );
   }
 
-  Widget _buildControlIcon(IconData icon, String label, VoidCallback onTap) {
+  Widget _buildControlIcon(IconData icon, String label, VoidCallback onTap, {bool isActive = false, VoidCallback? onReset}) {
     return GestureDetector(
       onTap: onTap,
+      onLongPress: () {
+         if (onReset != null) {
+            HapticFeedback.heavyImpact();
+            onReset();
+         }
+      },
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.white, size: 22),
+          Icon(icon, color: isActive ? const Color(0xFF22C55E) : Colors.white, size: 22),
           const SizedBox(height: 3),
           Text(
             label,
@@ -950,6 +1107,157 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       ),
     );
   }
+
+  Widget _buildTray() {
+    // 2. Fix Tray Overflow & Styling
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 350), // Prevent full width
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.95), // Slightly transparent floating look
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white12),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      margin: const EdgeInsets.symmetric(horizontal: 16), // Margin from screen edges
+      child: Stack(
+        children: [
+           // TRAY CONTENT
+           Padding(
+             padding: const EdgeInsets.only(right: 30), // Space for close button
+             child: _buildTrayContent(),
+           ),
+
+           // CLOSE BUTTON (Absolute in Tray)
+           Positioned(
+             right: 0,
+             top: 0,
+             bottom: 0,
+             child: Center(
+               child: GestureDetector(
+                 onTap: () => setState(() => _activeTray = null),
+                 child: Container(
+                   padding: const EdgeInsets.all(4),
+                   decoration: const BoxDecoration(color: Colors.white10, shape: BoxShape.circle),
+                   child: const Icon(Icons.close, color: Colors.white, size: 14),
+                 ),
+               ),
+             ),
+           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTrayContent() {
+    if (_activeTray == 'speed') {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          GestureDetector(
+             onTap: () => setState(() => _showSpeedPresets = !_showSpeedPresets),
+             child: Row(
+               mainAxisSize: MainAxisSize.min,
+               children: [
+                 Text("${_playbackSpeed.toStringAsFixed(2)}x", style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)), // Smaller Font
+                 const Icon(Icons.arrow_drop_down, color: Colors.white, size: 18),
+               ],
+             )
+          ),
+          if (_showSpeedPresets)
+             Container(
+               margin: const EdgeInsets.only(top: 8, bottom: 8),
+               child: Wrap(
+                 spacing: 6, // Compact
+                 runSpacing: 6,
+                 children: [0.5, 1.0, 1.25, 1.5, 2.0, 3.0].map((s) => 
+                   GestureDetector(
+                     onTap: () {
+                       player.setRate(s);
+                       setState(() {
+                          _playbackSpeed = s;
+                          _showSpeedPresets = false;
+                       });
+                       _startTrayHideTimer();
+                     },
+                     child: Container(
+                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                       decoration: BoxDecoration(
+                         color: _playbackSpeed == s ? const Color(0xFF22C55E) : Colors.grey[900],
+                         borderRadius: BorderRadius.circular(4),
+                         border: Border.all(color: Colors.white12),
+                       ),
+                       child: Text("${s}x", style: const TextStyle(color: Colors.white, fontSize: 11)), // Compact
+                     ),
+                   )
+                 ).toList(),
+               ),
+             ),
+          
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+               activeTrackColor: const Color(0xFF22C55E),
+               inactiveTrackColor: Colors.grey[800],
+               thumbColor: Colors.white,
+               trackHeight: 2,
+               thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5), // Smaller
+               overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
+            ),
+            child: Slider(
+              value: _playbackSpeed,
+              min: 0.5,
+              max: 3.0,
+              divisions: 50,
+              onChanged: (v) {
+                setState(() => _playbackSpeed = v);
+                player.setRate(v);
+                _startTrayHideTimer();
+              },
+            ),
+          ),
+        ],
+      );
+    } 
+    
+    if (_activeTray == 'quality' || _activeTray == 'subtitle') {
+       final items = _activeTray == 'quality' ? _qualities : _subtitles;
+       final current = _activeTray == 'quality' ? _currentQuality : _currentSubtitle;
+       
+       return SingleChildScrollView(
+         scrollDirection: Axis.horizontal,
+         child: Row(
+           mainAxisAlignment: MainAxisAlignment.center,
+           mainAxisSize: MainAxisSize.min, // Compact
+           children: items.map((item) {
+             final isSelected = item == current;
+             return GestureDetector(
+               onTap: () {
+                 setState(() {
+                   if (_activeTray == 'quality') _currentQuality = item;
+                   else _currentSubtitle = item;
+                   _activeTray = null; // Close tray immediately selection
+                 });
+                 _startHideTimer(); // Resume main timer
+               },
+               child: Container(
+                 margin: const EdgeInsets.symmetric(horizontal: 4),
+                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), // Compact
+                 decoration: BoxDecoration(
+                   color: isSelected ? const Color(0xFF22C55E) : Colors.transparent,
+                   borderRadius: BorderRadius.circular(20),
+                   border: Border.all(color: isSelected ? Colors.transparent : Colors.grey),
+                 ),
+                 child: Text(item, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500)), // Compact
+               ),
+             );
+           }).toList(),
+         ),
+       );
+    }
+
+    return const SizedBox();
+  }
+
 
   Widget _buildPlaylistItem(Map<String, dynamic> item, int index) {
     final isPlaying = index == _currentIndex;
