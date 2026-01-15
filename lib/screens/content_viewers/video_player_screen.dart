@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
@@ -310,19 +311,18 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
 
   void _startHideTimer([Duration duration = const Duration(seconds: 4), bool forcePlayCheck = false]) {
     _hideTimer?.cancel();
-    if (_showControls && (_isPlaying || forcePlayCheck) && !_isLocked && _activeTray == null) {
-      _hideTimer = Timer(duration, () {
-        if (mounted && _isPlaying && _showControls && !_isDraggingSeekbar && _activeTray == null) {
-          setState(() {
-            _showControls = false;
-            // Hide System UI when controls hide in landscape
-            if (_isLandscape) {
-               SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-            }
-          });
-        }
-      });
-    }
+    _hideTimer = Timer(duration, () {
+      if (mounted && (player.state.playing || forcePlayCheck) && !_isLocked && _activeTray == null) {
+        setState(() {
+          _showControls = false;
+          _activeTray = null; // Close tray on auto-hide
+          // Hide System UI when controls hide in landscape
+          if (_isLandscape) {
+             SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+          }
+        });
+      }
+    });
   }
 
   void _startTrayHideTimer() {
@@ -364,8 +364,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
       _showControls = !_showControls;
       if (_showControls) {
         _startHideTimer();
-        SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       } else {
+        // Close EVERYTHING when hiding controls manually
+        _activeTray = null;
+        _showVolumeLabel = false;
+        _showBrightnessLabel = false;
         if (_isLandscape) {
            SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
         }
@@ -474,6 +477,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
   Future<void> _toggleOrientation() async {
     if (_isLocked && _isLandscape) return;
     
+    // Reset any active tray & hide controls during orientation change
+    setState(() {
+      _activeTray = null;
+      _showControls = false;
+    });
+
     // 1. Show global floating overlay
     _showOverlay(context);
     
@@ -482,11 +491,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
 
     if (_isLandscape) {
       // To Portrait
+      // Enable system UI first to avoid weird jumps back to portrait
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
       setState(() => _isLandscape = false);
     } else {
       // To Landscape
+      // In Landscape, we want immersive mode to prevent status bar from pushing the layout
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       await SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
@@ -886,25 +897,28 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
       fit: StackFit.expand,
       children: [
          // 1. Video Layer
-        Center(
-          child: AspectRatio(
-            aspectRatio: player.state.width != null && player.state.height != null && player.state.height! > 0
-              ? player.state.width! / player.state.height!
-              : 16 / 9,
+        Container(
+          color: Colors.black,
+          child: Center(
             child: Video(
               controller: controller,
               controls: (state) => const SizedBox(),
-              fit: BoxFit.contain,
+              fit: BoxFit.contain, // Maintain aspect ratio without jumping
             ),
           ),
         ),
 
-        // 2. Gesture Detector
-        // 2. Gesture Detector
+        // 2. Gesture Detector (Captures Taps and Double Taps)
         Positioned.fill(
           child: GestureDetector(
             behavior: HitTestBehavior.translucent,
             onTap: _toggleControls,
+            onDoubleTapDown: (details) {
+               // Consume double tap to prevent system UI from reacting
+            },
+            onDoubleTap: () {
+               // Placeholder for future double tap seek
+            },
             onVerticalDragUpdate: _isLocked ? null : _onVerticalDragUpdate,
             onHorizontalDragUpdate: (details) {}, 
             child: Container(color: Colors.transparent),
@@ -915,61 +929,27 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
         Positioned.fill(child: _buildGestureOverlay()),
         
         // 3. Controls
-           SafeArea(
-             child: Stack(
-               children: [
-                  // Lock Mode Overlay
-                 if (_isLocked) ...[
-                      _buildLockOverlay(),
-                 ] else ...[
-                   // Normal Landscape Controls
-                    Positioned(
-                      top: 0, left: 0, right: 0,
+        // 3. Controls (NO SafeArea here to prevent 'jhatka' shift)
+           Stack(
+             children: [
+                // Lock Mode Overlay
+               if (_isLocked) ...[
+                    _buildLockOverlay(),
+               ] else ...[
+                 // Normal Landscape Controls
+                  // 1. Center Controls (Play/Pause)
+                  // Placed first so bars appear on top, but we will ensure bars don't block center touches
+                  // via HitTestBehavior or specific sizing.
+                  if (!_isDraggingSeekbar)
+                    Center(
                       child: AnimatedOpacity(
                         duration: const Duration(milliseconds: 300),
-                        opacity: _isLocked ? 0.5 : 1.0, 
-                        child: Container(
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [Colors.black87, Colors.transparent],
-                            ),
-                          ),
-                          padding: const EdgeInsets.fromLTRB(16, 24, 16, 40),
+                        opacity: _showControls ? 1.0 : 0.0,
+                        child: IgnorePointer(
+                          ignoring: !_showControls,
                           child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              IconButton(
-                                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                                onPressed: _toggleOrientation,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  _currentTitle,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    if (!_isDraggingSeekbar)
-                      Center(
-                        child: AnimatedOpacity(
-                          duration: const Duration(milliseconds: 300),
-                          opacity: _isLocked ? 0.0 : (_showControls ? 1.0 : 0.0),
-                          child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                              // Replay 10s
                               GestureDetector(
                                 onTap: () => _seekRelative(-10),
                                 child: Container(
@@ -982,8 +962,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
                                 ),
                               ),
                               const SizedBox(width: 32),
-                              
-                              // Play/Pause button
                               GestureDetector(
                                 onTap: _togglePlayPause,
                                 child: Container(
@@ -1001,8 +979,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
                                 ),
                               ),
                               const SizedBox(width: 32),
-                              
-                              // Forward 10s
                               GestureDetector(
                                 onTap: () => _seekRelative(10),
                                 child: Container(
@@ -1014,111 +990,166 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
                                   child: const Icon(Icons.forward_10, color: Colors.white, size: 36),
                                 ),
                               ),
-                          ],
-                        ),
-                      ),
-                      ),
-
-                    Positioned(
-                      bottom: 0, left: 0, right: 0,
-                      child: Container(
-                        decoration: const BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.bottomCenter,
-                            end: Alignment.topCenter,
-                            colors: [Colors.black87, Colors.transparent],
+                            ],
                           ),
                         ),
-                        padding: const EdgeInsets.fromLTRB(32, 40, 32, 24),
-                  child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _buildSeekbar(isPortrait: false),
-                            
-                            // Stack for Icons + Tray Overlay
-                            Stack(
-                              alignment: Alignment.bottomCenter,
-                              clipBehavior: Clip.none, // Allow tray to float out if needed
-                              children: [
-                                // Icons Row (Base)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 16),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                    children: [
-                                      // Speed
-                                      AnimatedOpacity(
-                                         duration: const Duration(milliseconds: 300),
-                                         opacity: _isLocked ? 0.0 : 1.0,
-                                         child: _buildControlIcon(
+                      ),
+                    ),
+
+                  // 2. Visual Scrims (Gradients) - IGNORE POINTERS
+                  // These provide the 'Shadow' look without blocking touches
+                  Positioned(
+                    top: 0, left: 0, right: 0, height: 140,
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 300),
+                      opacity: _showControls ? 1.0 : 0.0, 
+                      child: IgnorePointer(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Colors.black.withOpacity(0.8), Colors.transparent],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: 0, left: 0, right: 0, height: 200,
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 300),
+                      opacity: _showControls ? 1.0 : 0.0, 
+                      child: IgnorePointer(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.bottomCenter,
+                              end: Alignment.topCenter,
+                              colors: [Colors.black.withOpacity(0.8), Colors.transparent],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // 3. Interactive Top Bar (Transparent Background)
+                  Positioned(
+                    top: 0, left: 0, right: 0,
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 300),
+                      opacity: _showControls ? 1.0 : 0.0, 
+                      child: IgnorePointer(
+                        ignoring: !_showControls,
+                        child: Container(
+                          padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
+                          child: Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                                onPressed: _toggleOrientation,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  _currentTitle,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    shadows: [Shadow(color: Colors.black, blurRadius: 4)],
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  // 4. Interactive Bottom Bar (Transparent Background)
+                  Positioned(
+                    bottom: 0, left: 0, right: 0,
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 300),
+                      opacity: _showControls ? 1.0 : 0.0,
+                      child: IgnorePointer(
+                        ignoring: !_showControls,
+                        child: Container(
+                          padding: const EdgeInsets.fromLTRB(32, 20, 32, 30),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _buildSeekbar(isPortrait: false),
+                              
+                              // Stack for Icons + Tray Overlay
+                              Stack(
+                                alignment: Alignment.bottomCenter,
+                                clipBehavior: Clip.none, 
+                                children: [
+                                  // Icons Row (Base)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 16),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                      children: [
+                                        // Speed
+                                        _buildControlIcon(
                                             Icons.speed, 
                                             "${_playbackSpeed.toStringAsFixed(2)}x", 
                                             () => _toggleTray('speed'), 
                                             isActive: _activeTray == 'speed' || _playbackSpeed != 1.0,
                                             onReset: () => setState(() { _playbackSpeed = 1.0; player.setRate(1.0); }),
-                                         ),
-                                      ),
-                                      // Subtitle
-                                      AnimatedOpacity(
-                                         duration: const Duration(milliseconds: 300),
-                                         opacity: _isLocked ? 0.0 : 1.0,
-                                         child: _buildControlIcon(
+                                        ),
+                                        // Subtitle
+                                        _buildControlIcon(
                                             Icons.closed_caption, 
                                             _currentSubtitle == "Off" ? "Subtitle" : _currentSubtitle, 
                                             () => _toggleTray('subtitle'), 
                                             isActive: _activeTray == 'subtitle' || _currentSubtitle != 'Off',
                                             onReset: () => setState(() => _currentSubtitle = "Off"),
-                                         ),
-                                      ),
-                                      // Quality
-                                      AnimatedOpacity(
-                                         duration: const Duration(milliseconds: 300),
-                                         opacity: _isLocked ? 0.0 : 1.0,
-                                         child: _buildControlIcon(
+                                        ),
+                                        // Quality
+                                        _buildControlIcon(
                                             Icons.settings, 
                                             _currentQuality, 
                                             () => _toggleTray('quality'), 
                                             isActive: _activeTray == 'quality' || _currentQuality != "Auto",
                                             onReset: () => setState(() => _currentQuality = "Auto"),
-                                         ),
-                                      ),
-                                      // Lock
-                                      AnimatedOpacity(
-                                         duration: const Duration(milliseconds: 300),
-                                         opacity: _isLocked ? (_isUnlockControlsVisible ? 1.0 : 0.0) : 1.0,
-                                         child: _buildControlIcon(Icons.lock_outline, "Lock", _toggleLock),
-                                      ),
-                                      // Landscape
-                                      AnimatedOpacity(
-                                         duration: const Duration(milliseconds: 300),
-                                         opacity: _isLocked ? 0.0 : 1.0,
-                                         child: _buildControlIcon(Icons.fullscreen_exit, "Portrait", _toggleOrientation),
-                                      ),
-                                    ],
+                                        ),
+                                        // Lock
+                                        _buildControlIcon(Icons.lock_outline, "Lock", _toggleLock),
+                                        // Landscape
+                                        _buildControlIcon(Icons.fullscreen_exit, "Portrait", _toggleOrientation),
+                                      ],
+                                    ),
                                   ),
-                                ),
 
-                                // Tray Overlay (Floating)
-                                if (_activeTray != null)
-                                  Positioned(
-                                    bottom: 0, // Overlap the icons
-                                    left: 0,
-                                    right: 0,
-                                    child: Center(child: _buildTray()),
-                                  ),
-                              ],
-                            ),
-                          ],
+                                  if (_activeTray != null)
+                                    Positioned(
+                                      bottom: 0,
+                                      left: 0,
+                                      right: 0,
+                                      child: Center(child: _buildTray()),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                 ]
+                  ),
+                ],
                ],
              ),
-           )
-      ],
-    );
-  }
+        ],
+      );
+   }
 
   // Restore Header
   Widget _buildHeader() {
@@ -1291,22 +1322,27 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
   Widget _buildControlIcon(IconData icon, String label, VoidCallback onTap, {bool isActive = false, VoidCallback? onReset}) {
     return GestureDetector(
       onTap: onTap,
+      behavior: HitTestBehavior.translucent, // Catches taps in empty spaces/gaps
       onLongPress: () {
          if (onReset != null) {
             HapticFeedback.heavyImpact();
             onReset();
          }
       },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: isActive ? const Color(0xFF22C55E) : Colors.white, size: 22),
-          const SizedBox(height: 3),
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white, fontSize: 10),
-          ),
-        ],
+      child: Container(
+        color: Colors.transparent, // Explicit hit test area
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), // Expand touch target
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: isActive ? const Color(0xFF22C55E) : Colors.white, size: 22),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: const TextStyle(color: Colors.white, fontSize: 10),
+            ),
+          ],
+        ),
       ),
     );
   }
