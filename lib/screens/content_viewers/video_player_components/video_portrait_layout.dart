@@ -8,126 +8,31 @@ import 'video_playlist_widget.dart';
 import 'video_tray.dart';
 import 'video_top_bar.dart';
 import 'video_error_overlay.dart';
+import 'video_player_logic_controller.dart';
 
 class VideoPlayerPortraitLayout extends StatelessWidget {
+  final VideoPlayerLogicController logic;
   final Size size;
   final double videoHeight;
+  
+  // These are still props because they trigger structural changes or are passed from parent
   final bool isLocked;
-  final bool isUnlockControlsVisible;
   final bool showControls;
-  final VideoController controller;
-  final String currentTitle;
-  
-  // Gestures
-  final VoidCallback onLockedTap;
-  final VoidCallback onToggleControls;
-  final Function(DragUpdateDetails) onVerticalDragUpdate;
-  
-  // Overlay
-  final bool showBrightnessLabel;
-  final bool showVolumeLabel;
-  final double brightness;
-  final double volume;
-  
-  // Center Controls
-  final bool isPlaying;
-  final VoidCallback onPlayPause;
-  final Function(int) onSeekRelative;
-  
-  // Seekbar
-  final ValueNotifier<Duration> positionNotifier;
-  final ValueNotifier<Duration> durationNotifier;
-  final Function(double) onSeekbarChangeStart;
-  final Function(double) onSeekbarChanged;
-  final Function(double) onSeekbarChangeEnd;
-  
-  // Bottom Controls
-  final double playbackSpeed;
-  final String currentSubtitle;
-  final String currentQuality;
   final String? activeTray;
-  final Function(String) onToggleTray;
-  final VoidCallback onToggleLock;
-  final VoidCallback onToggleOrientation;
-  final VoidCallback onResetSpeed;
-  final VoidCallback onResetSubtitle;
-  final VoidCallback onResetQuality;
-  
-  // Tray
-  final List<String> trayItems;
-  final String trayCurrentSelection;
-  final bool isDraggingSpeedSlider;
-  final Function(String) onTrayItemSelected;
-  final Function(double) onTraySpeedChanged;
-  final VoidCallback onTrayClose;
-  final VoidCallback onTrayInteraction;
-
-  // Playlist
-  final List<Map<String, dynamic>> playlist;
-  final int currentIndex;
-  final Map<String, double> videoProgress;
-  final Function(int) onVideoTap;
-  
-  final VoidCallback onBack;
-  final VoidCallback onDoubleLockTap;
 
   const VideoPlayerPortraitLayout({
     super.key,
+    required this.logic,
     required this.size,
     required this.videoHeight,
     required this.isLocked,
-    required this.isUnlockControlsVisible,
     required this.showControls,
-    required this.controller,
-    required this.currentTitle,
-    required this.onLockedTap,
-    required this.onToggleControls,
-    required this.onVerticalDragUpdate,
-    required this.showBrightnessLabel,
-    required this.showVolumeLabel,
-    required this.brightness,
-    required this.volume,
-    required this.isPlaying,
-    required this.onPlayPause,
-    required this.onSeekRelative,
-    required this.positionNotifier,
-    required this.durationNotifier,
-    required this.onSeekbarChangeStart,
-    required this.onSeekbarChanged,
-    required this.onSeekbarChangeEnd,
-    required this.playbackSpeed,
-    required this.currentSubtitle,
-    required this.currentQuality,
     this.activeTray,
-    required this.onToggleTray,
-    required this.onToggleLock,
-    required this.onToggleOrientation,
-    required this.onResetSpeed,
-    required this.onResetSubtitle,
-    required this.onResetQuality,
-    required this.trayItems,
-    required this.trayCurrentSelection,
-    required this.isDraggingSpeedSlider,
-    required this.onTrayItemSelected,
-    required this.onTraySpeedChanged,
-    required this.onTrayClose,
-    required this.onTrayInteraction,
-    required this.playlist,
-    required this.currentIndex,
-    required this.videoProgress,
-    required this.onVideoTap,
-    required this.onBack,
-    required this.onDoubleLockTap,
-    this.errorMessage,
-    this.onRetry,
   });
-
-  final String? errorMessage;
-  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
-    final isInterfaceVisible = isLocked ? isUnlockControlsVisible : showControls;
+    final isInterfaceVisible = isLocked ? logic.isUnlockControlsVisible : showControls;
 
     return Column(
       children: [
@@ -136,11 +41,16 @@ class VideoPlayerPortraitLayout extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Header
-              VideoPlayerTopBar(
-                title: currentTitle,
-                isLocked: isLocked,
-                isVisible: true, // Always visible logic in portrait? (Code said: opacity: _isLocked ? 0.5 : 1.0)
-                onBack: onBack,
+              ValueListenableBuilder<int>(
+                valueListenable: logic.currentIndexNotifier,
+                builder: (context, index, _) {
+                  return VideoPlayerTopBar(
+                    title: logic.currentTitle,
+                    isLocked: isLocked,
+                    isVisible: true,
+                    onBack: () => Navigator.pop(context),
+                  );
+                }
               ),
 
               // Video Player Area
@@ -149,7 +59,7 @@ class VideoPlayerPortraitLayout extends StatelessWidget {
                 height: videoHeight,
                 child: Stack(
                   children: [
-                    Video(controller: controller, controls: (state) => const SizedBox()),
+                    logic.engine.buildVideoWidget(),
 
                     // Locked Dark Overlay
                     if (isLocked)
@@ -161,52 +71,75 @@ class VideoPlayerPortraitLayout extends StatelessWidget {
                     Positioned.fill(
                       child: GestureDetector(
                         behavior: HitTestBehavior.translucent,
-                        onTap: () {
-                          if (isLocked) {
-                            onLockedTap();
-                          } else {
-                            onToggleControls();
-                          }
-                        },
-                        onVerticalDragUpdate: isLocked ? null : onVerticalDragUpdate,
-                        onHorizontalDragUpdate: (details) {},
+                        onTap: logic.toggleControls,
+                        onVerticalDragUpdate: isLocked ? null : (details) => logic.handleVerticalDrag(details, size.width),
                         child: Container(color: Colors.transparent),
                       ),
                     ),
 
-                    // Volume/Brightness Overlay
-                    Positioned.fill(
-                      child: VideoGestureOverlay(
-                        showBrightness: showBrightnessLabel,
-                        showVolume: showVolumeLabel,
-                        brightness: brightness,
-                        volume: volume,
-                      ),
+                    // Volume/Brightness Overlay (Granular Update)
+                    ValueListenableBuilder<bool>(
+                      valueListenable: logic.showVolumeLabelNotifier,
+                      builder: (context, showVolume, _) {
+                        return ValueListenableBuilder<bool>(
+                          valueListenable: logic.showBrightnessLabelNotifier,
+                          builder: (context, showBrightness, _) {
+                            return ValueListenableBuilder<double>(
+                              valueListenable: logic.volumeNotifier,
+                              builder: (context, vol, _) {
+                                return ValueListenableBuilder<double>(
+                                  valueListenable: logic.brightnessNotifier,
+                                  builder: (context, bright, _) {
+                                    return Positioned.fill(
+                                      child: VideoGestureOverlay(
+                                        showBrightness: showBrightness,
+                                        showVolume: showVolume,
+                                        brightness: bright,
+                                        volume: vol,
+                                      ),
+                                    );
+                                  }
+                                );
+                              }
+                            );
+                          }
+                        );
+                      }
                     ),
 
-                    // Play/Pause Controls
+                    // Play/Pause Controls (Granular Update)
                     if (!isLocked)
-                      VideoCenterControls(
-                        isPlaying: isPlaying,
-                        isVisible: isInterfaceVisible,
-                        onPlayPause: onPlayPause,
-                        onSeek: onSeekRelative,
+                      ValueListenableBuilder<bool>(
+                        valueListenable: logic.isPlayingNotifier,
+                        builder: (context, isPlaying, _) {
+                          return VideoCenterControls(
+                            isPlaying: isPlaying,
+                            isVisible: isInterfaceVisible,
+                            onPlayPause: logic.togglePlayPause,
+                            onSeek: logic.seekRelative,
+                          );
+                        }
                       ),
 
                     // Error Overlay
-                    if (errorMessage != null)
-                      Positioned.fill(
-                        child: VideoErrorOverlay(
-                          message: errorMessage!,
-                          onRetry: onRetry ?? () {},
-                        ),
-                      ),
+                    ValueListenableBuilder<String?>(
+                      valueListenable: logic.errorMessageNotifier,
+                      builder: (context, error, _) {
+                        if (error == null) return const SizedBox();
+                        return Positioned.fill(
+                          child: VideoErrorOverlay(
+                            message: error,
+                            onRetry: () => logic.playVideo(logic.currentIndex),
+                          ),
+                        );
+                      }
+                    ),
                   ],
                 ),
               ),
 
               // Subtitle Safe Area
-              if (currentSubtitle != "Off")
+              if (logic.currentSubtitle != "Off")
                 Container(height: 40, color: Colors.black),
 
               // Controls Area
@@ -218,18 +151,18 @@ class VideoPlayerPortraitLayout extends StatelessWidget {
                     color: Colors.black,
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     child: ValueListenableBuilder<Duration>(
-                      valueListenable: positionNotifier,
+                      valueListenable: logic.positionNotifier,
                       builder: (context, pos, _) {
                         return ValueListenableBuilder<Duration>(
-                          valueListenable: durationNotifier,
+                          valueListenable: logic.durationNotifier,
                           builder: (context, dur, _) {
                             return VideoSeekbar(
                               position: pos,
                               duration: dur,
                               isLocked: isLocked,
-                              onChangeStart: onSeekbarChangeStart,
-                              onChanged: onSeekbarChanged,
-                              onChangeEnd: onSeekbarChangeEnd,
+                              onChangeStart: logic.onSeekbarChangeStart,
+                              onChanged: logic.onSeekbarChanged,
+                              onChangeEnd: logic.onSeekbarChangeEnd,
                             );
                           },
                         );
@@ -246,29 +179,28 @@ class VideoPlayerPortraitLayout extends StatelessWidget {
                       Container(
                         color: Colors.black,
                         padding: const EdgeInsets.only(left: 20, right: 20, bottom: 8),
-                        child: VideoBottomControls(
-                          isLocked: isLocked,
-                          isLandscape: false,
-                          isUnlockControlsVisible: isUnlockControlsVisible,
-                          playbackSpeed: playbackSpeed,
-                          currentSubtitle: currentSubtitle,
-                          currentQuality: currentQuality,
-                          activeTray: activeTray,
-                          onToggleTraySpeed: () => onToggleTray('speed'),
-                          onToggleTraySubtitle: () => onToggleTray('subtitle'),
-                          onToggleTrayQuality: () => onToggleTray('quality'),
-                          onLockTap: () {
-                            if (!isLocked) {
-                              onToggleLock();
-                            } else {
-                              onLockedTap();
-                            }
-                          },
-                          onDoubleLockTap: onDoubleLockTap,
-                          onOrientationTap: onToggleOrientation,
-                          onResetSpeed: onResetSpeed,
-                          onResetSubtitle: onResetSubtitle,
-                          onResetQuality: onResetQuality,
+                        child: ValueListenableBuilder<double>(
+                          valueListenable: logic.playbackSpeedNotifier,
+                          builder: (context, speed, _) {
+                            return VideoBottomControls(
+                              isLocked: isLocked,
+                              isLandscape: false,
+                              isUnlockControlsVisible: logic.isUnlockControlsVisible,
+                              playbackSpeed: speed,
+                              currentSubtitle: logic.currentSubtitle,
+                              currentQuality: logic.currentQuality,
+                              activeTray: activeTray,
+                              onToggleTraySpeed: () => logic.toggleTray('speed'),
+                              onToggleTraySubtitle: () => logic.toggleTray('subtitle'),
+                              onToggleTrayQuality: () => logic.toggleTray('quality'),
+                              onLockTap: logic.toggleLock,
+                              onDoubleLockTap: logic.toggleLock,
+                              onOrientationTap: () => logic.toggleOrientation(context),
+                              onResetSpeed: () => logic.setPlaybackSpeed(1.0),
+                              onResetSubtitle: () => logic.setTrayItem("Off"),
+                              onResetQuality: () => logic.setTrayItem("Auto"),
+                            );
+                          }
                         ),
                       ),
 
@@ -279,16 +211,21 @@ class VideoPlayerPortraitLayout extends StatelessWidget {
                           left: 0,
                           right: 0,
                           child: Center(
-                            child: VideoTray(
-                              activeTray: activeTray!,
-                              items: trayItems,
-                              currentSelection: trayCurrentSelection,
-                              playbackSpeed: playbackSpeed,
-                              isDraggingSpeedSlider: isDraggingSpeedSlider,
-                              onItemSelected: onTrayItemSelected,
-                              onSpeedChanged: onTraySpeedChanged,
-                              onClose: onTrayClose,
-                              onInteraction: onTrayInteraction,
+                            child: ValueListenableBuilder<double>(
+                              valueListenable: logic.playbackSpeedNotifier,
+                              builder: (context, speed, _) {
+                                return VideoTray(
+                                  activeTray: activeTray!,
+                                  items: activeTray == 'quality' ? logic.qualities : logic.subtitles,
+                                  currentSelection: activeTray == 'quality' ? logic.currentQuality : logic.currentSubtitle,
+                                  playbackSpeed: speed,
+                                  isDraggingSpeedSlider: logic.isDraggingSpeedSlider,
+                                  onItemSelected: logic.setTrayItem,
+                                  onSpeedChanged: logic.setPlaybackSpeed,
+                                  onClose: () => logic.toggleTray(activeTray!),
+                                  onInteraction: () => logic.startHideTimer(),
+                                );
+                              }
                             ),
                           ),
                         ),
@@ -308,18 +245,23 @@ class VideoPlayerPortraitLayout extends StatelessWidget {
               Expanded(
                 child: GestureDetector(
                   onTap: () {
-                    if (isLocked) onLockedTap();
+                    if (isLocked) logic.handleLockedTap();
                   },
                   child: Container(
                     color: Colors.black,
                     width: double.infinity,
                     child: isLocked
                         ? const SizedBox()
-                        : VideoPlaylistWidget(
-                            playlist: playlist,
-                            currentIndex: currentIndex,
-                            videoProgress: videoProgress,
-                            onVideoTap: onVideoTap,
+                        : ListenableBuilder(
+                            listenable: logic,
+                            builder: (context, _) {
+                              return VideoPlaylistWidget(
+                                playlist: logic.playlist,
+                                currentIndex: logic.currentIndex,
+                                videoProgress: logic.videoProgress,
+                                onVideoTap: logic.playVideo,
+                              );
+                            }
                           ),
                   ),
                 ),

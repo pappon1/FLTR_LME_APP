@@ -1,34 +1,44 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:media_kit/media_kit.dart';
-import 'package:media_kit_video/media_kit_video.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:flutter_volume_controller/flutter_volume_controller.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'video_player_constants.dart';
 import 'video_persistence_service.dart';
+import 'video_playlist_manager.dart';
+import 'video_gesture_handler.dart';
+import 'video_engine_interface.dart';
+import 'mediakit_video_engine.dart';
 
 class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObserver {
-  final List<Map<String, dynamic>> playlist;
-  late final Player player;
-  late final VideoController controller;
+  final VideoPlaylistManager playlistManager;
+  late final VideoGestureHandler gestureHandler;
+  late final BaseVideoEngine engine;
 
-  // Player State
-  int _currentIndex;
-  bool _isPlaying = false;
+  // Granular State Notifiers
+  final ValueNotifier<bool> isPlayingNotifier = ValueNotifier(false);
   final ValueNotifier<Duration> positionNotifier = ValueNotifier(Duration.zero);
   final ValueNotifier<Duration> durationNotifier = ValueNotifier(Duration.zero);
-  double _playbackSpeed = 1.0;
+  final ValueNotifier<double> playbackSpeedNotifier = ValueNotifier(1.0);
+  
+  // UI Visibility Notifiers
+  final ValueNotifier<bool> showControlsNotifier = ValueNotifier(true);
+  final ValueNotifier<bool> isLockedNotifier = ValueNotifier(false);
+  final ValueNotifier<bool> isUnlockControlsVisibleNotifier = ValueNotifier(false);
+  final ValueNotifier<String?> activeTrayNotifier = ValueNotifier(null);
+  final ValueNotifier<String?> errorMessageNotifier = ValueNotifier(null);
+  
+  // Gesture Notifiers
+  final ValueNotifier<double> volumeNotifier = ValueNotifier(VideoPlayerConstants.defaultVolume);
+  final ValueNotifier<double> brightnessNotifier = ValueNotifier(VideoPlayerConstants.defaultBrightness);
+  final ValueNotifier<bool> showVolumeLabelNotifier = ValueNotifier(false);
+  final ValueNotifier<bool> showBrightnessLabelNotifier = ValueNotifier(false);
 
-  // UI Visibility State
-  bool _showControls = true;
+  // Structural State
   bool _isLandscape = false;
   bool _isDraggingSeekbar = false;
-  bool _isLocked = false;
-  bool _isUnlockControlsVisible = false;
-  String? _activeTray;
   bool _isDraggingSpeedSlider = false;
 
   // Feature State
@@ -37,23 +47,13 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
   final List<String> subtitles = ["Off", "English", "Bengali", "Hindi"];
   final List<String> qualities = ["Auto", "480p", "720p", "1080p", "1920p"];
 
-  // Gesture State
-  double _volume = VideoPlayerConstants.defaultVolume;
+  // Internal Logic State
   double _initialSystemVolume = VideoPlayerConstants.defaultVolume;
-  bool _isChangingVolumeViaGesture = false;
-  double _brightness = VideoPlayerConstants.defaultBrightness;
-  bool _showVolumeLabel = false;
-  bool _showBrightnessLabel = false;
-
-  // Error State
-  String? _errorMessage;
-
+  
   // Timers
   Timer? _hideTimer;
   Timer? _unlockHideTimer;
   Timer? _trayHideTimer;
-  Timer? _volumeTimer;
-  Timer? _brightnessTimer;
 
   // Persistence & Sensors
   Map<String, double> _videoProgress = {};
@@ -62,34 +62,41 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
   DateTime? _lastSaveTime;
 
   // Getters
-  int get currentIndex => _currentIndex;
-  bool get isPlaying => _isPlaying;
-  double get playbackSpeed => _playbackSpeed;
-  bool get showControls => _showControls;
+  List<Map<String, dynamic>> get playlist => playlistManager.playlist;
+  int get currentIndex => playlistManager.currentIndexNotifier.value;
+  ValueNotifier<int> get currentIndexNotifier => playlistManager.currentIndexNotifier;
+  String get currentTitle => playlistManager.currentTitle;
+  
+  bool get isPlaying => isPlayingNotifier.value;
+  double get playbackSpeed => playbackSpeedNotifier.value;
+  bool get showControls => showControlsNotifier.value;
   bool get isLandscape => _isLandscape;
   bool get isDraggingSeekbar => _isDraggingSeekbar;
-  bool get isLocked => _isLocked;
-  bool get isUnlockControlsVisible => _isUnlockControlsVisible;
-  String? get activeTray => _activeTray;
+  bool get isLocked => isLockedNotifier.value;
+  bool get isUnlockControlsVisible => isUnlockControlsVisibleNotifier.value;
+  String? get activeTray => activeTrayNotifier.value;
   bool get isDraggingSpeedSlider => _isDraggingSpeedSlider;
   String get currentQuality => _currentQuality;
   String get currentSubtitle => _currentSubtitle;
-  double get volume => _volume;
-  double get brightness => _brightness;
-  bool get showVolumeLabel => _showVolumeLabel;
-  bool get showBrightnessLabel => _showBrightnessLabel;
+  double get volume => volumeNotifier.value;
+  double get brightness => brightnessNotifier.value;
+  bool get showVolumeLabel => showVolumeLabelNotifier.value;
+  bool get showBrightnessLabel => showBrightnessLabelNotifier.value;
   Map<String, double> get videoProgress => _videoProgress;
-  String? get errorMessage => _errorMessage;
-
-  String get currentTitle {
-    if (playlist.isEmpty) return "No Video";
-    return playlist[_currentIndex]['name'] ?? "Video";
-  }
+  String? get errorMessage => errorMessageNotifier.value;
 
   VideoPlayerLogicController({
-    required this.playlist,
+    required List<Map<String, dynamic>> playlist,
     required int initialIndex,
-  }) : _currentIndex = initialIndex {
+    BaseVideoEngine? engineOverride,
+  }) : playlistManager = VideoPlaylistManager(playlist: playlist, initialIndex: initialIndex) {
+    engine = engineOverride ?? MediaKitVideoEngine();
+    gestureHandler = VideoGestureHandler(
+      volumeNotifier: volumeNotifier,
+      brightnessNotifier: brightnessNotifier,
+      showVolumeLabelNotifier: showVolumeLabelNotifier,
+      showBrightnessLabelNotifier: showBrightnessLabelNotifier,
+    );
     _init();
   }
 
@@ -97,16 +104,15 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
     WidgetsBinding.instance.addObserver(this);
     WakelockPlus.enable();
 
-    player = Player();
-    controller = VideoController(player);
+    await engine.init();
 
     await _initVolumeBrightness();
     _setupPlayerListeners();
     _initSensor();
     await _initProgress();
 
-    if (playlist.isNotEmpty && _currentIndex < playlist.length) {
-      playVideo(_currentIndex);
+    if (playlist.isNotEmpty) {
+      playVideo(currentIndex);
     }
 
     _loadMissingDurations();
@@ -114,45 +120,41 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
   }
 
   void _setupPlayerListeners() {
-    player.stream.position.listen((pos) {
+    engine.positionStream.listen((pos) {
       positionNotifier.value = pos;
       _handlePositionUpdate(pos);
     });
 
-    player.stream.duration.listen((dur) {
+    engine.durationStream.listen((dur) {
       durationNotifier.value = dur;
       if (dur != Duration.zero) {
-        final item = playlist[_currentIndex];
-        if (item['duration'] == null || item['duration'] == "00:00") {
-          item['duration'] = formatDurationString(dur);
+        if (playlist[currentIndex]['duration'] == null || playlist[currentIndex]['duration'] == "00:00") {
+          playlistManager.updateDuration(currentIndex, formatDurationString(dur));
           notifyListeners();
         }
       }
     });
 
-    player.stream.playing.listen((p) {
-      _isPlaying = p;
-      if (p) _errorMessage = null; 
-      notifyListeners();
+    engine.playingStream.listen((p) {
+      isPlayingNotifier.value = p;
+      if (p) errorMessageNotifier.value = null; 
     });
 
-    player.stream.completed.listen((completed) {
+    engine.completedStream.listen((completed) {
       if (completed) {
-        if (_currentIndex < playlist.length - 1) {
-          playVideo(_currentIndex + 1);
+        if (playlistManager.next()) {
+          playVideo(currentIndex);
         }
       }
     });
 
-    player.stream.error.listen((error) {
-      _errorMessage = error.toString();
-      notifyListeners();
+    engine.errorStream.listen((error) {
+      errorMessageNotifier.value = error.toString();
     });
 
-    FlutterVolumeController.addListener((volume) {
-      if (!_isChangingVolumeViaGesture) {
-        _volume = volume;
-        notifyListeners();
+    FlutterVolumeController.addListener((v) {
+      if (!gestureHandler.isChangingVolumeViaGesture) {
+        volumeNotifier.value = v;
       }
     });
   }
@@ -160,10 +162,9 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
   Future<void> _initVolumeBrightness() async {
     try {
       _initialSystemVolume = await FlutterVolumeController.getVolume() ?? VideoPlayerConstants.defaultVolume;
-      _volume = _initialSystemVolume;
-      _brightness = await ScreenBrightness().current;
+      volumeNotifier.value = _initialSystemVolume;
+      brightnessNotifier.value = await ScreenBrightness().current;
       FlutterVolumeController.updateShowSystemUI(false);
-      notifyListeners();
     } catch (e) {}
   }
 
@@ -175,6 +176,11 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
   }
 
   void _initSensor() {
+    _resumeSensor();
+  }
+
+  void _resumeSensor() {
+    _accelerometerSubscription?.cancel();
     _accelerometerSubscription = accelerometerEventStream().listen((event) {
       if (!_isLandscape) return;
       const double threshold = VideoPlayerConstants.sensorRotationThreshold;
@@ -192,18 +198,22 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
     });
   }
 
+  void _pauseSensor() {
+    _accelerometerSubscription?.cancel();
+    _accelerometerSubscription = null;
+  }
+
   Future<void> playVideo(int index) async {
     if (index < 0 || index >= playlist.length) return;
-    _currentIndex = index;
-    _showControls = true;
-    _errorMessage = null;
+    playlistManager.goToIndex(index);
+    showControlsNotifier.value = true;
+    errorMessageNotifier.value = null;
     notifyListeners();
 
     try {
-      final item = playlist[index];
-      final path = item['path'] as String?;
+      final path = playlistManager.currentPath;
       if (path != null) {
-        await player.open(Media(path), play: true);
+        await engine.open(path, play: true);
         final progress = _videoProgress[path];
         if (progress != null && progress > 0 && progress < VideoPlayerConstants.watchedThreshold) {
           _resumeProgress(path, progress);
@@ -216,40 +226,41 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
 
   void _resumeProgress(String path, double ratio) async {
     int attempts = 0;
-    while (player.state.duration <= Duration.zero && attempts < 20) {
+    while (engine.duration <= Duration.zero && attempts < 20) {
       await Future.delayed(const Duration(milliseconds: 100));
       attempts++;
     }
-    if (player.state.duration > Duration.zero) {
-      final targetMs = (player.state.duration.inMilliseconds * ratio).toInt();
-      if (targetMs < player.state.duration.inMilliseconds - 5000) {
-        await player.seek(Duration(milliseconds: targetMs));
+    if (engine.duration > Duration.zero) {
+      final targetMs = (engine.duration.inMilliseconds * ratio).toInt();
+      if (targetMs < engine.duration.inMilliseconds - 5000) {
+        await engine.seek(Duration(milliseconds: targetMs));
       }
     }
   }
 
   void _handlePositionUpdate(Duration pos) {
-    final dur = player.state.duration;
+    final dur = engine.duration;
     if (dur <= Duration.zero) return;
 
     final ratio = pos.inMilliseconds / dur.inMilliseconds;
-    final currentPath = playlist[_currentIndex]['path'] as String?;
+    final currentPath = playlistManager.currentPath;
     if (currentPath == null) return;
 
     double oldRatio = _videoProgress[currentPath] ?? 0.0;
-    bool shouldNotify = false;
+    bool shouldSyncPlaylist = false;
 
     if ((ratio - oldRatio).abs() > VideoPlayerConstants.significantProgressChange || 
         (oldRatio < VideoPlayerConstants.watchedThreshold && ratio >= VideoPlayerConstants.watchedThreshold)) {
       _videoProgress[currentPath] = ratio;
-      shouldNotify = true;
+      shouldSyncPlaylist = true;
     }
     if (ratio >= VideoPlayerConstants.completionThreshold && oldRatio < VideoPlayerConstants.completionThreshold) {
       _videoProgress[currentPath] = 1.0;
       VideoPersistenceService.saveProgress(currentPath, 1.0);
-      shouldNotify = true;
+      shouldSyncPlaylist = true;
     }
-    if (shouldNotify) notifyListeners();
+    
+    if (shouldSyncPlaylist) notifyListeners();
 
     final now = DateTime.now();
     if (_lastSaveTime == null || now.difference(_lastSaveTime!) > const Duration(seconds: 10)) {
@@ -259,164 +270,119 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
   }
 
   void handleVerticalDrag(DragUpdateDetails details, double screenWidth) {
-    final dx = details.localPosition.dx;
-    final delta = details.primaryDelta ?? 0;
-    if (delta.abs() < 0.5) return;
-
-    final double sensitivity = VideoPlayerConstants.gestureSensitivity;
-    if (dx > screenWidth / 2) {
-      double newVolume = _volume - (delta * sensitivity);
-      if (newVolume <= 0) newVolume = 0;
-      if (newVolume >= 1) newVolume = 1;
-      if ((newVolume - _volume).abs() > 0.01 || newVolume == 0 || newVolume == 1) {
-        _volume = newVolume;
-        _isChangingVolumeViaGesture = true;
-        FlutterVolumeController.setVolume(_volume);
-        _showVolumeLabel = true;
-        _showBrightnessLabel = false;
-        notifyListeners();
-        _volumeTimer?.cancel();
-        _volumeTimer = Timer(VideoPlayerConstants.labelHideDuration, () {
-          _isChangingVolumeViaGesture = false;
-          _showVolumeLabel = false;
-          notifyListeners();
-        });
-      }
-    } else {
-      double newBrightness = _brightness - (delta * sensitivity);
-      if (newBrightness <= 0) newBrightness = 0;
-      if (newBrightness >= 1) newBrightness = 1;
-      if ((newBrightness - _brightness).abs() > 0.01 || newBrightness == 0 || newBrightness == 1) {
-        _brightness = newBrightness;
-        ScreenBrightness().setScreenBrightness(_brightness);
-        _showBrightnessLabel = true;
-        _showVolumeLabel = false;
-        notifyListeners();
-        _brightnessTimer?.cancel();
-        _brightnessTimer = Timer(VideoPlayerConstants.labelHideDuration, () {
-          _showBrightnessLabel = false;
-          notifyListeners();
-        });
-      }
-    }
+    gestureHandler.handleVerticalDrag(details, screenWidth);
   }
 
   void startHideTimer([Duration? duration, bool forcePlayCheck = false]) {
     _hideTimer?.cancel();
     _hideTimer = Timer(duration ?? VideoPlayerConstants.autoHideDuration, () {
-      if ((player.state.playing || forcePlayCheck) && !_isLocked && _activeTray == null) {
-        _showControls = false;
-        _activeTray = null;
+      if ((engine.isPlaying || forcePlayCheck) && !isLocked && activeTray == null) {
+        showControlsNotifier.value = false;
+        activeTrayNotifier.value = null;
         if (_isLandscape) {
           SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
         }
-        notifyListeners();
       }
     });
   }
 
   void toggleControls() {
-    if (_isLocked) {
+    if (isLocked) {
       handleLockedTap();
       return;
     }
-    _showControls = !_showControls;
-    if (_showControls) {
+    showControlsNotifier.value = !showControlsNotifier.value;
+    if (showControlsNotifier.value) {
       startHideTimer();
     } else {
-      _activeTray = null;
-      _showVolumeLabel = false;
-      _showBrightnessLabel = false;
+      activeTrayNotifier.value = null;
+      showVolumeLabelNotifier.value = false;
+      showBrightnessLabelNotifier.value = false;
       if (_isLandscape) {
         SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       }
     }
-    notifyListeners();
   }
 
   void togglePlayPause() {
-    player.playOrPause();
+    engine.playOrPause();
     startHideTimer();
   }
 
   void toggleLock() {
-    _isLocked = !_isLocked;
-    if (_isLocked) {
-      _showControls = false;
-      _isUnlockControlsVisible = true;
+    isLockedNotifier.value = !isLockedNotifier.value;
+    if (isLockedNotifier.value) {
+      showControlsNotifier.value = false;
+      isUnlockControlsVisibleNotifier.value = true;
       _startUnlockHideTimer();
       if (_isLandscape) SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     } else {
       _unlockHideTimer?.cancel();
-      _isUnlockControlsVisible = false;
-      _showControls = true;
+      isUnlockControlsVisibleNotifier.value = false;
+      showControlsNotifier.value = true;
       startHideTimer();
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     }
-    notifyListeners();
   }
 
   void _startUnlockHideTimer() {
     _unlockHideTimer?.cancel();
     _unlockHideTimer = Timer(VideoPlayerConstants.lockAutoHideDuration, () {
-      if (_isLocked) {
-        _isUnlockControlsVisible = false;
-        notifyListeners();
+      if (isLocked) {
+        isUnlockControlsVisibleNotifier.value = false;
       }
     });
   }
 
   void handleLockedTap() {
-    _isUnlockControlsVisible = true;
-    notifyListeners();
+    isUnlockControlsVisibleNotifier.value = true;
     _startUnlockHideTimer();
   }
 
   void toggleTray(String tray) {
-    if (_activeTray == tray) {
-      _activeTray = null;
+    if (activeTray == tray) {
+      activeTrayNotifier.value = null;
       startHideTimer();
     } else {
-      _activeTray = tray;
+      activeTrayNotifier.value = tray;
       _hideTimer?.cancel();
       _startTrayHideTimer();
     }
-    notifyListeners();
   }
 
   void _startTrayHideTimer() {
     _trayHideTimer?.cancel();
     _trayHideTimer = Timer(VideoPlayerConstants.trayAutoHideDuration, () {
-      _activeTray = null;
-      startHideTimer();
-      notifyListeners();
+      if (activeTray != null) {
+        activeTrayNotifier.value = null;
+        startHideTimer();
+      }
     });
   }
 
   void setTrayItem(String item) {
-    if (_activeTray == 'quality') _currentQuality = item;
+    if (activeTray == 'quality') _currentQuality = item;
     else _currentSubtitle = item;
-    _activeTray = null;
+    activeTrayNotifier.value = null;
     startHideTimer();
     notifyListeners();
   }
 
   void setPlaybackSpeed(double s) {
-    player.setRate(s);
-    _playbackSpeed = s;
-    _activeTray = null;
+    engine.setRate(s);
+    playbackSpeedNotifier.value = s;
+    activeTrayNotifier.value = null;
     startHideTimer();
-    notifyListeners();
   }
 
   void seekRelative(int seconds) {
-    if (_isLocked && _isLandscape) return;
-    final current = player.state.position;
-    final total = player.state.duration;
+    if (isLocked && _isLandscape) return;
+    final current = engine.position;
+    final total = engine.duration;
     var newPos = current + Duration(seconds: seconds);
     if (newPos < Duration.zero) newPos = Duration.zero;
     if (newPos > total) newPos = total;
-    player.seek(newPos);
+    engine.seek(newPos);
     startHideTimer();
   }
 
@@ -426,8 +392,8 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
   bool _isSeeking = false;
 
   void onSeekbarChangeStart(double v) {
-    _wasPlayingBeforeDrag = player.state.playing;
-    player.pause();
+    _wasPlayingBeforeDrag = engine.isPlaying;
+    engine.pause();
     _isDraggingSeekbar = true;
     notifyListeners();
   }
@@ -440,9 +406,9 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
   void onSeekbarChangeEnd(double v) {
     _isDraggingSeekbar = false;
     _pendingSeekValue = null;
-    player.seek(Duration(milliseconds: (v * 1000).toInt())).then((_) {
+    engine.seek(Duration(milliseconds: (v * 1000).toInt())).then((_) {
       if (_wasPlayingBeforeDrag) {
-        player.play();
+        engine.play();
         startHideTimer(VideoPlayerConstants.seekAfterDragDelay, true);
       }
     });
@@ -456,7 +422,7 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
       while (_pendingSeekValue != null) {
         final targetSeconds = _pendingSeekValue!;
         _pendingSeekValue = null;
-        await player.seek(Duration(milliseconds: (targetSeconds * 1000).toInt()));
+        await engine.seek(Duration(milliseconds: (targetSeconds * 1000).toInt()));
       }
     } catch (e) {
     } finally {
@@ -466,10 +432,9 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
   }
 
   Future<void> toggleOrientation(BuildContext context) async {
-    if (_isLocked && _isLandscape) return;
-    _activeTray = null;
-    _showControls = false;
-    notifyListeners();
+    if (isLocked && _isLandscape) return;
+    activeTrayNotifier.value = null;
+    showControlsNotifier.value = false;
 
     _showRotationOverlay(context);
     await Future.delayed(VideoPlayerConstants.orientationChangeOverlayDelay);
@@ -510,13 +475,14 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
   }
 
   void _loadMissingDurations() async {
-    for (var item in playlist) {
+    for (int i = 0; i < playlist.length; i++) {
+       var item = playlist[i];
       if (item['duration'] == null || item['duration'] == "00:00") {
         final path = item['path'] as String?;
         if (path != null) {
           final dur = await _getVideoDuration(path);
           if (dur != "00:00") {
-            item['duration'] = dur;
+            playlistManager.updateDuration(i, dur);
             notifyListeners();
           }
         }
@@ -525,18 +491,19 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
   }
 
   Future<String> _getVideoDuration(String path) async {
-    final tempPlayer = Player();
+    final tempEngine = MediaKitVideoEngine();
     final completer = Completer<String>();
-    tempPlayer.stream.duration.listen((dur) {
+    tempEngine.durationStream.listen((dur) {
       if (dur != Duration.zero && !completer.isCompleted) completer.complete(formatDurationString(dur));
     });
     try {
-      await tempPlayer.open(Media(path), play: false);
+      await tempEngine.init();
+      await tempEngine.open(path, play: false);
       final result = await completer.future.timeout(const Duration(seconds: 4), onTimeout: () => "00:00");
-      await tempPlayer.dispose();
+      await tempEngine.dispose();
       return result;
     } catch (e) {
-      await tempPlayer.dispose();
+      await tempEngine.dispose();
       return "00:00";
     }
   }
@@ -552,8 +519,10 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
     if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
       FlutterVolumeController.setVolume(_initialSystemVolume);
       FlutterVolumeController.updateShowSystemUI(true);
+      _pauseSensor();
     } else if (state == AppLifecycleState.resumed) {
       FlutterVolumeController.updateShowSystemUI(false);
+      _resumeSensor();
     }
   }
 
@@ -562,17 +531,28 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
     _hideTimer?.cancel();
     _unlockHideTimer?.cancel();
     _trayHideTimer?.cancel();
-    _volumeTimer?.cancel();
-    _brightnessTimer?.cancel();
+    gestureHandler.dispose();
     _accelerometerSubscription?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     FlutterVolumeController.removeListener();
     WakelockPlus.disable();
-    player.dispose();
+    engine.dispose();
+    playlistManager.dispose();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     positionNotifier.dispose();
     durationNotifier.dispose();
+    isPlayingNotifier.dispose();
+    playbackSpeedNotifier.dispose();
+    showControlsNotifier.dispose();
+    isLockedNotifier.dispose();
+    isUnlockControlsVisibleNotifier.dispose();
+    activeTrayNotifier.dispose();
+    errorMessageNotifier.dispose();
+    volumeNotifier.dispose();
+    brightnessNotifier.dispose();
+    showVolumeLabelNotifier.dispose();
+    showBrightnessLabelNotifier.dispose();
     super.dispose();
   }
 }

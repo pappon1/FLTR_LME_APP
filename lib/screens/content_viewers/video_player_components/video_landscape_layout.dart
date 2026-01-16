@@ -7,107 +7,21 @@ import 'video_bottom_controls.dart';
 import 'video_tray.dart';
 import 'video_lock_overlay.dart';
 import 'video_error_overlay.dart';
+import 'video_player_logic_controller.dart';
 
 class VideoPlayerLandscapeLayout extends StatelessWidget {
+  final VideoPlayerLogicController logic;
   final bool isLocked;
-  final bool isUnlockControlsVisible;
   final bool showControls;
-  final VideoController controller;
-  final String currentTitle;
-  
-  // Gestures
-  final VoidCallback onLockedTap;
-  final VoidCallback onToggleControls;
-  final Function(DragUpdateDetails) onVerticalDragUpdate;
-  
-  // Overlay
-  final bool showBrightnessLabel;
-  final bool showVolumeLabel;
-  final double brightness;
-  final double volume;
-  
-  // Center Controls
-  final bool isPlaying;
-  final Function(int) onSeekRelative;
-  final VoidCallback onPlayPause;
-  
-  // Seekbar
-  final ValueNotifier<Duration> positionNotifier;
-  final ValueNotifier<Duration> durationNotifier;
-  final bool isDraggingSeekbar;
-  final Function(double) onSeekbarChangeStart;
-  final Function(double) onSeekbarChanged;
-  final Function(double) onSeekbarChangeEnd;
-
-  // Bottom Controls
-  final double playbackSpeed;
-  final String currentSubtitle;
-  final String currentQuality;
   final String? activeTray;
-  final Function(String) onToggleTray;
-  final VoidCallback onToggleLock;
-  final VoidCallback onToggleOrientation;
-  final VoidCallback onResetSpeed;
-  final VoidCallback onResetSubtitle;
-  final VoidCallback onResetQuality;
-
-  // Tray
-  final List<String> trayItems;
-  final String trayCurrentSelection;
-  final bool isDraggingSpeedSlider;
-  final Function(String) onTrayItemSelected;
-  final Function(double) onTraySpeedChanged;
-  final VoidCallback onTrayClose;
-  final VoidCallback onTrayInteraction;
-  final VoidCallback onDoubleLockTap;
 
   const VideoPlayerLandscapeLayout({
     super.key,
+    required this.logic,
     required this.isLocked,
-    required this.isUnlockControlsVisible,
     required this.showControls,
-    required this.controller,
-    required this.currentTitle,
-    required this.onLockedTap,
-    required this.onToggleControls,
-    required this.onVerticalDragUpdate,
-    required this.showBrightnessLabel,
-    required this.showVolumeLabel,
-    required this.brightness,
-    required this.volume,
-    required this.isPlaying,
-    required this.onSeekRelative,
-    required this.onPlayPause,
-    required this.positionNotifier,
-    required this.durationNotifier,
-    required this.isDraggingSeekbar,
-    required this.onSeekbarChangeStart,
-    required this.onSeekbarChanged,
-    required this.onSeekbarChangeEnd,
-    required this.playbackSpeed,
-    required this.currentSubtitle,
-    required this.currentQuality,
     this.activeTray,
-    required this.onToggleTray,
-    required this.onToggleLock,
-    required this.onToggleOrientation,
-    required this.onResetSpeed,
-    required this.onResetSubtitle,
-    required this.onResetQuality,
-    required this.trayItems,
-    required this.trayCurrentSelection,
-    required this.isDraggingSpeedSlider,
-    required this.onTrayItemSelected,
-    required this.onTraySpeedChanged,
-    required this.onTrayClose,
-    required this.onTrayInteraction,
-    required this.onDoubleLockTap,
-    this.errorMessage,
-    this.onRetry,
   });
-
-  final String? errorMessage;
-  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -118,11 +32,7 @@ class VideoPlayerLandscapeLayout extends StatelessWidget {
         Container(
           color: Colors.black,
           child: Center(
-            child: Video(
-              controller: controller,
-              controls: (state) => const SizedBox(),
-              fit: BoxFit.contain,
-            ),
+            child: logic.engine.buildVideoWidget(),
           ),
         ),
 
@@ -130,51 +40,85 @@ class VideoPlayerLandscapeLayout extends StatelessWidget {
         Positioned.fill(
           child: GestureDetector(
             behavior: HitTestBehavior.translucent,
-            onTap: onToggleControls,
-            onVerticalDragUpdate: isLocked ? null : onVerticalDragUpdate,
+            onTap: logic.toggleControls,
+            onVerticalDragUpdate: isLocked ? null : (details) => logic.handleVerticalDrag(details, MediaQuery.of(context).size.width),
             child: Container(color: Colors.transparent),
           ),
         ),
 
-        // Gesture Overlay
-        Positioned.fill(
-          child: VideoGestureOverlay(
-            showBrightness: showBrightnessLabel,
-            showVolume: showVolumeLabel,
-            brightness: brightness,
-            volume: volume,
-          ),
+        // Gesture Overlay (Granular Update)
+        ValueListenableBuilder<bool>(
+          valueListenable: logic.showVolumeLabelNotifier,
+          builder: (context, showVolume, _) {
+            return ValueListenableBuilder<bool>(
+              valueListenable: logic.showBrightnessLabelNotifier,
+              builder: (context, showBrightness, _) {
+                return ValueListenableBuilder<double>(
+                  valueListenable: logic.volumeNotifier,
+                  builder: (context, vol, _) {
+                    return ValueListenableBuilder<double>(
+                      valueListenable: logic.brightnessNotifier,
+                      builder: (context, bright, _) {
+                        return Positioned.fill(
+                          child: VideoGestureOverlay(
+                            showBrightness: showBrightness,
+                            showVolume: showVolume,
+                            brightness: bright,
+                            volume: vol,
+                          ),
+                        );
+                      }
+                    );
+                  }
+                );
+              }
+            );
+          }
         ),
 
         // Error Overlay
-        if (errorMessage != null)
-          Positioned.fill(
-            child: VideoErrorOverlay(
-              message: errorMessage!,
-              onRetry: onRetry ?? () {},
-            ),
-          ),
+        ValueListenableBuilder<String?>(
+          valueListenable: logic.errorMessageNotifier,
+          builder: (context, error, _) {
+            if (error == null) return const SizedBox();
+            return Positioned.fill(
+              child: VideoErrorOverlay(
+                message: error,
+                onRetry: () => logic.playVideo(logic.currentIndex),
+              ),
+            );
+          }
+        ),
 
         // Controls
         Stack(
           children: [
             if (isLocked)
-              VideoLockOverlay(
-                isVisible: isUnlockControlsVisible,
-                title: currentTitle,
-                onUnlock: onToggleLock,
-                onInteraction: onLockedTap,
+              ValueListenableBuilder<bool>(
+                valueListenable: logic.isUnlockControlsVisibleNotifier,
+                builder: (context, visible, _) {
+                  return VideoLockOverlay(
+                    isVisible: visible,
+                    title: logic.currentTitle,
+                    onUnlock: logic.toggleLock,
+                    onInteraction: logic.handleLockedTap,
+                  );
+                }
               )
             else ...[
               // Center Controls
-              if (!isDraggingSeekbar)
-                VideoCenterControls(
-                  isPlaying: isPlaying,
-                  isVisible: showControls,
-                  onPlayPause: onPlayPause,
-                  onSeek: onSeekRelative,
-                  iconSize: 48,
-                ),
+              ValueListenableBuilder<bool>(
+                valueListenable: logic.isPlayingNotifier,
+                builder: (context, isPlaying, _) {
+                  return VideoCenterControls(
+                    isPlaying: isPlaying,
+                    isVisible: showControls,
+                    onPlayPause: logic.togglePlayPause,
+                    onSeek: logic.seekRelative,
+                    iconSize: 48,
+                  );
+                }
+              ),
 
               // Visual Scrims
               _buildScrim(isTop: true),
@@ -194,19 +138,24 @@ class VideoPlayerLandscapeLayout extends StatelessWidget {
                         children: [
                           IconButton(
                             icon: const Icon(Icons.arrow_back, color: Colors.white),
-                            onPressed: onToggleOrientation,
+                            onPressed: () => logic.toggleOrientation(context),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: Text(
-                              currentTitle,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                shadows: [Shadow(color: Colors.black, blurRadius: 4)],
-                              ),
-                              overflow: TextOverflow.ellipsis,
+                            child: ValueListenableBuilder<int>(
+                              valueListenable: logic.currentIndexNotifier,
+                              builder: (context, index, _) {
+                                return Text(
+                                  logic.currentTitle,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    shadows: [Shadow(color: Colors.black, blurRadius: 4)],
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                );
+                              }
                             ),
                           ),
                         ],
@@ -230,18 +179,18 @@ class VideoPlayerLandscapeLayout extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           ValueListenableBuilder<Duration>(
-                            valueListenable: positionNotifier,
+                            valueListenable: logic.positionNotifier,
                             builder: (context, pos, _) {
                               return ValueListenableBuilder<Duration>(
-                                valueListenable: durationNotifier,
+                                valueListenable: logic.durationNotifier,
                                 builder: (context, dur, _) {
                                   return VideoSeekbar(
                                     position: pos,
                                     duration: dur,
                                     isLocked: false,
-                                    onChangeStart: onSeekbarChangeStart,
-                                    onChanged: onSeekbarChanged,
-                                    onChangeEnd: onSeekbarChangeEnd,
+                                    onChangeStart: logic.onSeekbarChangeStart,
+                                    onChanged: logic.onSeekbarChanged,
+                                    onChangeEnd: logic.onSeekbarChangeEnd,
                                   );
                                 },
                               );
@@ -255,23 +204,28 @@ class VideoPlayerLandscapeLayout extends StatelessWidget {
                             children: [
                               Padding(
                                 padding: const EdgeInsets.only(top: 16),
-                                child: VideoBottomControls(
-                                  isLocked: isLocked,
-                                  isLandscape: true,
-                                  isUnlockControlsVisible: isUnlockControlsVisible,
-                                  playbackSpeed: playbackSpeed,
-                                  currentSubtitle: currentSubtitle,
-                                  currentQuality: currentQuality,
-                                  activeTray: activeTray,
-                                  onToggleTraySpeed: () => onToggleTray('speed'),
-                                  onToggleTraySubtitle: () => onToggleTray('subtitle'),
-                                  onToggleTrayQuality: () => onToggleTray('quality'),
-                                  onLockTap: onToggleLock,
-                                  onDoubleLockTap: onDoubleLockTap,
-                                  onOrientationTap: onToggleOrientation,
-                                  onResetSpeed: onResetSpeed,
-                                  onResetSubtitle: onResetSubtitle,
-                                  onResetQuality: onResetQuality,
+                                child: ValueListenableBuilder<double>(
+                                  valueListenable: logic.playbackSpeedNotifier,
+                                  builder: (context, speed, _) {
+                                    return VideoBottomControls(
+                                      isLocked: isLocked,
+                                      isLandscape: true,
+                                      isUnlockControlsVisible: logic.isUnlockControlsVisible,
+                                      playbackSpeed: speed,
+                                      currentSubtitle: logic.currentSubtitle,
+                                      currentQuality: logic.currentQuality,
+                                      activeTray: activeTray,
+                                      onToggleTraySpeed: () => logic.toggleTray('speed'),
+                                      onToggleTraySubtitle: () => logic.toggleTray('subtitle'),
+                                      onToggleTrayQuality: () => logic.toggleTray('quality'),
+                                      onLockTap: logic.toggleLock,
+                                      onDoubleLockTap: logic.toggleLock,
+                                      onOrientationTap: () => logic.toggleOrientation(context),
+                                      onResetSpeed: () => logic.setPlaybackSpeed(1.0),
+                                      onResetSubtitle: () => logic.setTrayItem("Off"),
+                                      onResetQuality: () => logic.setTrayItem("Auto"),
+                                    );
+                                  }
                                 ),
                               ),
 
@@ -281,16 +235,21 @@ class VideoPlayerLandscapeLayout extends StatelessWidget {
                                   left: 0,
                                   right: 0,
                                   child: Center(
-                                    child: VideoTray(
-                                      activeTray: activeTray!,
-                                      items: trayItems,
-                                      currentSelection: trayCurrentSelection,
-                                      playbackSpeed: playbackSpeed,
-                                      isDraggingSpeedSlider: isDraggingSpeedSlider,
-                                      onItemSelected: onTrayItemSelected,
-                                      onSpeedChanged: onTraySpeedChanged,
-                                      onClose: onTrayClose,
-                                      onInteraction: onTrayInteraction,
+                                    child: ValueListenableBuilder<double>(
+                                      valueListenable: logic.playbackSpeedNotifier,
+                                      builder: (context, speed, _) {
+                                        return VideoTray(
+                                          activeTray: activeTray!,
+                                          items: activeTray == 'quality' ? logic.qualities : logic.subtitles,
+                                          currentSelection: activeTray == 'quality' ? logic.currentQuality : logic.currentSubtitle,
+                                          playbackSpeed: speed,
+                                          isDraggingSpeedSlider: logic.isDraggingSpeedSlider,
+                                          onItemSelected: logic.setTrayItem,
+                                          onSpeedChanged: logic.setPlaybackSpeed,
+                                          onClose: () => logic.toggleTray(activeTray!),
+                                          onInteraction: () => logic.startHideTimer(),
+                                        );
+                                      }
                                     ),
                                   ),
                                 ),
