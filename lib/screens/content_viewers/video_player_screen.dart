@@ -34,6 +34,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
   late int _currentIndex;
   bool _isPlaying = false;
   bool _isBuffering = false;
+  // Performance: ValueNotifiers for granular UI updates
+  final ValueNotifier<Duration> _positionNotifier = ValueNotifier(Duration.zero);
+  final ValueNotifier<Duration> _durationNotifier = ValueNotifier(Duration.zero);
   double _playbackSpeed = 1.0;
   
   // UI State
@@ -41,6 +44,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
   bool _isLandscape = false;
   bool _isDraggingSeekbar = false;
   bool _isLocked = false;
+  String? _errorMessage;
   Timer? _hideTimer;
   
   // Lock UI State
@@ -111,7 +115,43 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
     player = Player();
     controller = VideoController(player);
     
-    // Listen to streams
+    _setupPlayerListeners();
+
+    // Start initial video
+    if (widget.playlist.isNotEmpty && _currentIndex < widget.playlist.length) {
+      _playVideo(_currentIndex);
+    }
+    
+    // Background scan for missing durations
+    Future.delayed(const Duration(seconds: 1), () => _loadMissingDurations());
+
+    _startHideTimer();
+    _initSensor();
+    _initProgress();
+  }
+
+  void _setupPlayerListeners() {
+    player.stream.position.listen((pos) {
+       _positionNotifier.value = pos;
+       _handlePositionUpdate(pos);
+    });
+
+    player.stream.duration.listen((dur) {
+       _durationNotifier.value = dur;
+       // Feature: Update real duration in playlist if it was missing
+       if (dur != Duration.zero) {
+          final item = widget.playlist[_currentIndex];
+          final formatted = _formatDurationString(dur);
+          if (item['duration'] == null || item['duration'] == "00:00") {
+             if (mounted) {
+               setState(() {
+                 item['duration'] = formatted;
+               });
+             }
+          }
+       }
+    });
+
     player.stream.playing.listen((p) {
       if (mounted) setState(() => _isPlaying = p);
     });
@@ -122,25 +162,73 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
 
     player.stream.completed.listen((completed) {
       if (completed) {
-        // Auto play next if available
         if (_currentIndex < widget.playlist.length - 1) {
           _playVideo(_currentIndex + 1);
         }
       }
     });
+    
+    player.stream.error.listen((error) {
+       debugPrint("Player Error: $error");
+       if (mounted) {
+         setState(() {
+           _errorMessage = error.toString();
+           _isBuffering = false;
+         });
+       }
+    });
+  }
 
-    // Start initial video
-    if (widget.playlist.isNotEmpty && _currentIndex < widget.playlist.length) {
-      _playVideo(_currentIndex);
+  Future<void> _loadMissingDurations() async {
+    for (int i = 0; i < widget.playlist.length; i++) {
+        final item = widget.playlist[i];
+        if (item['duration'] == null || item['duration'] == "00:00") {
+           final path = item['path'] as String?;
+           if (path != null) {
+              final dur = await _getVideoDuration(path);
+              if (dur != "00:00" && mounted) {
+                 setState(() {
+                   item['duration'] = dur;
+                 });
+              }
+           }
+        }
     }
+  }
+
+  Future<String> _getVideoDuration(String path) async {
+    final tempPlayer = Player();
+    final completer = Completer<String>();
     
-    _startHideTimer();
-    
-    // Feature: Sensor Rotation
-    _initSensor();
-    
-    // Feature: Progress Tracking
-    _initProgress();
+    final subscription = tempPlayer.stream.duration.listen((dur) {
+      if (dur != Duration.zero && !completer.isCompleted) {
+        completer.complete(_formatDurationString(dur));
+      }
+    });
+
+    try {
+      await tempPlayer.open(Media(path), play: false);
+      final result = await completer.future.timeout(
+        const Duration(seconds: 4), 
+        onTimeout: () => "00:00"
+      );
+      await subscription.cancel();
+      await tempPlayer.dispose();
+      return result;
+    } catch (e) {
+      await subscription.cancel();
+      await tempPlayer.dispose();
+      return "00:00";
+    }
+  }
+
+  String _formatDurationString(Duration dur) {
+    String two(int n) => n.toString().padLeft(2, "0");
+    if (dur.inHours > 0) {
+      return "${dur.inHours}:${two(dur.inMinutes % 60)}:${two(dur.inSeconds % 60)}";
+    } else {
+      return "${two(dur.inMinutes)}:${two(dur.inSeconds % 60)}";
+    }
   }
 
   void _initSensor() {
@@ -205,8 +293,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
              // For simplicity, we can try seeking immediately after open, 
              // MediaKit usually handles this well.
              
-             // Wait for a small duration if needed, or listen for duration change
-             // Let's use a small delay or a one-time listener
+             // Wait for a small delay or a one-time listener
              _resumeProgress(path, progress);
           }
         }
@@ -362,11 +449,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
         _videoProgress = loadedProgress;
       });
     }
-
-    // Start tracking position
-    _posSubscription = player.stream.position.listen((pos) {
-      _handlePositionUpdate(pos);
-    });
   }
 
   void _handlePositionUpdate(Duration pos) {
@@ -378,14 +460,29 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
     final currentPath = widget.playlist[_currentIndex]['path'] as String?;
     
     if (currentPath != null) {
-      // Update local state
-      setState(() {
+      bool shouldUpdateUI = false;
+      
+      // Update local cache if significant change (0.5% or crossed 90% "Watched" threshold)
+      double oldRatio = _videoProgress[currentPath] ?? 0.0;
+      if ((ratio - oldRatio).abs() > 0.005 || (oldRatio < 0.9 && ratio >= 0.9)) {
         _videoProgress[currentPath] = ratio;
-      });
+        shouldUpdateUI = true;
+      }
 
-      // Periodic save (e.g., every 5 seconds)
+      // Final completion
+      if (ratio >= 0.99 && oldRatio < 0.99) {
+        _videoProgress[currentPath] = 1.0;
+        _prefs.setDouble('progress_$currentPath', 1.0);
+        shouldUpdateUI = true;
+      }
+
+      if (shouldUpdateUI && mounted) {
+        setState(() {});
+      }
+
+      // Periodic persistent save (every 10 seconds)
       final now = DateTime.now();
-      if (_lastSaveTime == null || now.difference(_lastSaveTime!) > const Duration(seconds: 5)) {
+      if (_lastSaveTime == null || now.difference(_lastSaveTime!) > const Duration(seconds: 10)) {
         _lastSaveTime = now;
         _prefs.setDouble('progress_$currentPath', ratio);
       }
@@ -1716,6 +1813,26 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.access_time, size: 12, color: Colors.white.withOpacity(0.5)),
+                      const SizedBox(width: 4),
+                      Text(
+                        item['duration'] ?? "00:00",
+                        style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+                      ),
+                      if (progress > 0.9) ...[
+                        const SizedBox(width: 8),
+                         const Icon(Icons.check_circle, size: 12, color: Color(0xFF22C55E)),
+                         const SizedBox(width: 4),
+                         const Text(
+                           "Watched", 
+                           style: TextStyle(color: Color(0xFF22C55E), fontSize: 11, fontWeight: FontWeight.bold)
+                         ),
+                      ]
+                    ],
                   ),
                 ],
               ),

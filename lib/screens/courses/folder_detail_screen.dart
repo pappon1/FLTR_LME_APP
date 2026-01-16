@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:media_kit/media_kit.dart';
 import '../../utils/app_theme.dart';
 import '../../utils/clipboard_manager.dart';
 import '../content_viewers/image_viewer_screen.dart';
@@ -30,7 +32,10 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
     super.initState();
     // Create a mutable copy of the list to ensure we don't modify the parent's reference directly (or fail if it's immutable)
     _contents = List.from(widget.contentList);
-    _loadPersistentContent();
+    _loadPersistentContent().then((_) {
+      // Background scan for missing durations
+      Future.delayed(const Duration(seconds: 1), () => _fixMissingDurations());
+    });
   }
   
   @override
@@ -410,14 +415,81 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
     try {
       FilePickerResult? result = await FilePicker.platform.pickFiles(type: fileType, allowedExtensions: extensions, allowMultiple: true);
       if (result != null) {
-        setState(() {
-          for (var file in result.files) {
-            if (file.path != null) _contents.add({'type': type, 'name': file.name, 'path': file.path, 'isLocal': true});
+        for (var file in result.files) {
+          if (file.path != null) {
+            String durationStr = "00:00";
+            if (type == 'video') {
+              durationStr = await _getVideoDuration(file.path!);
+            }
+            setState(() {
+              _contents.add({
+                'type': type, 
+                'name': file.name, 
+                'path': file.path, 
+                'duration': durationStr,
+                'isLocal': true
+              });
+            });
           }
-        });
+        }
         _savePersistentContent();
       }
     } catch (e) { debugPrint('Error picking file: $e'); }
+  }
+
+  Future<String> _getVideoDuration(String path) async {
+    final player = Player();
+    final completer = Completer<String>();
+    
+    final subscription = player.stream.duration.listen((dur) {
+      if (dur != Duration.zero && !completer.isCompleted) {
+        completer.complete(_formatDurationString(dur));
+      }
+    });
+
+    try {
+      await player.open(Media(path), play: false);
+      final result = await completer.future.timeout(
+        const Duration(seconds: 5), 
+        onTimeout: () => "00:00"
+      );
+      await subscription.cancel();
+      await player.dispose();
+      return result;
+    } catch (e) {
+      debugPrint("Error extracting duration: $e");
+      await subscription.cancel();
+      await player.dispose();
+      return "00:00";
+    }
+  }
+
+  String _formatDurationString(Duration dur) {
+    String two(int n) => n.toString().padLeft(2, "0");
+    if (dur.inHours > 0) {
+      return "${dur.inHours}:${two(dur.inMinutes % 60)}:${two(dur.inSeconds % 60)}";
+    } else {
+      return "${two(dur.inMinutes)}:${two(dur.inSeconds % 60)}";
+    }
+  }
+
+  Future<void> _fixMissingDurations() async {
+    bool changed = false;
+    for (int i = 0; i < _contents.length; i++) {
+      if (_contents[i]['type'] == 'video' && 
+          (_contents[i]['duration'] == null || _contents[i]['duration'] == '00:00') &&
+          _contents[i]['path'] != null) {
+        final realDur = await _getVideoDuration(_contents[i]['path']);
+        if (realDur != '00:00') {
+          _contents[i]['duration'] = realDur;
+          changed = true;
+        }
+      }
+    }
+    if (changed && mounted) {
+      setState(() {});
+      _savePersistentContent();
+    }
   }
 
   void _handleContentTap(Map<String, dynamic> item, int index) {
