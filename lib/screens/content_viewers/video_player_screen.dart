@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:io';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
@@ -10,7 +8,8 @@ import 'package:flutter_volume_controller/flutter_volume_controller.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:sensors_plus/sensors_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../widgets/video_thumbnail_widget.dart';
+import 'video_player_components/video_portrait_layout.dart';
+import 'video_player_components/video_landscape_layout.dart';
 
 class VideoPlayerScreen extends StatefulWidget {
   final List<Map<String, dynamic>> playlist;
@@ -33,7 +32,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
   // Player State
   late int _currentIndex;
   bool _isPlaying = false;
-  bool _isBuffering = false;
+  
   // Performance: ValueNotifiers for granular UI updates
   final ValueNotifier<Duration> _positionNotifier = ValueNotifier(Duration.zero);
   final ValueNotifier<Duration> _durationNotifier = ValueNotifier(Duration.zero);
@@ -44,20 +43,15 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
   bool _isLandscape = false;
   bool _isDraggingSeekbar = false;
   bool _isLocked = false;
-  String? _errorMessage;
   Timer? _hideTimer;
   
   // Lock UI State
   bool _isUnlockControlsVisible = false;
   Timer? _unlockHideTimer;
 
-  // Local state for smooth seeking
-  double? _dragValue;
-
   // Tray State
-  String? _activeTray; // 'quality', 'speed', 'subtitle'
+  String? _activeTray;
   Timer? _trayHideTimer;
-  bool _showSpeedPresets = false;
   bool _isDraggingSpeedSlider = false;
 
   // Feature State
@@ -143,11 +137,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
           final item = widget.playlist[_currentIndex];
           final formatted = _formatDurationString(dur);
           if (item['duration'] == null || item['duration'] == "00:00") {
-             if (mounted) {
-               setState(() {
-                 item['duration'] = formatted;
-               });
-             }
+             item['duration'] = formatted;
+             // Only setState for the playlist duration update
+             if (mounted) setState(() {});
           }
        }
     });
@@ -157,7 +149,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
     });
     
     player.stream.buffering.listen((b) {
-      if (mounted) setState(() => _isBuffering = b);
+      // Buffering state not used in UI for now
     });
 
     player.stream.completed.listen((completed) {
@@ -170,12 +162,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
     
     player.stream.error.listen((error) {
        debugPrint("Player Error: $error");
-       if (mounted) {
-         setState(() {
-           _errorMessage = error.toString();
-           _isBuffering = false;
-         });
-       }
     });
   }
 
@@ -325,17 +311,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
     }
   }
   
-  // Gesture State Tracks
-  bool _isVerticalDrag = false;
-
-  void _onVerticalDragStart(DragStartDetails details) {
-    _isVerticalDrag = true;
-  }
-
-  void _onHorizontalDragStart(DragStartDetails details) {
-    _isVerticalDrag = false;
-  }
-
   Future<void> _onVerticalDragUpdate(DragUpdateDetails details) async {
     // Block if it started as a horizontal drag (though GestureDetector usually handles this separation, explicit checks help)
     // Actually, simply relying on onVerticalDragUpdate is usually enough if onHorizontal isn't consuming it.
@@ -410,8 +385,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
       }
     }
   }
-
-  final GlobalKey _videoGestureKey = GlobalKey();
 
   void _scrollToCurrent() {
     if (_playlistScrollController.hasClients) {
@@ -547,7 +520,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
       if (mounted) {
         setState(() {
           _activeTray = null;
-          _showSpeedPresets = false;
         });
         _startHideTimer();
       }
@@ -558,11 +530,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
     setState(() {
       if (_activeTray == tray) {
         _activeTray = null;
-        _showSpeedPresets = false;
         _startHideTimer();
       } else {
         _activeTray = tray;
-        _showSpeedPresets = false;
         _hideTimer?.cancel(); // Stop main hide timer while tray is open
         _startTrayHideTimer();
       }
@@ -741,14 +711,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
-        if (_isLocked && _isLandscape) return false;
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        if (_isLocked && _isLandscape) return;
         if (_isLandscape) {
           _toggleOrientation();
-          return false;
+          return;
         }
-        return true;
+        Navigator.pop(context);
       },
       child: Scaffold(
         backgroundColor: Colors.black,
@@ -764,639 +736,160 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
   }
 
   Widget _buildPortraitLayout() {
-    final size = MediaQuery.of(context).size;
-    final videoHeight = size.width * 9 / 16;
-
-    // Fixed column with expanded scrollable playlist at the bottom
-    // Determine visibility based on Lock State
-    // If locked: Visible only when `_isUnlockControlsVisible` is true.
-    // If unlocked: Visible when `_showControls` is true.
-    final isInterfaceVisible = _isLocked ? _isUnlockControlsVisible : _showControls;
-
-    // Fixed column with expanded scrollable playlist at the bottom
-    return Column(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-               // Header (Fixed)
-               AnimatedOpacity(
-                 duration: const Duration(milliseconds: 300),
-                 opacity: _isLocked ? 0.5 : 1.0, // Always visible if unlocked
-                 child: Container(
-                    color: Colors.black, 
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    child: Row(
-                      children: [
-                        // Back Button (Hide if locked)
-                        Opacity(
-                          opacity: _isLocked ? 0.0 : 1.0,
-                          child: IgnorePointer(
-                            ignoring: _isLocked,
-                            child: IconButton(
-                              icon: const Icon(Icons.arrow_back, color: Colors.white),
-                              onPressed: () => Navigator.pop(context),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _currentTitle,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                 ),
-               ),
-              
-              // Video Player Area (Fixed)
-              SizedBox(
-                width: size.width,
-                height: videoHeight,
-                child: Stack(
-                  children: [
-                    Video(controller: controller, controls: (state) => const SizedBox()),
-                    
-                    // Locked Dark Overlay (Behind controls)
-                    if (_isLocked)
-                    Positioned.fill(
-                      child: Container(color: Colors.black54),
-                    ),
-
-                    // Gesture Detector
-                    Positioned.fill(
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.translucent,
-                        onTap: () {
-                           if (_isLocked) {
-                              _handleLockedTap();
-                           } else {
-                              _toggleControls();
-                           }
-                        },
-                        onVerticalDragUpdate: _isLocked ? null : _onVerticalDragUpdate,
-                        onHorizontalDragUpdate: (details) {
-                          // Consume horizontal drag to prevent vertical mistakenly acting?
-                          // Or better, if we want future seek, we can implement it here.
-                          // For now, doing nothing effectively blocks "vertical" interpretation if the user moves diagonally closer to horizontal.
-                        },
-                        child: Container(color: Colors.transparent),
-                      ),
-                    ),
-
-                    // Volume/Brightness Overlay
-                    Positioned.fill(child: _buildGestureOverlay()),
-
-                    // Play/Pause Controls (Only if Unlocked)
-                    if (!_isLocked)
-                      IgnorePointer(
-                        ignoring: !isInterfaceVisible,
-                        child: AnimatedOpacity(
-                          duration: const Duration(milliseconds: 300),
-                          opacity: isInterfaceVisible ? 1.0 : 0.0,
-                          child: Center(
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                    // Replay 10s
-                                    GestureDetector(
-                                      onTap: () => _seekRelative(-10),
-                                      child: Container(
-                                        padding: const EdgeInsets.all(10),
-                                        decoration: const BoxDecoration(
-                                          color: Colors.black54,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(Icons.replay_10, color: Colors.white, size: 28),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 24),
-                                    
-                                    // Play/Pause
-                                    GestureDetector(
-                                      onTap: _togglePlayPause,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(10),
-                                        decoration: BoxDecoration(
-                                          color: Colors.black54,
-                                          shape: BoxShape.circle,
-                                          border: Border.all(color: Colors.white30, width: 1),
-                                        ),
-                                        child: Icon(
-                                          _isPlaying ? Icons.pause : Icons.play_arrow,
-                                          color: Colors.white,
-                                          size: 32,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 24),
-                                    
-                                    // Forward 10s
-                                    GestureDetector(
-                                      onTap: () => _seekRelative(10),
-                                      child: Container(
-                                        padding: const EdgeInsets.all(10),
-                                        decoration: const BoxDecoration(
-                                          color: Colors.black54,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: const Icon(Icons.forward_10, color: Colors.white, size: 28),
-                                      ),
-                                    ),
-                                ],
-                              ),
-                           ),
-                        ),
-                      )
-                  ],
-                ),
-              ),
-              
-              // Subtitle Safe Area (Black Bar) - Pushes controls down
-              if (_currentSubtitle != "Off" && !_isLandscape)
-                 Container(height: 40, color: Colors.black),
-
-              // Fixed Controls Area
-              // Stack to allow Tray to float over icons without shifting layout
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Seekbar
-                  AnimatedOpacity(
-                    duration: const Duration(milliseconds: 300),
-                    opacity: 1.0, // Always visible
-                    child: Container(
-                      color: Colors.black, // Pure Black
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      child: _buildSeekbar(isPortrait: true, hideSlider: _isLocked),
-                    ),
-                  ),
-
-                  // Icons Row + Floating Tray
-                  Stack(
-                    alignment: Alignment.bottomCenter, // Anchor at bottom
-                    clipBehavior: Clip.none, // Allow tray to float out
-                    children: [
-                        // The Icons Row (Base)
-                        Container(
-                          color: Colors.black, // Pure Black
-                          padding: const EdgeInsets.only(left: 20, right: 20, bottom: 8),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                                // Speed
-                               AnimatedOpacity(
-                                 duration: const Duration(milliseconds: 300),
-                                 opacity: _isLocked ? 0.0 : 1.0,
-                                 child: IgnorePointer(
-                                   ignoring: _isLocked, 
-                                   child: _buildControlIcon(
-                                      Icons.speed, 
-                                      "${_playbackSpeed.toStringAsFixed(2)}x", 
-                                      () => _toggleTray('speed'), 
-                                      isActive: _activeTray == 'speed' || _playbackSpeed != 1.0,
-                                      onReset: () => setState(() { _playbackSpeed = 1.0; player.setRate(1.0); }),
-                                   )
-                                 ),
-                               ),
-                               // Subtitle
-                               AnimatedOpacity(
-                                 duration: const Duration(milliseconds: 300),
-                                 opacity: _isLocked ? 0.0 : 1.0,
-                                 child: IgnorePointer(
-                                   ignoring: _isLocked, 
-                                   child: _buildControlIcon(
-                                      Icons.closed_caption, 
-                                      _currentSubtitle == "Off" ? "Subtitle" : _currentSubtitle, 
-                                      () => _toggleTray('subtitle'), 
-                                      isActive: _activeTray == 'subtitle' || _currentSubtitle != 'Off',
-                                      onReset: () => setState(() => _currentSubtitle = "Off"),
-                                   )
-                                 ),
-                               ),
-                               // Settings
-                               AnimatedOpacity(
-                                 duration: const Duration(milliseconds: 300),
-                                 opacity: _isLocked ? 0.0 : 1.0,
-                                 child: IgnorePointer(
-                                   ignoring: _isLocked, 
-                                   child: _buildControlIcon(
-                                      Icons.settings, 
-                                      _currentQuality, 
-                                      () => _toggleTray('quality'), 
-                                      isActive: _activeTray == 'quality' || _currentQuality != "Auto",
-                                      onReset: () => setState(() => _currentQuality = "Auto"),
-                                   )
-                                 ),
-                               ),
-                               
-                                // Lock Button
-                               // Logic: If Locked -> Always visible (1.0 or 0.2). If Unlocked -> Follow controls (1.0 or 0.0)
-                               AnimatedOpacity(
-                                 duration: const Duration(milliseconds: 300),
-                                 opacity: _isLocked ? (_isUnlockControlsVisible ? 1.0 : 0.0) : 1.0,
-                                 child: GestureDetector(
-                                    onTap: () {
-                                      if (!_isLocked) {
-                                        _toggleLock();
-                                      } else {
-                                        _handleLockedTap();
-                                      }
-                                    },
-                                    onDoubleTap: _isLocked ? _toggleLock : null,
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        AnimatedContainer(
-                                          duration: const Duration(milliseconds: 300),
-                                          child: Icon(
-                                            _isLocked ? Icons.lock : Icons.lock_open, 
-                                            color: Colors.white, 
-                                            size: _isLocked ? 44 : 22 
-                                          ),
-                                        ),
-                                        const SizedBox(height: 3),
-                                        if (!_isLocked)
-                                        const Text(
-                                          "Lock",
-                                          style: TextStyle(color: Colors.white, fontSize: 10),
-                                        ),
-                                        if (_isLocked && _isUnlockControlsVisible)
-                                          const Padding(
-                                            padding: EdgeInsets.only(top: 4),
-                                            child: Text(
-                                              "Double tap\nto unlock",
-                                              textAlign: TextAlign.center,
-                                              style: TextStyle(
-                                                  color: Colors.white,
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.bold 
-                                              ),
-                                            ),
-                                          )
-                                      ],
-                                    ),
-                                 ),
-                               ),
-
-                               // Landscape
-                               AnimatedOpacity(
-                                 duration: const Duration(milliseconds: 300),
-                                 opacity: _isLocked ? 0.0 : 1.0,
-                                 child: IgnorePointer(
-                                   ignoring: _isLocked, 
-                                   child: _buildControlIcon(Icons.fullscreen, "Landscape", _toggleOrientation)
-                                 ),
-                               ),
-                            ],
-                          ),
-                        ),
-
-                        // FLOATING TRAY (Positioned relative to the row)
-                        // "bottom: 100%" implies it sits directly on top of the icons container
-                        if (_activeTray != null)
-                          Positioned(
-                              bottom: 0, // Overlap the icons directly (Front layer)
-                              left: 0, 
-                              right: 0,
-                              child: Center(child: _buildTray()), 
-                          ),
-                    ],
-                  ),
-
-                  // Light separator
-                  AnimatedOpacity(
-                     duration: const Duration(milliseconds: 300),
-                     opacity: (_isLocked ? 0.0 : (_showControls ? 1.0 : 0.0)),
-                     child: const Divider(height: 1, color: Colors.white10)
-                  ),
-                ],
-              ),
-
-              
-              // Scrollable Playlist (Expanded to fill remaining space)
-              Expanded(
-                child: GestureDetector(
-                  onTap: () {
-                    if (_isLocked) _handleLockedTap();
-                  },
-                  child: Container(
-                    color: Colors.black, // Pure black
-                    width: double.infinity,
-                    child: _isLocked 
-                       ? null 
-                       : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                          itemCount: widget.playlist.length,
-                          itemBuilder: (context, i) => _buildPlaylistItem(widget.playlist[i], i),
-                        ),
-                  ),
-                ),
-              ),
-             
-            ],
-          ),
-        ),
-      ],
+    return VideoPlayerPortraitLayout(
+      size: MediaQuery.of(context).size,
+      videoHeight: MediaQuery.of(context).size.width * 9 / 16,
+      isLocked: _isLocked,
+      isUnlockControlsVisible: _isUnlockControlsVisible,
+      showControls: _showControls,
+      controller: controller,
+      currentTitle: _currentTitle,
+      onLockedTap: _handleLockedTap,
+      onToggleControls: _toggleControls,
+      onVerticalDragUpdate: _onVerticalDragUpdate,
+      showBrightnessLabel: _showBrightnessLabel,
+      showVolumeLabel: _showVolumeLabel,
+      brightness: _brightness,
+      volume: _volume,
+      isPlaying: _isPlaying,
+      onPlayPause: _togglePlayPause,
+      onSeekRelative: _seekRelative,
+      positionNotifier: _positionNotifier,
+      durationNotifier: _durationNotifier,
+      onSeekbarChangeStart: (v) {
+        _wasPlayingBeforeDrag = player.state.playing;
+        player.pause();
+        _isDraggingSeekbar = true;
+      },
+      onSeekbarChanged: (v) {
+        _pendingSeekValue = v;
+        if (!_isSeeking) _processSeekLoop();
+      },
+      onSeekbarChangeEnd: (v) {
+        _isDraggingSeekbar = false;
+        _pendingSeekValue = null;
+        player.seek(Duration(milliseconds: (v * 1000).toInt())).then((_) {
+          if (_wasPlayingBeforeDrag) {
+            player.play();
+            _startHideTimer(const Duration(milliseconds: 700), true);
+          }
+        });
+      },
+      playbackSpeed: _playbackSpeed,
+      currentSubtitle: _currentSubtitle,
+      currentQuality: _currentQuality,
+      activeTray: _activeTray,
+      onToggleTray: _toggleTray,
+      onToggleLock: _toggleLock,
+      onToggleOrientation: _toggleOrientation,
+      onResetSpeed: () => setState(() { _playbackSpeed = 1.0; player.setRate(1.0); }),
+      onResetSubtitle: () => setState(() => _currentSubtitle = "Off"),
+      onResetQuality: () => setState(() => _currentQuality = "Auto"),
+      trayItems: _activeTray == 'quality' ? _qualities : _subtitles,
+      trayCurrentSelection: _activeTray == 'quality' ? _currentQuality : _currentSubtitle,
+      isDraggingSpeedSlider: _isDraggingSpeedSlider,
+      onTrayItemSelected: (item) {
+        setState(() {
+          if (_activeTray == 'quality') _currentQuality = item;
+          else _currentSubtitle = item;
+          _activeTray = null; // Hide immediately
+        });
+        _startHideTimer();
+      },
+      onTraySpeedChanged: (s) {
+        player.setRate(s);
+        setState(() {
+          _playbackSpeed = s;
+          _activeTray = null; // Hide immediately
+        });
+        _startHideTimer();
+      },
+      onTrayClose: () => setState(() => _activeTray = null),
+      onTrayInteraction: _startTrayHideTimer,
+      playlist: widget.playlist,
+      currentIndex: _currentIndex,
+      videoProgress: _videoProgress,
+      onVideoTap: _playVideo,
+      onBack: () => Navigator.pop(context),
+      onDoubleLockTap: _toggleLock,
     );
-
   }
 
   // Restore Landscape Layout
   Widget _buildLandscapeLayout() {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-         // 1. Video Layer
-        Container(
-          color: Colors.black,
-          child: Center(
-            child: Video(
-              controller: controller,
-              controls: (state) => const SizedBox(),
-              fit: BoxFit.contain, // Maintain aspect ratio without jumping
-            ),
-          ),
-        ),
-
-        // 2. Gesture Detector (Captures Taps and Double Taps)
-        Positioned.fill(
-          child: GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onTap: _toggleControls,
-            onDoubleTapDown: (details) {
-               // Consume double tap to prevent system UI from reacting
-            },
-            onDoubleTap: () {
-               // Placeholder for future double tap seek
-            },
-            onVerticalDragUpdate: _isLocked ? null : _onVerticalDragUpdate,
-            onHorizontalDragUpdate: (details) {}, 
-            child: Container(color: Colors.transparent),
-          ),
-        ),
-
-        // Gesture Overlay
-        Positioned.fill(child: _buildGestureOverlay()),
-        
-        // 3. Controls
-        // 3. Controls (NO SafeArea here to prevent 'jhatka' shift)
-           Stack(
-             children: [
-                // Lock Mode Overlay
-               if (_isLocked) ...[
-                    _buildLockOverlay(),
-               ] else ...[
-                 // Normal Landscape Controls
-                  // 1. Center Controls (Play/Pause)
-                  // Placed first so bars appear on top, but we will ensure bars don't block center touches
-                  // via HitTestBehavior or specific sizing.
-                  if (!_isDraggingSeekbar)
-                    Center(
-                      child: AnimatedOpacity(
-                        duration: const Duration(milliseconds: 300),
-                        opacity: _showControls ? 1.0 : 0.0,
-                        child: IgnorePointer(
-                          ignoring: !_showControls,
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              GestureDetector(
-                                onTap: () => _seekRelative(-10),
-                                child: Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.black54,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(Icons.replay_10, color: Colors.white, size: 36),
-                                ),
-                              ),
-                              const SizedBox(width: 32),
-                              GestureDetector(
-                                onTap: _togglePlayPause,
-                                child: Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black54,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(color: Colors.white30, width: 1),
-                                  ),
-                                  child: Icon(
-                                    _isPlaying ? Icons.pause : Icons.play_arrow,
-                                    color: Colors.white,
-                                    size: 48,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 32),
-                              GestureDetector(
-                                onTap: () => _seekRelative(10),
-                                child: Container(
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.black54,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(Icons.forward_10, color: Colors.white, size: 36),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-
-                  // 2. Visual Scrims (Gradients) - IGNORE POINTERS
-                  // These provide the 'Shadow' look without blocking touches
-                  Positioned(
-                    top: 0, left: 0, right: 0, height: 140,
-                    child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 300),
-                      opacity: _showControls ? 1.0 : 0.0, 
-                      child: IgnorePointer(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [Colors.black.withOpacity(0.8), Colors.transparent],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 0, left: 0, right: 0, height: 200,
-                    child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 300),
-                      opacity: _showControls ? 1.0 : 0.0, 
-                      child: IgnorePointer(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.bottomCenter,
-                              end: Alignment.topCenter,
-                              colors: [Colors.black.withOpacity(0.8), Colors.transparent],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // 3. Interactive Top Bar (Transparent Background)
-                  Positioned(
-                    top: 0, left: 0, right: 0,
-                    child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 300),
-                      opacity: _showControls ? 1.0 : 0.0, 
-                      child: IgnorePointer(
-                        ignoring: !_showControls,
-                        child: Container(
-                          padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
-                          child: Row(
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.arrow_back, color: Colors.white),
-                                onPressed: _toggleOrientation,
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  _currentTitle,
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                    shadows: [Shadow(color: Colors.black, blurRadius: 4)],
-                                  ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  // 4. Interactive Bottom Bar (Transparent Background)
-                  Positioned(
-                    bottom: 0, left: 0, right: 0,
-                    child: AnimatedOpacity(
-                      duration: const Duration(milliseconds: 300),
-                      opacity: _showControls ? 1.0 : 0.0,
-                      child: IgnorePointer(
-                        ignoring: !_showControls,
-                        child: Container(
-                          padding: const EdgeInsets.fromLTRB(32, 20, 32, 30),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _buildSeekbar(isPortrait: false),
-                              
-                              // Stack for Icons + Tray Overlay
-                              Stack(
-                                alignment: Alignment.bottomCenter,
-                                clipBehavior: Clip.none, 
-                                children: [
-                                  // Icons Row (Base)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 16),
-                                    child: Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                      children: [
-                                        // Speed
-                                        _buildControlIcon(
-                                            Icons.speed, 
-                                            "${_playbackSpeed.toStringAsFixed(2)}x", 
-                                            () => _toggleTray('speed'), 
-                                            isActive: _activeTray == 'speed' || _playbackSpeed != 1.0,
-                                            onReset: () => setState(() { _playbackSpeed = 1.0; player.setRate(1.0); }),
-                                        ),
-                                        // Subtitle
-                                        _buildControlIcon(
-                                            Icons.closed_caption, 
-                                            _currentSubtitle == "Off" ? "Subtitle" : _currentSubtitle, 
-                                            () => _toggleTray('subtitle'), 
-                                            isActive: _activeTray == 'subtitle' || _currentSubtitle != 'Off',
-                                            onReset: () => setState(() => _currentSubtitle = "Off"),
-                                        ),
-                                        // Quality
-                                        _buildControlIcon(
-                                            Icons.settings, 
-                                            _currentQuality, 
-                                            () => _toggleTray('quality'), 
-                                            isActive: _activeTray == 'quality' || _currentQuality != "Auto",
-                                            onReset: () => setState(() => _currentQuality = "Auto"),
-                                        ),
-                                        // Lock
-                                        _buildControlIcon(Icons.lock_outline, "Lock", _toggleLock),
-                                        // Landscape
-                                        _buildControlIcon(Icons.fullscreen_exit, "Portrait", _toggleOrientation),
-                                      ],
-                                    ),
-                                  ),
-
-                                  if (_activeTray != null)
-                                    Positioned(
-                                      bottom: 0,
-                                      left: 0,
-                                      right: 0,
-                                      child: Center(child: _buildTray()),
-                                    ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-               ],
-             ),
-        ],
-      );
-   }
-
-  // Restore Header
-  Widget _buildHeader() {
-    return Container(
-      color: Colors.black, // Pure black
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => Navigator.pop(context),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              _currentTitle,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
+    return VideoPlayerLandscapeLayout(
+      isLocked: _isLocked,
+      isUnlockControlsVisible: _isUnlockControlsVisible,
+      showControls: _showControls,
+      controller: controller,
+      currentTitle: _currentTitle,
+      onLockedTap: _handleLockedTap,
+      onToggleControls: _toggleControls,
+      onVerticalDragUpdate: _onVerticalDragUpdate,
+      showBrightnessLabel: _showBrightnessLabel,
+      showVolumeLabel: _showVolumeLabel,
+      brightness: _brightness,
+      volume: _volume,
+      isPlaying: _isPlaying,
+      onSeekRelative: _seekRelative,
+      onPlayPause: _togglePlayPause,
+      positionNotifier: _positionNotifier,
+      durationNotifier: _durationNotifier,
+      isDraggingSeekbar: _isDraggingSeekbar,
+      onSeekbarChangeStart: (v) {
+        _wasPlayingBeforeDrag = player.state.playing;
+        player.pause();
+        _isDraggingSeekbar = true;
+      },
+      onSeekbarChanged: (v) {
+        _pendingSeekValue = v;
+        if (!_isSeeking) _processSeekLoop();
+      },
+      onSeekbarChangeEnd: (v) {
+        _isDraggingSeekbar = false;
+        _pendingSeekValue = null;
+        player.seek(Duration(milliseconds: (v * 1000).toInt())).then((_) {
+          if (_wasPlayingBeforeDrag) {
+            player.play();
+            _startHideTimer(const Duration(milliseconds: 700), true);
+          }
+        });
+      },
+      playbackSpeed: _playbackSpeed,
+      currentSubtitle: _currentSubtitle,
+      currentQuality: _currentQuality,
+      activeTray: _activeTray,
+      onToggleTray: _toggleTray,
+      onToggleLock: _toggleLock,
+      onToggleOrientation: _toggleOrientation,
+      onResetSpeed: () => setState(() { _playbackSpeed = 1.0; player.setRate(1.0); }),
+      onResetSubtitle: () => setState(() => _currentSubtitle = "Off"),
+      onResetQuality: () => setState(() => _currentQuality = "Auto"),
+      trayItems: _activeTray == 'quality' ? _qualities : _subtitles,
+      trayCurrentSelection: _activeTray == 'quality' ? _currentQuality : _currentSubtitle,
+      isDraggingSpeedSlider: _isDraggingSpeedSlider,
+      onTrayItemSelected: (item) {
+        setState(() {
+          if (_activeTray == 'quality') _currentQuality = item;
+          else _currentSubtitle = item;
+          _activeTray = null; // Hide immediately
+        });
+        _startHideTimer();
+      },
+      onTraySpeedChanged: (s) {
+        player.setRate(s);
+        setState(() {
+          _playbackSpeed = s;
+          _activeTray = null; // Hide immediately
+        });
+        _startHideTimer();
+      },
+      onTrayClose: () => setState(() => _activeTray = null),
+      onTrayInteraction: _startTrayHideTimer,
+      onDoubleLockTap: _toggleLock,
     );
   }
+
 
   // State for optimized seeking (Smart Scrubbing)
   bool _isSeeking = false;
@@ -1428,624 +921,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
     }
   }
 
-  Widget _buildSeekbar({required bool isPortrait, bool hideSlider = false}) {
-    return StreamBuilder<Duration>(
-      stream: player.stream.position,
-      builder: (context, snapshot) {
-        final pos = snapshot.data ?? Duration.zero;
-        final dur = player.state.duration;
-        
-        final maxSeconds = dur.inMilliseconds.toDouble() / 1000.0;
-        final currentSeconds = _dragValue ?? (pos.inMilliseconds.toDouble() / 1000.0);
-
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (!hideSlider)
-            SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                trackHeight: 4,
-                thumbShape: RoundSliderThumbShape(
-                  enabledThumbRadius: _isDraggingSeekbar ? 9 : 7,
-                ),
-                activeTrackColor: const Color(0xFF22C55E),
-                inactiveTrackColor: Colors.grey[800],
-                thumbColor: Colors.white,
-                // Large transparent overlay for bigger touch target
-                overlayColor: Colors.transparent, 
-                overlayShape: const RoundSliderOverlayShape(overlayRadius: 24.0),
-              ),
-              child: Slider(
-                value: currentSeconds.clamp(0.0, maxSeconds > 0 ? maxSeconds : 1.0),
-                min: 0,
-                max: maxSeconds > 0 ? maxSeconds : 1.0,
-                onChangeStart: (v) {
-                  // Pause to free up resources for seeking
-                  _wasPlayingBeforeDrag = player.state.playing;
-                  player.pause();
-                  
-                  setState(() {
-                    _isDraggingSeekbar = true;
-                    _dragValue = v;
-                  });
-                },
-                onChanged: (v) {
-                  // Instant UI update
-                  setState(() {
-                    _dragValue = v;
-                  });
-                  
-                  // Optimised Seeking:
-                  // Store the latest value. If the player is busy seeking, it will pick this up next.
-                  // If it's idle, we start the loop.
-                  _pendingSeekValue = v;
-                  if (!_isSeeking) {
-                    _processSeekLoop();
-                  }
-                },
-                onChangeEnd: (v) {
-                  setState(() {
-                    _isDraggingSeekbar = false;
-                    _dragValue = null;
-                  });
-                  _pendingSeekValue = null; // Clear queue
-                  
-                  // Final precise seek
-                  player.seek(Duration(milliseconds: (v * 1000).toInt())).then((_) {
-                     if (_wasPlayingBeforeDrag) {
-                       player.play();
-                       _startHideTimer(const Duration(milliseconds: 700), true);
-                     }
-                  });
-                },
-              ),
-            ),
-            
-            if (hideSlider) const SizedBox(height: 10),
-
-            Opacity(
-              opacity: hideSlider ? 0.7 : 1.0,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      _formatDuration(Duration(milliseconds: (currentSeconds * 1000).toInt())),
-                      style: const TextStyle(
-                        color: Colors.white, 
-                        fontSize: 13, 
-                        fontWeight: FontWeight.w600,
-                        shadows: [Shadow(color: Colors.black, blurRadius: 2)],
-                      ),
-                    ),
-                    Text(
-                      _formatDuration(dur),
-                      style: TextStyle(
-                        color: const Color(0xFF22C55E), 
-                        fontSize: 13, 
-                        fontWeight: FontWeight.w600,
-                        shadows: hideSlider ? [const Shadow(color: Colors.black, blurRadius: 2)] : null,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  Widget _buildControlIcon(IconData icon, String label, VoidCallback onTap, {bool isActive = false, VoidCallback? onReset}) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.translucent, // Catches taps in empty spaces/gaps
-      onLongPress: () {
-         if (onReset != null) {
-            HapticFeedback.heavyImpact();
-            onReset();
-         }
-      },
-      child: Container(
-        color: Colors.transparent, // Explicit hit test area
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8), // Expand touch target
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: isActive ? const Color(0xFF22C55E) : Colors.white, size: 22),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: const TextStyle(color: Colors.white, fontSize: 10),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTray() {
-    return Listener(
-      onPointerDown: (_) => _startTrayHideTimer(),
-      onPointerMove: (_) => _startTrayHideTimer(),
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 350), 
-        decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.95), 
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white12),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        margin: const EdgeInsets.symmetric(horizontal: 16), 
-        child: Stack(
-          children: [
-             // TRAY CONTENT
-             Padding(
-               padding: const EdgeInsets.only(right: 30), // Space for close button
-               child: _buildTrayContent(),
-             ),
-  
-             // CLOSE BUTTON (Absolute in Tray)
-             Positioned(
-               right: 0,
-               top: 0,
-               bottom: 0,
-               child: Center(
-                 child: GestureDetector(
-                   onTap: () => setState(() => _activeTray = null),
-                   child: Container(
-                     padding: const EdgeInsets.all(4),
-                     decoration: const BoxDecoration(color: Colors.white10, shape: BoxShape.circle),
-                     child: const Icon(Icons.close, color: Colors.white, size: 14),
-                   ),
-                 ),
-               ),
-             ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTrayContent() {
-    if (_activeTray == 'speed') {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Theme(
-            data: Theme.of(context).copyWith(
-              popupMenuTheme: const PopupMenuThemeData(
-                color: Color(0xFF202020),
-                textStyle: TextStyle(color: Colors.white),
-              ),
-            ),
-            child: PopupMenuButton<double>(
-              initialValue: _playbackSpeed,
-              offset: const Offset(0, 40),
-              tooltip: 'Playback Speed',
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              onSelected: (s) {
-                player.setRate(s);
-                setState(() => _playbackSpeed = s);
-                _startTrayHideTimer();
-              },
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      "${_playbackSpeed.toStringAsFixed(2)}x", 
-                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)
-                    ),
-                    const Icon(Icons.arrow_drop_down, color: Colors.white, size: 18),
-                  ],
-                ),
-              ),
-              itemBuilder: (context) => [0.5, 1.0, 1.25, 1.5, 2.0, 3.0].map((s) => 
-                PopupMenuItem<double>(
-                  value: s,
-                  height: 32, // Compact items
-                  child: Text(
-                    "${s}x", 
-                    style: TextStyle(
-                      color: _playbackSpeed == s ? const Color(0xFF22C55E) : Colors.white, 
-                      fontSize: 13,
-                      fontWeight: _playbackSpeed == s ? FontWeight.bold : FontWeight.normal
-                    )
-                  ),
-                )
-              ).toList(),
-            ),
-          ),
-          
-          SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-               activeTrackColor: const Color(0xFF22C55E),
-               inactiveTrackColor: Colors.grey[800],
-               thumbColor: Colors.white,
-               trackHeight: 2,
-               thumbShape: RoundSliderThumbShape(enabledThumbRadius: _isDraggingSpeedSlider ? 9 : 5), // Dynamic Size
-               overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
-            ),
-            child: Slider(
-              value: _playbackSpeed,
-              min: 0.5,
-              max: 3.0,
-              divisions: 50,
-              onChangeStart: (v) {
-                setState(() => _isDraggingSpeedSlider = true);
-              },
-              onChangeEnd: (v) {
-                 setState(() => _isDraggingSpeedSlider = false);
-                  _startTrayHideTimer();
-              },
-              onChanged: (v) {
-                setState(() => _playbackSpeed = v);
-                player.setRate(v);
-              },
-            ),
-          ),
-        ],
-      );
-    } 
-    
-    if (_activeTray == 'quality' || _activeTray == 'subtitle') {
-       final items = _activeTray == 'quality' ? _qualities : _subtitles;
-       final current = _activeTray == 'quality' ? _currentQuality : _currentSubtitle;
-       
-       return SingleChildScrollView(
-         scrollDirection: Axis.horizontal,
-         child: Row(
-           mainAxisAlignment: MainAxisAlignment.center,
-           mainAxisSize: MainAxisSize.min, // Compact
-           children: items.map((item) {
-             final isSelected = item == current;
-             return GestureDetector(
-               onTap: () {
-                 setState(() {
-                   if (_activeTray == 'quality') _currentQuality = item;
-                   else _currentSubtitle = item;
-                   // _activeTray = null; // Removed to keep tray open as requested
-                 });
-                 _startTrayHideTimer(); // Reset tray timer instead of main timer
-               },
-               child: Container(
-                 margin: const EdgeInsets.symmetric(horizontal: 4),
-                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), // Compact
-                 decoration: BoxDecoration(
-                   color: isSelected ? const Color(0xFF22C55E) : Colors.transparent,
-                   borderRadius: BorderRadius.circular(20),
-                   border: Border.all(color: isSelected ? Colors.transparent : Colors.grey),
-                 ),
-                 child: Text(item, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500)), // Compact
-               ),
-             );
-           }).toList(),
-         ),
-       );
-    }
-
-    return const SizedBox();
-  }
 
 
-  Widget _buildPlaylistItem(Map<String, dynamic> item, int index) {
-    final isPlaying = index == _currentIndex;
-    final path = item['path'] as String?;
-    final progress = _videoProgress[path] ?? 0.0;
-    
-    return InkWell(
-      onTap: () => _playVideo(index), 
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        child: Row(
-          children: [
-            // Thumbnail with progress
-            Stack(
-              children: [
-                Container(
-                  width: 150,
-                  height: 85,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1E293B),
-                    borderRadius: BorderRadius.circular(8),
-                    border: isPlaying ? Border.all(color: const Color(0xFF22C55E), width: 2) : null,
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Stack(
-                    children: [
-                      path != null 
-                        ? VideoThumbnailWidget(videoPath: path, fit: BoxFit.cover)
-                        : Center(
-                            child: Icon(
-                                isPlaying ? Icons.equalizer : Icons.play_circle_outline, 
-                                color: isPlaying ? const Color(0xFF22C55E) : Colors.white, 
-                                size: 40
-                            ),
-                          ),
-                      
-                      // Progress Bar at the bottom
-                      if (progress > 0)
-                        Positioned(
-                          bottom: 0,
-                          left: 0,
-                          right: 0,
-                          child: Container(
-                            height: 3,
-                            color: Colors.white24,
-                            alignment: Alignment.centerLeft,
-                            child: FractionallySizedBox(
-                              widthFactor: progress.clamp(0.0, 1.0),
-                              child: Container(color: Colors.red),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                if (isPlaying)
-                  Positioned.fill(
-                    child: Container(
-                      color: Colors.black45,
-                      child: const Center(
-                        child: Icon(Icons.play_circle_fill, color: Color(0xFF22C55E), size: 30),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(width: 12),
-            // Title and duration
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item['name'] ?? 'Unknown',
-                    style: TextStyle(
-                      color: isPlaying ? const Color(0xFF22C55E) : Colors.white,
-                      fontSize: 15,
-                      fontWeight: isPlaying ? FontWeight.bold : FontWeight.w500,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Icon(Icons.access_time, size: 12, color: Colors.white.withOpacity(0.5)),
-                      const SizedBox(width: 4),
-                      Text(
-                        item['duration'] ?? "00:00",
-                        style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
-                      ),
-                      if (progress > 0.9) ...[
-                        const SizedBox(width: 8),
-                         const Icon(Icons.check_circle, size: 12, color: Color(0xFF22C55E)),
-                         const SizedBox(width: 4),
-                         const Text(
-                           "Watched", 
-                           style: TextStyle(color: Color(0xFF22C55E), fontSize: 11, fontWeight: FontWeight.bold)
-                         ),
-                      ]
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-  
-  // Helper for Lock/Unlock button
-  Widget _buildGlassButton({required IconData icon, required String label, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(30),
-          border: Border.all(color: Colors.white.withOpacity(0.1)),
-          boxShadow: [
-             BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10),
-          ]
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: Colors.white, size: 20),
-            const SizedBox(width: 8),
-            Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _formatDuration(Duration d) {
-    String two(int n) => n.toString().padLeft(2, "0");
-    return "${two(d.inMinutes)}:${two(d.inSeconds.remainder(60))}";
-  }
-  // --- Reusable Lock Overlay ---
-  Widget _buildLockOverlay() {
-    return Stack(
-      children: [
-        // Catch taps to show/hide the lock UI
-        Positioned.fill(
-          child: GestureDetector(
-            behavior: HitTestBehavior.translucent,
-            onTap: _handleLockedTap,
-            child: Container(color: Colors.transparent),
-          ),
-        ),
-        
-        IgnorePointer(
-          ignoring: !_isUnlockControlsVisible,
-          child: AnimatedOpacity(
-            duration: const Duration(milliseconds: 300),
-            opacity: _isUnlockControlsVisible ? 1.0 : 0.0,
-            child: Stack(
-              children: [
-                  // 1. Dim Overlay
-                  Positioned.fill(
-                    child: Container(color: Colors.black54),
-                  ),
-                  
-                  // 2. Title (Top Center)
-                  Positioned(
-                    top: 40, 
-                    left: 20, 
-                    right: 20,
-                    child: Text(
-                      _currentTitle,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        shadows: [Shadow(color: Colors.black, blurRadius: 4)],
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-
-                  // 3. Lock Icon (Center)
-                  Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        GestureDetector(
-                          onDoubleTap: _toggleLock,
-                          onTap: _handleLockedTap,
-                          child: Container(
-                            width: 80,
-                            height: 80,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.1),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white30),
-                            ),
-                            child: const Icon(Icons.lock, size: 40, color: Colors.white),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // 4. Instructions (Bottom)
-                  const Positioned(
-                    bottom: 60,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: Text(
-                        "Double tap to unlock",
-                        style: TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.w500),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-  Widget _buildGestureOverlay() {
-      return Stack(
-          children: [
-             // Brightness Slider (Left)
-             if (_showBrightnessLabel)
-              Positioned(
-                 left: 20,
-                 top: 0,
-                 bottom: 0,
-                 child: Center(
-                   child: Container(
-                     width: 40,
-                     height: 160,
-                     decoration: BoxDecoration(
-                       color: Colors.black54,
-                       borderRadius: BorderRadius.circular(20),
-                     ),
-                     child: Column(
-                       mainAxisAlignment: MainAxisAlignment.end,
-                       children: [
-                         const Padding(padding: EdgeInsets.only(top: 10), child: Icon(Icons.wb_sunny, color: Colors.white, size: 20)),
-                         Expanded(
-                             child: RotatedBox(
-                               quarterTurns: -1,
-                               child: SliderTheme(
-                                 data: SliderTheme.of(context).copyWith(
-                                    trackHeight: 4,
-                                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 0),
-                                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 0),
-                                    activeTrackColor: Colors.white,
-                                    inactiveTrackColor: Colors.white24,
-                                 ),
-                                 child: Slider(
-                                   value: _brightness,
-                                   onChanged: (v) {}, 
-                                 ),
-                               ),
-                             )
-                         ),
-                       ],
-                     ),
-                   ),
-                 ),
-              ),
-
-             // Volume Slider (Right)
-             if (_showVolumeLabel)
-              Positioned(
-                 right: 20,
-                 top: 0,
-                 bottom: 0,
-                 child: Center(
-                   child: Container(
-                     width: 40,
-                     height: 160,
-                     decoration: BoxDecoration(
-                       color: Colors.black54,
-                       borderRadius: BorderRadius.circular(20),
-                     ),
-                     child: Column(
-                       mainAxisAlignment: MainAxisAlignment.end,
-                       children: [
-                         const Padding(padding: EdgeInsets.only(top: 10), child: Icon(Icons.volume_up, color: Colors.white, size: 20)),
-                         Expanded(
-                             child: RotatedBox(
-                               quarterTurns: -1,
-                               child: SliderTheme(
-                                 data: SliderTheme.of(context).copyWith(
-                                    trackHeight: 4,
-                                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 0),
-                                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 0),
-                                    activeTrackColor: const Color(0xFF22C55E),
-                                    inactiveTrackColor: Colors.white24,
-                                 ),
-                                 child: Slider(
-                                   value: _volume,
-                                   onChanged: (v) {}, 
-                                 ),
-                               ),
-                             )
-                         ),
-                       ],
-                     ),
-                   ),
-                 ),
-              ),
-          ],
-      );
-  }
 }
