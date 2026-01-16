@@ -7,6 +7,7 @@ import 'video_bottom_controls.dart';
 import 'video_playlist_widget.dart';
 import 'video_tray.dart';
 import 'video_top_bar.dart';
+import 'video_error_overlay.dart';
 
 class VideoPlayerPortraitLayout extends StatelessWidget {
   final Size size;
@@ -117,7 +118,12 @@ class VideoPlayerPortraitLayout extends StatelessWidget {
     required this.onVideoTap,
     required this.onBack,
     required this.onDoubleLockTap,
+    this.errorMessage,
+    this.onRetry,
   });
+
+  final String? errorMessage;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -185,6 +191,15 @@ class VideoPlayerPortraitLayout extends StatelessWidget {
                         isVisible: isInterfaceVisible,
                         onPlayPause: onPlayPause,
                         onSeek: onSeekRelative,
+                      ),
+
+                    // Error Overlay
+                    if (errorMessage != null)
+                      Positioned.fill(
+                        child: VideoErrorOverlay(
+                          message: errorMessage!,
+                          onRetry: onRetry ?? () {},
+                        ),
                       ),
                   ],
                 ),

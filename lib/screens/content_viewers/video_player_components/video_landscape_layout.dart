@@ -6,6 +6,7 @@ import 'video_seekbar.dart';
 import 'video_bottom_controls.dart';
 import 'video_tray.dart';
 import 'video_lock_overlay.dart';
+import 'video_error_overlay.dart';
 
 class VideoPlayerLandscapeLayout extends StatelessWidget {
   final bool isLocked;
@@ -101,7 +102,12 @@ class VideoPlayerLandscapeLayout extends StatelessWidget {
     required this.onTrayClose,
     required this.onTrayInteraction,
     required this.onDoubleLockTap,
+    this.errorMessage,
+    this.onRetry,
   });
+
+  final String? errorMessage;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -139,6 +145,15 @@ class VideoPlayerLandscapeLayout extends StatelessWidget {
             volume: volume,
           ),
         ),
+
+        // Error Overlay
+        if (errorMessage != null)
+          Positioned.fill(
+            child: VideoErrorOverlay(
+              message: errorMessage!,
+              onRetry: onRetry ?? () {},
+            ),
+          ),
 
         // Controls
         Stack(
