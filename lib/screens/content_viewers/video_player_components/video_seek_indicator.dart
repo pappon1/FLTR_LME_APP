@@ -7,27 +7,32 @@ class VideoSeekIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final isForward = value > 0;
+    final bgColor = Colors.black45; // Always dark over video
+    final contentColor = Colors.white; // Always white over video
+
     return Center(
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.black45,
+          color: bgColor,
           shape: BoxShape.circle,
+          boxShadow: isDark ? null : [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               isForward ? Icons.fast_forward : Icons.fast_rewind,
-              color: Colors.white,
+              color: contentColor,
               size: 40,
             ),
             const SizedBox(height: 8),
             Text(
               "${isForward ? '+' : ''}$value s",
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: contentColor,
                 fontSize: 14,
                 fontWeight: FontWeight.bold,
               ),

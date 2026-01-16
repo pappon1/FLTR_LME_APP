@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import '../../providers/theme_provider.dart';
 import 'video_player_components/video_player_logic_controller.dart';
 import 'video_player_components/video_portrait_layout.dart';
 import 'video_player_components/video_landscape_layout.dart';
@@ -49,37 +51,43 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
         }
       },
-      child: Scaffold(
-        backgroundColor: Colors.black,
-        body: SafeArea(
-          top: !_logic.isLandscape, 
-          bottom: !_logic.isLandscape,
-          child: ValueListenableBuilder<bool>(
-            valueListenable: _logic.isReadyNotifier,
-            builder: (context, isReady, child) {
-              return AnimatedOpacity(
-                duration: const Duration(milliseconds: 400),
-                opacity: isReady ? 1.0 : 0.0,
-                child: child,
-              );
-            },
-            child: ListenableBuilder(
-              listenable: _logic,
-              // We only listen for structural changes (orientation) here
-              builder: (context, _) {
-                if (_logic.isLandscape) {
-                  return VideoPlayerLandscapeLayout(logic: _logic);
-                }
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, _) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          debugPrint("VideoPlayerScreen Rebuild: isDark=$isDark");
+          return Scaffold(
+            backgroundColor: isDark ? Colors.black : Colors.white,
+            body: SafeArea(
+              top: !_logic.isLandscape, 
+              bottom: !_logic.isLandscape,
+              child: ValueListenableBuilder<bool>(
+                valueListenable: _logic.isReadyNotifier,
+                builder: (context, isReady, child) {
+                  return AnimatedOpacity(
+                    duration: const Duration(milliseconds: 400),
+                    opacity: isReady ? 1.0 : 0.0,
+                    child: child,
+                  );
+                },
+                child: ListenableBuilder(
+                  listenable: _logic,
+                  // We only listen for structural changes (orientation) here
+                  builder: (context, _) {
+                    if (_logic.isLandscape) {
+                      return VideoPlayerLandscapeLayout(logic: _logic);
+                    }
 
-                return VideoPlayerPortraitLayout(
-                  logic: _logic,
-                  size: size,
-                  videoHeight: videoHeight,
-                );
-              },
+                    return VideoPlayerPortraitLayout(
+                      logic: _logic,
+                      size: size,
+                      videoHeight: videoHeight,
+                    );
+                  },
+                ),
+              ),
             ),
-          ),
-        ),
+          );
+        }
       ),
     );
   }

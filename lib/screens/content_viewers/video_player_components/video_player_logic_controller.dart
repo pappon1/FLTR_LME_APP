@@ -57,6 +57,7 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
   bool _wasPlayingBeforeDrag = false;
   double? _pendingSeekValue;
   bool _isSeeking = false;
+  bool _isDisposed = false;
   
   // Timers
   Timer? _hideTimer;
@@ -160,49 +161,61 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
     }
   }
 
-  void _setupPlayerListeners() {
-    engine.positionStream.listen((pos) {
-      positionNotifier.value = pos;
-      _handlePositionUpdate(pos);
-    });
+  final List<StreamSubscription> _subscriptions = [];
 
-    engine.durationStream.listen((dur) {
-      durationNotifier.value = dur;
+  void _setupPlayerListeners() {
+    _subscriptions.add(engine.positionStream.listen((pos) {
+      if (!_isDisposed) positionNotifier.value = pos;
+      _handlePositionUpdate(pos);
+    }));
+
+    _subscriptions.add(engine.durationStream.listen((dur) {
+      if (!_isDisposed) durationNotifier.value = dur;
       if (dur != Duration.zero) {
         if (playlist[currentIndex]['duration'] == null || playlist[currentIndex]['duration'] == "00:00") {
           playlistManager.updateDuration(currentIndex, formatDurationString(dur));
-          // Use granular notify
         }
       }
-    });
+    }));
 
-    engine.playingStream.listen((p) {
-      isPlayingNotifier.value = p;
+    _subscriptions.add(engine.playingStream.listen((p) {
+      if (!_isDisposed) isPlayingNotifier.value = p;
       if (p) {
-        errorMessageNotifier.value = null; 
+        if (!_isDisposed) errorMessageNotifier.value = null; 
         _session?.setActive(true);
       }
-    });
+    }));
 
-    engine.bufferingStream.listen((b) {
-      isBufferingNotifier.value = b;
-    });
+    _subscriptions.add(engine.bufferingStream.listen((b) {
+      if (!_isDisposed) isBufferingNotifier.value = b;
+    }));
 
-    engine.completedStream.listen((completed) {
+    _subscriptions.add(engine.completedStream.listen((completed) {
       if (completed) {
         if (playlistManager.next()) {
           playVideo(currentIndex);
         }
       }
-    });
+    }));
 
-    engine.errorStream.listen((error) {
-      errorMessageNotifier.value = error.toString();
-    });
+    _subscriptions.add(engine.errorStream.listen((error) {
+      if (!_isDisposed) errorMessageNotifier.value = error.toString();
+      // Smart Auto-Skip after 5 seconds if not fixed
+      if (error != null) {
+        Future.delayed(const Duration(seconds: 5), () {
+           if (errorMessage != null && !_isDisposed) { // If error still persists
+              debugPrint("Auto-skipping failing video...");
+              if (playlistManager.next()) {
+                playVideo(currentIndex);
+              }
+           }
+        });
+      }
+    }));
 
     FlutterVolumeController.addListener((v) {
       if (!gestureHandler.isChangingVolumeViaGesture) {
-        volumeNotifier.value = v;
+        if (!_isDisposed) volumeNotifier.value = v;
       }
     });
   }
@@ -269,6 +282,10 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
       debugPrint('Error playing video: $e');
     }
     notifyListeners();
+  }
+
+  Future<void> retryCurrentVideo() async {
+    playVideo(currentIndex);
   }
 
   void _resumeProgress(String path, double ratio) async {
@@ -574,6 +591,8 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
 
   @override
   void dispose() {
+    _isDisposed = true;
+    for (final s in _subscriptions) s.cancel();
     _hideTimer?.cancel();
     _unlockHideTimer?.cancel();
     _trayHideTimer?.cancel();

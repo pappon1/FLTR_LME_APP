@@ -18,6 +18,11 @@ class VideoCenterControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final iconColor = Colors.white; // Always white over video
+    final bgColor = Colors.black45; // Fixed dark background for visibility
+    final borderColor = isDark ? Colors.white30 : Colors.black12;
+
     return IgnorePointer(
       ignoring: !isVisible,
       child: AnimatedOpacity(
@@ -32,6 +37,8 @@ class VideoCenterControls extends StatelessWidget {
                 icon: Icons.replay_10,
                 onTap: () => onSeek(-10),
                 size: iconSize * 0.875,
+                color: iconColor,
+                bgColor: bgColor,
               ),
               const SizedBox(width: 24),
 
@@ -41,13 +48,13 @@ class VideoCenterControls extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.black54,
+                    color: bgColor,
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white30, width: 1),
+                    border: Border.all(color: borderColor, width: 1),
                   ),
                   child: Icon(
                     isPlaying ? Icons.pause : Icons.play_arrow,
-                    color: Colors.white,
+                    color: iconColor,
                     size: iconSize,
                   ),
                 ),
@@ -59,6 +66,8 @@ class VideoCenterControls extends StatelessWidget {
                 icon: Icons.forward_10,
                 onTap: () => onSeek(10),
                 size: iconSize * 0.875,
+                color: iconColor,
+                bgColor: bgColor,
               ),
             ],
           ),
@@ -71,16 +80,18 @@ class VideoCenterControls extends StatelessWidget {
     required IconData icon,
     required VoidCallback onTap,
     required double size,
+    required Color color,
+    required Color bgColor,
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(10),
-        decoration: const BoxDecoration(
-          color: Colors.black54,
+        decoration: BoxDecoration(
+          color: bgColor,
           shape: BoxShape.circle,
         ),
-        child: Icon(icon, color: Colors.white, size: size),
+        child: Icon(icon, color: color, size: size),
       ),
     );
   }

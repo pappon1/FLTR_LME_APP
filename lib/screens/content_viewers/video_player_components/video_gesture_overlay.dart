@@ -16,6 +16,10 @@ class VideoGestureOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final contentColor = Colors.white; // Always white over video
+    final bgColor = Colors.black45; // Fixed dark bg
+
     return Stack(
       children: [
         // Brightness Slider (Left)
@@ -28,7 +32,9 @@ class VideoGestureOverlay extends StatelessWidget {
               child: _buildSlider(
                 icon: Icons.wb_sunny,
                 value: brightness,
-                activeColor: Colors.white,
+                activeColor: isDark ? Colors.white : Colors.orange,
+                bgColor: bgColor,
+                contentColor: contentColor,
               ),
             ),
           ),
@@ -44,6 +50,8 @@ class VideoGestureOverlay extends StatelessWidget {
                 icon: Icons.volume_up,
                 value: volume,
                 activeColor: const Color(0xFF22C55E),
+                bgColor: bgColor,
+                contentColor: contentColor,
               ),
             ),
           ),
@@ -55,20 +63,23 @@ class VideoGestureOverlay extends StatelessWidget {
     required IconData icon,
     required double value,
     required Color activeColor,
+    required Color bgColor,
+    required Color contentColor,
   }) {
     return Container(
       width: 40,
       height: 160,
       decoration: BoxDecoration(
-        color: Colors.black54,
+        color: bgColor,
         borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4)],
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           Padding(
             padding: const EdgeInsets.only(top: 10),
-            child: Icon(icon, color: Colors.white, size: 20),
+            child: Icon(icon, color: contentColor, size: 20),
           ),
           Expanded(
             child: RotatedBox(
@@ -79,7 +90,7 @@ class VideoGestureOverlay extends StatelessWidget {
                   thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 0),
                   overlayShape: const RoundSliderOverlayShape(overlayRadius: 0),
                   activeTrackColor: activeColor,
-                  inactiveTrackColor: Colors.white24,
+                  inactiveTrackColor: contentColor.withOpacity(0.2),
                 ),
                 child: Slider(
                   value: value.clamp(0.0, 1.0),

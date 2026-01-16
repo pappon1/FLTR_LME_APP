@@ -92,88 +92,112 @@ class VideoBottomControls extends StatelessWidget {
   }
 
   Widget _buildLockButton() {
-    if (!isLandscape) {
-      // Portrait Mode - Simplified Toggle logic
-      return AnimatedOpacity(
-        duration: const Duration(milliseconds: 300),
-        opacity: isLocked ? (isUnlockControlsVisible ? 1.0 : 0.0) : 1.0,
-        child: IgnorePointer(
-          ignoring: isLocked && !isUnlockControlsVisible,
-          child: GestureDetector(
-            onTap: onLockTap,
-            onDoubleTap: isLocked ? onDoubleLockTap : null,
-            behavior: HitTestBehavior.translucent,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  child: Icon(
-                    isLocked ? Icons.lock : Icons.lock_open,
-                    color: Colors.white,
-                    size: isLocked ? 44 : 22,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                if (!isLocked)
-                  const Text(
-                    "Lock",
-                    style: TextStyle(color: Colors.white, fontSize: 10),
-                  ),
-                if (isLocked && isUnlockControlsVisible)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 4),
-                    child: Text(
-                      "Double tap\nto unlock",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+    return Builder(
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final color = isDark ? Colors.white : Colors.black87;
+
+        if (!isLandscape) {
+          // Portrait Mode - Simplified Toggle logic
+          return AnimatedOpacity(
+            duration: const Duration(milliseconds: 300),
+            opacity: isLocked ? (isUnlockControlsVisible ? 1.0 : 0.0) : 1.0,
+            child: IgnorePointer(
+              ignoring: isLocked && !isUnlockControlsVisible,
+              child: GestureDetector(
+                onTap: onLockTap,
+                onDoubleTap: isLocked ? onDoubleLockTap : null,
+                behavior: HitTestBehavior.translucent,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      child: Icon(
+                        isLocked ? Icons.lock : Icons.lock_open,
+                        color: color,
+                        size: isLocked ? 44 : 22,
                       ),
                     ),
-                  )
-              ],
+                    const SizedBox(height: 3),
+                    if (!isLocked)
+                      Text(
+                        "Lock",
+                        style: TextStyle(color: color, fontSize: 10),
+                      ),
+                    if (isLocked && isUnlockControlsVisible)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          "Double tap\nto unlock",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: color,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      )
+                  ],
+                ),
+              ),
             ),
-          ),
-        ),
-      );
-    } else {
-      // Landscape Lock Button
-      return _buildControlIcon(
-        isLocked ? Icons.lock : Icons.lock_outline,
-        "Lock",
-        onLockTap,
-      );
-    }
+          );
+        } else {
+          // Landscape Lock Button
+          return _buildControlIcon(
+            isLocked ? Icons.lock : Icons.lock_outline,
+            "Lock",
+            onLockTap,
+          );
+        }
+      }
+    );
   }
 
   Widget _buildControlIcon(IconData icon, String label, VoidCallback onTap,
       {bool isActive = false, VoidCallback? onReset}) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.translucent,
-      onLongPress: () {
-        if (onReset != null) {
-          HapticFeedback.heavyImpact();
-          onReset();
-        }
-      },
-      child: Container(
-        color: Colors.transparent,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: isActive ? const Color(0xFF22C55E) : Colors.white, size: 22),
-            const SizedBox(height: 3),
-            Text(
-              label,
-              style: const TextStyle(color: Colors.white, fontSize: 10),
+    
+    // In BuildContext isn't readily available in helper method if not passed, 
+    // but better to pass or use Builder. 
+    // Since this is a stateless widget method, we can't access context easily unless we change signature.
+    // Let's change the call sites to pass context or use Builder.
+    // Actually, Cleaner way: Move this method to build() or make it accept context.
+    
+    // Changing signature:
+    return Builder(
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final color = isActive 
+            ? const Color(0xFF22C55E) 
+            : ((isLandscape || isDark) ? Colors.white : Colors.black87);
+            
+        return GestureDetector(
+          onTap: onTap,
+          behavior: HitTestBehavior.translucent,
+          onLongPress: () {
+            if (onReset != null) {
+              HapticFeedback.heavyImpact();
+              onReset();
+            }
+          },
+          child: Container(
+            color: Colors.transparent,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, color: color, size: 22),
+                const SizedBox(height: 3),
+                Text(
+                  label,
+                  style: TextStyle(color: color, fontSize: 10),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      }
     );
   }
 }

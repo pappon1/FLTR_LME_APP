@@ -187,7 +187,7 @@ class VideoPlayerPortraitLayout extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Container(
-                            color: Colors.black,
+                            color: Theme.of(context).scaffoldBackgroundColor,
                             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                             child: ValueListenableBuilder<Duration>(
                               valueListenable: logic.positionNotifier,
@@ -214,7 +214,7 @@ class VideoPlayerPortraitLayout extends StatelessWidget {
                             clipBehavior: Clip.none,
                             children: [
                               Container(
-                                color: Colors.black,
+                                color: Theme.of(context).scaffoldBackgroundColor,
                                 padding: const EdgeInsets.only(left: 20, right: 20, bottom: 8),
                                 child: ValueListenableBuilder<double>(
                                   valueListenable: logic.playbackSpeedNotifier,
@@ -271,7 +271,7 @@ class VideoPlayerPortraitLayout extends StatelessWidget {
                           AnimatedOpacity(
                             duration: const Duration(milliseconds: 300),
                             opacity: (isLocked ? 0.0 : (showControls ? 1.0 : 0.0)),
-                            child: const Divider(height: 1, color: Colors.white10),
+                            child: Divider(height: 1, color: Theme.of(context).dividerColor),
                           ),
                         ],
                       );
@@ -287,7 +287,7 @@ class VideoPlayerPortraitLayout extends StatelessWidget {
                     if (logic.isLocked) logic.handleLockedTap();
                   },
                   child: Container(
-                    color: Colors.black,
+                    color: Theme.of(context).scaffoldBackgroundColor,
                     width: double.infinity,
                     child: ValueListenableBuilder<bool>(
                       valueListenable: logic.isLockedNotifier,

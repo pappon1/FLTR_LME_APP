@@ -5,6 +5,7 @@ class VideoPlayerTopBar extends StatelessWidget {
   final bool isLocked;
   final bool isVisible;
   final VoidCallback onBack;
+  final bool isLandscape;
 
   const VideoPlayerTopBar({
     super.key,
@@ -12,17 +13,27 @@ class VideoPlayerTopBar extends StatelessWidget {
     required this.isLocked,
     required this.isVisible,
     required this.onBack,
+    this.isLandscape = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // In landscape, we want it transparent to see the video
+    final backgroundColor = isLandscape 
+        ? Colors.transparent 
+        : (isDark ? Colors.black.withOpacity(0.4) : Colors.white);
+        
+    final contentColor = (isLandscape || isDark) ? Colors.white : Colors.black87;
+
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 300),
       opacity: isVisible ? 1.0 : 0.0,
       child: IgnorePointer(
         ignoring: !isVisible,
         child: Container(
-          color: Colors.black.withOpacity(0.4), // Slight shadow for visibility
+          color: backgroundColor,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
@@ -32,7 +43,7 @@ class VideoPlayerTopBar extends StatelessWidget {
                 child: IgnorePointer(
                   ignoring: isLocked,
                   child: IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    icon: Icon(Icons.arrow_back, color: contentColor),
                     onPressed: onBack,
                   ),
                 ),
@@ -41,8 +52,8 @@ class VideoPlayerTopBar extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: contentColor,
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
                   ),

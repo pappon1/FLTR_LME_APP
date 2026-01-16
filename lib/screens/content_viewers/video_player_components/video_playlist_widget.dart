@@ -71,11 +71,21 @@ class _VideoPlaylistWidgetState extends State<VideoPlaylistWidget> {
     final isPlaying = index == widget.currentIndex;
     final path = item['path'] as String?;
     final progress = widget.videoProgress[path] ?? 0.0;
+    
+    // Theme colors
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isPlaying 
+        ? const Color(0xFF22C55E) 
+        : (isDark ? Colors.white : Colors.black87);
+    final subTextColor = isPlaying
+        ? const Color(0xFF22C55E).withOpacity(0.8)
+        : (isDark ? Colors.white54 : Colors.black54);
+    final thumbnailBg = isDark ? const Color(0xFF1E293B) : Colors.grey[200];
 
     return InkWell(
       onTap: () => widget.onVideoTap(index),
       child: Container(
-        height: 85, // Fixed height for calculation
+        height: 85, 
         margin: const EdgeInsets.only(bottom: 16),
         child: Row(
           children: [
@@ -86,7 +96,7 @@ class _VideoPlaylistWidgetState extends State<VideoPlaylistWidget> {
                   width: 150,
                   height: 85,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1E293B),
+                    color: thumbnailBg,
                     borderRadius: BorderRadius.circular(8),
                     border: isPlaying
                         ? Border.all(color: const Color(0xFF22C55E), width: 2)
@@ -100,7 +110,7 @@ class _VideoPlaylistWidgetState extends State<VideoPlaylistWidget> {
                           : Center(
                               child: Icon(
                                 isPlaying ? Icons.equalizer : Icons.play_circle_outline,
-                                color: isPlaying ? const Color(0xFF22C55E) : Colors.white,
+                                color: isPlaying ? const Color(0xFF22C55E) : (isDark ? Colors.white : Colors.black45),
                                 size: 40,
                               ),
                             ),
@@ -145,7 +155,7 @@ class _VideoPlaylistWidgetState extends State<VideoPlaylistWidget> {
                   Text(
                     item['name'] ?? 'Unknown',
                     style: TextStyle(
-                      color: isPlaying ? const Color(0xFF22C55E) : Colors.white,
+                      color: textColor,
                       fontSize: 14,
                       fontWeight: isPlaying ? FontWeight.bold : FontWeight.w500,
                     ),
@@ -156,12 +166,12 @@ class _VideoPlaylistWidgetState extends State<VideoPlaylistWidget> {
                   Row(
                     children: [
                       Icon(Icons.access_time,
-                          size: 12, color: Colors.white.withOpacity(0.5)),
+                          size: 12, color: subTextColor),
                       const SizedBox(width: 4),
                       Text(
                         item['duration'] ?? "00:00",
                         style: TextStyle(
-                            color: Colors.white.withOpacity(0.5), fontSize: 11),
+                            color: subTextColor, fontSize: 11),
                       ),
                       if (progress > 0.9) ...[
                         const SizedBox(width: 8),

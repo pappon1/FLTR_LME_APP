@@ -5,6 +5,7 @@ import 'video_center_controls.dart';
 import 'video_seekbar.dart';
 import 'video_bottom_controls.dart';
 import 'video_tray.dart';
+import 'package:local_mobile_engineer_official/screens/content_viewers/video_player_components/video_top_bar.dart';
 import 'video_lock_overlay.dart';
 import 'video_error_overlay.dart';
 import 'video_player_logic_controller.dart';
@@ -163,34 +164,20 @@ class VideoPlayerLandscapeLayout extends StatelessWidget {
                     child: AnimatedOpacity(
                       duration: const Duration(milliseconds: 300),
                       opacity: showControls ? 1.0 : 0.0,
-                      child: !showControls ? const SizedBox() : Container(
-                        padding: const EdgeInsets.fromLTRB(16, 20, 16, 20),
-                        child: Row(
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.arrow_back, color: Colors.white),
-                              onPressed: () => logic.toggleOrientation(context),
+                      child: !showControls ? const SizedBox() : ValueListenableBuilder<int>(
+                        valueListenable: logic.currentIndexNotifier,
+                        builder: (context, index, _) {
+                          return Padding(
+                            padding: const EdgeInsets.only(top: 10),
+                            child: VideoPlayerTopBar(
+                              title: logic.currentTitle,
+                              isLocked: false,
+                              isVisible: showControls,
+                              onBack: () => logic.toggleOrientation(context),
+                              isLandscape: true,
                             ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: ValueListenableBuilder<int>(
-                                valueListenable: logic.currentIndexNotifier,
-                                builder: (context, index, _) {
-                                  return Text(
-                                    logic.currentTitle,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.w600,
-                                      shadows: [Shadow(color: Colors.black, blurRadius: 4)],
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  );
-                                }
-                              ),
-                            ),
-                          ],
-                        ),
+                          );
+                        }
                       ),
                     ),
                   ),
@@ -219,6 +206,7 @@ class VideoPlayerLandscapeLayout extends StatelessWidget {
                                       onChangeStart: logic.onSeekbarChangeStart,
                                       onChanged: logic.onSeekbarChanged,
                                       onChangeEnd: logic.onSeekbarChangeEnd,
+                                      isLandscape: true,
                                     );
                                   },
                                 );
@@ -273,6 +261,7 @@ class VideoPlayerLandscapeLayout extends StatelessWidget {
                                               onSpeedChanged: (s) => logic.updatePlaybackSpeed(s, isFinal: false),
                                               onClose: () => logic.toggleTray(activeTray),
                                               onInteraction: () => logic.startHideTimer(),
+                                              isLandscape: true,
                                             );
                                           }
                                         ),
@@ -301,7 +290,7 @@ class VideoPlayerLandscapeLayout extends StatelessWidget {
       top: isTop ? 0 : null,
       bottom: isTop ? null : 0,
       left: 0, right: 0,
-      height: isTop ? 140 : 200,
+      height: isTop ? 120 : 180,
       child: AnimatedOpacity(
         duration: const Duration(milliseconds: 300),
         opacity: isVisible ? 1.0 : 0.0,
@@ -311,7 +300,10 @@ class VideoPlayerLandscapeLayout extends StatelessWidget {
               gradient: LinearGradient(
                 begin: isTop ? Alignment.topCenter : Alignment.bottomCenter,
                 end: isTop ? Alignment.bottomCenter : Alignment.topCenter,
-                colors: [Colors.black.withOpacity(0.8), Colors.transparent],
+                colors: [
+                  Colors.black.withOpacity(0.6),
+                  Colors.transparent,
+                ],
               ),
             ),
           ),

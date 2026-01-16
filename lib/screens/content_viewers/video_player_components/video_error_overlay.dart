@@ -12,8 +12,13 @@ class VideoErrorOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark ? Colors.black87 : Colors.white;
+    final titleColor = isDark ? Colors.white : Colors.black87;
+    final messageColor = isDark ? Colors.grey[400] : Colors.grey[600];
+
     return Container(
-      color: Colors.black87,
+      color: backgroundColor,
       padding: const EdgeInsets.all(24),
       child: Center(
         child: Column(
@@ -21,15 +26,15 @@ class VideoErrorOverlay extends StatelessWidget {
           children: [
             const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               "Playback Error",
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(color: titleColor, fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey[400], fontSize: 13),
+              style: TextStyle(color: messageColor, fontSize: 13),
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(

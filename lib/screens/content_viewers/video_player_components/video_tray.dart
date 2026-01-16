@@ -11,6 +11,8 @@ class VideoTray extends StatelessWidget {
   final VoidCallback onClose;
   final VoidCallback onInteraction;
 
+  final bool isLandscape;
+  
   const VideoTray({
     super.key,
     required this.activeTray,
@@ -22,19 +24,29 @@ class VideoTray extends StatelessWidget {
     required this.onSpeedChanged,
     required this.onClose,
     required this.onInteraction,
+    this.isLandscape = false,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Check theme manually since parent resets scaffold color
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final forceDark = isLandscape || isDark;
+    
+    final bgColor = forceDark ? Colors.black.withOpacity(0.95) : Colors.white.withOpacity(0.95);
+    final borderColor = forceDark ? Colors.white12 : Colors.black12;
+    final closeBg = forceDark ? Colors.white10 : Colors.black.withOpacity(0.05);
+    final closeIcon = forceDark ? Colors.white : Colors.black87;
+
     return Listener(
       onPointerDown: (_) => onInteraction(),
       onPointerMove: (_) => onInteraction(),
       child: Container(
         constraints: const BoxConstraints(maxWidth: 350),
         decoration: BoxDecoration(
-          color: Colors.black.withOpacity(0.95),
+          color: bgColor,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white12),
+          border: Border.all(color: borderColor),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -42,7 +54,7 @@ class VideoTray extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.only(right: 30),
-              child: _buildContent(context),
+              child: _buildContent(context, isDark, forceDark),
             ),
             Positioned(
               right: 0,
@@ -53,8 +65,8 @@ class VideoTray extends StatelessWidget {
                   onTap: onClose,
                   child: Container(
                     padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(color: Colors.white10, shape: BoxShape.circle),
-                    child: const Icon(Icons.close, color: Colors.white, size: 14),
+                    decoration: BoxDecoration(color: closeBg, shape: BoxShape.circle),
+                    child: Icon(Icons.close, color: closeIcon, size: 14),
                   ),
                 ),
               ),
@@ -65,18 +77,18 @@ class VideoTray extends StatelessWidget {
     );
   }
 
-  Widget _buildContent(BuildContext context) {
+  Widget _buildContent(BuildContext context, bool isDark, bool forceDark) {
     if (activeTray == 'speed') {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          _buildSpeedPicker(context),
+          _buildSpeedPicker(context, isDark, forceDark),
           SliderTheme(
             data: SliderTheme.of(context).copyWith(
               activeTrackColor: const Color(0xFF22C55E),
-              inactiveTrackColor: Colors.grey[800],
-              thumbColor: Colors.white,
+              inactiveTrackColor: isDark ? Colors.grey[800] : Colors.grey[300],
+              thumbColor: isDark ? Colors.white : Colors.black87,
               trackHeight: 2,
               thumbShape: RoundSliderThumbShape(enabledThumbRadius: isDraggingSpeedSlider ? 9 : 5),
               overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
@@ -112,7 +124,11 @@ class VideoTray extends StatelessWidget {
               ),
               child: Text(
                 item,
-                style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  color: isSelected ? Colors.white : (forceDark ? Colors.white : Colors.black87),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500
+                ),
               ),
             ),
           );
@@ -121,12 +137,13 @@ class VideoTray extends StatelessWidget {
     );
   }
 
-  Widget _buildSpeedPicker(BuildContext context) {
+  Widget _buildSpeedPicker(BuildContext context, bool isDark, bool forceDark) {
     return PopupMenuButton<double>(
       initialValue: playbackSpeed,
       offset: const Offset(0, 40),
       tooltip: 'Playback Speed',
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      color: isDark ? const Color(0xFF1E293B) : Colors.white,
       onSelected: onSpeedChanged,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 4),
@@ -135,9 +152,13 @@ class VideoTray extends StatelessWidget {
           children: [
             Text(
               "${playbackSpeed.toStringAsFixed(2)}x",
-              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: forceDark ? Colors.white : Colors.black87,
+                fontSize: 13,
+                fontWeight: FontWeight.bold
+              ),
             ),
-            const Icon(Icons.arrow_drop_down, color: Colors.white, size: 18),
+            Icon(Icons.arrow_drop_down, color: forceDark ? Colors.white : Colors.black87, size: 18),
           ],
         ),
       ),
@@ -148,13 +169,12 @@ class VideoTray extends StatelessWidget {
                 child: Text(
                   "${s}x",
                   style: TextStyle(
-                    color: playbackSpeed == s ? const Color(0xFF22C55E) : Colors.white,
+                    color: playbackSpeed == s ? const Color(0xFF22C55E) : (forceDark ? Colors.white : Colors.black87),
                     fontSize: 13,
                     fontWeight: playbackSpeed == s ? FontWeight.bold : FontWeight.normal,
                   ),
                 ),
-              ))
-          .toList(),
+              )).toList(),
     );
   }
 }

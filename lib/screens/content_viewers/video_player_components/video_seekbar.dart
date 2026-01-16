@@ -8,7 +8,8 @@ class VideoSeekbar extends StatefulWidget {
   final Function(double) onChanged;
   final Function(double) onChangeEnd;
   final bool isLocked;
-
+  final bool isLandscape;
+  
   const VideoSeekbar({
     super.key,
     required this.position,
@@ -17,6 +18,7 @@ class VideoSeekbar extends StatefulWidget {
     required this.onChanged,
     required this.onChangeEnd,
     this.isLocked = false,
+    this.isLandscape = false,
   });
 
   @override
@@ -31,6 +33,13 @@ class _VideoSeekbarState extends State<VideoSeekbar> {
   Widget build(BuildContext context) {
     final maxSeconds = widget.duration.inMilliseconds.toDouble() / 1000.0;
     final currentSeconds = _dragValue ?? (widget.position.inMilliseconds.toDouble() / 1000.0);
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final forceWhite = widget.isLandscape || isDark;
+    
+    final textColor = forceWhite ? Colors.white : Colors.black87;
+    final inactiveColor = isDark ? Colors.grey[800] : (widget.isLandscape ? Colors.white30 : Colors.grey[300]);
+    final thumbColor = forceWhite ? Colors.white : const Color(0xFF22C55E);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -52,8 +61,8 @@ class _VideoSeekbarState extends State<VideoSeekbar> {
                       elevation: _isDragging ? 4 : 2,
                     ),
                     activeTrackColor: const Color(0xFF22C55E),
-                    inactiveTrackColor: Colors.grey[800],
-                    thumbColor: Colors.white,
+                    inactiveTrackColor: inactiveColor,
+                    thumbColor: thumbColor,
                     overlayColor: const Color(0xFF22C55E).withOpacity(0.1),
                     overlayShape: const RoundSliderOverlayShape(overlayRadius: 20.0),
                   ),
@@ -126,16 +135,16 @@ class _VideoSeekbarState extends State<VideoSeekbar> {
               children: [
                 Text(
                   _formatDuration(Duration(milliseconds: (currentSeconds * 1000).toInt())),
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: textColor,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 Text(
                   _formatDuration(widget.duration),
-                  style: const TextStyle(
-                    color: Color(0xFF22C55E),
+                  style: TextStyle(
+                    color: forceWhite ? (isDark ? const Color(0xFF22C55E) : Colors.white) : Colors.black87,
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
