@@ -175,8 +175,6 @@ class VideoPlayerPortraitLayout extends StatelessWidget {
                 ),
               ),
 
-              if (logic.currentSubtitle != "Off")
-                Container(height: 40, color: Colors.black),
 
               // Bottom Area
               ValueListenableBuilder<bool>(
@@ -226,17 +224,14 @@ class VideoPlayerPortraitLayout extends StatelessWidget {
                                       isLandscape: false,
                                       isUnlockControlsVisible: logic.isUnlockControlsVisible,
                                       playbackSpeed: speed,
-                                      currentSubtitle: logic.currentSubtitle,
                                       currentQuality: logic.currentQuality,
                                       activeTray: logic.activeTray,
                                       onToggleTraySpeed: () => logic.toggleTray('speed'),
-                                      onToggleTraySubtitle: () => logic.toggleTray('subtitle'),
                                       onToggleTrayQuality: () => logic.toggleTray('quality'),
                                       onLockTap: isLocked ? logic.handleLockedTap : logic.toggleLock,
                                       onDoubleLockTap: logic.toggleLock,
                                       onOrientationTap: () => logic.toggleOrientation(context),
                                       onResetSpeed: () => logic.setPlaybackSpeed(1.0),
-                                      onResetSubtitle: () => logic.setTrayItem("Off"),
                                       onResetQuality: () => logic.setTrayItem("Auto"),
                                     );
                                   }
@@ -255,8 +250,8 @@ class VideoPlayerPortraitLayout extends StatelessWidget {
                                         builder: (context, speed, _) {
                                           return VideoTray(
                                             activeTray: activeTray,
-                                            items: activeTray == 'quality' ? logic.qualities : logic.subtitles,
-                                            currentSelection: activeTray == 'quality' ? logic.currentQuality : logic.currentSubtitle,
+                                            items: logic.qualities,
+                                            currentSelection: logic.currentQuality,
                                             playbackSpeed: speed,
                                             isDraggingSpeedSlider: logic.isDraggingSpeedSlider,
                                             onItemSelected: logic.setTrayItem,

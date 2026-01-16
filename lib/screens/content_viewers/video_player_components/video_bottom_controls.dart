@@ -6,19 +6,16 @@ class VideoBottomControls extends StatelessWidget {
   final bool isLandscape;
   final bool isUnlockControlsVisible;
   final double playbackSpeed;
-  final String currentSubtitle;
   final String currentQuality;
   final String? activeTray;
   
   final VoidCallback onToggleTraySpeed;
-  final VoidCallback onToggleTraySubtitle;
   final VoidCallback onToggleTrayQuality;
   final VoidCallback onLockTap;
   final VoidCallback onDoubleLockTap;
   final VoidCallback onOrientationTap;
   
   final VoidCallback onResetSpeed;
-  final VoidCallback onResetSubtitle;
   final VoidCallback onResetQuality;
 
   const VideoBottomControls({
@@ -27,17 +24,14 @@ class VideoBottomControls extends StatelessWidget {
     required this.isLandscape,
     required this.isUnlockControlsVisible,
     required this.playbackSpeed,
-    required this.currentSubtitle,
     required this.currentQuality,
     this.activeTray,
     required this.onToggleTraySpeed,
-    required this.onToggleTraySubtitle,
     required this.onToggleTrayQuality,
     required this.onLockTap,
     required this.onDoubleLockTap,
     required this.onOrientationTap,
     required this.onResetSpeed,
-    required this.onResetSubtitle,
     required this.onResetQuality,
   });
 
@@ -55,18 +49,6 @@ class VideoBottomControls extends StatelessWidget {
             onToggleTraySpeed,
             isActive: activeTray == 'speed' || playbackSpeed != 1.0,
             onReset: onResetSpeed,
-          ),
-        ),
-
-        // Subtitle
-        _buildAnimatedControl(
-          isVisible: !isLocked,
-          child: _buildControlIcon(
-            Icons.closed_caption,
-            currentSubtitle == "Off" ? "Subtitle" : currentSubtitle,
-            onToggleTraySubtitle,
-            isActive: activeTray == 'subtitle' || currentSubtitle != 'Off',
-            onReset: onResetSubtitle,
           ),
         ),
 

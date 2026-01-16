@@ -50,8 +50,6 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
 
   // Feature State
   String _currentQuality = "Auto";
-  String _currentSubtitle = "Off";
-  final List<String> subtitles = ["Off", "English", "Bengali", "Hindi"];
   final List<String> qualities = ["Auto", "480p", "720p", "1080p", "1920p"];
 
   // Internal Logic State
@@ -95,7 +93,6 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
   String? get activeTray => activeTrayNotifier.value;
   bool get isDraggingSpeedSlider => _isDraggingSpeedSlider;
   String get currentQuality => _currentQuality;
-  String get currentSubtitle => _currentSubtitle;
   double get volume => volumeNotifier.value;
   double get brightness => brightnessNotifier.value;
   bool get showVolumeLabel => showVolumeLabelNotifier.value;
@@ -137,7 +134,6 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
       isReadyNotifier.value = true;
     });
 
-    _startSequentialDurationLoader();
     startHideTimer();
   }
 
@@ -423,7 +419,6 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
 
   void setTrayItem(String item) {
     if (activeTray == 'quality') _currentQuality = item;
-    else _currentSubtitle = item;
     activeTrayNotifier.value = null;
     startHideTimer();
     notifyListeners();
@@ -552,43 +547,7 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
 
   bool _isMetadataWorkerRunning = false;
   
-  void _startSequentialDurationLoader() async {
-    if (_isMetadataWorkerRunning) return;
-    _isMetadataWorkerRunning = true;
-    
-    for (int i = 0; i < playlist.length; i++) {
-      if (playlist[i]['duration'] == null || playlist[i]['duration'] == "00:00") {
-        final path = playlist[i]['path'] as String?;
-        if (path != null) {
-          final dur = await _getSingleVideoDuration(path);
-          if (dur != "00:00") {
-            playlistManager.updateDuration(i, dur);
-            notifyListeners();
-          }
-          await Future.delayed(const Duration(milliseconds: 200));
-        }
-      }
-    }
-    _isMetadataWorkerRunning = false;
-  }
 
-  Future<String> _getSingleVideoDuration(String path) async {
-    final tempEngine = MediaKitVideoEngine();
-    final completer = Completer<String>();
-    tempEngine.durationStream.listen((dur) {
-      if (dur != Duration.zero && !completer.isCompleted) completer.complete(formatDurationString(dur));
-    });
-    try {
-      await tempEngine.init();
-      await tempEngine.open(path, play: false);
-      final result = await completer.future.timeout(const Duration(seconds: 4), onTimeout: () => "00:00");
-      await tempEngine.dispose();
-      return result;
-    } catch (e) {
-      await tempEngine.dispose();
-      return "00:00";
-    }
-  }
 
   String formatDurationString(Duration dur) {
     String two(int n) => n.toString().padLeft(2, "0");
