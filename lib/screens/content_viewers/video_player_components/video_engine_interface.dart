@@ -14,11 +14,13 @@ abstract class BaseVideoEngine {
   Stream<Duration> get durationStream;
   Stream<bool> get playingStream;
   Stream<bool> get completedStream;
+  Stream<bool> get bufferingStream;
   Stream<dynamic> get errorStream;
 
   Duration get position;
   Duration get duration;
   bool get isPlaying;
+  bool get isBuffering;
   
   Widget buildVideoWidget();
 }

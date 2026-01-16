@@ -8,6 +8,7 @@ import 'video_tray.dart';
 import 'video_lock_overlay.dart';
 import 'video_error_overlay.dart';
 import 'video_player_logic_controller.dart';
+import 'video_seek_indicator.dart';
 
 class VideoPlayerLandscapeLayout extends StatelessWidget {
   final VideoPlayerLogicController logic;
@@ -25,6 +26,8 @@ class VideoPlayerLandscapeLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -36,17 +39,44 @@ class VideoPlayerLandscapeLayout extends StatelessWidget {
           ),
         ),
 
+        // Buffering Spinner
+        ValueListenableBuilder<bool>(
+          valueListenable: logic.isBufferingNotifier,
+          builder: (context, isBuffering, _) {
+            if (!isBuffering) return const SizedBox();
+            return const Center(child: CircularProgressIndicator(color: Colors.white70));
+          },
+        ),
+
         // Gesture Detector
         Positioned.fill(
           child: GestureDetector(
             behavior: HitTestBehavior.translucent,
             onTap: logic.toggleControls,
-            onVerticalDragUpdate: isLocked ? null : (details) => logic.handleVerticalDrag(details, MediaQuery.of(context).size.width),
+            onDoubleTapDown: (details) {
+               if (isLocked) return;
+               final x = details.localPosition.dx;
+               if (x > size.width / 2) {
+                 logic.seekRelative(10);
+               } else {
+                 logic.seekRelative(-10);
+               }
+            },
+            onVerticalDragUpdate: isLocked ? null : (details) => logic.handleVerticalDrag(details, size.width),
             child: Container(color: Colors.transparent),
           ),
         ),
 
-        // Gesture Overlay (Granular Update)
+        // Seek Indicator Overlay
+        ValueListenableBuilder<int?>(
+          valueListenable: logic.seekIndicatorNotifier,
+          builder: (context, val, _) {
+            if (val == null) return const SizedBox();
+            return Positioned.fill(child: VideoSeekIndicator(value: val));
+          },
+        ),
+
+        // Gesture Overlay
         ValueListenableBuilder<bool>(
           valueListenable: logic.showVolumeLabelNotifier,
           builder: (context, showVolume, _) {
@@ -120,7 +150,6 @@ class VideoPlayerLandscapeLayout extends StatelessWidget {
                 }
               ),
 
-              // Visual Scrims
               _buildScrim(isTop: true),
               _buildScrim(isTop: false),
 
@@ -197,7 +226,6 @@ class VideoPlayerLandscapeLayout extends StatelessWidget {
                             },
                           ),
 
-                          // Icons Row + Tray Overlay
                           Stack(
                             alignment: Alignment.bottomCenter,
                             clipBehavior: Clip.none,

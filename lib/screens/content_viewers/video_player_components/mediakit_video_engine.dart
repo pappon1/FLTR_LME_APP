@@ -51,6 +51,9 @@ class MediaKitVideoEngine implements BaseVideoEngine {
   Stream<bool> get completedStream => player.stream.completed;
 
   @override
+  Stream<bool> get bufferingStream => player.stream.buffering;
+
+  @override
   Stream<dynamic> get errorStream => player.stream.error;
 
   @override
@@ -61,6 +64,9 @@ class MediaKitVideoEngine implements BaseVideoEngine {
 
   @override
   bool get isPlaying => player.state.playing;
+
+  @override
+  bool get isBuffering => player.state.buffering;
 
   @override
   Widget buildVideoWidget() {

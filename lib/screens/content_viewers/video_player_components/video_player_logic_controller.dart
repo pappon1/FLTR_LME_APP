@@ -19,6 +19,7 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
 
   // Granular State Notifiers
   final ValueNotifier<bool> isPlayingNotifier = ValueNotifier(false);
+  final ValueNotifier<bool> isBufferingNotifier = ValueNotifier(false);
   final ValueNotifier<Duration> positionNotifier = ValueNotifier(Duration.zero);
   final ValueNotifier<Duration> durationNotifier = ValueNotifier(Duration.zero);
   final ValueNotifier<double> playbackSpeedNotifier = ValueNotifier(1.0);
@@ -35,6 +36,10 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
   final ValueNotifier<double> brightnessNotifier = ValueNotifier(VideoPlayerConstants.defaultBrightness);
   final ValueNotifier<bool> showVolumeLabelNotifier = ValueNotifier(false);
   final ValueNotifier<bool> showBrightnessLabelNotifier = ValueNotifier(false);
+
+  // Seek Animation State
+  final ValueNotifier<int?> seekIndicatorNotifier = ValueNotifier(null); // +10 or -10
+  Timer? _seekIndicatorTimer;
 
   // Structural State
   bool _isLandscape = false;
@@ -59,7 +64,11 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
   Map<String, double> _videoProgress = {};
   StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
   DeviceOrientation? _lastSensorOrientation;
-  DateTime? _lastSaveTime;
+  
+  // Debounced Persistence
+  Timer? _saveDebounceTimer;
+  String? _lastSavedPath;
+  double? _lastSavedRatio;
 
   // Getters
   List<Map<String, dynamic>> get playlist => playlistManager.playlist;
@@ -68,6 +77,7 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
   String get currentTitle => playlistManager.currentTitle;
   
   bool get isPlaying => isPlayingNotifier.value;
+  bool get isBuffering => isBufferingNotifier.value;
   double get playbackSpeed => playbackSpeedNotifier.value;
   bool get showControls => showControlsNotifier.value;
   bool get isLandscape => _isLandscape;
@@ -115,7 +125,7 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
       playVideo(currentIndex);
     }
 
-    _loadMissingDurations();
+    _startSequentialDurationLoader();
     startHideTimer();
   }
 
@@ -138,6 +148,10 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
     engine.playingStream.listen((p) {
       isPlayingNotifier.value = p;
       if (p) errorMessageNotifier.value = null; 
+    });
+
+    engine.bufferingStream.listen((b) {
+      isBufferingNotifier.value = b;
     });
 
     engine.completedStream.listen((completed) {
@@ -247,26 +261,32 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
     if (currentPath == null) return;
 
     double oldRatio = _videoProgress[currentPath] ?? 0.0;
-    bool shouldSyncPlaylist = false;
+    bool shouldSyncUi = false;
 
     if ((ratio - oldRatio).abs() > VideoPlayerConstants.significantProgressChange || 
         (oldRatio < VideoPlayerConstants.watchedThreshold && ratio >= VideoPlayerConstants.watchedThreshold)) {
       _videoProgress[currentPath] = ratio;
-      shouldSyncPlaylist = true;
+      shouldSyncUi = true;
     }
     if (ratio >= VideoPlayerConstants.completionThreshold && oldRatio < VideoPlayerConstants.completionThreshold) {
       _videoProgress[currentPath] = 1.0;
+      _lastSavedPath = currentPath;
+      _lastSavedRatio = 1.0;
       VideoPersistenceService.saveProgress(currentPath, 1.0);
-      shouldSyncPlaylist = true;
+      shouldSyncUi = true;
     }
     
-    if (shouldSyncPlaylist) notifyListeners();
+    if (shouldSyncUi) notifyListeners();
 
-    final now = DateTime.now();
-    if (_lastSaveTime == null || now.difference(_lastSaveTime!) > const Duration(seconds: 10)) {
-      _lastSaveTime = now;
-      VideoPersistenceService.saveProgress(currentPath, ratio);
-    }
+    // Debounced Persistence
+    _lastSavedPath = currentPath;
+    _lastSavedRatio = ratio;
+    _saveDebounceTimer?.cancel();
+    _saveDebounceTimer = Timer(const Duration(seconds: 15), () {
+      if (_lastSavedPath != null && _lastSavedRatio != null) {
+        VideoPersistenceService.saveProgress(_lastSavedPath!, _lastSavedRatio!);
+      }
+    });
   }
 
   void handleVerticalDrag(DragUpdateDetails details, double screenWidth) {
@@ -377,6 +397,14 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
 
   void seekRelative(int seconds) {
     if (isLocked && _isLandscape) return;
+    
+    // indicator logic
+    seekIndicatorNotifier.value = seconds;
+    _seekIndicatorTimer?.cancel();
+    _seekIndicatorTimer = Timer(const Duration(milliseconds: 600), () {
+      seekIndicatorNotifier.value = null;
+    });
+
     final current = engine.position;
     final total = engine.duration;
     var newPos = current + Duration(seconds: seconds);
@@ -474,23 +502,31 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
     _overlayEntry = null;
   }
 
-  void _loadMissingDurations() async {
+  // --- Optimized Sequential Duration Loader ---
+  bool _isMetadataWorkerRunning = false;
+  
+  void _startSequentialDurationLoader() async {
+    if (_isMetadataWorkerRunning) return;
+    _isMetadataWorkerRunning = true;
+    
     for (int i = 0; i < playlist.length; i++) {
-       var item = playlist[i];
-      if (item['duration'] == null || item['duration'] == "00:00") {
-        final path = item['path'] as String?;
+      if (playlist[i]['duration'] == null || playlist[i]['duration'] == "00:00") {
+        final path = playlist[i]['path'] as String?;
         if (path != null) {
-          final dur = await _getVideoDuration(path);
+          final dur = await _getSingleVideoDuration(path);
           if (dur != "00:00") {
             playlistManager.updateDuration(i, dur);
             notifyListeners();
           }
+          // Small delay to let system breathe
+          await Future.delayed(const Duration(milliseconds: 200));
         }
       }
     }
+    _isMetadataWorkerRunning = false;
   }
 
-  Future<String> _getVideoDuration(String path) async {
+  Future<String> _getSingleVideoDuration(String path) async {
     final tempEngine = MediaKitVideoEngine();
     final completer = Completer<String>();
     tempEngine.durationStream.listen((dur) {
@@ -520,6 +556,11 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
       FlutterVolumeController.setVolume(_initialSystemVolume);
       FlutterVolumeController.updateShowSystemUI(true);
       _pauseSensor();
+      
+      // Force save on exit
+      if (_lastSavedPath != null && _lastSavedRatio != null) {
+        VideoPersistenceService.saveProgress(_lastSavedPath!, _lastSavedRatio!);
+      }
     } else if (state == AppLifecycleState.resumed) {
       FlutterVolumeController.updateShowSystemUI(false);
       _resumeSensor();
@@ -531,6 +572,8 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
     _hideTimer?.cancel();
     _unlockHideTimer?.cancel();
     _trayHideTimer?.cancel();
+    _saveDebounceTimer?.cancel();
+    _seekIndicatorTimer?.cancel();
     gestureHandler.dispose();
     _accelerometerSubscription?.cancel();
     WidgetsBinding.instance.removeObserver(this);
@@ -543,6 +586,7 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
     positionNotifier.dispose();
     durationNotifier.dispose();
     isPlayingNotifier.dispose();
+    isBufferingNotifier.dispose();
     playbackSpeedNotifier.dispose();
     showControlsNotifier.dispose();
     isLockedNotifier.dispose();
@@ -553,6 +597,7 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
     brightnessNotifier.dispose();
     showVolumeLabelNotifier.dispose();
     showBrightnessLabelNotifier.dispose();
+    seekIndicatorNotifier.dispose();
     super.dispose();
   }
 }

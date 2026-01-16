@@ -9,13 +9,12 @@ import 'video_tray.dart';
 import 'video_top_bar.dart';
 import 'video_error_overlay.dart';
 import 'video_player_logic_controller.dart';
+import 'video_seek_indicator.dart';
 
 class VideoPlayerPortraitLayout extends StatelessWidget {
   final VideoPlayerLogicController logic;
   final Size size;
   final double videoHeight;
-  
-  // These are still props because they trigger structural changes or are passed from parent
   final bool isLocked;
   final bool showControls;
   final String? activeTray;
@@ -61,6 +60,17 @@ class VideoPlayerPortraitLayout extends StatelessWidget {
                   children: [
                     logic.engine.buildVideoWidget(),
 
+                    // Buffering Spinner
+                    ValueListenableBuilder<bool>(
+                      valueListenable: logic.isBufferingNotifier,
+                      builder: (context, isBuffering, _) {
+                        if (!isBuffering) return const SizedBox();
+                        return const Center(
+                          child: CircularProgressIndicator(color: Colors.white70),
+                        );
+                      },
+                    ),
+
                     // Locked Dark Overlay
                     if (isLocked)
                       Positioned.fill(
@@ -72,12 +82,30 @@ class VideoPlayerPortraitLayout extends StatelessWidget {
                       child: GestureDetector(
                         behavior: HitTestBehavior.translucent,
                         onTap: logic.toggleControls,
+                        onDoubleTapDown: (details) {
+                           if (isLocked) return;
+                           final x = details.localPosition.dx;
+                           if (x > size.width / 2) {
+                             logic.seekRelative(10);
+                           } else {
+                             logic.seekRelative(-10);
+                           }
+                        },
                         onVerticalDragUpdate: isLocked ? null : (details) => logic.handleVerticalDrag(details, size.width),
                         child: Container(color: Colors.transparent),
                       ),
                     ),
 
-                    // Volume/Brightness Overlay (Granular Update)
+                    // Seek Indicator Overlay
+                    ValueListenableBuilder<int?>(
+                      valueListenable: logic.seekIndicatorNotifier,
+                      builder: (context, val, _) {
+                        if (val == null) return const SizedBox();
+                        return Positioned.fill(child: VideoSeekIndicator(value: val));
+                      },
+                    ),
+
+                    // Volume/Brightness Overlay
                     ValueListenableBuilder<bool>(
                       valueListenable: logic.showVolumeLabelNotifier,
                       builder: (context, showVolume, _) {
@@ -107,7 +135,7 @@ class VideoPlayerPortraitLayout extends StatelessWidget {
                       }
                     ),
 
-                    // Play/Pause Controls (Granular Update)
+                    // Play/Pause Controls
                     if (!isLocked)
                       ValueListenableBuilder<bool>(
                         valueListenable: logic.isPlayingNotifier,
@@ -175,7 +203,6 @@ class VideoPlayerPortraitLayout extends StatelessWidget {
                     alignment: Alignment.bottomCenter,
                     clipBehavior: Clip.none,
                     children: [
-                      // The Icons Row
                       Container(
                         color: Colors.black,
                         padding: const EdgeInsets.only(left: 20, right: 20, bottom: 8),
@@ -204,7 +231,6 @@ class VideoPlayerPortraitLayout extends StatelessWidget {
                         ),
                       ),
 
-                      // Tray Overlay
                       if (activeTray != null)
                         Positioned(
                           bottom: 0,
@@ -232,7 +258,6 @@ class VideoPlayerPortraitLayout extends StatelessWidget {
                     ],
                   ),
 
-                  // Light separator
                   AnimatedOpacity(
                     duration: const Duration(milliseconds: 300),
                     opacity: (isLocked ? 0.0 : (showControls ? 1.0 : 0.0)),
