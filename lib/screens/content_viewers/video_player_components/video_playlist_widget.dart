@@ -21,7 +21,7 @@ class VideoPlaylistWidget extends StatefulWidget {
 
 class _VideoPlaylistWidgetState extends State<VideoPlaylistWidget> {
   late final ScrollController _scrollController;
-  final double _itemHeight = 101.0; // Margin 16 + Thumbnail 85
+  final double _itemHeight = 101.0; 
 
   @override
   void initState() {

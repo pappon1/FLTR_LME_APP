@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 class VideoSeekbar extends StatefulWidget {
   final Duration position;
@@ -37,46 +38,82 @@ class _VideoSeekbarState extends State<VideoSeekbar> {
         if (!widget.isLocked)
           AnimatedContainer(
             duration: const Duration(milliseconds: 200),
-            height: _isDragging ? 12 : 8,
+            height: _isDragging ? 20 : 8,
             alignment: Alignment.center,
-            child: SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                trackHeight: _isDragging ? 6 : 4,
-                thumbShape: RoundSliderThumbShape(
-                  enabledThumbRadius: _isDragging ? 10 : 6,
-                  elevation: _isDragging ? 4 : 2,
+            child: Stack(
+              alignment: Alignment.center,
+              clipBehavior: Clip.none,
+              children: [
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    trackHeight: _isDragging ? 6 : 4,
+                    thumbShape: RoundSliderThumbShape(
+                      enabledThumbRadius: _isDragging ? 10 : 6,
+                      elevation: _isDragging ? 4 : 2,
+                    ),
+                    activeTrackColor: const Color(0xFF22C55E),
+                    inactiveTrackColor: Colors.grey[800],
+                    thumbColor: Colors.white,
+                    overlayColor: const Color(0xFF22C55E).withOpacity(0.1),
+                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 20.0),
+                  ),
+                  child: Slider(
+                    value: currentSeconds.clamp(0.0, maxSeconds > 0 ? maxSeconds : 1.0),
+                    min: 0,
+                    max: maxSeconds > 0 ? maxSeconds : 1.0,
+                    onChangeStart: (v) {
+                      setState(() {
+                        _isDragging = true;
+                        _dragValue = v;
+                      });
+                      widget.onChangeStart(v);
+                    },
+                    onChanged: (v) {
+                      setState(() {
+                        _dragValue = v;
+                      });
+                      widget.onChanged(v);
+                    },
+                    onChangeEnd: (v) {
+                      setState(() {
+                        _isDragging = false;
+                        _dragValue = null;
+                      });
+                      widget.onChangeEnd(v);
+                    },
+                  ),
                 ),
-                activeTrackColor: const Color(0xFF22C55E),
-                inactiveTrackColor: Colors.grey[800],
-                thumbColor: Colors.white,
-                overlayColor: const Color(0xFF22C55E).withOpacity(0.1),
-                overlayShape: const RoundSliderOverlayShape(overlayRadius: 20.0),
-              ),
-              child: Slider(
-                value: currentSeconds.clamp(0.0, maxSeconds > 0 ? maxSeconds : 1.0),
-                min: 0,
-                max: maxSeconds > 0 ? maxSeconds : 1.0,
-                onChangeStart: (v) {
-                  setState(() {
-                    _isDragging = true;
-                    _dragValue = v;
-                  });
-                  widget.onChangeStart(v);
-                },
-                onChanged: (v) {
-                  setState(() {
-                    _dragValue = v;
-                  });
-                  widget.onChanged(v);
-                },
-                onChangeEnd: (v) {
-                  setState(() {
-                    _isDragging = false;
-                    _dragValue = null;
-                  });
-                  widget.onChangeEnd(v);
-                },
-              ),
+                
+                // Point 2: Precise Scrubbing Tooltip
+                if (_isDragging)
+                  Positioned(
+                    top: -40,
+                    left: 0,
+                    right: 0,
+                    child: Align(
+                      alignment: Alignment(
+                        ((currentSeconds / (maxSeconds > 0 ? maxSeconds : 1)) * 2) - 1,
+                        0.0
+                      ),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF22C55E),
+                          borderRadius: BorderRadius.circular(4),
+                          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))],
+                        ),
+                        child: Text(
+                          _formatDuration(Duration(milliseconds: (currentSeconds * 1000).toInt())),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         if (widget.isLocked) const SizedBox(height: 10),

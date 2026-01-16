@@ -56,6 +56,10 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
 
   void _checkCacheAndGenerate() {
     if (VideoThumbnailWidget._memoryCache.containsKey(widget.videoPath)) {
+      // LRU: Refresh position
+      VideoThumbnailWidget._cacheKeys.remove(widget.videoPath);
+      VideoThumbnailWidget._cacheKeys.add(widget.videoPath);
+      
       setState(() {
         _thumbnailData = VideoThumbnailWidget._memoryCache[widget.videoPath];
         _isLoading = false;
