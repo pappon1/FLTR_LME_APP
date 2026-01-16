@@ -9,7 +9,12 @@ class MediaKitVideoEngine implements BaseVideoEngine {
 
   @override
   Future<void> init() async {
-    player = Player();
+    player = Player(
+      configuration: const PlayerConfiguration(
+        title: 'Mobile Engineer Player',
+        ready: null,
+      ),
+    );
     controller = VideoController(player);
   }
 

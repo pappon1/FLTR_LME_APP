@@ -289,6 +289,10 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
     });
   }
 
+  void handleVerticalDragStart() {
+    gestureHandler.handleVerticalDragStart();
+  }
+
   void handleVerticalDrag(DragUpdateDetails details, double screenWidth) {
     gestureHandler.handleVerticalDrag(details, screenWidth);
   }
@@ -553,6 +557,7 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.inactive || state == AppLifecycleState.paused) {
+      engine.pause(); // Auto-pause for Point 5
       FlutterVolumeController.setVolume(_initialSystemVolume);
       FlutterVolumeController.updateShowSystemUI(true);
       _pauseSensor();

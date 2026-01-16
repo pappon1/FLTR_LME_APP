@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../widgets/video_thumbnail_widget.dart';
 
-class VideoPlaylistWidget extends StatelessWidget {
+class VideoPlaylistWidget extends StatefulWidget {
   final List<Map<String, dynamic>> playlist;
   final int currentIndex;
   final Map<String, double> videoProgress;
@@ -16,22 +16,66 @@ class VideoPlaylistWidget extends StatelessWidget {
   });
 
   @override
+  State<VideoPlaylistWidget> createState() => _VideoPlaylistWidgetState();
+}
+
+class _VideoPlaylistWidgetState extends State<VideoPlaylistWidget> {
+  late final ScrollController _scrollController;
+  final double _itemHeight = 101.0; // Margin 16 + Thumbnail 85
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    // Point 3: Auto-scroll to current item on load
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToCurrentIndex();
+    });
+  }
+
+  @override
+  void didUpdateWidget(VideoPlaylistWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.currentIndex != widget.currentIndex) {
+      _scrollToCurrentIndex();
+    }
+  }
+
+  void _scrollToCurrentIndex() {
+    if (!_scrollController.hasClients) return;
+    
+    _scrollController.animateTo(
+      (widget.currentIndex * _itemHeight).clamp(0.0, _scrollController.position.maxScrollExtent),
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ListView.builder(
+      controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      itemCount: playlist.length,
-      itemBuilder: (context, i) => _buildPlaylistItem(playlist[i], i),
+      itemCount: widget.playlist.length,
+      itemBuilder: (context, i) => _buildPlaylistItem(widget.playlist[i], i),
     );
   }
 
   Widget _buildPlaylistItem(Map<String, dynamic> item, int index) {
-    final isPlaying = index == currentIndex;
+    final isPlaying = index == widget.currentIndex;
     final path = item['path'] as String?;
-    final progress = videoProgress[path] ?? 0.0;
+    final progress = widget.videoProgress[path] ?? 0.0;
 
     return InkWell(
-      onTap: () => onVideoTap(index),
+      onTap: () => widget.onVideoTap(index),
       child: Container(
+        height: 85, // Fixed height for calculation
         margin: const EdgeInsets.only(bottom: 16),
         child: Row(
           children: [
@@ -96,12 +140,13 @@ class VideoPlaylistWidget extends StatelessWidget {
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     item['name'] ?? 'Unknown',
                     style: TextStyle(
                       color: isPlaying ? const Color(0xFF22C55E) : Colors.white,
-                      fontSize: 15,
+                      fontSize: 14,
                       fontWeight: isPlaying ? FontWeight.bold : FontWeight.w500,
                     ),
                     maxLines: 2,
@@ -116,7 +161,7 @@ class VideoPlaylistWidget extends StatelessWidget {
                       Text(
                         item['duration'] ?? "00:00",
                         style: TextStyle(
-                            color: Colors.white.withOpacity(0.5), fontSize: 12),
+                            color: Colors.white.withOpacity(0.5), fontSize: 11),
                       ),
                       if (progress > 0.9) ...[
                         const SizedBox(width: 8),
@@ -127,7 +172,7 @@ class VideoPlaylistWidget extends StatelessWidget {
                           "Watched",
                           style: TextStyle(
                               color: Color(0xFF22C55E),
-                              fontSize: 11,
+                              fontSize: 10,
                               fontWeight: FontWeight.bold),
                         ),
                       ]

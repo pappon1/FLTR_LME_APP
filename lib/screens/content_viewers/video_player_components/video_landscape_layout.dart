@@ -62,6 +62,7 @@ class VideoPlayerLandscapeLayout extends StatelessWidget {
                  logic.seekRelative(-10);
                }
             },
+            onVerticalDragStart: isLocked ? null : (_) => logic.handleVerticalDragStart(),
             onVerticalDragUpdate: isLocked ? null : (details) => logic.handleVerticalDrag(details, size.width),
             child: Container(color: Colors.transparent),
           ),

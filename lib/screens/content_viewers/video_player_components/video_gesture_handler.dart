@@ -14,6 +14,11 @@ class VideoGestureHandler {
   Timer? _brightnessTimer;
   bool isChangingVolumeViaGesture = false;
 
+  // Point 6: Gesture Slop (Accidental touch protection)
+  double _cumulativeDelta = 0;
+  bool _hasPassedThreshold = false;
+  static const double _dragThreshold = 15.0; // pixels
+
   VideoGestureHandler({
     required this.volumeNotifier,
     required this.brightnessNotifier,
@@ -21,10 +26,24 @@ class VideoGestureHandler {
     required this.showBrightnessLabelNotifier,
   });
 
+  void handleVerticalDragStart() {
+    _cumulativeDelta = 0;
+    _hasPassedThreshold = false;
+  }
+
   void handleVerticalDrag(DragUpdateDetails details, double screenWidth) {
+    if (!_hasPassedThreshold) {
+      _cumulativeDelta += (details.primaryDelta ?? 0).abs();
+      if (_cumulativeDelta > _dragThreshold) {
+        _hasPassedThreshold = true;
+      } else {
+        return; // Ignore small movements
+      }
+    }
+
     final dx = details.localPosition.dx;
     final delta = details.primaryDelta ?? 0;
-    if (delta.abs() < 0.5) return;
+    if (delta.abs() < 0.2) return;
 
     final double sensitivity = VideoPlayerConstants.gestureSensitivity;
     if (dx > screenWidth / 2) {

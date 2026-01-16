@@ -35,42 +35,48 @@ class _VideoSeekbarState extends State<VideoSeekbar> {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (!widget.isLocked)
-          SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              trackHeight: 4,
-              thumbShape: RoundSliderThumbShape(
-                enabledThumbRadius: _isDragging ? 9 : 7,
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            height: _isDragging ? 12 : 8,
+            alignment: Alignment.center,
+            child: SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                trackHeight: _isDragging ? 6 : 4,
+                thumbShape: RoundSliderThumbShape(
+                  enabledThumbRadius: _isDragging ? 10 : 6,
+                  elevation: _isDragging ? 4 : 2,
+                ),
+                activeTrackColor: const Color(0xFF22C55E),
+                inactiveTrackColor: Colors.grey[800],
+                thumbColor: Colors.white,
+                overlayColor: const Color(0xFF22C55E).withOpacity(0.1),
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 20.0),
               ),
-              activeTrackColor: const Color(0xFF22C55E),
-              inactiveTrackColor: Colors.grey[800],
-              thumbColor: Colors.white,
-              overlayColor: Colors.transparent,
-              overlayShape: const RoundSliderOverlayShape(overlayRadius: 24.0),
-            ),
-            child: Slider(
-              value: currentSeconds.clamp(0.0, maxSeconds > 0 ? maxSeconds : 1.0),
-              min: 0,
-              max: maxSeconds > 0 ? maxSeconds : 1.0,
-              onChangeStart: (v) {
-                setState(() {
-                  _isDragging = true;
-                  _dragValue = v;
-                });
-                widget.onChangeStart(v);
-              },
-              onChanged: (v) {
-                setState(() {
-                  _dragValue = v;
-                });
-                widget.onChanged(v);
-              },
-              onChangeEnd: (v) {
-                setState(() {
-                  _isDragging = false;
-                  _dragValue = null;
-                });
-                widget.onChangeEnd(v);
-              },
+              child: Slider(
+                value: currentSeconds.clamp(0.0, maxSeconds > 0 ? maxSeconds : 1.0),
+                min: 0,
+                max: maxSeconds > 0 ? maxSeconds : 1.0,
+                onChangeStart: (v) {
+                  setState(() {
+                    _isDragging = true;
+                    _dragValue = v;
+                  });
+                  widget.onChangeStart(v);
+                },
+                onChanged: (v) {
+                  setState(() {
+                    _dragValue = v;
+                  });
+                  widget.onChanged(v);
+                },
+                onChangeEnd: (v) {
+                  setState(() {
+                    _isDragging = false;
+                    _dragValue = null;
+                  });
+                  widget.onChangeEnd(v);
+                },
+              ),
             ),
           ),
         if (widget.isLocked) const SizedBox(height: 10),
@@ -85,16 +91,15 @@ class _VideoSeekbarState extends State<VideoSeekbar> {
                   _formatDuration(Duration(milliseconds: (currentSeconds * 1000).toInt())),
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 13,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
-                    shadows: [Shadow(color: Colors.black, blurRadius: 2)],
                   ),
                 ),
                 Text(
                   _formatDuration(widget.duration),
                   style: const TextStyle(
                     color: Color(0xFF22C55E),
-                    fontSize: 13,
+                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
