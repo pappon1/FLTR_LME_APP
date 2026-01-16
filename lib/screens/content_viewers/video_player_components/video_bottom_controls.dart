@@ -48,7 +48,7 @@ class VideoBottomControls extends StatelessWidget {
       children: [
         // Speed
         _buildAnimatedControl(
-          isVisible: !isLocked || isLandscape, // In landscape we show buttons even if locked? (Actually current code says different things)
+          isVisible: !isLocked, 
           child: _buildControlIcon(
             Icons.speed,
             "${playbackSpeed.toStringAsFixed(2)}x",
@@ -60,7 +60,7 @@ class VideoBottomControls extends StatelessWidget {
 
         // Subtitle
         _buildAnimatedControl(
-          isVisible: !isLocked || isLandscape,
+          isVisible: !isLocked,
           child: _buildControlIcon(
             Icons.closed_caption,
             currentSubtitle == "Off" ? "Subtitle" : currentSubtitle,
@@ -72,7 +72,7 @@ class VideoBottomControls extends StatelessWidget {
 
         // Settings / Quality
         _buildAnimatedControl(
-          isVisible: !isLocked || isLandscape,
+          isVisible: !isLocked,
           child: _buildControlIcon(
             Icons.settings,
             currentQuality,
@@ -87,7 +87,7 @@ class VideoBottomControls extends StatelessWidget {
 
         // Orientation Toggle
         _buildAnimatedControl(
-          isVisible: !isLocked || isLandscape,
+          isVisible: !isLocked,
           child: _buildControlIcon(
             isLandscape ? Icons.fullscreen_exit : Icons.fullscreen,
             isLandscape ? "Portrait" : "Landscape",
@@ -99,10 +99,6 @@ class VideoBottomControls extends StatelessWidget {
   }
 
   Widget _buildAnimatedControl({required bool isVisible, required Widget child}) {
-    // In landscape, some controls remain hidden when locked, depending on the current logic.
-    // However, for consistency, we'll follow the portrait logic which hides everything but lock.
-    // In Landscape, the existing code actually had separate blocks.
-    
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 300),
       opacity: isVisible ? 1.0 : 0.0,
@@ -114,50 +110,54 @@ class VideoBottomControls extends StatelessWidget {
   }
 
   Widget _buildLockButton() {
-    // Portrait Lock Button has more complex logic
     if (!isLandscape) {
+      // Portrait Mode - Simplified Toggle logic
       return AnimatedOpacity(
         duration: const Duration(milliseconds: 300),
         opacity: isLocked ? (isUnlockControlsVisible ? 1.0 : 0.0) : 1.0,
-        child: GestureDetector(
-          onTap: onLockTap,
-          onDoubleTap: isLocked ? onDoubleLockTap : null,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 300),
-                child: Icon(
-                  isLocked ? Icons.lock : Icons.lock_open,
-                  color: Colors.white,
-                  size: isLocked ? 44 : 22,
-                ),
-              ),
-              const SizedBox(height: 3),
-              if (!isLocked)
-                const Text(
-                  "Lock",
-                  style: TextStyle(color: Colors.white, fontSize: 10),
-                ),
-              if (isLocked && isUnlockControlsVisible)
-                const Padding(
-                  padding: EdgeInsets.only(top: 4),
-                  child: Text(
-                    "Double tap\nto unlock",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
+        child: IgnorePointer(
+          ignoring: isLocked && !isUnlockControlsVisible,
+          child: GestureDetector(
+            onTap: onLockTap,
+            onDoubleTap: isLocked ? onDoubleLockTap : null,
+            behavior: HitTestBehavior.translucent,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  child: Icon(
+                    isLocked ? Icons.lock : Icons.lock_open,
+                    color: Colors.white,
+                    size: isLocked ? 44 : 22,
                   ),
-                )
-            ],
+                ),
+                const SizedBox(height: 3),
+                if (!isLocked)
+                  const Text(
+                    "Lock",
+                    style: TextStyle(color: Colors.white, fontSize: 10),
+                  ),
+                if (isLocked && isUnlockControlsVisible)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 4),
+                    child: Text(
+                      "Double tap\nto unlock",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  )
+              ],
+            ),
           ),
         ),
       );
     } else {
-      // Landscape Lock Button is simpler
+      // Landscape Lock Button
       return _buildControlIcon(
         isLocked ? Icons.lock : Icons.lock_outline,
         "Lock",

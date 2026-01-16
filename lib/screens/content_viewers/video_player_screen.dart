@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter/services.dart';
 import 'video_player_components/video_player_logic_controller.dart';
 import 'video_player_components/video_portrait_layout.dart';
 import 'video_player_components/video_landscape_layout.dart';
 
-class VideoPlayerScreen extends StatelessWidget {
+class VideoPlayerScreen extends StatefulWidget {
   final List<Map<String, dynamic>> playlist;
   final int initialIndex;
 
@@ -15,75 +15,69 @@ class VideoPlayerScreen extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => VideoPlayerLogicController(
-        playlist: playlist,
-        initialIndex: initialIndex,
-      ),
-      child: const _VideoPlayerView(),
-    );
-  }
+  State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
 }
 
-class _VideoPlayerView extends StatelessWidget {
-  const _VideoPlayerView();
+class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
+  late final VideoPlayerLogicController _logic;
+
+  @override
+  void initState() {
+    super.initState();
+    _logic = VideoPlayerLogicController(
+      playlist: widget.playlist,
+      initialIndex: widget.initialIndex,
+    );
+  }
+
+  @override
+  void dispose() {
+    _logic.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Rebuild only when orientation changes
-    final isLandscape = context.select<VideoPlayerLogicController, bool>((c) => c.isLandscape);
-    final logic = context.read<VideoPlayerLogicController>();
+    final size = MediaQuery.of(context).size;
+    final videoHeight = size.width * (9 / 16);
 
     return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
-        if (logic.isLocked && isLandscape) return;
-        if (isLandscape) {
-          logic.toggleOrientation(context);
-          return;
+      canPop: true,
+      onPopInvoked: (didPop) async {
+        if (didPop) {
+          SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+          SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
         }
-        Navigator.pop(context);
       },
       child: Scaffold(
         backgroundColor: Colors.black,
         body: SafeArea(
-          top: !isLandscape,
-          bottom: !isLandscape,
-          left: !isLandscape,
-          right: !isLandscape,
+          top: !_logic.isLandscape, 
+          bottom: !_logic.isLandscape,
           child: ValueListenableBuilder<bool>(
-            valueListenable: logic.isLockedNotifier,
-            builder: (context, isLocked, child) {
-              return ValueListenableBuilder<bool>(
-                valueListenable: logic.showControlsNotifier,
-                builder: (context, showControls, _) {
-                  return ValueListenableBuilder<String?>(
-                    valueListenable: logic.activeTrayNotifier,
-                    builder: (context, activeTray, _) {
-                      if (isLandscape) {
-                        return VideoPlayerLandscapeLayout(
-                          logic: logic,
-                          isLocked: isLocked,
-                          showControls: showControls,
-                          activeTray: activeTray,
-                        );
-                      } else {
-                        return VideoPlayerPortraitLayout(
-                          logic: logic,
-                          size: MediaQuery.of(context).size,
-                          videoHeight: MediaQuery.of(context).size.width * 9 / 16,
-                          isLocked: isLocked,
-                          showControls: showControls,
-                          activeTray: activeTray,
-                        );
-                      }
-                    },
-                  );
-                },
+            valueListenable: _logic.isReadyNotifier,
+            builder: (context, isReady, child) {
+              return AnimatedOpacity(
+                duration: const Duration(milliseconds: 400),
+                opacity: isReady ? 1.0 : 0.0,
+                child: child,
               );
             },
+            child: ListenableBuilder(
+              listenable: _logic,
+              // We only listen for structural changes (orientation) here
+              builder: (context, _) {
+                if (_logic.isLandscape) {
+                  return VideoPlayerLandscapeLayout(logic: _logic);
+                }
+
+                return VideoPlayerPortraitLayout(
+                  logic: _logic,
+                  size: size,
+                  videoHeight: videoHeight,
+                );
+              },
+            ),
           ),
         ),
       ),

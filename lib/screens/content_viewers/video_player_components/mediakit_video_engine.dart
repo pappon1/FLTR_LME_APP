@@ -13,6 +13,7 @@ class MediaKitVideoEngine implements BaseVideoEngine {
       configuration: const PlayerConfiguration(
         title: 'Mobile Engineer Player',
         ready: null,
+        pitch: true, // Explicitly enable pitch correction for smooth audio at all speeds
       ),
     );
     controller = VideoController(player);
