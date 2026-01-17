@@ -104,7 +104,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
          
          if (mounted && _courseContents.isNotEmpty) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Restored course draft'), backgroundColor: Colors.teal.shade700)
+              SnackBar(content: const Text('Restored course draft'), backgroundColor: Colors.teal.shade700)
             );
          }
       }
@@ -629,7 +629,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
 
   void _performCopyCut(bool isCut) {
       final List<int> indices = _selectedIndices.toList()..sort((a, b) => a.compareTo(b));
-      List<Map<String, dynamic>> itemsToCopy = [];
+      final List<Map<String, dynamic>> itemsToCopy = [];
       for (int i in indices) {
          if (i < _courseContents.length) itemsToCopy.add(_courseContents[i]);
       }
@@ -766,7 +766,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                                     ? GestureDetector(
                                         onTap: () => _toggleSelection(index),
                                         child: isSelected 
-                                          ? Icon(Icons.check_circle, color: AppTheme.primaryColor)
+                                          ? const Icon(Icons.check_circle, color: AppTheme.primaryColor)
                                           : const Icon(Icons.circle_outlined, color: Colors.grey),
                                       )
                                     : const SizedBox(width: 48), 
@@ -862,8 +862,8 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
           return;
       }
       
-      String path = item['path'] ?? '';
-      String type = item['type'];
+      final String path = item['path'] ?? '';
+      final String type = item['type'];
 
       if (type == 'folder') {
           // Pass data back from subfolder to update main draft
@@ -881,24 +881,24 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
              setState(() {
                 _courseContents[index]['contents'] = result;
              });
-             _saveCourseDraft();
+             unawaited(_saveCourseDraft());
           }
       } else if (type == 'image') {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => ImageViewerScreen(filePath: path)));
+          unawaited(Navigator.push(context, MaterialPageRoute(builder: (_) => ImageViewerScreen(filePath: path))));
       } else if (type == 'video') {
           final videoList = _courseContents.where((element) => element['type'] == 'video').toList();
           final initialIndex = videoList.indexOf(item);
-          Navigator.push(context, MaterialPageRoute(builder: (_) => VideoPlayerScreen(
+          unawaited(Navigator.push(context, MaterialPageRoute(builder: (_) => VideoPlayerScreen(
             playlist: videoList, 
             initialIndex: initialIndex >= 0 ? initialIndex : 0,
-          )));
+          ))));
       } else if (type == 'pdf') {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => PDFViewerScreen(filePath: path)));
+          unawaited(Navigator.push(context, MaterialPageRoute(builder: (_) => PDFViewerScreen(filePath: path))));
       }
   }
 
   void _renameContent(int index) {
-      TextEditingController renameController = TextEditingController(text: _courseContents[index]['name']);
+      final TextEditingController renameController = TextEditingController(text: _courseContents[index]['name']);
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -966,7 +966,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
 
     setState(() {
       for (var item in ContentClipboard.items!) {
-         var newItem = Map<String, dynamic>.from(jsonDecode(jsonEncode(item)));
+         final newItem = Map<String, dynamic>.from(jsonDecode(jsonEncode(item)));
          newItem['name'] = '${newItem['name']} (Copy)';
          _courseContents.add(newItem);
       }
@@ -1074,19 +1074,19 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   // File Picker Logic
   Future<void> _pickContentFile(String type, FileType fileType, [List<String>? allowedExtensions]) async {
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
+      final FilePickerResult? result = await FilePicker.platform.pickFiles(
         type: fileType,
         allowedExtensions: allowedExtensions,
         allowMultiple: true, 
       );
 
       if (result != null) {
-        List<String> invalidFiles = [];
+        final List<String> invalidFiles = [];
         setState(() {
           for (var file in result.files) {
              if (file.path == null) continue;
 
-             String ext = file.extension?.toLowerCase() ?? '';
+             final String ext = file.extension?.toLowerCase() ?? '';
              if (allowedExtensions != null && !allowedExtensions.contains(ext)) {
                  invalidFiles.add(file.name);
                  continue;
@@ -1100,7 +1100,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
              });
           }
         });
-        _saveCourseDraft();
+        unawaited(_saveCourseDraft());
 
         if (mounted && invalidFiles.isNotEmpty) {
            ScaffoldMessenger.of(context).showSnackBar(SnackBar(

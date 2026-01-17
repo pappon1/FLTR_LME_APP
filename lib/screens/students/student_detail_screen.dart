@@ -154,7 +154,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> with SingleTi
                                fontSize: 24, 
                                fontWeight: FontWeight.bold, 
                                color: Colors.white,
-                               shadows: [Shadow(color: Colors.black26, offset: Offset(0, 2), blurRadius: 4)]
+                               shadows: [const Shadow(color: Colors.black26, offset: Offset(0, 2), blurRadius: 4)]
                              ),
                            ).animate().fadeIn().moveY(begin: 10, end: 0),
                            
@@ -374,7 +374,7 @@ class _StudentCoursesTab extends StatelessWidget {
           itemCount: enrollments.length,
           itemBuilder: (context, index) {
             final e = enrollments[index];
-            bool isActive = e['isActive'];
+            final bool isActive = e['isActive'];
             
             return Container(
               margin: const EdgeInsets.only(bottom: 16),
@@ -451,7 +451,7 @@ class _StudentCoursesTab extends StatelessWidget {
      final bool isActive = e['isActive'];
      showDialog(context: context, builder: (ctx) => AlertDialog(
         title: Text(action == 'revoke' ? 'Revoke Access?' : (isActive ? 'Deactivate?' : 'Activate?')),
-        content: Text('Are you sure?'),
+        content: const Text('Are you sure?'),
         actions: [
           TextButton(onPressed: ()=>Navigator.pop(ctx), child: const Text('Cancel')),
           TextButton(onPressed: () async {

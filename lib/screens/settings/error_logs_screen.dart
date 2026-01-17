@@ -99,11 +99,11 @@ class ErrorLogsScreen extends StatelessWidget {
                     const SizedBox(height: 8),
                     Row(
                       children: [
-                        Icon(Icons.phone_android, size: 12, color: Colors.grey),
+                        const Icon(Icons.phone_android, size: 12, color: Colors.grey),
                         const SizedBox(width: 4),
                         Text(data['device'] ?? 'Unknown Device', style: GoogleFonts.inter(fontSize: 11, color: Colors.grey)),
                         const SizedBox(width: 12),
-                        Icon(Icons.info_outline, size: 12, color: Colors.grey),
+                        const Icon(Icons.info_outline, size: 12, color: Colors.grey),
                         const SizedBox(width: 4),
                         Text("v${data['version'] ?? '?'}", style: GoogleFonts.inter(fontSize: 11, color: Colors.grey)),
                       ],

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../models/course_model.dart';
@@ -167,7 +168,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
                      Navigator.push(context, MaterialPageRoute(builder: (_) => 
                        Scaffold(
                          backgroundColor: Colors.black,
-                         appBar: AppBar(backgroundColor: Colors.transparent, iconTheme: IconThemeData(color: Colors.white)),
+                         appBar: AppBar(backgroundColor: Colors.transparent, iconTheme: const IconThemeData(color: Colors.white)),
                          body: Center(child: CustomVideoPlayer(videoUrl: video.videoUrl, autoPlay: true)),
                        )
                      ));
@@ -258,7 +259,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
           TextButton(
             onPressed: () async {
               Navigator.pop(ctx);
-              _deleteCourse();
+              unawaited(_deleteCourse());
             },
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
           ),

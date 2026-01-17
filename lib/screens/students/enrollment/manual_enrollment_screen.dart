@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Add this for FilteringTextInputFormatter
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -6,7 +7,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'dart:async'; // Added for Debounce
 import 'dart:math';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../models/course_model.dart';
@@ -179,7 +179,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
     final isAuthenticated = await SecurityService.verifyPin(context);
     
     if (isAuthenticated) {
-      _processEnrollment();
+      unawaited(_processEnrollment());
     }
   }
 
@@ -255,7 +255,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
       if (!mounted) return;
       
       // Show Success Dialog
-      showDialog(
+      unawaited(showDialog(
         context: context,
         barrierDismissible: false,
         builder: (ctx) => AlertDialog(
@@ -281,7 +281,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
             )
           ],
         ),
-      );
+      ));
 
     } catch (e) {
        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));

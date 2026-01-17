@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -30,9 +31,9 @@ class _LoginScreenState extends State<LoginScreen> {
         
         if (isAdmin) {
           // Navigate to dashboard
-          Navigator.of(context).pushReplacement(
+          unawaited(Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => const HomeScreen()),
-          );
+          ));
         } else {
           // Not an admin - show error
           if (mounted) {
@@ -98,7 +99,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ],
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.admin_panel_settings_rounded,
                       size: 80,
                       color: AppTheme.primaryColor,

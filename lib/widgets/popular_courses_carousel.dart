@@ -111,7 +111,7 @@ class _PopularCoursesCarouselState extends State<PopularCoursesCarousel> {
           padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 8.0),
           child: Row(
             children: [
-              FaIcon(FontAwesomeIcons.fire, color: Colors.orange, size: 20),
+              const FaIcon(FontAwesomeIcons.fire, color: Colors.orange, size: 20),
               const SizedBox(width: 8),
               Text(
                 'Popular Courses',

@@ -44,7 +44,7 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
       };
 
       // 2. Determine Date Range
-      DateTime now = DateTime.now();
+      final DateTime now = DateTime.now();
       DateTime? startDate;
       
       if (_selectedFilter == '7 Days') {
@@ -67,8 +67,8 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
       
       // 4. Process Data
       double totalRev = 0;
-      Map<int, double> dateBuckets = {}; // Timestamp ms -> Value
-      List<DocumentSnapshot> transactions = [];
+      final Map<int, double> dateBuckets = {}; // Timestamp ms -> Value
+      final List<DocumentSnapshot> transactions = [];
       
       for (var doc in enrollments.docs) {
         final data = doc.data() as Map<String, dynamic>;
@@ -82,7 +82,7 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
         if (transactions.length < 5) transactions.add(doc);
         
         // Group for Chart
-        DateTime date = (data['enrolledAt'] as Timestamp).toDate();
+        final DateTime date = (data['enrolledAt'] as Timestamp).toDate();
         DateTime bucketDate;
         if (_selectedFilter == '1 Year' || _selectedFilter == 'Lifetime') {
            bucketDate = DateTime(date.year, date.month);
@@ -90,11 +90,11 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
            bucketDate = DateTime(date.year, date.month, date.day);
         }
         
-        int ms = bucketDate.millisecondsSinceEpoch;
+        final int ms = bucketDate.millisecondsSinceEpoch;
         dateBuckets[ms] = (dateBuckets[ms] ?? 0) + price;
       }
       
-      var sortedMs = dateBuckets.keys.toList()..sort();
+      final sortedMs = dateBuckets.keys.toList()..sort();
       _chartData = sortedMs.map((ms) {
         final dt = DateTime.fromMillisecondsSinceEpoch(ms);
         return {
@@ -124,7 +124,7 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final primaryColor = Theme.of(context).primaryColor;
-    final successColor = AppTheme.accentColor;
+    const successColor = AppTheme.accentColor;
     final textColor = theme.textTheme.bodyLarge?.color ?? Colors.black87;
     final cardColor = theme.cardTheme.color ?? Colors.white;
     final subTextColor = theme.textTheme.bodySmall?.color ?? Colors.grey;
@@ -238,7 +238,7 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(Icons.arrow_upward, color: successColor, size: 14),
+                              const Icon(Icons.arrow_upward, color: successColor, size: 14),
                               const SizedBox(width: 4),
                               Text(
                                 '$_selectedFilter Period',
@@ -286,7 +286,7 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
                                 showTitles: true,
                                 getTitlesWidget: (value, meta) {
                                   if (value.toInt() >= 0 && value.toInt() < _chartData.length) {
-                                     int step = (_chartData.length / 6).ceil();
+                                     final int step = (_chartData.length / 6).ceil();
                                      if (value.toInt() % step == 0) {
                                        return Padding(
                                          padding: const EdgeInsets.only(top: 8.0),

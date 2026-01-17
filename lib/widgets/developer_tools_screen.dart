@@ -38,7 +38,7 @@ class DeveloperToolsScreen extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                   Icon(Icons.terminal, color: Colors.blueAccent),
+                   const Icon(Icons.terminal, color: Colors.blueAccent),
                    const SizedBox(width: 12),
                    Expanded(
                      child: Text(

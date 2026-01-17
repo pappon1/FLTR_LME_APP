@@ -50,7 +50,7 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
   }
 
   Future<void> _pickVideo() async {
-    FilePickerResult? result = await FilePicker.platform.pickFiles(
+    final FilePickerResult? result = await FilePicker.platform.pickFiles(
       type: FileType.video,
     );
 
@@ -88,7 +88,7 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
 
       // 3. Upload Video
       setState(() => _uploadStatus = 'Uploading video (this may take time)...');
-      String videoUrl = await _bunnyService.uploadVideo(
+      final String videoUrl = await _bunnyService.uploadVideo(
         filePath: _videoFile!.path,
         courseId: widget.courseId,
         videoId: tempVideoId,

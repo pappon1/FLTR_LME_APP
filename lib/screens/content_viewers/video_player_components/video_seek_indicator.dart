@@ -31,7 +31,7 @@ class VideoSeekIndicator extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               "${isForward ? '+' : ''}$value s",
-              style: TextStyle(
+              style: const TextStyle(
                 color: contentColor,
                 fontSize: 14,
                 fontWeight: FontWeight.bold,

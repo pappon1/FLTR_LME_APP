@@ -26,7 +26,7 @@ class RemoteConfigCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.settings_remote, color: Colors.tealAccent, size: 20),
+              const Icon(Icons.settings_remote, color: Colors.tealAccent, size: 20),
               const SizedBox(width: 10),
               Text(
                 'Diagnostic Tools',

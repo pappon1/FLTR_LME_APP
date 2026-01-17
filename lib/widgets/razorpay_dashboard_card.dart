@@ -15,8 +15,8 @@ class RazorpayDashboardCard extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     
     // Razorpay Brand Colors
-    final rzpBlue = const Color(0xFF3395FF);
-    final rzpDark = const Color(0xFF0F264A);
+    const rzpBlue = Color(0xFF3395FF);
+    const rzpDark = Color(0xFF0F264A);
     
     return Container(
       width: double.infinity,
@@ -32,10 +32,10 @@ class RazorpayDashboardCard extends StatelessWidget {
           ),
         ],
         border: Border.all(color: rzpBlue.withValues(alpha: 0.3), width: 1),
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           colors: [
-            const Color(0xFF1E293B), 
-            const Color(0xFF0F172A)
+            Color(0xFF1E293B), 
+            Color(0xFF0F172A)
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -125,7 +125,7 @@ class RazorpayDashboardCard extends StatelessWidget {
                             style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
                           ),
                           const SizedBox(width: 8),
-                          Icon(Icons.trending_up, color: Colors.greenAccent, size: 18),
+                          const Icon(Icons.trending_up, color: Colors.greenAccent, size: 18),
                         ],
                       ),
                       const SizedBox(height: 4),

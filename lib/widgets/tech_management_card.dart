@@ -87,7 +87,7 @@ class _TechManagementCardState extends State<TechManagementCard> {
         children: [
           Row(
             children: [
-              Icon(Icons.terminal, color: Colors.purpleAccent, size: 20),
+              const Icon(Icons.terminal, color: Colors.purpleAccent, size: 20),
               const SizedBox(width: 10),
               Text(
                 'Adv. Technical Controls',

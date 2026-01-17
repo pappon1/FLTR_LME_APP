@@ -55,13 +55,13 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
   }
 
   Widget _buildStepCircle(int step, String label, double progress) {
-    bool isActive = currentStep >= step;
-    bool isCurrent = currentStep == step;
+    final bool isActive = currentStep >= step;
+    final bool isCurrent = currentStep == step;
     
     // Scale ranges
-    double size = 32.0 - (progress * 14); // 32 -> 18
-    double iconScale = 16.0 - (progress * 6); // 16 -> 10
-    double fontSize = 11.0 - (progress * 4); // 11 -> 7
+    final double size = 32.0 - (progress * 14); // 32 -> 18
+    final double iconScale = 16.0 - (progress * 6); // 16 -> 10
+    final double fontSize = 11.0 - (progress * 4); // 11 -> 7
 
     return Column(
       mainAxisSize: MainAxisSize.min,

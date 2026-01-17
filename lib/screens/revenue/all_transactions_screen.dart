@@ -58,7 +58,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final primaryColor = Theme.of(context).primaryColor;
-    final successColor = AppTheme.accentColor;
+    const successColor = AppTheme.accentColor;
     final textColor = theme.textTheme.bodyLarge?.color ?? Colors.black87;
     final cardColor = theme.cardTheme.color ?? Colors.white;
     final subTextColor = theme.textTheme.bodySmall?.color ?? Colors.grey;

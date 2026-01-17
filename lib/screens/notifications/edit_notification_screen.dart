@@ -114,7 +114,7 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
 
   void _showAudienceSelector() {
     String? tempSegment;
-    List<String> tempCourseIds = List.from(_selectedCourseIds);
+    final List<String> tempCourseIds = List.from(_selectedCourseIds);
 
     if (_selectedAudience == 'All App Downloads') {
       tempSegment = 'all';
@@ -495,7 +495,7 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
                               child: _newImageFile != null 
                                   ? Stack(fit: StackFit.expand, children: [
                                       ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.file(_newImageFile!, fit: BoxFit.cover)),
-                                      Positioned(right: 8, top: 8, child: CircleAvatar(backgroundColor: Colors.white, radius: 16, child: Icon(Icons.edit, size: 16, color: AppTheme.primaryColor)))
+                                      const Positioned(right: 8, top: 8, child: CircleAvatar(backgroundColor: Colors.white, radius: 16, child: Icon(Icons.edit, size: 16, color: AppTheme.primaryColor)))
                                     ])
                                   : (_existingImageUrl != null && !_removeExistingImage
                                       ? Stack(fit: StackFit.expand, children: [
@@ -509,7 +509,7 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
                                               errorWidget: (c, u, e) => const Icon(Icons.broken_image, color: Colors.grey),
                                             ),
                                           ),
-                                          Positioned(right: 8, top: 8, child: CircleAvatar(backgroundColor: Colors.white, radius: 16, child: Icon(Icons.edit, size: 16, color: AppTheme.primaryColor)))
+                                          const Positioned(right: 8, top: 8, child: CircleAvatar(backgroundColor: Colors.white, radius: 16, child: Icon(Icons.edit, size: 16, color: AppTheme.primaryColor)))
                                         ])
                                       : Column(
                                           mainAxisAlignment: MainAxisAlignment.center, 

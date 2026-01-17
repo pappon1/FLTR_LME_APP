@@ -47,7 +47,7 @@ class _SplashManagerScreenState extends State<SplashManagerScreen> {
 
     if (pickedFile != null) {
       setState(() => _isUploading = true);
-      File imageFile = File(pickedFile.path);
+      final File imageFile = File(pickedFile.path);
 
       try {
         // Upload to Storage
@@ -101,7 +101,7 @@ class _SplashManagerScreenState extends State<SplashManagerScreen> {
               decoration: BoxDecoration(
                 color: Colors.black,
                 borderRadius: BorderRadius.circular(20),
-                boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 20, offset: const Offset(0, 10))],
+                boxShadow: [const BoxShadow(color: Colors.black26, blurRadius: 20, offset: Offset(0, 10))],
                 image: _currentSplashUrl != null 
                   ? DecorationImage(image: NetworkImage(_currentSplashUrl!), fit: BoxFit.cover, opacity: _isActive ? 1.0 : 0.4)
                   : null,

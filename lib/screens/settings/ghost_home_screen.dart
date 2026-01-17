@@ -31,7 +31,7 @@ class _GhostHomeScreenState extends State<GhostHomeScreen> {
           .where('studentId', isEqualTo: widget.userId)
           .get();
 
-      List<Map<String, dynamic>> loadedCourses = [];
+      final List<Map<String, dynamic>> loadedCourses = [];
 
       for (var doc in enrollments.docs) {
         final courseId = doc.data()['courseId'];

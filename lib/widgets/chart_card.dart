@@ -39,7 +39,7 @@ class ChartCard extends StatelessWidget {
                     color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text(
+                  child: const Text(
                     'Last 7 days',
                     style: TextStyle(
                       color: AppTheme.primaryColor,

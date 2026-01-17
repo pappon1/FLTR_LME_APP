@@ -88,7 +88,7 @@ class _UserXRayScreenState extends State<UserXRayScreen> {
                decoration: BoxDecoration(
                  color: theme.cardTheme.color,
                  borderRadius: BorderRadius.circular(12),
-                 boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)]
+                 boxShadow: [const BoxShadow(color: Colors.black12, blurRadius: 10)]
                ),
                child: TextField(
                  controller: _searchController,

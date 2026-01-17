@@ -20,7 +20,7 @@ class VideosTab extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 gradient: AppTheme.infoGradient,
                 shape: BoxShape.circle,
               ),

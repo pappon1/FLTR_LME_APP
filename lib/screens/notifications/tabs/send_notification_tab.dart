@@ -148,7 +148,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
       setState(() {
         _selectedImage = file;
       });
-      _saveDraft();
+      unawaited(_saveDraft());
     }
   }
 
@@ -181,7 +181,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
     _holdTimer = Timer(const Duration(milliseconds: 800), () async { // 0.8 Seconds
       if (mounted) {
         if (await Vibration.hasVibrator()) {
-           Vibration.vibrate(duration: 100, amplitude: 128);
+           unawaited(Vibration.vibrate(duration: 100, amplitude: 128));
         }
         _confirmRemoveImage();
       }
@@ -214,7 +214,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
         _scheduledTime = null; 
         _isScheduled = true;
       });
-      _selectTime();
+      unawaited(_selectTime());
     } else {
        if (_scheduledDate == null) {
           setState(() {
@@ -222,7 +222,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
           });
        }
     }
-    _saveDraft();
+    unawaited(_saveDraft());
   }
 
   Future<void> _selectTime() async {
@@ -267,7 +267,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Schedule canceled (Time not selected).')));
       }
     }
-    _saveDraft();
+    unawaited(_saveDraft());
   }
 
   Future<void> _processNotification() async {
@@ -287,10 +287,10 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
     try {
       final result = await InternetAddress.lookup('google.com');
       if (result.isEmpty || result[0].rawAddress.isEmpty) {
-        throw SocketException('No Internet');
+        throw const SocketException('No Internet');
       }
     } on SocketException catch (_) {
-      SnackBarAction? action = SnackBarAction(label: 'Retry', onPressed: _processNotification);
+      final SnackBarAction action = SnackBarAction(label: 'Retry', onPressed: _processNotification);
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: const Text('No Internet Connection! Please check your network.'), backgroundColor: Colors.red, action: action));
       return;
     }
@@ -396,7 +396,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
       tempSegment = null; // Default 'Select Users' (None selected)
     }
     
-    List<String> tempCourseIds = List.from(_selectedCourseIds);
+    final List<String> tempCourseIds = List.from(_selectedCourseIds);
 
     showModalBottomSheet(
       context: context,
@@ -635,23 +635,23 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                            onChanged: (val) => setSheetState(() => tempAction = val!),
                            child: Column(
                              children: [
-                               RadioListTile<String>(
-                                 title: const Text('Open App Home'),
-                                 subtitle: const Text('Opens the main home screen'),
+                               const RadioListTile<String>(
+                                 title: Text('Open App Home'),
+                                 subtitle: Text('Opens the main home screen'),
                                  value: 'Open App Home',
                                  activeColor: Colors.orange,
                                  contentPadding: EdgeInsets.zero,
                                ),
-                               RadioListTile<String>(
-                                 title: const Text('Open Courses Screen'),
-                                 subtitle: const Text('Opens the course catalog'),
+                               const RadioListTile<String>(
+                                 title: Text('Open Courses Screen'),
+                                 subtitle: Text('Opens the course catalog'),
                                  value: 'Open Courses Screen',
                                  activeColor: Colors.orange,
                                  contentPadding: EdgeInsets.zero,
                                ),
-                               RadioListTile<String>(
-                                 title: const Text('Specific Course'),
-                                 subtitle: const Text('Redirects to a specific course detail'),
+                               const RadioListTile<String>(
+                                 title: Text('Specific Course'),
+                                 subtitle: Text('Redirects to a specific course detail'),
                                  value: 'Specific Course',
                                  activeColor: Colors.orange,
                                  contentPadding: EdgeInsets.zero,
@@ -689,9 +689,9 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                                      ),
                                    )
                                ],
-                               RadioListTile<String>(
-                                 title: const Text('Custom URL'),
-                                 subtitle: const Text('Opens a Weblink or YouTube Video'),
+                               const RadioListTile<String>(
+                                 title: Text('Custom URL'),
+                                 subtitle: Text('Opens a Weblink or YouTube Video'),
                                  value: 'Custom URL',
                                  activeColor: Colors.orange,
                                  contentPadding: EdgeInsets.zero,
@@ -795,7 +795,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
             ),
             child: ListTile(
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SentHistoryScreen())),
-              leading: CircleAvatar(backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1), child: FaIcon(FontAwesomeIcons.clockRotateLeft, color: AppTheme.primaryColor, size: 18)),
+              leading: CircleAvatar(backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1), child: const FaIcon(FontAwesomeIcons.clockRotateLeft, color: AppTheme.primaryColor, size: 18)),
               title: const Text('View Sent History', style: TextStyle(fontWeight: FontWeight.bold)),
               subtitle: const Text('Check previously sent notifications'),
               trailing: Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey[400]),
@@ -831,12 +831,12 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                             InkWell(
                               onTap: _showPreview,
                               borderRadius: BorderRadius.circular(12),
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 child: Row(
                                   children: [
                                     Icon(Icons.visibility, size: 14, color: AppTheme.primaryColor),
-                                    const SizedBox(width: 4),
+                                    SizedBox(width: 4),
                                     Text('Real Preview', style: TextStyle(fontSize: 12, color: AppTheme.primaryColor, fontWeight: FontWeight.bold)),
                                   ],
                                 ),
@@ -908,7 +908,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                        labelStyle: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[700]),
                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!)),
                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!)),
-                       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppTheme.primaryColor, width: 2)),
+                       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
                        filled: true,
                        fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey[100],
                        prefixIcon: Icon(Icons.title, color: isDark ? Colors.grey[500] : Colors.grey[600]),
@@ -929,7 +929,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                       labelStyle: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[700]),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!)),
                       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!)),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppTheme.primaryColor, width: 2)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
                       filled: true,
                       fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey[100],
                       prefixIcon: Icon(Icons.short_text, color: isDark ? Colors.grey[500] : Colors.grey[600]),
@@ -962,7 +962,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                         child: _selectedImage != null
                             ? Stack(fit: StackFit.expand, children: [
                                 ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.file(_selectedImage!, fit: BoxFit.contain)), 
-                                Positioned(top: 8, right: 8, child: CircleAvatar(backgroundColor: Colors.white, radius: 14, child: Icon(Icons.edit, size: 16, color: AppTheme.primaryColor))),
+                                const Positioned(top: 8, right: 8, child: CircleAvatar(backgroundColor: Colors.white, radius: 14, child: Icon(Icons.edit, size: 16, color: AppTheme.primaryColor))),
                               ])
                             : Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.add_photo_alternate_rounded, size:48, color: isDark ? Colors.grey[400] : Colors.grey[500]), const SizedBox(height: 8), Text('Attach 1280x720 Image\nHold 0.8s to Remove', textAlign: TextAlign.center, style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[500]))]),
                       ),
@@ -1074,11 +1074,11 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
 
             return AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: Row(
+              title: const Row(
                 children: [
-                   const Icon(Icons.warning_amber_rounded, color: Colors.red),
-                   const SizedBox(width: 8),
-                   const Text('Clear Draft?'),
+                   Icon(Icons.warning_amber_rounded, color: Colors.red),
+                   SizedBox(width: 8),
+                   Text('Clear Draft?'),
                 ],
               ),
               content: Column(
@@ -1141,7 +1141,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
       icon: Icon(Icons.text_format, color: Theme.of(context).primaryColor),
       tooltip: 'Text Formatting',
       onSelected: (value) {
-        String text = controller.text;
+        final String text = controller.text;
         String newText = text;
         
         switch (value) {

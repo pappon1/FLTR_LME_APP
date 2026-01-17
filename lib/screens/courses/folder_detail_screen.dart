@@ -95,7 +95,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                 }
              } else if (mapItem['type'] == 'folder') {
                 // For local folders, check by name
-                bool exists = _contents.any((e) => e['type'] == 'folder' && e['name'] == mapItem['name']);
+                final bool exists = _contents.any((e) => e['type'] == 'folder' && e['name'] == mapItem['name']);
                 if (!exists) {
                     _contents.add(mapItem);
                     hasChanges = true;
@@ -249,7 +249,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
 
   void _performCopyCut(bool isCut) {
       final List<int> indices = _selectedIndices.toList()..sort((a, b) => a.compareTo(b));
-      List<Map<String, dynamic>> itemsToCopy = [];
+      final List<Map<String, dynamic>> itemsToCopy = [];
       for (int i in indices) {
          if (i < _contents.length) itemsToCopy.add(_contents[i]);
       }
@@ -280,7 +280,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
 
     setState(() {
       for (var item in ContentClipboard.items!) {
-         var newItem = Map<String, dynamic>.from(jsonDecode(jsonEncode(item)));
+         final newItem = Map<String, dynamic>.from(jsonDecode(jsonEncode(item)));
          newItem['name'] = '${newItem['name']} (Copy)';
          _contents.add(newItem);
       }
@@ -290,7 +290,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
   }
 
   void _renameContent(int index) {
-      TextEditingController renameController = TextEditingController(text: _contents[index]['name']);
+      final TextEditingController renameController = TextEditingController(text: _contents[index]['name']);
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
@@ -416,7 +416,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
 
   Future<void> _pickContentFile(String type, FileType fileType, [List<String>? extensions]) async {
     try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(type: fileType, allowedExtensions: extensions, allowMultiple: true);
+      final FilePickerResult? result = await FilePicker.platform.pickFiles(type: fileType, allowedExtensions: extensions, allowMultiple: true);
       if (result != null) {
         for (var file in result.files) {
           if (file.path != null) {
@@ -437,7 +437,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
             }
           }
         }
-        _savePersistentContent();
+        unawaited(_savePersistentContent());
       }
     } catch (e) { 
        // debugPrint('Error picking file: $e'); 
@@ -495,14 +495,14 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
     }
     if (changed && mounted) {
       setState(() {});
-      _savePersistentContent();
+      unawaited(_savePersistentContent());
     }
   }
 
   void _handleContentTap(Map<String, dynamic> item, int index) {
       if (_isSelectionMode) { _toggleSelection(index); return; }
       // HapticFeedback.lightImpact(); // Removed as requested - no feedback on content tap
-      String? path = item['path'];
+      final String? path = item['path'];
       if (item['type'] == 'folder') {
           Navigator.push(context, MaterialPageRoute(builder: (_) => FolderDetailScreen(folderName: item['name'], contentList: (item['contents'] as List?)?.cast<Map<String, dynamic>>() ?? []))).then((_) => _refresh());
       } else if (item['type'] == 'image' && path != null) {

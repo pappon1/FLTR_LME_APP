@@ -17,7 +17,7 @@ class VideoPersistenceService {
 
   static Future<Map<String, double>> getAllProgress(List<String> paths) async {
     await init();
-    Map<String, double> progress = {};
+    final Map<String, double> progress = {};
     for (String path in paths) {
       final p = getProgress(path);
       if (p != null) progress[path] = p;

@@ -128,7 +128,7 @@ class _SystemHealthCardState extends State<SystemHealthCard> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.refresh, color: Colors.white70, size: 12),
+                      const Icon(Icons.refresh, color: Colors.white70, size: 12),
                       const SizedBox(width: 6),
                       Text("Run Diagnostics", style: GoogleFonts.inter(color: Colors.white70, fontSize: 11)),
                     ],

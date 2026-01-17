@@ -245,7 +245,7 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  FaIcon(FontAwesomeIcons.image, size: 48, color: Colors.blue),
+                                  const FaIcon(FontAwesomeIcons.image, size: 48, color: Colors.blue),
                                   const SizedBox(height: 12),
                                   Text("Tap to select poster", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold)),
                                 ],

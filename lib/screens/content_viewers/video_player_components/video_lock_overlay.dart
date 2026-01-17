@@ -80,7 +80,7 @@ class VideoLockOverlay extends StatelessWidget {
                             shape: BoxShape.circle,
                             border: Border.all(color: borderColor),
                           ),
-                          child: Icon(Icons.lock, size: 40, color: contentColor),
+                          child: const Icon(Icons.lock, size: 40, color: contentColor),
                         ),
                       ),
                     ],

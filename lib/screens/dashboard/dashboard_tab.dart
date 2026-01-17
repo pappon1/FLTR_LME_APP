@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -46,7 +47,7 @@ class _DashboardTabState extends State<DashboardTab> {
     final image = prefs.getString('draft_image_path');
     
     // If any significant field has data, we consider it a draft
-    bool hasData = (title != null && title.isNotEmpty) || 
+    final bool hasData = (title != null && title.isNotEmpty) || 
                    (desc != null && desc.isNotEmpty) || 
                    (image != null && image.isNotEmpty);
     
@@ -126,7 +127,7 @@ class _DashboardTabState extends State<DashboardTab> {
                   ),
                   onPressed: () async {
                     await Navigator.push(context, MaterialPageRoute(builder: (_) => const NotificationManagerScreen()));
-                    _checkDraftStatus();
+                    unawaited(_checkDraftStatus());
                   },
                   tooltip: hasUnread ? '${notifProvider.totalUnread} New Notifications' : 'Notifications',
                 ),
@@ -143,7 +144,7 @@ class _DashboardTabState extends State<DashboardTab> {
           return RefreshIndicator(
             onRefresh: () async {
                await provider.refreshData();
-               _checkDraftStatus();
+               unawaited(_checkDraftStatus());
             },
             child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
@@ -249,7 +250,7 @@ class _DashboardTabState extends State<DashboardTab> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.add_photo_alternate_outlined, color: Colors.grey, size: 30),
+                                const Icon(Icons.add_photo_alternate_outlined, color: Colors.grey, size: 30),
                                 const SizedBox(height: 8),
                                 Text("Upload Banner", style: GoogleFonts.inter(color: Colors.grey, fontWeight: FontWeight.bold)),
                               ],
@@ -323,7 +324,7 @@ class _DashboardTabState extends State<DashboardTab> {
                         onTap: () {
                            Navigator.push(context, MaterialPageRoute(builder: (_) => const ContactLinksScreen()));
                         },
-                        child: StatCard(
+                        child: const StatCard(
                           title: 'Contact Links',
                           value: 'Socials', // Or just '4 Links'
                           icon: FontAwesomeIcons.shareNodes, // Represents sharing/socials

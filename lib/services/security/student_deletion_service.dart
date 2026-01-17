@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -10,7 +11,7 @@ class StudentDeletionService {
   
   static Future<void> initiateDeletion(BuildContext context, StudentModel student) async {
     // 1. In-App PIN Security Check (Using SecurityService)
-    bool authenticated = await SecurityService.verifyPin(context);
+    final bool authenticated = await SecurityService.verifyPin(context);
 
     if (!authenticated) {
       // User cancelled or failed
@@ -19,7 +20,7 @@ class StudentDeletionService {
 
     // 2. Timer Dialog (3 Seconds)
     if (!context.mounted) return;
-    bool confirmInitial = await showDialog(
+    final bool confirmInitial = await showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => _TimerDialog(),
@@ -83,7 +84,7 @@ class StudentDeletionService {
     Navigator.pop(context); // Close dialog
     
     // Show loading
-    showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
+    unawaited(showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator())));
     
     try {
       if (student.id.startsWith('dummy')) {
@@ -98,7 +99,7 @@ class StudentDeletionService {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Student Deleted Successfully'), backgroundColor: Colors.green));
       
       // Refresh Data
-      Provider.of<DashboardProvider>(context, listen: false).refreshData();
+      unawaited(Provider.of<DashboardProvider>(context, listen: false).refreshData());
       
     } catch (e) {
       if (!context.mounted) return;

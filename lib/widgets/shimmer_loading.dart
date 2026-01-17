@@ -20,7 +20,7 @@ class ShimmerLoading extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     
     return Shimmer.fromColors(
       baseColor: isDark ? const Color(0xFF2C2C2C) : Colors.grey[300]!,
@@ -51,22 +51,22 @@ class NotificationShimmerItem extends StatelessWidget {
           color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
+        child: const Padding(
+          padding: EdgeInsets.all(16.0),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const ShimmerLoading.circular(width: 48, height: 48),
-              const SizedBox(width: 16),
+              ShimmerLoading.circular(width: 48, height: 48),
+              SizedBox(width: 16),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const ShimmerLoading.rectangular(height: 14, width: 120),
-                    const SizedBox(height: 8),
-                    const ShimmerLoading.rectangular(height: 12),
-                    const SizedBox(height: 4),
-                    const ShimmerLoading.rectangular(height: 12, width: 200),
+                    ShimmerLoading.rectangular(height: 14, width: 120),
+                    SizedBox(height: 8),
+                    ShimmerLoading.rectangular(height: 12),
+                    SizedBox(height: 4),
+                    ShimmerLoading.rectangular(height: 12, width: 200),
                   ],
                 ),
               ),

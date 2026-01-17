@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -36,7 +37,7 @@ class SecurityService {
 
       final doc = await _firestore.collection('users').doc(user.uid).get();
       if (doc.exists && doc.data() != null && doc.data()!.containsKey('securityPin')) {
-        String storedPin = doc.data()!['securityPin'];
+        final String storedPin = doc.data()!['securityPin'];
         return storedPin == inputPin;
       }
       // Default PIN if not set
@@ -66,7 +67,7 @@ class _SecurityPinDialogState extends State<_SecurityPinDialog> {
     
     setState(() { _isLoading = true; _showError = false; });
 
-    bool isValid = await SecurityService._validatePinWithServer(_pinController.text);
+    final bool isValid = await SecurityService._validatePinWithServer(_pinController.text);
 
     if (!mounted) return;
     setState(() => _isLoading = false);
@@ -171,7 +172,7 @@ class _ResetPinAuthDialogState extends State<_ResetPinAuthDialog> {
     setState(() => _isLoading = true);
     
     try {
-      User? user = FirebaseAuth.instance.currentUser;
+      final User? user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
       if (_isGoogleUser) {
@@ -204,7 +205,7 @@ class _ResetPinAuthDialogState extends State<_ResetPinAuthDialog> {
            setState(() => _isLoading = false);
            return;
         }
-        AuthCredential credential = EmailAuthProvider.credential(
+        final AuthCredential credential = EmailAuthProvider.credential(
           email: user.email!, 
           password: _passwordController.text
         );
@@ -216,7 +217,7 @@ class _ResetPinAuthDialogState extends State<_ResetPinAuthDialog> {
       Navigator.pop(context); // Close Auth Dialog
       
       // Open Set New PIN Dialog
-      showDialog(context: context, builder: (_) => const _SetNewPinDialog());
+      unawaited(showDialog(context: context, builder: (_) => const _SetNewPinDialog()));
 
     } on FirebaseAuthException catch (e) {
       if (mounted) {

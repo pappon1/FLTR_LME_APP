@@ -15,11 +15,11 @@ class EnrollmentDetailScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Tech Vibe Colors
-    final Color techDark = const Color(0xFF1A1A2E);
-    final Color techBlue = const Color(0xFF16213E);
-    final Color techAccent = const Color(0xFF0F3460);
-    final Color neonGreen = const Color(0xFF4ECCA3);
-    final Color neonRed = const Color(0xFFFF5959);
+    const Color techDark = Color(0xFF1A1A2E);
+    const Color techBlue = Color(0xFF16213E);
+    const Color techAccent = Color(0xFF0F3460);
+    const Color neonGreen = Color(0xFF4ECCA3);
+    const Color neonRed = Color(0xFFFF5959);
 
     return Scaffold(
       extendBodyBehindAppBar: true, 
@@ -36,7 +36,7 @@ class EnrollmentDetailScreen extends StatelessWidget {
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
@@ -205,7 +205,7 @@ class EnrollmentDetailScreen extends StatelessWidget {
   Widget _buildSectionHeader(String title) {
     return Row(
       children: [
-        Icon(Icons.data_usage, size: 14, color: Colors.cyanAccent),
+        const Icon(Icons.data_usage, size: 14, color: Colors.cyanAccent),
         const SizedBox(width: 8),
         Text(
           title, 

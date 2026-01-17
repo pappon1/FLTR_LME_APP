@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
@@ -26,9 +27,9 @@ class _SplashScreenState extends State<SplashScreen> {
     await Future.delayed(const Duration(seconds: 3));
 
     if (mounted && widget.autoNavigate) {
-      Navigator.of(context).pushReplacement(
+      unawaited(Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const HomeScreen()),
-      );
+      ));
     }
   }
 
@@ -109,7 +110,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 width: 200,
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(10),
-                  child: LinearProgressIndicator(
+                  child: const LinearProgressIndicator(
                     backgroundColor: Colors.white10,
                     valueColor: AlwaysStoppedAnimation<Color>(
                       AppTheme.primaryColor,
