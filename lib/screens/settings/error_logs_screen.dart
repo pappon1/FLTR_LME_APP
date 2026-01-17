@@ -9,7 +9,7 @@ class ErrorLogsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+
 
     return Scaffold(
       appBar: AppBar(
@@ -34,7 +34,7 @@ class ErrorLogsScreen extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.check_circle_outline, size: 60, color: Colors.green.withOpacity(0.5)),
+                  Icon(Icons.check_circle_outline, size: 60, color: Colors.green.withValues(alpha: 0.5)),
                   const SizedBox(height: 16),
                   Text("No Critical Errors Reported", style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.w600)),
                   Text("Your app is running smoothly.", style: GoogleFonts.inter(color: Colors.grey)),
@@ -70,9 +70,9 @@ class ErrorLogsScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: theme.cardTheme.color,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.red.withOpacity(0.2)),
+                  border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5)
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5)
                   ]
                 ),
                 child: Column(

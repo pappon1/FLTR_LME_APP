@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 class VideoSeekbar extends StatefulWidget {
   final Duration position;
@@ -63,7 +62,7 @@ class _VideoSeekbarState extends State<VideoSeekbar> {
                     activeTrackColor: const Color(0xFF22C55E),
                     inactiveTrackColor: inactiveColor,
                     thumbColor: thumbColor,
-                    overlayColor: const Color(0xFF22C55E).withOpacity(0.1),
+                    overlayColor: const Color(0xFF22C55E).withValues(alpha: 0.1),
                     overlayShape: const RoundSliderOverlayShape(overlayRadius: 20.0),
                   ),
                   child: Slider(

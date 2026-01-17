@@ -1,15 +1,12 @@
 import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vibration/vibration.dart'; // Added Vibration
-import '../../../services/firestore_service.dart';
 import '../../../services/bunny_cdn_service.dart';
 import '../../../utils/app_theme.dart';
 import '../sent_history_screen.dart';
@@ -33,8 +30,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
   List<String> _selectedCourseIds = [];
   
   File? _selectedImage;
-  bool _isUploading = false;
-  double _uploadProgress = 0.0;
+
   bool _isSending = false;
 
   bool _isScheduled = false;
@@ -184,7 +180,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
     _holdTimer?.cancel();
     _holdTimer = Timer(const Duration(milliseconds: 800), () async { // 0.8 Seconds
       if (mounted) {
-        if (await Vibration.hasVibrator() ?? false) {
+        if (await Vibration.hasVibrator()) {
            Vibration.vibrate(duration: 100, amplitude: 128);
         }
         _confirmRemoveImage();
@@ -301,11 +297,13 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
     
     // Mandatory Audience Validation
     if ((_selectedAudience == 'Select Users' || _selectedAudience.isEmpty) && _selectedCourseIds.isEmpty) {
-       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-         content: Text('⚠️ Please select Users (Audience) to proceed!'), 
-         backgroundColor: Colors.red,
-         behavior: SnackBarBehavior.floating,
-       ));
+       if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+           content: Text('⚠️ Please select Users (Audience) to proceed!'), 
+           backgroundColor: Colors.red,
+           behavior: SnackBarBehavior.floating,
+         ));
+       }
        return;
     }
 
@@ -314,13 +312,10 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
     try {
       String? imageUrl;
       if (_selectedImage != null) {
-        setState(() => _isUploading = true);
         imageUrl = await _bunnyCDNService.uploadImage(
           filePath: _selectedImage!.path,
           folder: 'notifications',
-          onProgress: (sent, total) => setState(() => _uploadProgress = sent / total),
         );
-        setState(() => _isUploading = false);
       }
 
       final DateTime? scheduledDateTime = _isScheduled && _scheduledDate != null && _scheduledTime != null
@@ -328,10 +323,15 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
           : null;
 
       String actionType = 'home'; // Default
-      if (_selectedAction == 'Open App Home') actionType = 'home';
-      else if (_selectedAction == 'Open Courses Screen') actionType = 'courses';
-      else if (_selectedAction == 'Specific Course') actionType = 'course';
-      else if (_selectedAction == 'Custom URL') actionType = 'link';
+      if (_selectedAction == 'Open App Home') {
+        actionType = 'home';
+      } else if (_selectedAction == 'Open Courses Screen') {
+        actionType = 'courses';
+      } else if (_selectedAction == 'Specific Course') {
+        actionType = 'course';
+      } else if (_selectedAction == 'Custom URL') {
+        actionType = 'link';
+      }
 
       final notificationData = {
         'title': _titleController.text.trim(),
@@ -350,15 +350,16 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
       await FirebaseFirestore.instance.collection('notifications').add(notificationData);
 
       if (mounted) {
+        final message = _isScheduled ? 'Notification Scheduled! 📅' : 'Notification Sent! 🚀';
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text(_isScheduled ? 'Notification Scheduled! 📅' : 'Notification Sent! 🚀'),
+            content: Text(message),
             backgroundColor: Colors.green));
         _resetForm();
       }
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
     } finally {
-      if (mounted) setState(() { _isSending = false; _isUploading = false; });
+      if (mounted) setState(() { _isSending = false; });
     }
   }
 
@@ -368,7 +369,6 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
     _actionValueController.clear();
     setState(() {
       _selectedImage = null;
-      _uploadProgress = 0.0;
       _isScheduled = false;
       _scheduledDate = null;
       _scheduledTime = null;
@@ -384,10 +384,13 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
     // Internal state for the sheet
     String? tempSegment;
     // Map current _selectedAudience to segment
-    if (_selectedAudience == 'All App Downloads') tempSegment = 'all';
-    else if (_selectedAudience == 'All New App Downloads') tempSegment = 'new';
-    else if (_selectedAudience == 'Not purchased any course') tempSegment = 'non_purchasers';
-    else if (_selectedCourseIds.isNotEmpty) {
+    if (_selectedAudience == 'All App Downloads') {
+      tempSegment = 'all';
+    } else if (_selectedAudience == 'All New App Downloads') {
+      tempSegment = 'new';
+    } else if (_selectedAudience == 'Not purchased any course') {
+      tempSegment = 'non_purchasers';
+    } else if (_selectedCourseIds.isNotEmpty) {
       tempSegment = null; // Custom/Courses
     } else {
       tempSegment = null; // Default 'Select Users' (None selected)
@@ -427,41 +430,33 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                            color: isDark ? Colors.grey[900] : Colors.grey[200],
                            child: Text('APP DOWNLOADS', style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold, fontSize: 13)),
                          ),
-                         RadioListTile<String>(
-                           title: const Text('All App Downloads'),
-                           value: 'all',
+                         RadioGroup<String>(
                            groupValue: tempSegment,
-                           activeColor: Colors.red,
                            onChanged: (val) {
                              setSheetState(() {
                                tempSegment = val;
                                tempCourseIds.clear();
                              });
                            },
-                         ),
-                         RadioListTile<String>(
-                           title: const Text('All New App Downloads'),
-                           value: 'new',
-                           groupValue: tempSegment,
-                           activeColor: Colors.red,
-                           onChanged: (val) {
-                             setSheetState(() {
-                               tempSegment = val;
-                               tempCourseIds.clear();
-                             });
-                           },
-                         ),
-                         RadioListTile<String>(
-                           title: const Text('Not purchased any course'),
-                           value: 'non_purchasers',
-                           groupValue: tempSegment,
-                           activeColor: Colors.red,
-                           onChanged: (val) {
-                             setSheetState(() {
-                               tempSegment = val;
-                               tempCourseIds.clear();
-                             });
-                           },
+                           child: const Column(
+                             children: [
+                               RadioListTile<String>(
+                                 title: Text('All App Downloads'),
+                                 value: 'all',
+                                 activeColor: Colors.red,
+                               ),
+                               RadioListTile<String>(
+                                 title: Text('All New App Downloads'),
+                                 value: 'new',
+                                 activeColor: Colors.red,
+                               ),
+                               RadioListTile<String>(
+                                 title: Text('Not purchased any course'),
+                                 value: 'non_purchasers',
+                                 activeColor: Colors.red,
+                               ),
+                             ],
+                           ),
                          ),
                          
                          // Section 2: COURSES
@@ -565,8 +560,11 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                                          if (tempSegment == 'new') _selectedAudience = 'All New App Downloads';
                                          if (tempSegment == 'non_purchasers') _selectedAudience = 'Not purchased any course';
                                        } else {
-                                         if (tempCourseIds.length == 1) _selectedAudience = '1 Course Selected';
-                                         else _selectedAudience = '${tempCourseIds.length} Courses Selected';
+                                         if (tempCourseIds.length == 1) {
+                                           _selectedAudience = '1 Course Selected';
+                                         } else {
+                                           _selectedAudience = '${tempCourseIds.length} Courses Selected';
+                                         }
                                        }
                                      });
                                    }
@@ -590,10 +588,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
     );
   }
 
-  // Old helper for reference (will be removed by Replacement)
-  Widget _buildAudienceOption_REMOVED(BuildContext context, String title, IconData icon, String subtitle, bool isSelected) {
-    return Container(); 
-  }
+
 
   void _showActionSelector() {
     FocusScope.of(context).unfocus(); // Dismiss keyboard
@@ -635,82 +630,74 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                      child: ListView(
                        padding: const EdgeInsets.all(16),
                        children: [
-                         // 1. Open App Home
-                         RadioListTile<String>(
-                           title: const Text('Open App Home'),
-                           subtitle: const Text('Opens the main home screen'),
-                           value: 'Open App Home',
+                         RadioGroup<String>(
                            groupValue: tempAction,
-                           activeColor: Colors.orange,
-                           contentPadding: EdgeInsets.zero,
-                           onChanged: (val) => setSheetState(() { tempAction = val!; tempValue = ''; }),
-                         ),
-                         
-                         // 2. Open Courses Screen
-                         RadioListTile<String>(
-                           title: const Text('Open Courses Screen'),
-                           subtitle: const Text('Opens the course catalog'),
-                           value: 'Open Courses Screen',
-                           groupValue: tempAction,
-                           activeColor: Colors.orange,
-                           contentPadding: EdgeInsets.zero,
-                           onChanged: (val) => setSheetState(() { tempAction = val!; tempValue = ''; }),
-                         ),
-                         
-                         // 3. Specific Course
-                         RadioListTile<String>(
-                           title: const Text('Specific Course'),
-                           subtitle: const Text('Redirects to a specific course detail'),
-                           value: 'Specific Course',
-                           groupValue: tempAction,
-                           activeColor: Colors.orange,
-                           contentPadding: EdgeInsets.zero,
                            onChanged: (val) => setSheetState(() => tempAction = val!),
-                         ),
-                         
-                         if (tempAction == 'Specific Course') ...[
-                             Container(
-                               height: 200,
-                               margin: const EdgeInsets.only(left: 16, bottom: 16),
-                               decoration: BoxDecoration(border: Border.all(color: Theme.of(context).dividerColor), borderRadius: BorderRadius.circular(8)),
-                               child: StreamBuilder<QuerySnapshot>(
-                                 stream: FirebaseFirestore.instance.collection('courses').snapshots(),
-                                 builder: (context, snapshot) {
-                                   if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                                   final courses = snapshot.data!.docs;
-                                   if (courses.isEmpty) return const Center(child: Text('No courses found'));
-                                   
-                                   return ListView.builder(
-                                     itemCount: courses.length,
-                                     itemBuilder: (context, index) {
-                                       final data = courses[index].data() as Map<String, dynamic>;
-                                       final id = courses[index].id;
-                                       final isSelected = tempValue == id;
-                                       return ListTile(
-                                         title: Text(data['title'] ?? 'Untitled'),
-                                         selected: isSelected,
-                                         selectedColor: Colors.orange,
-                                         trailing: isSelected ? const Icon(Icons.check, color: Colors.orange) : null,
-                                         onTap: () {
-                                            setSheetState(() => tempValue = id);
-                                         },
-                                       );
-                                     },
-                                   );
-                                 },
+                           child: Column(
+                             children: [
+                               RadioListTile<String>(
+                                 title: const Text('Open App Home'),
+                                 subtitle: const Text('Opens the main home screen'),
+                                 value: 'Open App Home',
+                                 activeColor: Colors.orange,
+                                 contentPadding: EdgeInsets.zero,
                                ),
-                             )
-                         ],
-
-                         // 4. Custom URL
-                         RadioListTile<String>(
-                           title: const Text('Custom URL'),
-                           subtitle: const Text('Opens a Weblink or YouTube Video'),
-                           value: 'Custom URL',
-                           groupValue: tempAction,
-                           activeColor: Colors.orange,
-                           contentPadding: EdgeInsets.zero,
-                           onChanged: (val) => setSheetState(() => tempAction = val!),
+                               RadioListTile<String>(
+                                 title: const Text('Open Courses Screen'),
+                                 subtitle: const Text('Opens the course catalog'),
+                                 value: 'Open Courses Screen',
+                                 activeColor: Colors.orange,
+                                 contentPadding: EdgeInsets.zero,
+                               ),
+                               RadioListTile<String>(
+                                 title: const Text('Specific Course'),
+                                 subtitle: const Text('Redirects to a specific course detail'),
+                                 value: 'Specific Course',
+                                 activeColor: Colors.orange,
+                                 contentPadding: EdgeInsets.zero,
+                               ),
+                               if (tempAction == 'Specific Course') ...[
+                                   Container(
+                                     height: 200,
+                                     margin: const EdgeInsets.only(left: 16, bottom: 16),
+                                     decoration: BoxDecoration(border: Border.all(color: Theme.of(context).dividerColor), borderRadius: BorderRadius.circular(8)),
+                                     child: StreamBuilder<QuerySnapshot>(
+                                       stream: FirebaseFirestore.instance.collection('courses').snapshots(),
+                                       builder: (context, snapshot) {
+                                         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                                         final courses = snapshot.data!.docs;
+                                         if (courses.isEmpty) return const Center(child: Text('No courses found'));
+                                         
+                                         return ListView.builder(
+                                           itemCount: courses.length,
+                                           itemBuilder: (context, index) {
+                                             final data = courses[index].data() as Map<String, dynamic>;
+                                             final id = courses[index].id;
+                                             final isSelected = tempValue == id;
+                                             return ListTile(
+                                               title: Text(data['title'] ?? 'Untitled'),
+                                               selected: isSelected,
+                                               selectedColor: Colors.orange,
+                                               trailing: isSelected ? const Icon(Icons.check, color: Colors.orange) : null,
+                                               onTap: () {
+                                                  setSheetState(() => tempValue = id);
+                                               },
+                                             );
+                                           },
+                                         );
+                                       },
+                                     ),
+                                   )
+                               ],
+                               RadioListTile<String>(
+                                 title: const Text('Custom URL'),
+                                 subtitle: const Text('Opens a Weblink or YouTube Video'),
+                                 value: 'Custom URL',
+                                 activeColor: Colors.orange,
+                                 contentPadding: EdgeInsets.zero,
+                               ),
+                             ],
+                           ),
                          ),
                          
                          if (tempAction == 'Custom URL') ...[
@@ -803,12 +790,12 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
             decoration: BoxDecoration(
               color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
+              border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.1)),
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
             ),
             child: ListTile(
               onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SentHistoryScreen())),
-              leading: CircleAvatar(backgroundColor: AppTheme.primaryColor.withOpacity(0.1), child: FaIcon(FontAwesomeIcons.clockRotateLeft, color: AppTheme.primaryColor, size: 18)),
+              leading: CircleAvatar(backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1), child: FaIcon(FontAwesomeIcons.clockRotateLeft, color: AppTheme.primaryColor, size: 18)),
               title: const Text('View Sent History', style: TextStyle(fontWeight: FontWeight.bold)),
               subtitle: const Text('Check previously sent notifications'),
               trailing: Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey[400]),
@@ -862,7 +849,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                           decoration: BoxDecoration(
                             color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
                             borderRadius: BorderRadius.circular(16),
-                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))],
+                            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -923,7 +910,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!)),
                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppTheme.primaryColor, width: 2)),
                        filled: true,
-                       fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[100],
+                       fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey[100],
                        prefixIcon: Icon(Icons.title, color: isDark ? Colors.grey[500] : Colors.grey[600]),
                        suffixIcon: _buildTextTools(context, _titleController), // Text Tools
                     ),
@@ -944,7 +931,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!)),
                       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppTheme.primaryColor, width: 2)),
                       filled: true,
-                      fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[100],
+                      fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey[100],
                       prefixIcon: Icon(Icons.short_text, color: isDark ? Colors.grey[500] : Colors.grey[600]),
                       suffixIcon: _buildTextTools(context, _messageController), // Text Tools
                       alignLabelWithHint: true,
@@ -968,7 +955,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                       aspectRatio: 16/9,
                       child: Container(
                         decoration: BoxDecoration(
-                          color: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
+                          color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: isDark ? Colors.grey[800]! : Colors.grey[300]!, style: BorderStyle.solid),
                         ),
@@ -986,12 +973,12 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
 
                   Container(
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[50], 
+                      color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey[50], 
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: _isScheduled ? AppTheme.primaryColor.withOpacity(0.5) : Colors.transparent),
+                      border: Border.all(color: _isScheduled ? AppTheme.primaryColor.withValues(alpha: 0.5) : Colors.transparent),
                     ),
                     child: SwitchListTile(
-                      activeColor: AppTheme.primaryColor,
+                      activeThumbColor: AppTheme.primaryColor,
                       title: const Text('Schedule', style: TextStyle(fontWeight: FontWeight.bold)),
                       subtitle: Text(_isScheduled 
                           ? (_scheduledDate != null 
@@ -1035,9 +1022,9 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                           height: 50,
                           width: 50,
                           decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.1),
+                            color: Colors.red.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.red.withOpacity(0.3)),
+                            border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                           ),
                           child: IconButton(
                             icon: const Icon(Icons.delete_outline, color: Colors.red),
@@ -1196,7 +1183,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-        decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(16), border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)), boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4, offset: const Offset(0, 2))]),
+        decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(16), border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.1)), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4, offset: const Offset(0, 2))]),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [FaIcon(icon, size: 14, color: iconColor), const SizedBox(width: 8), Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5))]),
           const SizedBox(height: 6),
@@ -1219,7 +1206,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                decoration: BoxDecoration(
                  color: const Color(0xFF202124), // Approx Android Dark Notif Color
                  borderRadius: BorderRadius.circular(16),
-                 boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 20)],
+                 boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 20)],
                ),
                child: Column(
                  mainAxisSize: MainAxisSize.min,

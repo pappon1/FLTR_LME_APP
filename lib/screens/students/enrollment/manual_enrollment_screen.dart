@@ -6,13 +6,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'dart:ui';
 import 'dart:async'; // Added for Debounce
 import 'dart:math';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../models/course_model.dart';
 import '../../../services/security/security_service.dart'; // Add this import
-import '../../../utils/app_theme.dart';
 
 class ManualEnrollmentScreen extends StatefulWidget {
   const ManualEnrollmentScreen({super.key});
@@ -50,7 +48,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
   final Color _techBlue = const Color(0xFF16213E);
   final Color _neonGreen = const Color(0xFF4ECCA3);
   final Color _neonBlue = const Color(0xFF00C9FF);
-  final Color _neonRed = const Color(0xFFFF2E63);
+
 
   @override
   void initState() {
@@ -128,7 +126,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
         });
       }
     } catch (e) {
-      debugPrint("Search error: $e");
+      // debugPrint("Search error: $e");
     }
   }
 
@@ -152,7 +150,9 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
       
       return credential;
     } on FirebaseAuthException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Auth Error: ${e.message}'), backgroundColor: Colors.red));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Auth Error: ${e.message}'), backgroundColor: Colors.red));
+      }
       return null;
     } finally {
       await tempApp?.delete(); // Clean up
@@ -321,16 +321,16 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
                  margin: const EdgeInsets.symmetric(horizontal: 20),
                  padding: const EdgeInsets.all(4),
                  decoration: BoxDecoration(
-                   color: Colors.white.withOpacity(0.1),
+                   color: Colors.white.withValues(alpha: 0.1),
                    borderRadius: BorderRadius.circular(30),
-                   border: Border.all(color: Colors.white.withOpacity(0.1)),
+                   border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                  ),
                  child: TabBar(
                    controller: _tabController,
                    indicator: BoxDecoration(
                      color: _neonBlue,
                      borderRadius: BorderRadius.circular(25),
-                     boxShadow: [BoxShadow(color: _neonBlue.withOpacity(0.4), blurRadius: 10)],
+                     boxShadow: [BoxShadow(color: _neonBlue.withValues(alpha: 0.4), blurRadius: 10)],
                    ),
                    dividerColor: Colors.transparent, // REMOVED WHITE DIVIDER LINE
                    labelColor: Colors.white,
@@ -395,9 +395,9 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
                    Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: _neonGreen.withOpacity(0.1),
+                      color: _neonGreen.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(15),
-                      border: Border.all(color: _neonGreen.withOpacity(0.5)),
+                      border: Border.all(color: _neonGreen.withValues(alpha: 0.5)),
                     ),
                     child: Row(
                       children: [
@@ -445,7 +445,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
                     return Container(
                       margin: const EdgeInsets.only(bottom: 8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
+                        color: Colors.white.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: ListTile(
@@ -478,13 +478,13 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
+                      color: Colors.white.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(15),
-                      border: Border.all(color: Colors.white.withOpacity(0.1), style: BorderStyle.solid),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.1), style: BorderStyle.solid),
                     ),
                     child: Column(
                       children: [
-                        Icon(Icons.person_search, color: Colors.white.withOpacity(0.3), size: 40),
+                        Icon(Icons.person_search, color: Colors.white.withValues(alpha: 0.3), size: 40),
                         const SizedBox(height: 10),
                         Text("Search and Select a User above", style: GoogleFonts.poppins(color: Colors.white38)),
                       ],
@@ -555,9 +555,9 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.05),
+        color: Colors.white.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -568,7 +568,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
             dropdownColor: _techDark,
             style: const TextStyle(color: Colors.white),
             decoration: _inputDecoration(null),
-            value: _selectedCourseId,
+            initialValue: _selectedCourseId,
             items: _courses.map((c) => DropdownMenuItem(value: c.id, child: Text(c.title))).toList(),
             onChanged: (v) => setState(() => _selectedCourseId = v),
             hint: const Text("Choose Course", style: TextStyle(color: Colors.white38)),
@@ -584,7 +584,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
                   dropdownColor: _techDark,
                   style: const TextStyle(color: Colors.white),
                   decoration: _inputDecoration(null),
-                  value: _validityType,
+                  initialValue: _validityType,
                   items: ['Course Validity', 'Lifetime', '1 Year', 'Custom'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
                   onChanged: (v) => setState(() => _validityType = v!),
                 ),
@@ -653,14 +653,14 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
 
   InputDecoration _inputDecoration(IconData? icon, {String? suffixText}) {
     return InputDecoration(
-      prefixIcon: icon != null ? Icon(icon, color: _neonBlue.withOpacity(0.7), size: 18) : null,
+      prefixIcon: icon != null ? Icon(icon, color: _neonBlue.withValues(alpha: 0.7), size: 18) : null,
       suffixText: suffixText,
-      suffixStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+      suffixStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
       filled: true,
       fillColor: Colors.black12,
-      labelStyle: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
+      labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: _neonBlue, width: 1.5)),
     );
   }
@@ -681,7 +681,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(30),
         gradient: LinearGradient(colors: [_neonBlue, const Color(0xFF0072FF)]),
-        boxShadow: [BoxShadow(color: _neonBlue.withOpacity(0.4), blurRadius: 20, offset: const Offset(0, 5))],
+        boxShadow: [BoxShadow(color: _neonBlue.withValues(alpha: 0.4), blurRadius: 20, offset: const Offset(0, 5))],
       ),
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(

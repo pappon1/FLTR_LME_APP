@@ -6,7 +6,6 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/bunny_cdn_service.dart';
 import '../../utils/app_theme.dart';
-import 'dart:ui' as ui;
 
 class UploadAnnouncementScreen extends StatefulWidget {
   const UploadAnnouncementScreen({super.key});
@@ -29,7 +28,7 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
   // Existing Announcement (For Preview/Delete)
   String? _existingImageUrl;
   String? _existingId;
-  DateTime? _createdAt;
+
 
   @override
   void initState() {
@@ -52,7 +51,7 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
       setState(() {
         _existingId = snapshot.docs.first.id;
         _existingImageUrl = data['imageUrl'];
-        _createdAt = (data['createdAt'] as Timestamp?)?.toDate();
+
       });
     }
   }
@@ -117,7 +116,7 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
         _errorMessage = null;
       });
       
-      _fetchExistingAnnouncement(); // Refresh preview
+      await _fetchExistingAnnouncement(); // Refresh preview
 
     } catch (e) {
       setState(() {
@@ -147,7 +146,7 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
       setState(() {
         _existingId = null;
         _existingImageUrl = null;
-        _createdAt = null;
+
         _successMessage = "Announcement removed.";
       });
     }
@@ -182,9 +181,9 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.blue.withOpacity(0.1),
+                color: Colors.blue.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
               ),
               child: const Text(
                 "Poster Size: 1280x720px (16:9 aspect ratio)",
@@ -204,9 +203,9 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
                 decoration: BoxDecoration(
                   color: isDark ? Colors.grey[900] : Colors.white,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey.withOpacity(0.3)),
+                  border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))
                   ],
                 ),
                 child: _isUploading 
@@ -240,7 +239,7 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
                               ),
                             )
                           else
-                            Container(
+                            SizedBox(
                               width: double.infinity,
                               height: double.infinity,
                               child: Column(
@@ -304,7 +303,7 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.all(12),
                 width: double.infinity,
-                decoration: BoxDecoration(color: Colors.red.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
                 child: Text(_errorMessage!, style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
               ),
               
@@ -313,7 +312,7 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.all(12),
                 width: double.infinity,
-                decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
                 child: Text(_successMessage!, style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
               ),
 

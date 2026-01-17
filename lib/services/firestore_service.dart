@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/course_model.dart';
 import '../models/student_model.dart';
@@ -185,7 +184,7 @@ class FirestoreService {
     try {
       await _firestore.collection('enrollments').doc(enrollmentId).update({'isActive': newStatus});
     } catch (e) {
-      debugPrint('Error toggling status: $e');
+      // debugPrint('Error toggling status: $e');
       rethrow;
     }
   }
@@ -195,7 +194,7 @@ class FirestoreService {
     try {
       await _firestore.collection('enrollments').doc(enrollmentId).delete();
     } catch (e) {
-       debugPrint('Error revoking enrollment: $e');
+       // debugPrint('Error revoking enrollment: $e');
        rethrow;
     }
   }

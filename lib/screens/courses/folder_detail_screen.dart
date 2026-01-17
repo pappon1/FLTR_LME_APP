@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:convert';
-import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:media_kit/media_kit.dart';
@@ -61,12 +60,12 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       final key = 'draft_final_$sanitizedName'; 
       
       final String? jsonString = prefs.getString(key);
-      debugPrint("Attempting to load draft from key: $key");
+      // debugPrint("Attempting to load draft from key: $key");
       
       if (jsonString != null && jsonString.isNotEmpty) {
           final List<dynamic> decoded = jsonDecode(jsonString);
           if (decoded.isEmpty) {
-             debugPrint("Draft is empty for key: $key");
+             // debugPrint("Draft is empty for key: $key");
              return;
           }
 
@@ -117,10 +116,10 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
              );
           }
       } else {
-         debugPrint("No draft found for key: $key");
+         // debugPrint("No draft found for key: $key");
       }
     } catch (e) {
-      debugPrint("Error loading saved content: $e");
+      // debugPrint("Error loading saved content: $e");
     }
   }
 
@@ -156,16 +155,18 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
             )
          );
       }
-      debugPrint("Saved ${localItems.length} items to $key. Success: $success");
+      // debugPrint("Saved ${localItems.length} items to $key. Success: $success");
     } catch (e) {
-       debugPrint("Save error: $e");
+       // debugPrint("Save error: $e");
        if (showFeedback && mounted) {
           ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error saving: $e'), backgroundColor: Colors.red));
        }
     }
   }
 
-  void _refresh() => setState(() {});
+  void _refresh() {
+    if (mounted) setState(() {});
+  }
 
   void _enterSelectionMode(int index) {
       HapticFeedback.heavyImpact();
@@ -192,7 +193,9 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
   void _selectAll() {
     setState(() {
       _selectedIndices.clear();
-      for(int i=0; i<_contents.length; i++) _selectedIndices.add(i);
+      for(int i=0; i<_contents.length; i++) {
+        _selectedIndices.add(i);
+      }
     });
   }
 
@@ -377,7 +380,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
             child: Icon(icon, color: color, size: 28),
           ),
           const SizedBox(height: 8),
@@ -421,20 +424,24 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
             if (type == 'video') {
               durationStr = await _getVideoDuration(file.path!);
             }
-            setState(() {
-              _contents.add({
-                'type': type, 
-                'name': file.name, 
-                'path': file.path, 
-                'duration': durationStr,
-                'isLocal': true
+            if (mounted) {
+              setState(() {
+                _contents.add({
+                  'type': type, 
+                  'name': file.name, 
+                  'path': file.path, 
+                  'duration': durationStr,
+                  'isLocal': true
+                });
               });
-            });
+            }
           }
         }
         _savePersistentContent();
       }
-    } catch (e) { debugPrint('Error picking file: $e'); }
+    } catch (e) { 
+       // debugPrint('Error picking file: $e'); 
+    }
   }
 
   Future<String> _getVideoDuration(String path) async {
@@ -457,7 +464,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       await player.dispose();
       return result;
     } catch (e) {
-      debugPrint("Error extracting duration: $e");
+      // debugPrint("Error extracting duration: $e");
       await subscription.cancel();
       await player.dispose();
       return "00:00";
@@ -516,12 +523,13 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+         if (didPop) return;
          await _savePersistentContent();
          // Pass data back just in case parent supports it
-         Navigator.pop(context, _contents);
-         return false; // We handled the pop manually
+         if (context.mounted) Navigator.pop(context, _contents);
       },
       child: Scaffold(
       appBar: AppBar(
@@ -561,7 +569,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                          color: AppTheme.primaryColor,
                          shape: BoxShape.circle,
                          boxShadow: [
-                           BoxShadow(color: AppTheme.primaryColor.withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 4))
+                           BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 4))
                          ],
                        ),
                        child: const Icon(Icons.add, color: Colors.white, size: 28),
@@ -606,11 +614,11 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 12),
                           child: ListTile(
-                            tileColor: isSelected ? AppTheme.primaryColor.withOpacity(0.1) : Theme.of(context).cardColor,
+                            tileColor: isSelected ? AppTheme.primaryColor.withValues(alpha: 0.1) : Theme.of(context).cardColor,
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: isSelected ? AppTheme.primaryColor : Colors.grey.shade200, width: isSelected ? 2 : 1)),
                             onLongPress: () => _enterSelectionMode(index),
                             onTap: () => _handleContentTap(item, index),
-                            leading: CircleAvatar(backgroundColor: color.withOpacity(0.1), child: Icon(icon, color: color, size: 20)),
+                            leading: CircleAvatar(backgroundColor: color.withValues(alpha: 0.1), child: Icon(icon, color: color, size: 20)),
                             title: Text(item['name'], style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? AppTheme.primaryColor : null)),
                             trailing: _isSelectionMode 
                               ? (isSelected ? const Icon(Icons.check_circle, color: Colors.blue) : const Icon(Icons.circle_outlined)) 

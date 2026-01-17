@@ -37,11 +37,15 @@ class AdminNotificationProvider with ChangeNotifier {
             int payment = 0;
             
             for (var doc in snapshot.docs) {
-               final data = doc.data() as Map<String, dynamic>;
+               final data = doc.data();
                final type = data['type'] as String?;
-               if (type == 'message') chat++;
-               else if (type == 'registration') downloads++;
-               else if (type == 'purchase') payment++;
+                if (type == 'message') {
+                  chat++;
+                } else if (type == 'registration') {
+                  downloads++;
+                } else if (type == 'purchase') {
+                  payment++;
+                }
             }
             
             _unreadChat = chat;
@@ -90,7 +94,7 @@ class AdminNotificationProvider with ChangeNotifier {
      try {
        await FirebaseFirestore.instance.collection('admin_notifications').doc(docId).update({'isRead': true});
      } catch (e) {
-       debugPrint('Error marking as read: $e');
+       // debugPrint('Error marking as read: $e');
      }
   }
 
@@ -110,7 +114,7 @@ class AdminNotificationProvider with ChangeNotifier {
       }
       await batch.commit();
     } catch (e) {
-      debugPrint('Error marking all as read: $e');
+      // debugPrint('Error marking all as read: $e');
     }
   }
   

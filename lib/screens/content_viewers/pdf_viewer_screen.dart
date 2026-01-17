@@ -19,7 +19,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
   bool _isLoading = true;
   int _totalPages = 0;
   int _currentPage = 0;
-  PDFViewController? _pdfViewController;
+
 
   @override
   void initState() {
@@ -100,7 +100,6 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
                     });
                   },
                   onViewCreated: (PDFViewController pdfViewController) {
-                    _pdfViewController = pdfViewController;
                   },
                   onPageChanged: (int? page, int? total) {
                     setState(() {
@@ -108,10 +107,10 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
                     });
                   },
                   onError: (error) {
-                    print(error.toString());
+                    // print(error.toString());
                   },
                   onPageError: (page, error) {
-                    print('$page: ${error.toString()}');
+                    // print('$page: ${error.toString()}');
                   },
                 )
               : const Center(child: Text("Could not load PDF")),

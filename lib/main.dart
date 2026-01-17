@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:flutter/foundation.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
@@ -11,6 +13,7 @@ import 'providers/dashboard_provider.dart';
 import 'providers/admin_notification_provider.dart';
 import 'services/firebase_auth_service.dart';
 import 'utils/app_theme.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +23,18 @@ void main() async {
   
   // Initialize Firebase
   await Firebase.initializeApp();
+  
+  // Pass all uncaught errors from the framework to Crashlytics.
+  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+
+  // Pass all uncaught asynchronous errors that aren't handled by the Flutter framework to Crashlytics
+  PlatformDispatcher.instance.onError = (error, stack) {
+    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    return true;
+  };
+  
+  // Initialize Google Sign In (Required for v7+)
+  await GoogleSignIn.instance.initialize();
   
   // Set system UI overlay style
   SystemChrome.setSystemUIOverlayStyle(
@@ -32,12 +47,12 @@ void main() async {
   );
   
   // Lock to portrait mode
-  SystemChrome.setPreferredOrientations([
+  await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
-  ]).then((_) {
-    runApp(const MyApp());
-  });
+  ]);
+  
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {

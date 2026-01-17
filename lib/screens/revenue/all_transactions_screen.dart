@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'dart:ui';
 import '../../utils/app_theme.dart';
 
 class AllTransactionsScreen extends StatefulWidget {
@@ -16,12 +15,7 @@ class AllTransactionsScreen extends StatefulWidget {
 
 class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
   // Professional Color Palette
-  final Color _bgLight = const Color(0xFFF5F7FA);
-  final Color _cardWhite = Colors.white;
-  final Color _textPrimary = const Color(0xFF2D3748);
-  final Color _textSecondary = const Color(0xFF718096);
-  final Color _primaryBlue = const Color(0xFF3182CE);
-  final Color _successGreen = const Color(0xFF38A169);
+
 
   bool _isLoading = true;
   List<DocumentSnapshot> _transactions = [];
@@ -55,7 +49,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint("Error fetching transactions: $e");
+      // debugPrint("Error fetching transactions: $e");
       setState(() => _isLoading = false);
     }
   }
@@ -98,16 +92,16 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                     color: cardColor,
                     borderRadius: BorderRadius.circular(12),
                     boxShadow: [
-                      BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))
+                      BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))
                     ],
-                    border: Border.all(color: theme.dividerColor.withOpacity(0.5)),
+                    border: Border.all(color: theme.dividerColor.withValues(alpha: 0.5)),
                   ),
                   child: Row(
                     children: [
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: primaryColor.withOpacity(0.1), 
+                          color: primaryColor.withValues(alpha: 0.1), 
                           shape: BoxShape.circle,
                         ),
                         child: Icon(FontAwesomeIcons.arrowDown, color: primaryColor, size: 18),
@@ -145,7 +139,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                             margin: const EdgeInsets.only(top: 4),
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: successColor.withOpacity(0.1),
+                              color: successColor.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(4)
                             ),
                             child: Text("SUCCESS", style: GoogleFonts.inter(color: successColor, fontSize: 10, fontWeight: FontWeight.bold)),

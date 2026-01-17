@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:media_kit_video/media_kit_video.dart';
 import 'video_gesture_overlay.dart';
 import 'video_center_controls.dart';
 import 'video_seekbar.dart';
@@ -83,8 +82,11 @@ class VideoPlayerPortraitLayout extends StatelessWidget {
                                     onDoubleTapDown: (details) {
                                        if (isLocked) return;
                                        final x = details.localPosition.dx;
-                                       if (x > size.width / 2) logic.seekRelative(10);
-                                       else logic.seekRelative(-10);
+                                       if (x > size.width / 2) {
+                                         logic.seekRelative(10);
+                                       } else {
+                                         logic.seekRelative(-10);
+                                       }
                                     },
                                     onVerticalDragStart: isLocked ? null : (_) => logic.handleVerticalDragStart(),
                                     onVerticalDragUpdate: isLocked ? null : (details) => logic.handleVerticalDrag(details, size.width),

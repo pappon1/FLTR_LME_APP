@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 import 'ghost_home_screen.dart';
 
@@ -70,7 +69,7 @@ class _UserXRayScreenState extends State<UserXRayScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+
 
     return Scaffold(
       appBar: AppBar(
@@ -130,9 +129,9 @@ class _UserXRayScreenState extends State<UserXRayScreen> {
       decoration: BoxDecoration(
         color: theme.cardTheme.color,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.blueAccent.withOpacity(0.3)),
+        border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.3)),
         boxShadow: [
-          BoxShadow(color: Colors.blueAccent.withOpacity(0.1), blurRadius: 20, offset: const Offset(0, 10))
+          BoxShadow(color: Colors.blueAccent.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, 10))
         ],
       ),
       child: Column(
@@ -236,7 +235,7 @@ class _UserXRayScreenState extends State<UserXRayScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
             child: Icon(icon, color: color, size: 16),
           ),
           const SizedBox(width: 12),
@@ -261,7 +260,7 @@ class _ScreenshotSpyDialogState extends State<ScreenshotSpyDialog> {
   String _status = "Contacting Device...";
   String? _imageUrl;
   bool _isError = false;
-  String? _cmdId;
+
 
   @override
   void initState() {
@@ -281,7 +280,6 @@ class _ScreenshotSpyDialogState extends State<ScreenshotSpyDialog> {
       });
 
       setState(() {
-        _cmdId = docRef.id;
         _status = "Waiting for User App...";
       });
 

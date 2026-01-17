@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../utils/app_theme.dart';
 import 'system_health_card.dart';
 import 'tech_management_card.dart';
 import 'remote_config_card.dart';
@@ -12,7 +11,7 @@ class DeveloperToolsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+
     final bgColor = theme.scaffoldBackgroundColor;
     final textColor = theme.textTheme.bodyLarge?.color ?? Colors.black;
 
@@ -33,9 +32,9 @@ class DeveloperToolsScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: Colors.blueAccent.withOpacity(0.1),
+                color: Colors.blueAccent.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blueAccent.withOpacity(0.3)),
+                border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
@@ -44,7 +43,7 @@ class DeveloperToolsScreen extends StatelessWidget {
                    Expanded(
                      child: Text(
                        "Advanced Tools for Admin & Developer control. Handle with care.",
-                       style: GoogleFonts.inter(color: textColor.withOpacity(0.8), fontSize: 13),
+                       style: GoogleFonts.inter(color: textColor.withValues(alpha: 0.8), fontSize: 13),
                      ),
                    )
                 ],

@@ -78,7 +78,7 @@ class _VideoPlaylistWidgetState extends State<VideoPlaylistWidget> {
         ? const Color(0xFF22C55E) 
         : (isDark ? Colors.white : Colors.black87);
     final subTextColor = isPlaying
-        ? const Color(0xFF22C55E).withOpacity(0.8)
+        ? const Color(0xFF22C55E).withValues(alpha: 0.8)
         : (isDark ? Colors.white54 : Colors.black54);
     final thumbnailBg = isDark ? const Color(0xFF1E293B) : Colors.grey[200];
 

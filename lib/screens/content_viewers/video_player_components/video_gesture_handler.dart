@@ -45,7 +45,7 @@ class VideoGestureHandler {
     final delta = details.primaryDelta ?? 0;
     if (delta.abs() < 0.2) return;
 
-    final double sensitivity = VideoPlayerConstants.gestureSensitivity;
+    const double sensitivity = VideoPlayerConstants.gestureSensitivity;
     if (dx > screenWidth / 2) {
       _updateVolume(delta, sensitivity);
     } else {
@@ -78,7 +78,7 @@ class VideoGestureHandler {
     
     if ((newBrightness - brightnessNotifier.value).abs() > 0.01 || newBrightness == 0 || newBrightness == 1) {
       brightnessNotifier.value = newBrightness;
-      ScreenBrightness().setScreenBrightness(newBrightness);
+      ScreenBrightness().setApplicationScreenBrightness(newBrightness);
       showBrightnessLabelNotifier.value = true;
       showVolumeLabelNotifier.value = false;
       

@@ -5,7 +5,6 @@ import 'package:image_picker/image_picker.dart';
 import '../../models/video_model.dart';
 import '../../services/bunny_cdn_service.dart';
 import '../../services/firestore_service.dart';
-import '../../utils/app_theme.dart';
 
 class AddVideoScreen extends StatefulWidget {
   final String courseId;

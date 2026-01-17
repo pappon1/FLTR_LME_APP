@@ -45,16 +45,16 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
     return PopScope(
       canPop: true,
-      onPopInvoked: (didPop) async {
+      onPopInvokedWithResult: (didPop, result) async {
         if (didPop) {
-          SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-          SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+          await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+          await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
         }
       },
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, _) {
           final isDark = Theme.of(context).brightness == Brightness.dark;
-          debugPrint("VideoPlayerScreen Rebuild: isDark=$isDark");
+          // debugPrint("VideoPlayerScreen Rebuild: isDark=$isDark");
           return Scaffold(
             backgroundColor: isDark ? Colors.black : Colors.white,
             body: SafeArea(

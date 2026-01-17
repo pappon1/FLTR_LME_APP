@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../screens/settings/error_logs_screen.dart';
-import '../../utils/app_theme.dart';
 
 class TechManagementCard extends StatefulWidget {
   const TechManagementCard({super.key});
@@ -31,7 +29,7 @@ class _TechManagementCardState extends State<TechManagementCard> {
         });
       }
     } catch (e) {
-      debugPrint("Error loading config: $e");
+      // debugPrint("Error loading config: $e");
     }
   }
 
@@ -162,7 +160,7 @@ class _TechManagementCardState extends State<TechManagementCard> {
                   data: SliderTheme.of(context).copyWith(
                     trackHeight: 4,
                     activeTrackColor: Colors.blueAccent,
-                    inactiveTrackColor: Colors.blueAccent.withOpacity(0.2),
+                    inactiveTrackColor: Colors.blueAccent.withValues(alpha: 0.2),
                     thumbColor: Colors.blueAccent,
                     overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
                     thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
@@ -192,7 +190,7 @@ class _TechManagementCardState extends State<TechManagementCard> {
 
   Widget _buildActionButton(BuildContext context, {required String label, required IconData icon, required Color color, required VoidCallback? onTap, bool isLoading = false}) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+
 
     return InkWell(
       onTap: onTap,
@@ -202,9 +200,9 @@ class _TechManagementCardState extends State<TechManagementCard> {
         decoration: BoxDecoration(
           color: theme.scaffoldBackgroundColor,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
           boxShadow: [
-            BoxShadow(color: color.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))
+            BoxShadow(color: color.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))
           ],
         ),
         child: Row(

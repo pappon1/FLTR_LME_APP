@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../services/firebase_auth_service.dart';
@@ -26,6 +25,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (userCredential != null && mounted) {
         // Check if user is admin
         final isAdmin = await _authService.isAdmin();
+        
+        if (!mounted) return;
         
         if (isAdmin) {
           // Navigate to dashboard
@@ -72,7 +73,7 @@ class _LoginScreenState extends State<LoginScreen> {
             colors: [
               AppTheme.primaryColor,
               AppTheme.secondaryColor,
-              AppTheme.primaryColor.withOpacity(0.8),
+              AppTheme.primaryColor.withValues(alpha: 0.8),
             ],
           ),
         ),
@@ -91,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withValues(alpha: 0.1),
                           blurRadius: 20,
                           offset: const Offset(0, 10),
                         ),
@@ -127,7 +128,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     'Local Mobile Engineer Official',
                     style: AppTheme.bodyLarge(context).copyWith(
-                      color: Colors.white.withOpacity(0.9),
+                      color: Colors.white.withValues(alpha: 0.9),
                     ),
                   )
                       .animate()
@@ -172,7 +173,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       .shimmer(
                         delay: 1000.ms,
                         duration: 1500.ms,
-                        color: Colors.white.withOpacity(0.3),
+                        color: Colors.white.withValues(alpha: 0.3),
                       ),
 
                   const SizedBox(height: 24),
@@ -181,10 +182,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.1),
+                      color: Colors.white.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.2),
+                        color: Colors.white.withValues(alpha: 0.2),
                         width: 1,
                       ),
                     ),
@@ -192,7 +193,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         Icon(
                           Icons.info_outline,
-                          color: Colors.white.withOpacity(0.8),
+                          color: Colors.white.withValues(alpha: 0.8),
                           size: 20,
                         ),
                         const SizedBox(width: 12),
@@ -200,7 +201,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           child: Text(
                             'Admin access required\nPlease use your admin Google account',
                             style: AppTheme.bodySmall(context).copyWith(
-                              color: Colors.white.withOpacity(0.8),
+                              color: Colors.white.withValues(alpha: 0.8),
                             ),
                           ),
                         ),
@@ -216,7 +217,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Text(
                     'Powered by Firebase & Bunny.net CDN',
                     style: AppTheme.bodySmall(context).copyWith(
-                      color: Colors.white.withOpacity(0.6),
+                      color: Colors.white.withValues(alpha: 0.6),
                     ),
                   )
                       .animate()

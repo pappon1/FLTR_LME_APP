@@ -60,7 +60,7 @@ class _RazorpaySettlementsScreenState extends State<RazorpaySettlementsScreen> {
                       margin: const EdgeInsets.only(bottom: 12),
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: status == 'processed' ? Colors.green.withOpacity(0.1) : Colors.orange.withOpacity(0.1),
+                          backgroundColor: status == 'processed' ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
                           child: Icon(Icons.account_balance, color: status == 'processed' ? Colors.green : Colors.orange, size: 20),
                         ),
                         title: Text("₹$amount", style: GoogleFonts.inter(fontWeight: FontWeight.bold)),

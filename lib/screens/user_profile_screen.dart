@@ -97,14 +97,14 @@ class UserProfileScreen extends StatelessWidget {
                       child: ListTile(
                         leading: Container(
                           padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                          decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
                           child: const FaIcon(FontAwesomeIcons.video, color: Colors.orange, size: 16),
                         ),
                         title: Text(course['title'] ?? 'Course Title'),
                         subtitle: Text('Price: ₹${course['price'] ?? 0}'),
                         trailing: const Icon(Icons.check_circle, color: Colors.green),
                       ),
-                    )).toList(),
+                    )),
                 ],
               ),
             ),

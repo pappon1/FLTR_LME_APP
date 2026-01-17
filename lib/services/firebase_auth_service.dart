@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class FirebaseAuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   // Current user stream
@@ -16,20 +16,14 @@ class FirebaseAuthService {
   /// Sign in with Google
   Future<UserCredential?> signInWithGoogle() async {
     try {
-      // Trigger Google Sign-In flow
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      // Trigger Google Sign-In flow (v7 uses authenticate)
+      final GoogleSignInAccount googleUser = await _googleSignIn.authenticate();
       
-      if (googleUser == null) {
-        // User canceled the sign-in
-        return null;
-      }
-
       // Obtain auth details from request
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
 
       // Create a new credential
       final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
@@ -41,7 +35,7 @@ class FirebaseAuthService {
       
       return userCredential;
     } catch (e) {
-      print('Error signing in with Google: $e');
+      // print('Error signing in with Google: $e');
       rethrow;
     }
   }
@@ -85,7 +79,7 @@ class FirebaseAuthService {
       
       return false;
     } catch (e) {
-      print('Error checking admin status: $e');
+      // print('Error checking admin status: $e');
       return false;
     }
   }
@@ -106,7 +100,7 @@ class FirebaseAuthService {
       
       return 'user';
     } catch (e) {
-      print('Error getting user role: $e');
+      // print('Error getting user role: $e');
       return 'user';
     }
   }
@@ -125,7 +119,7 @@ class FirebaseAuthService {
         password: password,
       );
     } catch (e) {
-      print('Error signing in with email: $e');
+      // print('Error signing in with email: $e');
       rethrow;
     }
   }

@@ -53,7 +53,7 @@ class DashboardProvider extends ChangeNotifier {
         _fetchStudents(),
       ]);
     } catch (e) {
-      print('Error refreshing dashboard data: $e');
+      // print('Error refreshing dashboard data: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -70,7 +70,7 @@ class DashboardProvider extends ChangeNotifier {
         // Other stats would ideally come from backend logic or aggregation
       );
     } catch (e) {
-      print('Error fetching stats: $e');
+      // print('Error fetching stats: $e');
     }
   }
 
@@ -82,7 +82,7 @@ class DashboardProvider extends ChangeNotifier {
         notifyListeners();
       });
     } catch (e) {
-      print('Error fetching courses: $e');
+      // print('Error fetching courses: $e');
     }
   }
 
@@ -130,7 +130,7 @@ class DashboardProvider extends ChangeNotifier {
         notifyListeners();
       });
     } catch (e) {
-      print('Error fetching students: $e');
+      // print('Error fetching students: $e');
     }
   }
 
@@ -142,7 +142,7 @@ class DashboardProvider extends ChangeNotifier {
       // Stats will update automatically via listeners/refresh
       await _fetchStats(); 
     } catch (e) {
-      print('Error adding course: $e');
+      // print('Error adding course: $e');
       rethrow;
     }
   }
@@ -152,7 +152,7 @@ class DashboardProvider extends ChangeNotifier {
       await _firestoreService.deleteCourse(courseId);
       await _fetchStats();
     } catch (e) {
-      print('Error deleting course: $e');
+      // print('Error deleting course: $e');
       rethrow;
     }
   }
@@ -160,6 +160,6 @@ class DashboardProvider extends ChangeNotifier {
   // Legacy method for compatibility if needed, but prefer real fetch
   void loadDummyData() {
     // No-op or log warning
-    print('Warning: loadDummyData called but provider is using Firestore');
+    // print('Warning: loadDummyData called but provider is using Firestore');
   }
 }

@@ -103,7 +103,7 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
           _isLoading = false;
         });
       }
-      debugPrint("Error generating thumbnail: $e");
+      // debugPrint("Error generating thumbnail: $e");
     }
   }
 

@@ -33,9 +33,9 @@ class VideoTray extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final forceDark = isLandscape || isDark;
     
-    final bgColor = forceDark ? Colors.black.withOpacity(0.95) : Colors.white.withOpacity(0.95);
+    final bgColor = forceDark ? Colors.black.withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.95);
     final borderColor = forceDark ? Colors.white12 : Colors.black12;
-    final closeBg = forceDark ? Colors.white10 : Colors.black.withOpacity(0.05);
+    final closeBg = forceDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05);
     final closeIcon = forceDark ? Colors.white : Colors.black87;
 
     return Listener(

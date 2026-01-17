@@ -1,7 +1,4 @@
-import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:media_kit/media_kit.dart';
-import 'video_persistence_service.dart';
 
 class VideoPlaylistManager extends ChangeNotifier {
   final List<Map<String, dynamic>> playlist;

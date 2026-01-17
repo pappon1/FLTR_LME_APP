@@ -91,15 +91,19 @@ class _ReceivedMessagesTabState extends State<ReceivedMessagesTab> {
         Consumer<AdminNotificationProvider>(
           builder: (context, provider, _) {
             int unreadCount = 0;
-            if (type == 'message') unreadCount = provider.unreadChat;
-            else if (type == 'registration') unreadCount = provider.unreadDownloads;
-            else if (type == 'purchase') unreadCount = provider.unreadPayment;
+            if (type == 'message') {
+              unreadCount = provider.unreadChat;
+            } else if (type == 'registration') {
+              unreadCount = provider.unreadDownloads;
+            } else if (type == 'purchase') {
+              unreadCount = provider.unreadPayment;
+            }
 
             if (unreadCount == 0) return const SizedBox.shrink();
 
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: Theme.of(context).cardColor.withOpacity(0.5),
+              color: Theme.of(context).cardColor.withValues(alpha: 0.5),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -126,7 +130,7 @@ class _ReceivedMessagesTabState extends State<ReceivedMessagesTab> {
             builder: (context, snapshot) {
               if (snapshot.hasError) {
                 // Fallback if index missing or error
-                return Center(child: Text('Waiting for data... (${type})\n${snapshot.error.toString().contains("requires an index") ? "Index Required" : ""}', textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)));
+                return Center(child: Text('Waiting for data... ($type)\n${snapshot.error.toString().contains("requires an index") ? "Index Required" : ""}', textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)));
               }
               
               final isRefreshing = _refreshingStates[type] ?? false;
@@ -136,8 +140,8 @@ class _ReceivedMessagesTabState extends State<ReceivedMessagesTab> {
                   physics: const NeverScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(16),
                   itemCount: 8,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (_, __) => const NotificationShimmerItem(),
+                  separatorBuilder: (context, index) => const SizedBox(height: 12),
+                  itemBuilder: (context, index) => const NotificationShimmerItem(),
                 );
               }
 
@@ -177,7 +181,7 @@ class _ReceivedMessagesTabState extends State<ReceivedMessagesTab> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(16),
                   itemCount: docs.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
+                  separatorBuilder: (context, index) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final doc = docs[index];
                     final data = doc.data() as Map<String, dynamic>;
@@ -219,7 +223,7 @@ class _ReceivedMessagesTabState extends State<ReceivedMessagesTab> {
     // If Unread: Light Blue/Red Tint Background + Border
     // If Read: Standard Card color
     
-    final Color unreadBg = isDark ? Colors.blue.withOpacity(0.15) : Colors.blue.withOpacity(0.05);
+    final Color unreadBg = isDark ? Colors.blue.withValues(alpha: 0.15) : Colors.blue.withValues(alpha: 0.05);
     final Color readBg = Theme.of(context).cardColor;
 
     return Card(
@@ -227,7 +231,7 @@ class _ReceivedMessagesTabState extends State<ReceivedMessagesTab> {
       color: isRead ? readBg : unreadBg,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: isRead ? BorderSide.none : BorderSide(color: AppTheme.primaryColor.withOpacity(0.3), width: 1),
+        side: isRead ? BorderSide.none : BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.3), width: 1),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -294,7 +298,7 @@ class _ReceivedMessagesTabState extends State<ReceivedMessagesTab> {
                       const SizedBox(height: 4),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+                        decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
                         child: Text('Received ₹$amount', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
                       ),
                     ],

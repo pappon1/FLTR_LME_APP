@@ -30,7 +30,7 @@ class BunnyCDNService {
       // Construct API endpoint
       final apiUrl = 'https://$hostname/$storageZoneName/$remotePath';
       
-      print('🚀 Uploading to Bunny CDN: $apiUrl (Size: ${fileBytes.length} bytes)');
+      // print('🚀 Uploading to Bunny CDN: $apiUrl (Size: ${fileBytes.length} bytes)');
       
       final response = await _dio.put(
         apiUrl,
@@ -47,13 +47,13 @@ class BunnyCDNService {
 
       if (response.statusCode == 201 || response.statusCode == 200) {
         final publicUrl = '$cdnUrl/$remotePath';
-        print('✅ Upload successful: $publicUrl');
+        // print('✅ Upload successful: $publicUrl');
         return Uri.encodeFull(publicUrl);
       } else {
         throw Exception('Upload failed with status: ${response.statusCode}');
       }
     } catch (e) {
-      print('❌ Bunny CDN upload error: $e');
+      // print('❌ Bunny CDN upload error: $e');
       rethrow;
     }
   }
@@ -74,7 +74,7 @@ class BunnyCDNService {
 
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
-      print('❌ Bunny CDN delete error: $e');
+      // print('❌ Bunny CDN delete error: $e');
       return false;
     }
   }

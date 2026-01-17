@@ -25,7 +25,7 @@ class VideosTab extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               child: const FaIcon(
-                FontAwesomeIcons.playCircle,
+                FontAwesomeIcons.circlePlay,
                 size: 48,
                 color: Colors.white,
               ),

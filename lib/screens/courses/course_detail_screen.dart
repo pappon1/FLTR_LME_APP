@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:provider/provider.dart';
 import '../../models/course_model.dart';
 import '../../models/video_model.dart';
 import '../../services/firestore_service.dart';
@@ -69,7 +67,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
                           end: Alignment.bottomCenter,
                           colors: [
                             Colors.transparent,
-                            Colors.black.withOpacity(0.7),
+                            Colors.black.withValues(alpha: 0.7),
                           ],
                         ),
                       ),

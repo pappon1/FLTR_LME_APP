@@ -42,7 +42,7 @@ class LocalNotificationService {
       importance: Importance.max,
       priority: Priority.high,
       ticker: 'ticker',
-      color:  const Color(0xFFE53935), // Red Accent
+      color:  Color(0xFFE53935), // Red Accent
     );
     
     const NotificationDetails platformChannelSpecifics =

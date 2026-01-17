@@ -106,8 +106,8 @@ class _ScheduledNotificationsTabState extends State<ScheduledNotificationsTab> {
                 physics: const NeverScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),
                 itemCount: 5,
-                separatorBuilder: (_, __) => const SizedBox(height: 16),
-                itemBuilder: (_, __) => const NotificationShimmerItem(),
+                separatorBuilder: (context, index) => const SizedBox(height: 16),
+                itemBuilder: (context, index) => const NotificationShimmerItem(),
               );
             }
             
@@ -176,7 +176,7 @@ class _ScheduledNotificationsTabState extends State<ScheduledNotificationsTab> {
               borderRadius: BorderRadius.circular(16),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
+                  color: Colors.black.withValues(alpha: 0.08),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 )
@@ -283,7 +283,7 @@ class _ScheduledNotificationsTabState extends State<ScheduledNotificationsTab> {
                   const SizedBox(height: 14), 
 
                 // Action Buttons Divider
-                Divider(height: 1, color: Theme.of(context).dividerColor.withOpacity(0.5)),
+                Divider(height: 1, color: Theme.of(context).dividerColor.withValues(alpha: 0.5)),
 
                 // Action Buttons Row
                 Padding(
@@ -301,7 +301,7 @@ class _ScheduledNotificationsTabState extends State<ScheduledNotificationsTab> {
                           ),
                         ),
                       ),
-                      Container(width: 1, height: 24, color: Theme.of(context).dividerColor.withOpacity(0.5)),
+                      Container(width: 1, height: 24, color: Theme.of(context).dividerColor.withValues(alpha: 0.5)),
                       Expanded(
                         child: TextButton.icon(
                           onPressed: () => _cancelNotification(id),

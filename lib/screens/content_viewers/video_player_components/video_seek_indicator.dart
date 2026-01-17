@@ -9,8 +9,8 @@ class VideoSeekIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isForward = value > 0;
-    final bgColor = Colors.black45; // Always dark over video
-    final contentColor = Colors.white; // Always white over video
+    const bgColor = Colors.black45; // Always dark over video
+    const contentColor = Colors.white; // Always white over video
 
     return Center(
       child: Container(
@@ -18,7 +18,7 @@ class VideoSeekIndicator extends StatelessWidget {
         decoration: BoxDecoration(
           color: bgColor,
           shape: BoxShape.circle,
-          boxShadow: isDark ? null : [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10)],
+          boxShadow: isDark ? null : [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10)],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

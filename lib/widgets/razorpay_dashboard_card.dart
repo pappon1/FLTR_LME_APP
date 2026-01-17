@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../screens/razorpay/razorpay_config_screen.dart';
 import '../screens/razorpay/razorpay_settlements_screen.dart';
@@ -27,12 +26,12 @@ class RazorpayDashboardCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: rzpBlue.withOpacity(0.25),
+            color: rzpBlue.withValues(alpha: 0.25),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
         ],
-        border: Border.all(color: rzpBlue.withOpacity(0.3), width: 1),
+        border: Border.all(color: rzpBlue.withValues(alpha: 0.3), width: 1),
         gradient: LinearGradient(
           colors: [
             const Color(0xFF1E293B), 
@@ -66,9 +65,9 @@ class RazorpayDashboardCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.2),
+                  color: Colors.green.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.green.withOpacity(0.5))
+                  border: Border.all(color: Colors.green.withValues(alpha: 0.5))
                 ),
                 child: Row(
                   children: [
@@ -170,7 +169,7 @@ class RazorpayDashboardCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
+          color: Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(color: Colors.white10)
         ),

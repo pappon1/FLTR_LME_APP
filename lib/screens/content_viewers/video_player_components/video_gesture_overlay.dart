@@ -17,8 +17,8 @@ class VideoGestureOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final contentColor = Colors.white; // Always white over video
-    final bgColor = Colors.black45; // Fixed dark bg
+    const contentColor = Colors.white; // Always white over video
+    const bgColor = Colors.black45; // Fixed dark bg
 
     return Stack(
       children: [
@@ -72,7 +72,7 @@ class VideoGestureOverlay extends StatelessWidget {
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 4)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4)],
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.end,
@@ -90,7 +90,7 @@ class VideoGestureOverlay extends StatelessWidget {
                   thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 0),
                   overlayShape: const RoundSliderOverlayShape(overlayRadius: 0),
                   activeTrackColor: activeColor,
-                  inactiveTrackColor: contentColor.withOpacity(0.2),
+                  inactiveTrackColor: contentColor.withValues(alpha: 0.2),
                 ),
                 child: Slider(
                   value: value.clamp(0.0, 1.0),

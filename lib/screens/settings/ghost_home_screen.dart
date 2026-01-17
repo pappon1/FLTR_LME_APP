@@ -136,7 +136,7 @@ class _GhostHomeScreenState extends State<GhostHomeScreen> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(12),
-                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)]
+                              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)]
                             ),
                             child: ListTile(
                               contentPadding: const EdgeInsets.all(10),
@@ -146,7 +146,7 @@ class _GhostHomeScreenState extends State<GhostHomeScreen> {
                                   width: 60, height: 60,
                                   color: Colors.grey[200],
                                   child: course['thumbnailUrl'] != null 
-                                    ? CachedNetworkImage(imageUrl: course['thumbnailUrl'], fit: BoxFit.cover, errorWidget: (_,__,___) => const Icon(Icons.image))
+                                    ? CachedNetworkImage(imageUrl: course['thumbnailUrl'], fit: BoxFit.cover, errorWidget: (context, url, error) => const Icon(Icons.image))
                                     : const Icon(Icons.movie, color: Colors.grey),
                                 ),
                               ),

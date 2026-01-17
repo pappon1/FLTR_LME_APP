@@ -17,10 +17,10 @@ class VideoLockOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final contentColor = Colors.white; // Always white over video
-    final scrimColor = Colors.black54; // Fixed dark background for visibility
-    final iconBg = Colors.white.withOpacity(0.1);
-    final borderColor = Colors.white30;
+    const contentColor = Colors.white; // Always white over video
+    const scrimColor = Colors.black54; // Fixed dark background for visibility
+    final iconBg = Colors.white.withValues(alpha: 0.1);
+    const borderColor = Colors.white30;
 
     return Stack(
       children: [
@@ -96,7 +96,7 @@ class VideoLockOverlay extends StatelessWidget {
                     child: Text(
                       "Double tap to unlock",
                       style: TextStyle(
-                        color: contentColor.withOpacity(0.7), 
+                        color: contentColor.withValues(alpha: 0.7), 
                         fontSize: 16, 
                         fontWeight: FontWeight.w500
                       ),

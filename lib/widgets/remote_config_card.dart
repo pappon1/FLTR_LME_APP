@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../screens/settings/user_xray_screen.dart';
 import '../screens/settings/splash_manager_screen.dart';
-import '../../utils/app_theme.dart';
 
 class RemoteConfigCard extends StatelessWidget {
   const RemoteConfigCard({super.key});
@@ -71,7 +70,7 @@ class RemoteConfigCard extends StatelessWidget {
   Widget divIcon(IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
       child: Icon(icon, color: color, size: 18),
     );
   }

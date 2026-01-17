@@ -154,7 +154,7 @@ class _PopularCoursesCarouselState extends State<PopularCoursesCarousel> {
                 decoration: BoxDecoration(
                   color: _currentPage == index
                       ? AppTheme.primaryColor
-                      : Colors.grey.withOpacity(0.3),
+                      : Colors.grey.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(4),
                 ),
               );
@@ -189,13 +189,13 @@ class _PopularCoursesCarouselState extends State<PopularCoursesCarousel> {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
           ],
           border: Border.all(
-            color: Theme.of(context).dividerColor.withOpacity(0.5),
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.5),
           ),
         ),
         clipBehavior: Clip.antiAlias,
@@ -269,7 +269,7 @@ class _PopularCoursesCarouselState extends State<PopularCoursesCarousel> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.1),
+                            color: Colors.red.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(

@@ -31,7 +31,7 @@ class RazorpayService {
           throw Exception('API Keys not configured. Please configure them in settings.');
       }
 
-      final String basicAuth = 'Basic ' + base64Encode(utf8.encode('${keys['key_id']}:${keys['key_secret']}'));
+      final String basicAuth = 'Basic ${base64Encode(utf8.encode('${keys['key_id']}:${keys['key_secret']}'))}';
 
       final response = await http.get(
           Uri.parse('$_baseUrl$endpoint'),

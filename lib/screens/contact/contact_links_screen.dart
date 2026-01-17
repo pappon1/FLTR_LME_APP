@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../utils/app_theme.dart';
 
 class ContactLinksScreen extends StatefulWidget {
   const ContactLinksScreen({super.key});
@@ -43,9 +42,11 @@ class _ContactLinksScreenState extends State<ContactLinksScreen> {
         _whatsappController.text = '+92 9365523684';
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching links: $e'), backgroundColor: Colors.red),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error fetching links: $e'), backgroundColor: Colors.red),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -71,9 +72,11 @@ class _ContactLinksScreenState extends State<ContactLinksScreen> {
         Navigator.pop(context);
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error saving links: $e'), backgroundColor: Colors.red),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error saving links: $e'), backgroundColor: Colors.red),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
@@ -82,9 +85,9 @@ class _ContactLinksScreenState extends State<ContactLinksScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+
     final textColor = theme.textTheme.bodyLarge?.color ?? Colors.black87;
-    final cardColor = theme.cardTheme.color ?? Colors.white;
+
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -168,7 +171,7 @@ class _ContactLinksScreenState extends State<ContactLinksScreen> {
   Widget _buildLinkCard(BuildContext context, String title, IconData icon, Color iconColor, TextEditingController controller, String hint) {
     final theme = Theme.of(context);
     final cardColor = theme.cardTheme.color ?? Colors.white;
-    final borderColor = theme.dividerColor.withOpacity(0.2);
+    final borderColor = theme.dividerColor.withValues(alpha: 0.2);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -177,7 +180,7 @@ class _ContactLinksScreenState extends State<ContactLinksScreen> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: borderColor),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 4))
+          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))
         ],
       ),
       child: Column(
@@ -188,7 +191,7 @@ class _ContactLinksScreenState extends State<ContactLinksScreen> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: iconColor.withOpacity(0.1),
+                  color: iconColor.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(icon, color: iconColor, size: 20),

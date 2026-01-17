@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/student_model.dart';
-import '../../utils/app_theme.dart';
 
 class EnrollmentDetailScreen extends StatelessWidget {
   final Map<String, dynamic> enrollment;
@@ -53,11 +52,11 @@ class EnrollmentDetailScreen extends StatelessWidget {
                 margin: const EdgeInsets.only(bottom: 20),
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 decoration: BoxDecoration(
-                  color: enrollment['isActive'] ? neonGreen.withOpacity(0.1) : neonRed.withOpacity(0.1),
+                  color: enrollment['isActive'] ? neonGreen.withValues(alpha: 0.1) : neonRed.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(30),
                   border: Border.all(color: enrollment['isActive'] ? neonGreen : neonRed, width: 1.5),
                   boxShadow: [
-                    BoxShadow(color: (enrollment['isActive'] ? neonGreen : neonRed).withOpacity(0.2), blurRadius: 15, spreadRadius: 1)
+                    BoxShadow(color: (enrollment['isActive'] ? neonGreen : neonRed).withValues(alpha: 0.2), blurRadius: 15, spreadRadius: 1)
                   ]
                 ),
                 child: Row(
@@ -82,11 +81,11 @@ class EnrollmentDetailScreen extends StatelessWidget {
               Container(
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
+                  color: Colors.white.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20, offset: const Offset(0, 10))
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 10))
                   ],
                 ),
                 child: ClipRRect(
@@ -99,16 +98,16 @@ class EnrollmentDetailScreen extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(24),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.03),
-                            border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
+                            color: Colors.white.withValues(alpha: 0.03),
+                            border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
                           ),
                           child: Row(
                             children: [
                               Container(
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: neonGreen.withOpacity(0.5), width: 2),
-                                  boxShadow: [BoxShadow(color: neonGreen.withOpacity(0.2), blurRadius: 10)]
+                                  border: Border.all(color: neonGreen.withValues(alpha: 0.5), width: 2),
+                                  boxShadow: [BoxShadow(color: neonGreen.withValues(alpha: 0.2), blurRadius: 10)]
                                 ),
                                 child: CircleAvatar(
                                   radius: 30,
@@ -131,7 +130,7 @@ class EnrollmentDetailScreen extends StatelessWidget {
                                     const SizedBox(height: 4),
                                     Row(
                                       children: [
-                                        Icon(Icons.message, size: 12, color: Colors.white.withOpacity(0.6)),
+                                        Icon(Icons.message, size: 12, color: Colors.white.withValues(alpha: 0.6)),
                                         const SizedBox(width: 6),
                                         Text(
                                           student.phone.isNotEmpty ? student.phone : 'No WhatsApp No',
@@ -224,7 +223,7 @@ class EnrollmentDetailScreen extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(8)),
             child: Icon(icon, color: Colors.white70, size: 18),
           ),
           const SizedBox(width: 16),

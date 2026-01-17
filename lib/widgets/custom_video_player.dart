@@ -43,7 +43,7 @@ class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
         });
       }
     } catch (e) {
-      debugPrint('Error initializing video: $e');
+      // debugPrint('Error initializing video: $e');
     }
   }
 

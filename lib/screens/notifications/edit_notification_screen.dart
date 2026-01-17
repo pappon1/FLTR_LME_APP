@@ -60,11 +60,17 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
     
     // Action Logic
     final action = data['action'];
-    if (action == 'home') _selectedAction = 'Open App Home';
-    else if (action == 'courses') _selectedAction = 'Open Courses Screen';
-    else if (action == 'course') _selectedAction = 'Specific Course';
-    else if (action == 'link') _selectedAction = 'Custom URL';
-    else _selectedAction = 'Open App Home';
+    if (action == 'home') {
+      _selectedAction = 'Open App Home';
+    } else if (action == 'courses') {
+      _selectedAction = 'Open Courses Screen';
+    } else if (action == 'course') {
+      _selectedAction = 'Specific Course';
+    } else if (action == 'link') {
+      _selectedAction = 'Custom URL';
+    } else {
+      _selectedAction = 'Open App Home';
+    }
 
     // Audience Logic
     final audience = data['targetAudience'];
@@ -107,14 +113,18 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
   }
 
   void _showAudienceSelector() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     String? tempSegment;
     List<String> tempCourseIds = List.from(_selectedCourseIds);
 
-    if (_selectedAudience == 'All App Downloads') tempSegment = 'all';
-    else if (_selectedAudience == 'All New App Downloads') tempSegment = 'new';
-    else if (_selectedAudience == 'Not purchased any course') tempSegment = 'non_purchasers';
-    else if (_selectedCourseIds.isNotEmpty) tempSegment = null; 
+    if (_selectedAudience == 'All App Downloads') {
+      tempSegment = 'all';
+    } else if (_selectedAudience == 'All New App Downloads') {
+      tempSegment = 'new';
+    } else if (_selectedAudience == 'Not purchased any course') {
+      tempSegment = 'non_purchasers';
+    } else if (_selectedCourseIds.isNotEmpty) {
+      tempSegment = null;
+    } 
     
     showModalBottomSheet(
       context: context,
@@ -140,20 +150,25 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
                      child: ListView(
                        padding: EdgeInsets.zero,
                        children: [
-                         RadioListTile<String>(
-                           title: const Text('All App Downloads'), value: 'all', groupValue: tempSegment,
-                           activeColor: Colors.red,
+                         RadioGroup<String>(
+                           groupValue: tempSegment,
                            onChanged: (val) => setSheetState(() { tempSegment = val; tempCourseIds.clear(); }),
-                         ),
-                         RadioListTile<String>(
-                           title: const Text('All New App Downloads'), value: 'new', groupValue: tempSegment,
-                           activeColor: Colors.red,
-                           onChanged: (val) => setSheetState(() { tempSegment = val; tempCourseIds.clear(); }),
-                         ),
-                         RadioListTile<String>(
-                           title: const Text('Not purchased any course'), value: 'non_purchasers', groupValue: tempSegment,
-                           activeColor: Colors.red,
-                           onChanged: (val) => setSheetState(() { tempSegment = val; tempCourseIds.clear(); }),
+                           child: const Column(
+                             children: [
+                               RadioListTile<String>(
+                                 title: Text('All App Downloads'), value: 'all',
+                                 activeColor: Colors.red,
+                               ),
+                               RadioListTile<String>(
+                                 title: Text('All New App Downloads'), value: 'new',
+                                 activeColor: Colors.red,
+                               ),
+                               RadioListTile<String>(
+                                 title: Text('Not purchased any course'), value: 'non_purchasers',
+                                 activeColor: Colors.red,
+                               ),
+                             ],
+                           ),
                          ),
                          
                          Container(padding: const EdgeInsets.all(16), child: const Text('COURSES', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey))),
@@ -239,25 +254,33 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
                      child: ListView(
                        padding: const EdgeInsets.all(16),
                        children: [
-                         RadioListTile(title: const Text('Open App Home'), value: 'Open App Home', groupValue: tempAction, onChanged: (v) => setSheetState(() => tempAction = v.toString())),
-                         RadioListTile(title: const Text('Open Courses Screen'), value: 'Open Courses Screen', groupValue: tempAction, onChanged: (v) => setSheetState(() => tempAction = v.toString())),
-                         RadioListTile(title: const Text('Specific Course'), value: 'Specific Course', groupValue: tempAction, onChanged: (v) => setSheetState(() => tempAction = v.toString())),
-                         if (tempAction == 'Specific Course') 
-                            SizedBox(height: 200, child: StreamBuilder<QuerySnapshot>(
-                              stream: FirebaseFirestore.instance.collection('courses').snapshots(),
-                              builder: (context, snapshot) {
-                                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                                return ListView(children: snapshot.data!.docs.map((d) => ListTile(
-                                    title: Text((d.data() as Map)['title']),
-                                    selected: tempValue == d.id,
-                                    selectedColor: Colors.orange,
-                                    onTap: () => setSheetState(() => tempValue = d.id)
-                                )).toList());
-                              }
-                            )),
-                         RadioListTile(title: const Text('Custom URL'), value: 'Custom URL', groupValue: tempAction, onChanged: (v) => setSheetState(() => tempAction = v.toString())),
-                         if (tempAction == 'Custom URL')
-                            Padding(padding: const EdgeInsets.all(8.0), child: TextField(controller: TextEditingController(text: tempValue), onChanged: (v) => tempValue = v, decoration: const InputDecoration(labelText: 'URL', border: OutlineInputBorder())))
+                         RadioGroup<String>(
+                           groupValue: tempAction,
+                           onChanged: (v) => setSheetState(() => tempAction = v.toString()),
+                           child: Column(
+                             children: [
+                               const RadioListTile(title: Text('Open App Home'), value: 'Open App Home'),
+                               const RadioListTile(title: Text('Open Courses Screen'), value: 'Open Courses Screen'),
+                               const RadioListTile(title: Text('Specific Course'), value: 'Specific Course'),
+                               if (tempAction == 'Specific Course') 
+                                  SizedBox(height: 200, child: StreamBuilder<QuerySnapshot>(
+                                    stream: FirebaseFirestore.instance.collection('courses').snapshots(),
+                                    builder: (context, snapshot) {
+                                      if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+                                      return ListView(children: snapshot.data!.docs.map((d) => ListTile(
+                                          title: Text((d.data() as Map)['title']),
+                                          selected: tempValue == d.id,
+                                          selectedColor: Colors.orange,
+                                          onTap: () => setSheetState(() => tempValue = d.id)
+                                      )).toList());
+                                    }
+                                  )),
+                               const RadioListTile(title: Text('Custom URL'), value: 'Custom URL'),
+                               if (tempAction == 'Custom URL')
+                                  Padding(padding: const EdgeInsets.all(8.0), child: TextField(controller: TextEditingController(text: tempValue), onChanged: (v) => tempValue = v, decoration: const InputDecoration(labelText: 'URL', border: OutlineInputBorder())))
+                             ],
+                           ),
+                         )
                        ],
                      ),
                    ),
@@ -308,10 +331,15 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
 
       // Action Mapping
       String actionType = 'home';
-      if (_selectedAction == 'Open App Home') actionType = 'home';
-      else if (_selectedAction == 'Open Courses Screen') actionType = 'courses';
-      else if (_selectedAction == 'Specific Course') actionType = 'course';
-      else if (_selectedAction == 'Custom URL') actionType = 'link';
+      if (_selectedAction == 'Open App Home') {
+        actionType = 'home';
+      } else if (_selectedAction == 'Open Courses Screen') {
+        actionType = 'courses';
+      } else if (_selectedAction == 'Specific Course') {
+        actionType = 'course';
+      } else if (_selectedAction == 'Custom URL') {
+        actionType = 'link';
+      }
 
       await FirebaseFirestore.instance.collection('notifications').doc(widget.notificationId).update({
          'title': _titleController.text.trim(),
@@ -377,7 +405,7 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
                                 decoration: BoxDecoration(
                                   color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
                                   borderRadius: BorderRadius.circular(16),
-                                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 10, offset: const Offset(0, 4))],
+                                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))],
                                 ),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -460,7 +488,7 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
                             child: Container(
                               width: double.infinity,
                               decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey.withOpacity(0.5)),
+                                border: Border.all(color: Colors.grey.withValues(alpha: 0.5)),
                                 borderRadius: BorderRadius.circular(12),
                                 color: isDark ? Colors.grey[900] : Colors.grey[100],
                               ),
@@ -591,8 +619,8 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 4, offset: const Offset(0, 2))],
+          border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.1)),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4, offset: const Offset(0, 2))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

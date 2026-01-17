@@ -6,7 +6,6 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/dashboard_provider.dart';
-import '../../providers/theme_provider.dart';
 import '../../providers/admin_notification_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/stat_card.dart';
@@ -111,7 +110,7 @@ class _DashboardTabState extends State<DashboardTab> {
                               builder: (context, value, child) {
                                 final isPhase1 = value < 0.5;
                                 final color = isPhase1 ? const Color(0xFFFF0000) : const Color(0xFFFFD700); 
-                                final shadowColor = isPhase1 ? Colors.redAccent.withOpacity(0.5) : Colors.yellowAccent.withOpacity(0.5);
+                                final shadowColor = isPhase1 ? Colors.redAccent.withValues(alpha: 0.5) : Colors.yellowAccent.withValues(alpha: 0.5);
                                 return Container(
                                   decoration: BoxDecoration(shape: BoxShape.circle, boxShadow: [BoxShadow(color: shadowColor, blurRadius: 12 * (isPhase1 ? (value * 2) : (2 - value * 2)), spreadRadius: 2)]),
                                   child: Icon(Icons.notifications_active, color: color, size: 24),
@@ -160,7 +159,7 @@ class _DashboardTabState extends State<DashboardTab> {
                         children: [
                           Container(
                             padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(color: Colors.orange.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+                            decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
                             child: const Text('📢', style: TextStyle(fontSize: 16)),
                           ),
                           const SizedBox(width: 12),
@@ -175,9 +174,9 @@ class _DashboardTabState extends State<DashboardTab> {
                          child: Container(
                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                            decoration: BoxDecoration(
-                             color: AppTheme.primaryColor.withOpacity(0.1), 
+                             color: AppTheme.primaryColor.withValues(alpha: 0.1), 
                              borderRadius: BorderRadius.circular(20),
-                             border: Border.all(color: AppTheme.primaryColor.withOpacity(0.3))
+                             border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3))
                            ),
                            child: Text('Manage', style: GoogleFonts.inter(color: AppTheme.primaryColor, fontSize: 12, fontWeight: FontWeight.w600)),
                          ),
@@ -206,9 +205,9 @@ class _DashboardTabState extends State<DashboardTab> {
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(12),
                               boxShadow: [
-                                BoxShadow(color: AppTheme.primaryColor.withOpacity(0.15), blurRadius: 20, offset: const Offset(0, 8))
+                                BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.15), blurRadius: 20, offset: const Offset(0, 8))
                               ],
-                              border: Border.all(color: Colors.white.withOpacity(0.1)),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                             ),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(12),
@@ -244,7 +243,7 @@ class _DashboardTabState extends State<DashboardTab> {
                           decoration: BoxDecoration(
                             color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1F2937) : const Color(0xFFF3F4F6),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey.withOpacity(0.3), style: BorderStyle.solid),
+                            border: Border.all(color: Colors.grey.withValues(alpha: 0.3), style: BorderStyle.solid),
                           ),
                           child: Center(
                             child: Column(

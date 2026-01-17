@@ -62,7 +62,7 @@ class _RazorpayReportsScreenState extends State<RazorpayReportsScreen> {
                       margin: const EdgeInsets.only(bottom: 12),
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: status == 'captured' ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                          backgroundColor: status == 'captured' ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
                           child: Icon(status == 'captured' ? Icons.check : Icons.error, color: status == 'captured' ? Colors.green : Colors.red, size: 20),
                         ),
                         title: Text("₹$amount", style: GoogleFonts.inter(fontWeight: FontWeight.bold)),

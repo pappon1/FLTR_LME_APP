@@ -53,7 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
             decoration: BoxDecoration(
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
+                  color: Colors.black.withValues(alpha: 0.1),
                   blurRadius: 20,
                   offset: const Offset(0, -5),
                 ),
@@ -62,14 +62,14 @@ class _HomeScreenState extends State<HomeScreen> {
             child: NavigationBarTheme(
               data: NavigationBarThemeData(
                 indicatorColor: AppTheme.primaryColor,
-                iconTheme: MaterialStateProperty.resolveWith((states) {
-                  if (states.contains(MaterialState.selected)) {
+                iconTheme: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.selected)) {
                     return const IconThemeData(color: Colors.white);
                   }
                   return IconThemeData(color: Colors.grey[600]);
                 }),
-                labelTextStyle: MaterialStateProperty.resolveWith((states) {
-                  if (states.contains(MaterialState.selected)) {
+                labelTextStyle: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.selected)) {
                     return GoogleFonts.inter(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,

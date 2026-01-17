@@ -38,7 +38,7 @@ class _SystemHealthCardState extends State<SystemHealthCard> {
     });
 
     // 1. Check Network & Internet
-    final netStart = DateTime.now();
+
     try {
       await http.get(Uri.parse('https://www.google.com')).timeout(const Duration(seconds: 2));
       _netStatus = 1;
@@ -87,7 +87,7 @@ class _SystemHealthCardState extends State<SystemHealthCard> {
     
     // Tech Colors
     final techBg = isDark ? const Color(0xFF111827) : const Color(0xFF1F2937);
-    final gridColor = Colors.white.withOpacity(0.05);
+
 
     return Container(
       width: double.infinity,
@@ -95,9 +95,9 @@ class _SystemHealthCardState extends State<SystemHealthCard> {
       decoration: BoxDecoration(
         color: techBg,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.blueGrey.withOpacity(0.3)),
+        border: Border.all(color: Colors.blueGrey.withValues(alpha: 0.3)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 15, offset: const Offset(0, 5)),
+          BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 15, offset: const Offset(0, 5)),
         ],
       ),
       child: Column(
@@ -122,7 +122,7 @@ class _SystemHealthCardState extends State<SystemHealthCard> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.05),
+                    color: Colors.white.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: Colors.white10),
                   ),
@@ -157,7 +157,7 @@ class _SystemHealthCardState extends State<SystemHealthCard> {
           ),
 
           const SizedBox(height: 16),
-          Divider(color: Colors.white.withOpacity(0.1)),
+          Divider(color: Colors.white.withValues(alpha: 0.1)),
           
           // Footer
           Padding(
@@ -197,16 +197,16 @@ class _SystemHealthCardState extends State<SystemHealthCard> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
+        color: Colors.white.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: status == 1 ? Colors.transparent : statusColor.withOpacity(0.3)),
+        border: Border.all(color: status == 1 ? Colors.transparent : statusColor.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.1),
+              color: statusColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: FaIcon(icon, color: statusColor, size: 14),

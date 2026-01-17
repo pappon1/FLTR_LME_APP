@@ -19,8 +19,8 @@ class VideoCenterControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final iconColor = Colors.white; // Always white over video
-    final bgColor = Colors.black45; // Fixed dark background for visibility
+    const iconColor = Colors.white; // Always white over video
+    const bgColor = Colors.black45; // Fixed dark background for visibility
     final borderColor = isDark ? Colors.white30 : Colors.black12;
 
     return IgnorePointer(

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../utils/app_theme.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
 class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
   final int currentStep;
@@ -30,7 +29,7 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               )
@@ -73,9 +72,9 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
           height: size,
           width: size,
           decoration: BoxDecoration(
-            color: isActive ? AppTheme.primaryColor : Colors.grey.withOpacity(0.2),
+            color: isActive ? AppTheme.primaryColor : Colors.grey.withValues(alpha: 0.2),
             shape: BoxShape.circle,
-            boxShadow: isActive ? [BoxShadow(color: AppTheme.primaryColor.withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 4))] : [],
+            boxShadow: isActive ? [BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 4))] : [],
           ),
           child: Center(
             child: isCurrent 
@@ -102,7 +101,7 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
     return Expanded(
       child: Container(
         height: 2,
-        color: currentStep > step ? AppTheme.primaryColor : Colors.grey.withOpacity(0.2),
+        color: currentStep > step ? AppTheme.primaryColor : Colors.grey.withValues(alpha: 0.2),
         margin: const EdgeInsets.symmetric(horizontal: 4),
       ),
     );

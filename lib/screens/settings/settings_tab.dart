@@ -113,7 +113,7 @@ class SettingsTab extends StatelessWidget {
                   onChanged: (value) {
                     themeProvider.toggleTheme();
                   },
-                  activeColor: AppTheme.primaryColor,
+                  activeThumbColor: AppTheme.primaryColor,
                 );
               },
             ),
@@ -150,7 +150,7 @@ class SettingsTab extends StatelessWidget {
                   subtitle: const Text('Receive notifications on your device'),
                   value: true,
                   onChanged: (value) {},
-                  activeColor: AppTheme.primaryColor,
+                  activeThumbColor: AppTheme.primaryColor,
                 ),
                 const Divider(height: 1),
                 SwitchListTile(
@@ -170,7 +170,7 @@ class SettingsTab extends StatelessWidget {
                   subtitle: const Text('Receive updates via email'),
                   value: true,
                   onChanged: (value) {},
-                  activeColor: AppTheme.primaryColor,
+                  activeThumbColor: AppTheme.primaryColor,
                 ),
               ],
             ),

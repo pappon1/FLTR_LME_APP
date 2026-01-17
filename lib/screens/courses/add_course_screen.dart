@@ -109,7 +109,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
          }
       }
     } catch (e) {
-       debugPrint("Error loading draft: $e");
+       // debugPrint("Error loading draft: $e");
     }
   }
 
@@ -127,20 +127,17 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       };
       
       await prefs.setString('course_creation_draft', jsonEncode(draft));
-      debugPrint("Course Draft Saved");
+      // debugPrint("Course Draft Saved");
     } catch (e) {
-       debugPrint("Error saving draft: $e");
+       // debugPrint("Error saving draft: $e");
     }
   }
 
-  Future<void> _clearCourseDraft() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('course_creation_draft');
-  }
+
 
   void _calculateFinalPrice() {
-    double mrp = double.tryParse(_mrpController.text) ?? 0;
-    double discountAmt = double.tryParse(_discountAmountController.text) ?? 0;
+    final double mrp = double.tryParse(_mrpController.text) ?? 0;
+    final double discountAmt = double.tryParse(_discountAmountController.text) ?? 0;
     
     if (mrp > 0) {
       double finalPrice = mrp - discountAmt;
@@ -170,11 +167,11 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
     
     if (pickedFile != null) {
-      File file = File(pickedFile.path);
-      var decodedImage = await decodeImageFromList(file.readAsBytesSync());
+      final File file = File(pickedFile.path);
+      final decodedImage = await decodeImageFromList(file.readAsBytesSync());
       
       // Validation: Check for 16:9 Ratio (approx 1.77) with tolerance
-      double ratio = decodedImage.width / decodedImage.height;
+      final double ratio = decodedImage.width / decodedImage.height;
       if (ratio < 1.7 || ratio > 1.85) {
         if (mounted) {
            ScaffoldMessenger.of(context).showSnackBar(
@@ -223,7 +220,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       if (_currentStep < 2) {
         FocusScope.of(context).unfocus();
         await Future.delayed(const Duration(milliseconds: 50));
-        _pageController.nextPage(duration: 250.ms, curve: Curves.easeInOut);
+        await _pageController.nextPage(duration: 250.ms, curve: Curves.easeInOut);
       }
     }
   }
@@ -232,7 +229,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     if (_currentStep > 0) {
       FocusScope.of(context).unfocus();
       await Future.delayed(const Duration(milliseconds: 50));
-      _pageController.previousPage(duration: 250.ms, curve: Curves.easeInOut);
+      await _pageController.previousPage(duration: 250.ms, curve: Curves.easeInOut);
     }
   }
 
@@ -242,12 +239,12 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     setState(() => _isLoading = true);
 
     try {
-      String thumbnailUrl = await _bunnyService.uploadImage(
+      final String thumbnailUrl = await _bunnyService.uploadImage(
         filePath: _thumbnailImage!.path,
         folder: 'thumbnails',
       );
 
-      String finalDesc = _descController.text.trim();
+      final String finalDesc = _descController.text.trim();
       /*
       // Syllabus logic deprecated
       */
@@ -272,6 +269,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
 
       if (mounted) {
         await Provider.of<DashboardProvider>(context, listen: false).addCourse(newCourse);
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Course Created Successfully!')));
         Navigator.pop(context);
       }
@@ -304,10 +302,12 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, dynamic result) async {
+         if (didPop) return;
          await _saveCourseDraft();
-         return true; 
+         if (context.mounted) Navigator.pop(context);
       },
       child: Scaffold(
         appBar: _buildAppBar(),
@@ -370,7 +370,9 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                          _selectedIndices.clear();
                       } else {
                          _selectedIndices.clear();
-                         for(int i=0; i<_courseContents.length; i++) _selectedIndices.add(i);
+                         for(int i=0; i<_courseContents.length; i++) {
+                           _selectedIndices.add(i);
+                         }
                       }
                    });
                 },
@@ -389,66 +391,15 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     );
   }
 
-  Widget _buildStepIndicator() {
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          _buildStepCircle(0, 'Basic Info'),
-          _buildStepLine(0),
-          _buildStepCircle(1, 'Contents'),
-          _buildStepLine(1),
-          _buildStepCircle(2, 'Advance'),
-        ],
-      );
-  }
+
 
 
 
 
   
-  Widget _buildStepCircle(int step, String label) {
-    bool isActive = _currentStep >= step;
-    bool isCurrent = _currentStep == step;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        AnimatedContainer(
-          duration: 300.ms,
-          height: 32,
-          width: 32,
-          decoration: BoxDecoration(
-            color: isActive ? AppTheme.primaryColor : Colors.grey.withOpacity(0.2),
-            shape: BoxShape.circle,
-            boxShadow: isActive ? [BoxShadow(color: AppTheme.primaryColor.withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 4))] : [],
-          ),
-          child: Center(
-            child: isCurrent 
-              ? const Icon(Icons.edit, size: 16, color: Colors.white)
-              : isActive ? const Icon(Icons.check, size: 16, color: Colors.white) : Text('${step + 1}', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey.shade400)),
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(label, style: TextStyle(
-          fontSize: 11, 
-          color: isActive ? AppTheme.primaryColor : Colors.grey.shade500,
-          fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-        )),
-      ],
-    );
-  }
 
-  Widget _buildStepLine(int step) {
-    return Expanded(
-      child: Container(
-        height: 3,
-        margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 12),
-        decoration: BoxDecoration(
-          color: _currentStep > step ? AppTheme.primaryColor.withOpacity(0.5) : Colors.grey.withOpacity(0.2),
-          borderRadius: BorderRadius.circular(2),
-        ),
-      ),
-    );
-  }
+
+
 
   Widget _buildNavButtons() {
     return Padding(
@@ -507,7 +458,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                       decoration: BoxDecoration(
                         color: Theme.of(context).scaffoldBackgroundColor,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: _thumbnailImage == null ? Colors.grey.shade300 : AppTheme.primaryColor.withOpacity(0.5), width: _thumbnailImage == null ? 1 : 2),
+                        border: Border.all(color: _thumbnailImage == null ? Colors.grey.shade300 : AppTheme.primaryColor.withValues(alpha: 0.5), width: _thumbnailImage == null ? 1 : 2),
                         image: _thumbnailImage != null
                             ? DecorationImage(image: FileImage(_thumbnailImage!), fit: BoxFit.cover)
                             : null,
@@ -516,7 +467,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                           ? Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.add_photo_alternate_rounded, size: 48, color: AppTheme.primaryColor.withOpacity(0.8)),
+                                Icon(Icons.add_photo_alternate_rounded, size: 48, color: AppTheme.primaryColor.withValues(alpha: 0.8)),
                                 const SizedBox(height: 8),
                                 Text('Select 16:9 Image', style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
                               ],
@@ -560,7 +511,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _selectedCategory,
+                        initialValue: _selectedCategory,
                         decoration: InputDecoration(labelText: 'Category', floatingLabelBehavior: FloatingLabelBehavior.always, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), filled: true, fillColor: Theme.of(context).cardColor),
                         items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                         onChanged: (v) => setState(() => _selectedCategory = v),
@@ -569,7 +520,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: _difficulty,
+                        initialValue: _difficulty,
                         decoration: InputDecoration(labelText: 'Course Type', floatingLabelBehavior: FloatingLabelBehavior.always, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), filled: true, fillColor: Theme.of(context).cardColor),
                         items: _difficultyLevels.map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
                         onChanged: (v) => setState(() => _difficulty = v!),
@@ -580,7 +531,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                 const SizedBox(height: 16),
                 
                 DropdownButtonFormField<int>(
-                   value: _newBatchDurationDays,
+                   initialValue: _newBatchDurationDays,
                    decoration: InputDecoration(labelText: 'New Badge Duration', floatingLabelBehavior: FloatingLabelBehavior.always, prefixIcon: const Icon(Icons.timer_outlined), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), filled: true, fillColor: Theme.of(context).cardColor),
                    items: const [DropdownMenuItem(value: 30, child: Text('1 Month')), DropdownMenuItem(value: 60, child: Text('2 Months')), DropdownMenuItem(value: 90, child: Text('3 Months'))],
                    onChanged: (v) => setState(() => _newBatchDurationDays = v!),
@@ -626,12 +577,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       });
   }
 
-  void _selectAll() {
-    setState(() {
-      _selectedIndices.clear();
-      for(int i=0; i<_courseContents.length; i++) _selectedIndices.add(i);
-    });
-  }
+
 
   void _handleBulkDelete() {
      if (_selectedIndices.isEmpty) return;
@@ -752,7 +698,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                              color: AppTheme.primaryColor,
                              shape: BoxShape.circle,
                              boxShadow: [
-                               BoxShadow(color: AppTheme.primaryColor.withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 4))
+                               BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 4))
                              ],
                            ),
                            child: const Icon(Icons.add, color: Colors.white, size: 28),
@@ -1010,10 +956,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     );
   }
 
-  // Legacy fallback for simple copy
-  void _handleClipboardAction(String action) {
-     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Long press items to select multiple, then use top menu.')));
-  }
+
 
   void _pasteContent() {
     if (ContentClipboard.isEmpty) {
@@ -1077,7 +1020,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
             child: Icon(icon, color: color, size: 28),
           ),
           const SizedBox(height: 8),
@@ -1167,7 +1110,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         }
       }
     } catch (e) {
-      debugPrint('Error picking file: $e');
+      // debugPrint('Error picking file: $e');
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     }
   }
@@ -1197,7 +1140,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                    subtitle: const Text('Make this course visible to students immediately'),
                    value: _isPublished,
                    onChanged: (v) => setState(() => _isPublished = v),
-                   activeColor: AppTheme.primaryColor,
+                   activeThumbColor: AppTheme.primaryColor,
                  ),
               ],
             ),
@@ -1238,7 +1181,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         readOnly: readOnly,
         textAlignVertical: alignTop ? TextAlignVertical.top : TextAlignVertical.center,
         style: TextStyle(
-          color: readOnly ? Theme.of(context).textTheme.bodyMedium?.color?.withOpacity(0.8) : Theme.of(context).textTheme.bodyMedium?.color,
+          color: readOnly ? Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.8) : Theme.of(context).textTheme.bodyMedium?.color,
           fontWeight: readOnly ? FontWeight.bold : FontWeight.normal,
         ),
         decoration: InputDecoration(
@@ -1260,7 +1203,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
           filled: true,
           fillColor: readOnly 
-              ? (Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.05) : Colors.grey.shade100)
+              ? (Theme.of(context).brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100)
               : Theme.of(context).cardColor,
           counterText: maxLength != null ? null : '',
         ),

@@ -7,7 +7,6 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'enrollment_detail_screen.dart'; // Add this
 import '../../models/student_model.dart';
-import '../../utils/app_theme.dart';
 import '../../services/firestore_service.dart';
 
 class StudentDetailScreen extends StatefulWidget {
@@ -25,9 +24,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> with SingleTi
   @override
   void initState() {
     super.initState();
-    // FOR DEBUGGING: Force show courses tab for UI verification
-    bool showCoursesTab = true; // widget.student.enrolledCourses > 0;
-    _tabController = TabController(length: showCoursesTab ? 3 : 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -38,15 +35,14 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> with SingleTi
 
   @override
   Widget build(BuildContext context) {
-    // FOR DEBUGGING: Force show courses tab
-    bool showCoursesTab = true; // widget.student.enrolledCourses > 0;
+
     
     // Theme Colors
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     final primaryColor = Theme.of(context).primaryColor;
     final scaffoldBg = Theme.of(context).scaffoldBackgroundColor;
     final cardColor = Theme.of(context).cardColor;
-    final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black87;
+
 
     return Scaffold(
       backgroundColor: scaffoldBg,
@@ -132,10 +128,10 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> with SingleTi
                               padding: const EdgeInsets.all(4),
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 2),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: widget.student.isActive ? Colors.green.withOpacity(0.4) : Colors.red.withOpacity(0.2),
+                                    color: widget.student.isActive ? Colors.green.withValues(alpha: 0.4) : Colors.red.withValues(alpha: 0.2),
                                     blurRadius: 20,
                                     spreadRadius: 2,
                                   ),
@@ -168,9 +164,9 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> with SingleTi
                            Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(20),
-                              border: Border.all(color: Colors.white.withOpacity(0.3)),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -218,10 +214,10 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> with SingleTi
                     indicatorWeight: 3,
                     indicatorSize: TabBarIndicatorSize.label,
                     labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600),
-                    tabs: [
-                      const Tab(text: 'User Info'),
-                      if (showCoursesTab) const Tab(text: 'Courses'),
-                      const Tab(text: 'Device Info'),
+                    tabs: const [
+                      Tab(text: 'User Info'),
+                      Tab(text: 'Courses'),
+                      Tab(text: 'Device Info'),
                     ],
                   ),
                 ),
@@ -235,7 +231,7 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> with SingleTi
             controller: _tabController,
             children: [
               _UserInfoTab(student: widget.student),
-              if (showCoursesTab) _StudentCoursesTab(student: widget.student),
+              _StudentCoursesTab(student: widget.student),
               _DeviceHistoryTab(studentId: widget.student.id),
             ],
           ),
@@ -305,14 +301,14 @@ class _UserInfoTab extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
+        border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.1)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         leading: Container(
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+          decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
           child: FaIcon(icon, color: color, size: 20),
         ),
         title: Text(label, style: GoogleFonts.poppins(fontSize: 12, color: Theme.of(context).hintColor)),
@@ -332,8 +328,8 @@ class _UserInfoTab extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)],
+        border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.1)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -385,8 +381,8 @@ class _StudentCoursesTab extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Theme.of(context).dividerColor.withOpacity(0.1)),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4))],
+                border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.1)),
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
               ),
               child: Padding(
                 padding: const EdgeInsets.all(12),
@@ -399,7 +395,7 @@ class _StudentCoursesTab extends StatelessWidget {
                         imageUrl: e['courseThumbnail'],
                         width: 120, height: 68, // 16:9 Ratio
                         fit: BoxFit.cover,
-                        errorWidget: (_,__,___) => Container(color: Colors.grey[200], width: 120, height: 68, child: const Icon(Icons.image)),
+                        errorWidget: (context, url, error) => Container(color: Colors.grey[200], width: 120, height: 68, child: const Icon(Icons.image)),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -416,7 +412,7 @@ class _StudentCoursesTab extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              color: isActive ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                              color: isActive ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -460,8 +456,11 @@ class _StudentCoursesTab extends StatelessWidget {
           TextButton(onPressed: ()=>Navigator.pop(ctx), child: const Text('Cancel')),
           TextButton(onPressed: () async {
              Navigator.pop(ctx);
-             if (action == 'revoke') await FirestoreService().revokeEnrollment(e['enrollmentId']);
-             else await FirestoreService().toggleEnrollmentStatus(e['enrollmentId'], !isActive);
+             if (action == 'revoke') {
+               await FirestoreService().revokeEnrollment(e['enrollmentId']);
+             } else {
+               await FirestoreService().toggleEnrollmentStatus(e['enrollmentId'], !isActive);
+             }
           }, child: const Text('Confirm')),
         ],
      ));
@@ -488,7 +487,7 @@ class _DeviceHistoryTab extends StatelessWidget {
           children: [
             Text('LOGIN TIMELINE', style: GoogleFonts.poppins(color: Theme.of(context).hintColor, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
             const SizedBox(height: 16),
-            ...snapshot.data!.map((log) => _buildLogItem(context, log)).toList(),
+            ...snapshot.data!.map((log) => _buildLogItem(context, log)),
           ],
         );
       },
@@ -515,7 +514,7 @@ class _DeviceHistoryTab extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(12),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)],
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)],
               ),
               child: Row(
                 children: [
@@ -537,7 +536,7 @@ class _DeviceHistoryTab extends StatelessWidget {
                     icon: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
+                        color: Colors.red.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(Icons.logout, color: Colors.red, size: 20),

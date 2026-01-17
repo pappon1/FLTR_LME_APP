@@ -4,10 +4,8 @@ import 'package:intl/intl.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'dart:ui';
 import 'dart:math';
 import '../../utils/app_theme.dart';
-import '../../models/course_model.dart';
 import 'all_transactions_screen.dart';
 
 class RevenueDetailScreen extends StatefulWidget {
@@ -26,12 +24,7 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
   Map<String, double> _coursePrices = {};
 
   // Professional Color Palette
-  final Color _bgLight = const Color(0xFFF5F7FA);
-  final Color _cardWhite = Colors.white;
-  final Color _textPrimary = const Color(0xFF2D3748);
-  final Color _textSecondary = const Color(0xFF718096);
-  final Color _primaryBlue = const Color(0xFF3182CE); 
-  final Color _successGreen = const Color(0xFF38A169);
+
 
   @override
   void initState() {
@@ -54,9 +47,13 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
       DateTime now = DateTime.now();
       DateTime? startDate;
       
-      if (_selectedFilter == '7 Days') startDate = now.subtract(const Duration(days: 7));
-      else if (_selectedFilter == '1 Month') startDate = now.subtract(const Duration(days: 30));
-      else if (_selectedFilter == '1 Year') startDate = now.subtract(const Duration(days: 365));
+      if (_selectedFilter == '7 Days') {
+        startDate = now.subtract(const Duration(days: 7));
+      } else if (_selectedFilter == '1 Month') {
+        startDate = now.subtract(const Duration(days: 30));
+      } else if (_selectedFilter == '1 Year') {
+        startDate = now.subtract(const Duration(days: 365));
+      }
       // Lifetime = null
 
       // 3. Query Enrollments
@@ -114,7 +111,7 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
       });
       
     } catch (e) {
-      debugPrint("Error fetching revenue: $e");
+      // debugPrint("Error fetching revenue: $e");
       setState(() {
         _isLoading = false;
         _totalRevenue = 0;
@@ -157,7 +154,7 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
                     height: 45,
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.white.withOpacity(0.05) : Colors.grey[200],
+                      color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey[200],
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: ListView(
@@ -177,7 +174,7 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
                               color: isSelected ? cardColor : Colors.transparent,
                               borderRadius: BorderRadius.circular(10),
                               boxShadow: isSelected 
-                                ? [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))]
+                                ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))]
                                 : [],
                             ),
                             child: Center(
@@ -206,9 +203,9 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
                       color: cardColor,
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 20, offset: const Offset(0, 10)),
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, 10)),
                       ],
-                      border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
+                      border: Border.all(color: theme.dividerColor.withValues(alpha: 0.1)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -235,7 +232,7 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: successColor.withOpacity(0.1),
+                            color: successColor.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Row(
@@ -244,7 +241,7 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
                               Icon(Icons.arrow_upward, color: successColor, size: 14),
                               const SizedBox(width: 4),
                               Text(
-                                '${_selectedFilter} Period',
+                                '$_selectedFilter Period',
                                 style: GoogleFonts.inter(color: successColor, fontSize: 12, fontWeight: FontWeight.w600),
                               ),
                             ],
@@ -266,9 +263,9 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
                       color: cardColor,
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 15, offset: const Offset(0, 5)),
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 5)),
                       ],
-                      border: Border.all(color: theme.dividerColor.withOpacity(0.1)),
+                      border: Border.all(color: theme.dividerColor.withValues(alpha: 0.1)),
                     ),
                     child: _chartData.isEmpty 
                       ? Center(child: Text("No Data available", style: GoogleFonts.inter(color: subTextColor)))
@@ -278,7 +275,7 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
                             show: true,
                             drawVerticalLine: false,
                             horizontalInterval: _chartData.map((e) => e['value'] as double).reduce(max) / 5 == 0 ? 1 : _chartData.map((e) => e['value'] as double).reduce(max) / 5,
-                            getDrawingHorizontalLine: (value) => FlLine(color: theme.dividerColor.withOpacity(0.5), strokeWidth: 1),
+                            getDrawingHorizontalLine: (value) => FlLine(color: theme.dividerColor.withValues(alpha: 0.5), strokeWidth: 1),
                           ),
                           titlesData: FlTitlesData(
                             show: true,
@@ -322,7 +319,7 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
                               color: primaryColor,
                               barWidth: 5,
                               isStrokeCapRound: true,
-                              shadow: Shadow(color: primaryColor.withOpacity(0.5), blurRadius: 10, offset: const Offset(0, 4)),
+                              shadow: Shadow(color: primaryColor.withValues(alpha: 0.5), blurRadius: 10, offset: const Offset(0, 4)),
                               dotData: FlDotData(
                                 show: true,
                                 getDotPainter: (spot, percent, barData, index) => FlDotCirclePainter(
@@ -335,7 +332,7 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
                               belowBarData: BarAreaData(
                                 show: true,
                                 gradient: LinearGradient(
-                                  colors: [primaryColor.withOpacity(0.2), primaryColor.withOpacity(0.0)],
+                                  colors: [primaryColor.withValues(alpha: 0.2), primaryColor.withValues(alpha: 0.0)],
                                   begin: Alignment.topCenter,
                                   end: Alignment.bottomCenter,
                                 ),
@@ -345,7 +342,7 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
                           lineTouchData: LineTouchData(
                             touchTooltipData: LineTouchTooltipData(
                               getTooltipColor: (_) => isDark ? Colors.white : Colors.blueGrey.shade800,
-                              tooltipRoundedRadius: 8,
+                              tooltipBorderRadius: BorderRadius.circular(8),
                               tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               tooltipMargin: 10,
                               getTooltipItems: (touchedSpots) {
@@ -400,13 +397,13 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
                              decoration: BoxDecoration(
                                color: cardColor,
                                borderRadius: BorderRadius.circular(16),
-                               border: Border.all(color: theme.dividerColor.withOpacity(0.5)),
+                               border: Border.all(color: theme.dividerColor.withValues(alpha: 0.5)),
                              ),
                              child: Row(
                                children: [
                                  Container(
                                    padding: const EdgeInsets.all(12),
-                                   decoration: BoxDecoration(color: primaryColor.withOpacity(0.1), shape: BoxShape.circle),
+                                   decoration: BoxDecoration(color: primaryColor.withValues(alpha: 0.1), shape: BoxShape.circle),
                                    child: Icon(FontAwesomeIcons.arrowDown, color: primaryColor, size: 16),
                                  ),
                                  const SizedBox(width: 16),
@@ -419,7 +416,7 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
                                          style: GoogleFonts.inter(color: textColor, fontWeight: FontWeight.w600, fontSize: 15),
                                        ),
                                        Text(
-                                         DateFormat('MMM d, h:mm a').format(date) + ' • ${data['courseId'] ?? ''}',
+                                         '${DateFormat('MMM d, h:mm a').format(date)} • ${data['courseId'] ?? ''}',
                                          style: GoogleFonts.inter(color: subTextColor, fontSize: 12),
                                        ),
                                      ],

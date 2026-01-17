@@ -175,25 +175,18 @@ class _ResetPinAuthDialogState extends State<_ResetPinAuthDialog> {
       if (user == null) return;
 
       if (_isGoogleUser) {
-        // Create a new instance of GoogleSignIn
-        final GoogleSignIn googleSignIn = GoogleSignIn();
+        // Use singleton instance (v7+)
+        final GoogleSignIn googleSignIn = GoogleSignIn.instance;
         
         try {
-          // Trigger the authentication flow
-          final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+          // Trigger the authentication flow (v7 uses authenticate)
+          final GoogleSignInAccount googleUser = await googleSignIn.authenticate();
           
-          if (googleUser == null) {
-            // User cancelled
-             setState(() => _isLoading = false);
-            return;
-          }
-
           // Obtain the auth details from the request
-          final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+          final GoogleSignInAuthentication googleAuth = googleUser.authentication;
 
           // Create a new credential
           final AuthCredential credential = GoogleAuthProvider.credential(
-            accessToken: googleAuth.accessToken,
             idToken: googleAuth.idToken,
           );
           

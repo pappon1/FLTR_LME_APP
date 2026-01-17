@@ -36,7 +36,7 @@ class ChartCard extends StatelessWidget {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryColor.withOpacity(0.1),
+                    color: AppTheme.primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -61,7 +61,7 @@ class ChartCard extends StatelessWidget {
                     horizontalInterval: 20000,
                     getDrawingHorizontalLine: (value) {
                       return FlLine(
-                        color: Colors.grey.withOpacity(0.1),
+                        color: Colors.grey.withValues(alpha: 0.1),
                         strokeWidth: 1,
                       );
                     },
@@ -147,8 +147,8 @@ class ChartCard extends StatelessWidget {
                         show: true,
                         gradient: LinearGradient(
                           colors: [
-                            AppTheme.primaryColor.withOpacity(0.3),
-                            AppTheme.primaryColor.withOpacity(0.05),
+                            AppTheme.primaryColor.withValues(alpha: 0.3),
+                            AppTheme.primaryColor.withValues(alpha: 0.05),
                           ],
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,

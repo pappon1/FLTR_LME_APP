@@ -47,8 +47,8 @@ class _SentHistoryScreenState extends State<SentHistoryScreen> {
                physics: const NeverScrollableScrollPhysics(),
                padding: const EdgeInsets.all(16),
                itemCount: 8,
-               separatorBuilder: (_, __) => const SizedBox(height: 12),
-               itemBuilder: (_, __) => const NotificationShimmerItem(),
+               separatorBuilder: (context, index) => const SizedBox(height: 12),
+               itemBuilder: (context, index) => const NotificationShimmerItem(),
              );
           }
 
@@ -82,7 +82,7 @@ class _SentHistoryScreenState extends State<SentHistoryScreen> {
           return ListView.separated(
             padding: const EdgeInsets.all(16),
             itemCount: docs.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final data = docs[index].data() as Map<String, dynamic>;
               final date = (data['sentAt'] as Timestamp?)?.toDate();
@@ -92,7 +92,7 @@ class _SentHistoryScreenState extends State<SentHistoryScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 child: ExpansionTile(
                   leading: CircleAvatar(
-                    backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
+                    backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
                     child: FaIcon(
                       data['imageUrl'] != null ? FontAwesomeIcons.image : FontAwesomeIcons.bell,
                       size: 18,
@@ -126,7 +126,7 @@ class _SentHistoryScreenState extends State<SentHistoryScreen> {
                                   fit: BoxFit.fitWidth, // Adjusted for full image view
                                   httpHeaders: const {'AccessKey': BunnyCDNService.apiKey},
                                   placeholder: (c, u) => Container(height: 180, color: Colors.grey[200]),
-                                  errorWidget: (_,__,___) => const SizedBox(height: 50, child: Center(child: Icon(Icons.broken_image))),
+                                  errorWidget: (context, url, error) => const SizedBox(height: 50, child: Center(child: Icon(Icons.broken_image))),
                                 ),
                               ),
                             ),

@@ -23,7 +23,7 @@ class VideoPlayerTopBar extends StatelessWidget {
     // In landscape, we want it transparent to see the video
     final backgroundColor = isLandscape 
         ? Colors.transparent 
-        : (isDark ? Colors.black.withOpacity(0.4) : Colors.white);
+        : (isDark ? Colors.black.withValues(alpha: 0.4) : Colors.white);
         
     final contentColor = (isLandscape || isDark) ? Colors.white : Colors.black87;
 

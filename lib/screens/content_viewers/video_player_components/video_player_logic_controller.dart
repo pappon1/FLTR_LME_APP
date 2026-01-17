@@ -118,7 +118,7 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
 
   Future<void> _init() async {
     WidgetsBinding.instance.addObserver(this);
-    WakelockPlus.enable();
+    unawaited(WakelockPlus.enable());
 
     await engine.init();
     await _initAudioSession();
@@ -157,7 +157,7 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
     });
 
     if (await _session!.setActive(true)) {
-      debugPrint("Audio session active");
+      // debugPrint("Audio session active");
     }
   }
 
@@ -204,7 +204,7 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
       if (error != null) {
         Future.delayed(const Duration(seconds: 5), () {
            if (errorMessage != null && !_isDisposed) { // If error still persists
-              debugPrint("Auto-skipping failing video...");
+              // debugPrint("Auto-skipping failing video...");
               if (playlistManager.next()) {
                 playVideo(currentIndex);
               }
@@ -224,9 +224,11 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
     try {
       _initialSystemVolume = await FlutterVolumeController.getVolume() ?? VideoPlayerConstants.defaultVolume;
       volumeNotifier.value = _initialSystemVolume;
-      brightnessNotifier.value = await ScreenBrightness().current;
-      FlutterVolumeController.updateShowSystemUI(false);
-    } catch (e) {}
+      brightnessNotifier.value = await ScreenBrightness().application;
+      unawaited(FlutterVolumeController.updateShowSystemUI(false));
+    } catch (e) {
+      debugPrint('Error init brightness: $e');
+    }
   }
 
   Future<void> _initProgress() async {
@@ -279,13 +281,13 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
         }
       }
     } catch (e) {
-      debugPrint('Error playing video: $e');
+      // debugPrint('Error playing video: $e');
     }
     notifyListeners();
   }
 
   Future<void> retryCurrentVideo() async {
-    playVideo(currentIndex);
+    unawaited(playVideo(currentIndex));
   }
 
   void _resumeProgress(String path, double ratio) async {
@@ -310,7 +312,7 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
     final currentPath = playlistManager.currentPath;
     if (currentPath == null) return;
 
-    double oldRatio = _videoProgress[currentPath] ?? 0.0;
+    final double oldRatio = _videoProgress[currentPath] ?? 0.0;
 
     if ((ratio - oldRatio).abs() > VideoPlayerConstants.significantProgressChange || 
         (oldRatio < VideoPlayerConstants.watchedThreshold && ratio >= VideoPlayerConstants.watchedThreshold)) {
@@ -512,10 +514,9 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
         _pendingSeekValue = null;
         await engine.seek(Duration(milliseconds: (targetSeconds * 1000).toInt()));
       }
-    } catch (e) {
     } finally {
       _isSeeking = false;
-      if (_pendingSeekValue != null) _processSeekLoop();
+      if (_pendingSeekValue != null) unawaited(_processSeekLoop());
     }
   }
 
@@ -528,12 +529,12 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
     await Future.delayed(VideoPlayerConstants.orientationChangeOverlayDelay);
 
     if (_isLandscape) {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
       await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
       _isLandscape = false;
       _lastSensorOrientation = null;
     } else {
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       await SystemChrome.setPreferredOrientations([
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
@@ -562,7 +563,7 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
     _overlayEntry = null;
   }
 
-  bool _isMetadataWorkerRunning = false;
+
   
 
 
@@ -592,7 +593,9 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
   @override
   void dispose() {
     _isDisposed = true;
-    for (final s in _subscriptions) s.cancel();
+    for (final s in _subscriptions) {
+      s.cancel();
+    }
     _hideTimer?.cancel();
     _unlockHideTimer?.cancel();
     _trayHideTimer?.cancel();
