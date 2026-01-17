@@ -3,6 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../providers/theme_provider.dart';
 import '../../utils/app_theme.dart';
+import '../../services/firebase_auth_service.dart';
+import '../login_screen.dart';
+import 'dart:async';
 
 class SettingsTab extends StatelessWidget {
   const SettingsTab({super.key});
@@ -253,7 +256,14 @@ class SettingsTab extends StatelessWidget {
                       child: const Text('Cancel'),
                     ),
                     FilledButton(
-                      onPressed: () {},
+                      onPressed: () {
+                         Navigator.pop(context);
+                         unawaited(FirebaseAuthService().signOut());
+                         Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (_) => const LoginScreen()),
+                            (route) => false,
+                         );
+                      },
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.red,
                       ),
