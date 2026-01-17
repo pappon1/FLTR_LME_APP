@@ -57,8 +57,10 @@ class AdminNotificationProvider with ChangeNotifier {
             if (!_isFirstLoad) {
                for (var change in snapshot.docChanges) {
                   if (change.type == DocumentChangeType.added) {
-                     final data = change.doc.data() as Map<String, dynamic>; 
-                     _triggerSystemNotification(data);
+                     final data = change.doc.data();
+                     if (data != null) {
+                        _triggerSystemNotification(data);
+                     }
                   }
                }
             } else {
@@ -114,10 +116,10 @@ class AdminNotificationProvider with ChangeNotifier {
       }
       await batch.commit();
     } catch (e) {
-      // debugPrint('Error marking all as read: $e');
+      // Ignore
     }
   }
-  
+
   @override
   void dispose() {
     _subscription?.cancel();

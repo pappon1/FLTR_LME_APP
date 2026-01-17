@@ -14,6 +14,8 @@ import '../../widgets/popular_courses_carousel.dart';
 
 import '../notifications/notification_manager_screen.dart';
 import '../students/students_tab.dart';
+import '../../services/local_notification_service.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -37,7 +39,40 @@ class _DashboardTabState extends State<DashboardTab> {
   @override
   void initState() {
     super.initState();
-    _checkDraftStatus();
+    unawaited(_checkDraftStatus());
+    unawaited(_checkPermission());
+  }
+
+  Future<void> _checkPermission() async {
+    final service = LocalNotificationService();
+    final hasPermission = await service.checkPermission();
+    
+    if (!hasPermission && mounted) {
+       // Wait a bit for UI to settle
+       await Future.delayed(const Duration(seconds: 2));
+       if (!mounted) return;
+
+       unawaited(showDialog(
+         context: context,
+         builder: (context) => AlertDialog(
+           title: const Text('Enable Notifications'),
+           content: const Text('To receive alerts about new messages, payments, and downloads, please enable notifications.'),
+           actions: [
+             TextButton(onPressed: () => Navigator.pop(context), child: const Text('Later')),
+             ElevatedButton(
+               onPressed: () async {
+                 Navigator.pop(context);
+                 final status = await service.requestPermission();
+                 if ((status.isDenied || status.isPermanentlyDenied) && mounted) {
+                    unawaited(openAppSettings());
+                 }
+               },
+               child: const Text('Enable'),
+             ),
+           ],
+         ),
+       ));
+    }
   }
 
   Future<void> _checkDraftStatus() async {

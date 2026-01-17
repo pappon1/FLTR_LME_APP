@@ -28,6 +28,14 @@ class LocalNotificationService {
     await Permission.notification.request();
   }
 
+  Future<bool> checkPermission() async {
+    return await Permission.notification.isGranted;
+  }
+
+  Future<PermissionStatus> requestPermission() async {
+    return await Permission.notification.request();
+  }
+
   Future<void> showNotification({
     required int id,
     required String title,
