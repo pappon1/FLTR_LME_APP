@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../models/dashboard_stats.dart';
@@ -23,6 +24,9 @@ class DashboardProvider extends ChangeNotifier {
 
   final List<CourseModel> _courses = [];
   final List<StudentModel> _students = [];
+  
+  StreamSubscription? _coursesSubscription;
+  StreamSubscription? _studentsSubscription;
 
   // Getters
   int get selectedIndex => _selectedIndex;
@@ -60,6 +64,13 @@ class DashboardProvider extends ChangeNotifier {
     }
   }
 
+  @override
+  void dispose() {
+    _coursesSubscription?.cancel();
+    _studentsSubscription?.cancel();
+    super.dispose();
+  }
+
   Future<void> _fetchStats() async {
     try {
       final statsMap = await _firestoreService.getDashboardStats();
@@ -74,9 +85,10 @@ class DashboardProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _fetchCourses() async {
+    Future<void> _fetchCourses() async {
     try {
-      _firestoreService.getCourses().listen((courseList) {
+      await _coursesSubscription?.cancel();
+      _coursesSubscription = _firestoreService.getCourses().listen((courseList) {
         _courses.clear();
         _courses.addAll(courseList);
         notifyListeners();
@@ -86,12 +98,13 @@ class DashboardProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> _fetchStudents() async {
+    Future<void> _fetchStudents() async {
     try {
+      await _studentsSubscription?.cancel();
       // Get current logged in admin email to exclude from list
       final currentAdminEmail = FirebaseAuth.instance.currentUser?.email;
       
-      _firestoreService.getStudents().listen((studentList) {
+      _studentsSubscription = _firestoreService.getStudents().listen((studentList) {
         _students.clear();
         // Filter out admin
         final filteredList = studentList.where((s) {
