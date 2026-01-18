@@ -17,6 +17,7 @@ import '../content_viewers/image_viewer_screen.dart';
 import '../content_viewers/video_player_screen.dart';
 import '../content_viewers/pdf_viewer_screen.dart';
 import '../utils/simple_file_explorer.dart';
+import 'components/course_content_list_item.dart';
 
 class FolderDetailScreen extends StatefulWidget {
   final String folderName;
@@ -329,9 +330,11 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       for (var item in ContentClipboard.items!) {
          final newItem = Map<String, dynamic>.from(jsonDecode(jsonEncode(item)));
          newItem['name'] = '${newItem['name']} (Copy)';
-         _contents.add(newItem);
+         newItem['isLocal'] = true; // Essential for persistence
+         _contents.insert(0, newItem);
       }
     });
+    _savePersistentContent();
     
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${ContentClipboard.items!.length} items pasted')));
   }
@@ -457,7 +460,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
           ElevatedButton(
             onPressed: () {
               if (folderNameController.text.trim().isNotEmpty) {
-                setState(() { _contents.add({'type': 'folder', 'name': folderNameController.text.trim(), 'contents': <Map<String, dynamic>>[], 'isLocal': true}); });
+                setState(() { _contents.insert(0, {'type': 'folder', 'name': folderNameController.text.trim(), 'contents': <Map<String, dynamic>>[], 'isLocal': true}); });
                 _savePersistentContent();
                 Navigator.pop(context);
               }
@@ -495,7 +498,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
          }
          
          setState(() {
-           _contents.addAll(newItems);
+           _contents.insertAll(0, newItems);
          });
          
          // Only process video if needed (currently disabled for cache safety)
@@ -530,12 +533,26 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
     return; // System Removed
   }
 
-  void _handleContentTap(Map<String, dynamic> item, int index) {
+  void _handleContentTap(Map<String, dynamic> item, int index) async {
       if (_isSelectionMode) { _toggleSelection(index); return; }
-      // HapticFeedback.lightImpact(); // Removed as requested - no feedback on content tap
       final String? path = item['path'];
       if (item['type'] == 'folder') {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => FolderDetailScreen(folderName: item['name'], contentList: (item['contents'] as List?)?.cast<Map<String, dynamic>>() ?? []))).then((_) => _refresh());
+          final result = await Navigator.push(
+            context, 
+            MaterialPageRoute(
+              builder: (_) => FolderDetailScreen(
+                folderName: item['name'], 
+                contentList: (item['contents'] as List?)?.cast<Map<String, dynamic>>() ?? []
+              )
+            )
+          );
+          
+          if (result != null && result is List<Map<String, dynamic>>) {
+             setState(() {
+                _contents[index]['contents'] = result;
+             });
+             unawaited(_savePersistentContent());
+          }
       } else if (item['type'] == 'image' && path != null) {
           Navigator.push(context, MaterialPageRoute(builder: (_) => ImageViewerScreen(
             filePath: path,
@@ -630,117 +647,21 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                       itemBuilder: (context, index) {
                          final item = _contents[index];
                          final isSelected = _selectedIndices.contains(index);
-                         IconData icon; Color color;
-                         switch(item['type']) {
-                           case 'folder': icon = Icons.folder; color = Colors.orange; break;
-                           case 'video': icon = Icons.video_library; color = Colors.red; break;
-                           case 'pdf': icon = Icons.picture_as_pdf; color = Colors.redAccent; break;
-                           case 'image': icon = Icons.image; color = Colors.purple; break;
-                           case 'zip': icon = Icons.folder_zip; color = Colors.blueGrey; break;
-                           default: icon = Icons.insert_drive_file; color = Colors.blue;
-                         }
                          
-                         return Material(
-                           key: ValueKey('item_${item['name']}_${item['path']}_$index'),
-                           color: Colors.transparent,
-                           child: Stack(
-                             children: [
-                                Padding(
-                                 padding: const EdgeInsets.only(bottom: 12),
-                                 child: ListTile(
-                                    tileColor: isSelected ? AppTheme.primaryColor.withValues(alpha: 0.1) : Theme.of(context).cardColor,
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: isSelected ? AppTheme.primaryColor : Colors.grey.shade200, width: isSelected ? 2 : 1)),
-                                    leading: Hero(
-                                      tag: item['path'] ?? item['name'] + index.toString(),
-                                      child: Container(
-                                        width: 44,
-                                        height: 44,
-                                        decoration: BoxDecoration(
-                                          color: color.withValues(alpha: 0.1),
-                                          borderRadius: BorderRadius.circular(8),
-                                        ),
-                                        child: (item['type'] == 'video' && item['thumbnail'] != null)
-                                          ? ClipRRect(
-                                              borderRadius: BorderRadius.circular(8),
-                                              child: Image.file(File(item['thumbnail']), fit: BoxFit.cover),
-                                            )
-                                          : Icon(icon, color: color, size: 20),
-                                      ),
-                                    ),
-                                    title: Text(item['name'], style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? AppTheme.primaryColor : null), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                    trailing: _isSelectionMode
-                                      ? GestureDetector(
-                                          onTap: () => _toggleSelection(index),
-                                          child: isSelected 
-                                            ? const Icon(Icons.check_circle, color: AppTheme.primaryColor)
-                                            : const Icon(Icons.circle_outlined, color: Colors.grey),
-                                        )
-                                      : const SizedBox(width: 48), 
-                                 ),
-                               ),
-                               
-                               if (!_isSelectionMode && !_isDragModeActive)
-                               Positioned(
-                                 right: 0, top: 0, bottom: 12,
-                                 child: PopupMenuButton<String>(
-                                   icon: const Icon(Icons.more_vert),
-                                   padding: EdgeInsets.zero,
-                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                   onSelected: (value) {
-                                     if (value == 'rename') _renameContent(index);
-                                     if (value == 'remove') _confirmRemoveContent(index);
-                                   },
-                                   itemBuilder: (context) => [
-                                     const PopupMenuItem(value: 'rename', child: Row(children: [Icon(Icons.edit, size: 20), SizedBox(width: 12), Text('Rename')])),
-                                     const PopupMenuItem(value: 'remove', child: Row(children: [Icon(Icons.delete, color: Colors.red, size: 20), SizedBox(width: 12), Text('Remove', style: TextStyle(color: Colors.red))])),
-                                   ],
-                                 ),
-                               ),
-
-                               // Gesture Overlay
-                               Positioned.fill(
-                                 bottom: 12,
-                                 child: _isDragModeActive
-                                    ? Row(
-                                        children: [
-                                           const SizedBox(width: 60), // Left Scroll Zone
-                                           Expanded(
-                                             child: ReorderableDragStartListener(
-                                               index: index,
-                                               child: Container(color: Colors.transparent),
-                                             ),
-                                           ),
-                                           const SizedBox(width: 60), // Right Scroll Zone
-                                        ],
-                                      )
-                                   : Row(
-                                       children: [
-                                          // Left Zone: Tap & Hold for Drag
-                                          Expanded(
-                                            child: GestureDetector(
-                                              behavior: HitTestBehavior.translucent,
-                                              onTapDown: (_) => _startHoldTimer(),
-                                              onTapUp: (_) => _cancelHoldTimer(),
-                                              onTapCancel: () => _cancelHoldTimer(),
-                                              onTap: () => _handleContentTap(item, index),
-                                              child: Container(color: Colors.transparent),
-                                            ),
-                                          ),
-                                          // Right Zone: Long Press for Selection
-                                          Expanded(
-                                            child: GestureDetector(
-                                              behavior: HitTestBehavior.translucent,
-                                              onLongPress: () => _enterSelectionMode(index),
-                                              onTap: () => _handleContentTap(item, index),
-                                              child: Container(color: Colors.transparent),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 48), // Spacing for menu button
-                                       ],
-                                     ),
-                               ),
-                             ],
-                           ),
+                         return CourseContentListItem(
+                           key: ObjectKey(item),
+                           item: item,
+                           index: index,
+                           isSelected: isSelected,
+                           isSelectionMode: _isSelectionMode,
+                           isDragMode: _isDragModeActive,
+                           onTap: () => _handleContentTap(item, index),
+                           onToggleSelection: () => _toggleSelection(index),
+                           onEnterSelectionMode: () => _enterSelectionMode(index),
+                           onStartHold: _startHoldTimer,
+                           onCancelHold: _cancelHoldTimer,
+                           onRename: () => _renameContent(index),
+                           onRemove: () => _confirmRemoveContent(index),
                          );
                       },
                     ),

@@ -13,6 +13,7 @@ import '../../services/bunny_cdn_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'components/collapsing_step_indicator.dart';
 import 'folder_detail_screen.dart';
+import 'components/course_content_list_item.dart';
 import '../../utils/app_theme.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 import 'package:path_provider/path_provider.dart';
@@ -773,120 +774,20 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                         final item = _courseContents[index];
                         final isSelected = _selectedIndices.contains(index);
                         
-                        IconData icon;
-                        Color color;
-                        switch(item['type']) {
-                          case 'folder': icon = Icons.folder; color = Colors.orange; break;
-                          case 'video': icon = Icons.video_library; color = Colors.red; break;
-                          case 'pdf': icon = Icons.picture_as_pdf; color = Colors.redAccent; break;
-                          case 'image': icon = Icons.image; color = Colors.purple; break;
-                          case 'zip': icon = Icons.folder_zip; color = Colors.blueGrey; break;
-                          default: icon = Icons.insert_drive_file; color = Colors.blue;
-                        }
-
-                        return Material(
-                          key: ObjectKey(item),
-                          color: Colors.transparent,
-                          child: Stack(
-                            children: [
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 12),
-                                child: ListTile(
-                                  tileColor: isSelected ? AppTheme.primaryColor.withValues(alpha: 0.1) : Theme.of(context).cardColor,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12), 
-                                    side: BorderSide(color: isSelected ? AppTheme.primaryColor : Colors.grey.shade200, width: isSelected ? 2 : 1)
-                                  ),
-                                  leading: Hero(
-                                    tag: item['path'] ?? item['name'] + index.toString(),
-                                    child: Container(
-                                      width: 44,
-                                      height: 44,
-                                      decoration: BoxDecoration(
-                                        color: color.withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: (item['type'] == 'video' && item['thumbnail'] != null)
-                                        ? ClipRRect(
-                                            borderRadius: BorderRadius.circular(8),
-                                            child: Image.file(File(item['thumbnail']), fit: BoxFit.cover),
-                                          )
-                                        : Icon(icon, color: color, size: 20),
-                                    ),
-                                  ),
-                                  title: Text(item['name'], style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? AppTheme.primaryColor : null), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                  trailing: _isSelectionMode
-                                    ? GestureDetector(
-                                        onTap: () => _toggleSelection(index),
-                                        child: isSelected 
-                                          ? const Icon(Icons.check_circle, color: AppTheme.primaryColor)
-                                          : const Icon(Icons.circle_outlined, color: Colors.grey),
-                                      )
-                                    : const SizedBox(width: 48), 
-                                ),
-                              ),
-
-                              if (!_isSelectionMode && !_isDragModeActive)
-                              Positioned(
-                                right: 0,
-                                top: 0,
-                                bottom: 12,
-                                child: PopupMenuButton<String>(
-                                  icon: const Icon(Icons.more_vert),
-                                  padding: EdgeInsets.zero,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                  onSelected: (value) {
-                                    if (value == 'rename') _renameContent(index);
-                                    if (value == 'remove') _confirmRemoveContent(index);
-                                  },
-                                  itemBuilder: (context) => [
-                                    const PopupMenuItem(value: 'rename', child: Row(children: [Icon(Icons.edit, size: 20), SizedBox(width: 12), Text('Rename')])),
-                                    const PopupMenuItem(value: 'remove', child: Row(children: [Icon(Icons.delete, color: Colors.red, size: 20), SizedBox(width: 12), Text('Remove', style: TextStyle(color: Colors.red))])),
-                                  ],
-                                ),
-                              ),
-                            
-                              Positioned.fill(
-                              bottom: 12,
-                              child: _isDragModeActive 
-                                ? Row(
-                                    children: [
-                                       const SizedBox(width: 60), // Left Scroll Zone
-                                       Expanded(
-                                         child: ReorderableDragStartListener(
-                                           index: index,
-                                           child: Container(color: Colors.transparent),
-                                         ),
-                                       ),
-                                       const SizedBox(width: 60), // Right Scroll Zone
-                                    ],
-                                  )
-                                : Row(
-                                    children: [
-                                      Expanded(
-                                        child: GestureDetector(
-                                          behavior: HitTestBehavior.translucent,
-                                          onTapDown: (_) => _startHoldTimer(),
-                                          onTapUp: (_) => _cancelHoldTimer(),
-                                          onTapCancel: () => _cancelHoldTimer(),
-                                          onTap: () => _handleContentTap(item, index),
-                                          child: Container(color: Colors.transparent),
-                                        ),
-                                      ),
-                                      Expanded(
-                                        child: GestureDetector(
-                                          behavior: HitTestBehavior.translucent,
-                                          onLongPress: () => _enterSelectionMode(index),
-                                          onTap: () => _handleContentTap(item, index),
-                                          child: Container(color: Colors.transparent),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 48),
-                                    ],
-                                  ),
-                            ),
-                            ],
-                          ),
+                        return CourseContentListItem(
+                           key: ObjectKey(item),
+                           item: item,
+                           index: index,
+                           isSelected: isSelected,
+                           isSelectionMode: _isSelectionMode,
+                           isDragMode: _isDragModeActive,
+                           onTap: () => _handleContentTap(item, index),
+                           onToggleSelection: () => _toggleSelection(index),
+                           onEnterSelectionMode: () => _enterSelectionMode(index),
+                           onStartHold: _startHoldTimer,
+                           onCancelHold: _cancelHoldTimer,
+                           onRename: () => _renameContent(index),
+                           onRemove: () => _confirmRemoveContent(index),
                         );
                       },
                     ),
@@ -1038,9 +939,11 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       for (var item in ContentClipboard.items!) {
          final newItem = Map<String, dynamic>.from(jsonDecode(jsonEncode(item)));
          newItem['name'] = '${newItem['name']} (Copy)';
-         _courseContents.add(newItem);
+         newItem['isLocal'] = true; // Essential for persistence
+         _courseContents.insert(0, newItem);
       }
     });
+    _saveCourseDraft();
     
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${ContentClipboard.items!.length} items pasted')));
   }
@@ -1122,7 +1025,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
             onPressed: () {
               if (folderNameController.text.trim().isNotEmpty) {
                 setState(() {
-                  _courseContents.add({
+                  _courseContents.insert(0, {
                     'type': 'folder', 
                     'name': folderNameController.text.trim(),
                     'contents': <Map<String, dynamic>>[],
@@ -1166,7 +1069,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
          }
          
          setState(() {
-           _courseContents.addAll(newItems);
+           _courseContents.insertAll(0, newItems);
          });
          
          // Only process video if needed (currently disabled)
