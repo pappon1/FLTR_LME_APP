@@ -3,7 +3,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-// import 'package:file_picker/file_picker.dart';
+import 'package:file_picker/file_picker.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:media_kit/media_kit.dart';
@@ -55,17 +55,27 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
     _holdTimer?.cancel();
     _holdTimer = Timer(const Duration(milliseconds: 600), () {
       HapticFeedback.heavyImpact();
-      setState(() => _isDragModeActive = true);
+      setState(() {
+        _isDragModeActive = true;
+      });
     });
   }
 
   void _cancelHoldTimer() => _holdTimer?.cancel();
   
+  void _enterSelectionMode(int index) {
+      _cancelHoldTimer(); // Cancel drag timer immediately
+      HapticFeedback.heavyImpact();
+      setState(() {
+        _isSelectionMode = true;
+        _selectedIndices.clear();
+        _selectedIndices.add(index);
+      });
+  }
   @override
   void didUpdateWidget(FolderDetailScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.contentList != oldWidget.contentList) {
-       // If parent updates the list, we restart from the new list and re-apply persistence
        setState(() {
          _contents = List.from(widget.contentList);
        });
@@ -201,14 +211,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
     super.dispose();
   }
 
-  void _enterSelectionMode(int index) {
-      HapticFeedback.heavyImpact();
-      setState(() {
-        _isSelectionMode = true;
-        _selectedIndices.clear();
-        _selectedIndices.add(index);
-      });
-  }
+  // Duplicate removed
 
   void _toggleSelection(int index) {
       if (!_isSelectionMode) return;
@@ -216,7 +219,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       setState(() {
          if (_selectedIndices.contains(index)) {
             _selectedIndices.remove(index);
-            if (_selectedIndices.isEmpty) _isSelectionMode = false;
+            // Removed auto-close logic to match AddCourseScreen
          } else {
             _selectedIndices.add(index);
          }
@@ -566,32 +569,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
          if (context.mounted) Navigator.pop(context, _contents);
       },
       child: Scaffold(
-      appBar: AppBar(
-        leading: _isDragModeActive
-          ? IconButton(icon: const Icon(Icons.close), onPressed: () => setState(() => _isDragModeActive = false))
-          : _isSelectionMode 
-            ? IconButton(icon: const Icon(Icons.close), onPressed: () => setState(() { _isSelectionMode = false; _selectedIndices.clear(); }))
-            : null,
-        title: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            _isDragModeActive ? 'Drag to Reorder' : _isSelectionMode ? '${_selectedIndices.length} Selected' : widget.folderName, 
-            style: TextStyle(color: (_isSelectionMode || _isDragModeActive) ? Colors.white : null),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-        actions: [
-          if (_isSelectionMode) ...[
-            TextButton(
-              onPressed: _contents.length == _selectedIndices.length ? () => setState(() => _selectedIndices.clear()) : _selectAll,
-              child: Text(_contents.length == _selectedIndices.length ? 'Unselect All' : 'Select All', style: const TextStyle(color: Colors.white)),
-            ),
-            IconButton(icon: const Icon(Icons.copy), onPressed: () => _handleBulkCopyCut(false)),
-            IconButton(icon: const Icon(Icons.delete), onPressed: _handleBulkDelete),
-          ]
-        ],
-      ),
+      appBar: _buildAppBar(),
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
@@ -638,7 +616,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                     ),
                   )
                 : SliverPadding(
-                    padding: EdgeInsets.fromLTRB(16, (_isSelectionMode || _isDragModeActive) ? 20 : 12, 16, 24),
+                    padding: EdgeInsets.fromLTRB(24, (_isSelectionMode || _isDragModeActive) ? 20 : 12, 24, 24),
                     sliver: SliverReorderableList(
                       itemCount: _contents.length,
                       onReorder: (oldIndex, newIndex) {
@@ -690,10 +668,14 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                                       ),
                                     ),
                                     title: Text(item['name'], style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? AppTheme.primaryColor : null), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                    subtitle: item['type'] == 'video' ? Text(item['duration'] ?? '...', style: const TextStyle(fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis) : null,
-                                    trailing: _isSelectionMode 
-                                      ? (isSelected ? const Icon(Icons.check_circle, color: AppTheme.primaryColor) : const Icon(Icons.circle_outlined)) 
-                                      : _isDragModeActive ? const Icon(Icons.drag_handle, color: Colors.grey) : null,
+                                    trailing: _isSelectionMode
+                                      ? GestureDetector(
+                                          onTap: () => _toggleSelection(index),
+                                          child: isSelected 
+                                            ? const Icon(Icons.check_circle, color: AppTheme.primaryColor)
+                                            : const Icon(Icons.circle_outlined, color: Colors.grey),
+                                        )
+                                      : const SizedBox(width: 48), 
                                  ),
                                ),
                                
@@ -702,13 +684,15 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                                  right: 0, top: 0, bottom: 12,
                                  child: PopupMenuButton<String>(
                                    icon: const Icon(Icons.more_vert),
+                                   padding: EdgeInsets.zero,
+                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                    onSelected: (value) {
                                      if (value == 'rename') _renameContent(index);
                                      if (value == 'remove') _confirmRemoveContent(index);
                                    },
                                    itemBuilder: (context) => [
-                                     const PopupMenuItem(value: 'rename', child: Text('Rename')),
-                                     const PopupMenuItem(value: 'remove', child: Text('Remove', style: TextStyle(color: Colors.red))),
+                                     const PopupMenuItem(value: 'rename', child: Row(children: [Icon(Icons.edit, size: 20), SizedBox(width: 12), Text('Rename')])),
+                                     const PopupMenuItem(value: 'remove', child: Row(children: [Icon(Icons.delete, color: Colors.red, size: 20), SizedBox(width: 12), Text('Remove', style: TextStyle(color: Colors.red))])),
                                    ],
                                  ),
                                ),
@@ -717,18 +701,42 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                                Positioned.fill(
                                  bottom: 12,
                                  child: _isDragModeActive
-                                   ? ReorderableDragStartListener(
-                                       index: index,
-                                       child: Container(color: Colors.transparent),
-                                     )
-                                   : GestureDetector(
-                                       behavior: HitTestBehavior.translucent,
-                                       onTapDown: (_) => _startHoldTimer(),
-                                       onTapUp: (_) => _cancelHoldTimer(),
-                                       onTapCancel: () => _cancelHoldTimer(),
-                                       onLongPress: () => _enterSelectionMode(index),
-                                       onTap: () => _handleContentTap(item, index),
-                                       child: Container(color: Colors.transparent),
+                                    ? Row(
+                                        children: [
+                                           const SizedBox(width: 60), // Left Scroll Zone
+                                           Expanded(
+                                             child: ReorderableDragStartListener(
+                                               index: index,
+                                               child: Container(color: Colors.transparent),
+                                             ),
+                                           ),
+                                           const SizedBox(width: 60), // Right Scroll Zone
+                                        ],
+                                      )
+                                   : Row(
+                                       children: [
+                                          // Left Zone: Tap & Hold for Drag
+                                          Expanded(
+                                            child: GestureDetector(
+                                              behavior: HitTestBehavior.translucent,
+                                              onTapDown: (_) => _startHoldTimer(),
+                                              onTapUp: (_) => _cancelHoldTimer(),
+                                              onTapCancel: () => _cancelHoldTimer(),
+                                              onTap: () => _handleContentTap(item, index),
+                                              child: Container(color: Colors.transparent),
+                                            ),
+                                          ),
+                                          // Right Zone: Long Press for Selection
+                                          Expanded(
+                                            child: GestureDetector(
+                                              behavior: HitTestBehavior.translucent,
+                                              onLongPress: () => _enterSelectionMode(index),
+                                              onTap: () => _handleContentTap(item, index),
+                                              child: Container(color: Colors.transparent),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 48), // Spacing for menu button
+                                       ],
                                      ),
                                ),
                              ],
@@ -762,6 +770,59 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
           ),
         ),
       ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    if (_isDragModeActive) {
+       return AppBar(
+         backgroundColor: AppTheme.primaryColor,
+         iconTheme: const IconThemeData(color: Colors.white),
+         leading: IconButton(
+           icon: const Icon(Icons.close),
+           onPressed: () => setState(() => _isDragModeActive = false),
+         ),
+          title: const FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text('Drag and Drop Mode', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          ),
+          centerTitle: true,
+          elevation: 2,
+       );
+    }
+    if (_isSelectionMode) {
+       return AppBar(
+          backgroundColor: AppTheme.primaryColor,
+          iconTheme: const IconThemeData(color: Colors.white),
+          leading: IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => setState(() {
+               _isSelectionMode = false;
+               _selectedIndices.clear();
+            }),
+          ),
+          title: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text('${_selectedIndices.length} Selected', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))
+          ),
+          actions: [
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: TextButton(
+                  onPressed: _contents.length == _selectedIndices.length ? () => setState(() => _selectedIndices.clear()) : _selectAll,
+                  child: Text(_contents.length == _selectedIndices.length ? 'Unselect' : 'All', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white))
+              ),
+            ),
+            IconButton(icon: const Icon(Icons.copy), onPressed: () => _handleBulkCopyCut(false)),
+            IconButton(icon: const Icon(Icons.delete, color: Colors.redAccent), onPressed: _handleBulkDelete),
+          ],
+          elevation: 2,
+       );
+    }
+    return AppBar(
+      title: Text(widget.folderName, style: const TextStyle(fontWeight: FontWeight.bold)),
+      centerTitle: true,
+      elevation: 0,
     );
   }
 }
