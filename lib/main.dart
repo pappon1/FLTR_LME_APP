@@ -13,7 +13,7 @@ import 'providers/dashboard_provider.dart';
 import 'providers/admin_notification_provider.dart';
 import 'services/firebase_auth_service.dart';
 import 'utils/app_theme.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -34,7 +34,7 @@ void main() async {
   };
   
   // Initialize Google Sign In (Required for v7+)
-  await GoogleSignIn.instance.initialize();
+  // await GoogleSignIn().signInSilently(); // Optional: Check for existing session
   
   // Set system UI overlay style
   SystemChrome.setSystemUIOverlayStyle(

@@ -81,19 +81,32 @@ class FirestoreService {
 
   // ==================== STUDENTS/USERS ====================
   
-  /// Get all students
+  /// Get all students (Legacy, avoids breaking current listeners)
   Stream<List<StudentModel>> getStudents() {
     return _firestore
         .collection('users')
-        .where('role', isEqualTo: 'user') // Ensures only students are fetched
-        //.where('email', isNotEqualTo: 'admin@example.com') // Optional: Exclude specific admin email if role isn't sufficient
+        .where('role', isEqualTo: 'user') 
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => StudentModel.fromFirestore(doc))
-             // Double check in case role field is missing or wrong in some legacy docs
             .where((s) => s.email != 'admin@lme.com' && !s.email.contains('admin')) 
             .toList());
+  }
+
+  /// Get students with pagination support
+  Future<QuerySnapshot> getStudentsPaginated({int limit = 20, DocumentSnapshot? startAfter}) async {
+    var query = _firestore
+        .collection('users')
+        .where('role', isEqualTo: 'user')
+        .orderBy('createdAt', descending: true)
+        .limit(limit);
+
+    if (startAfter != null) {
+      query = query.startAfterDocument(startAfter);
+    }
+
+    return await query.get();
   }
 
   /// Get student by ID

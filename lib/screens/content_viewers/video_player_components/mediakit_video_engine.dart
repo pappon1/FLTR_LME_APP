@@ -40,6 +40,34 @@ class MediaKitVideoEngine implements BaseVideoEngine {
   Future<void> setRate(double rate) async => await player.setRate(rate);
 
   @override
+  Future<void> setVideoTrack(String quality) async {
+    final tracks = player.state.tracks.video;
+    if (quality.toLowerCase() == "auto") {
+      await player.setVideoTrack(tracks.first); // Usually the first is auto/default
+      return;
+    }
+
+    final int targetHeight = int.tryParse(quality.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+    if (targetHeight == 0) return;
+
+    VideoTrack? bestMatch;
+    int minDiff = 10000;
+
+    for (final track in tracks) {
+      if (track.h == null) continue;
+      final diff = (track.h! - targetHeight).abs();
+      if (diff < minDiff) {
+        minDiff = diff;
+        bestMatch = track;
+      }
+    }
+
+    if (bestMatch != null) {
+      await player.setVideoTrack(bestMatch);
+    }
+  }
+
+  @override
   Future<void> dispose() async {
     await player.dispose();
   }

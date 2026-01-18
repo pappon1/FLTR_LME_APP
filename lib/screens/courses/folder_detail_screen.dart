@@ -1,15 +1,22 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'dart:convert';
-import 'package:file_picker/file_picker.dart';
+// import 'package:file_picker/file_picker.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:media_kit/media_kit.dart';
+import 'package:video_thumbnail/video_thumbnail.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:shimmer/shimmer.dart';
+
 import '../../utils/app_theme.dart';
 import '../../utils/clipboard_manager.dart';
 import '../content_viewers/image_viewer_screen.dart';
 import '../content_viewers/video_player_screen.dart';
 import '../content_viewers/pdf_viewer_screen.dart';
+import '../utils/simple_file_explorer.dart';
 
 class FolderDetailScreen extends StatefulWidget {
   final String folderName;
@@ -25,17 +32,34 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
   late List<Map<String, dynamic>> _contents;
   bool _isSelectionMode = false;
   final Set<int> _selectedIndices = {};
+  bool _isDragModeActive = false;
+  Timer? _holdTimer;
+  bool _isInitialLoading = true;
 
   @override
   void initState() {
     super.initState();
-    // Create a mutable copy of the list to ensure we don't modify the parent's reference directly (or fail if it's immutable)
     _contents = List.from(widget.contentList);
-    _loadPersistentContent().then((_) {
-      // Background scan for missing durations
-      Future.delayed(const Duration(seconds: 1), () => _fixMissingDurations());
+    _initData();
+  }
+
+  Future<void> _initData() async {
+    await _loadPersistentContent();
+    setState(() => _isInitialLoading = false);
+    // Background scan for missing durations and thumbnails
+    Future.delayed(const Duration(seconds: 1), () => _fixMissingData());
+  }
+
+  void _startHoldTimer() {
+    if (_isSelectionMode) return;
+    _holdTimer?.cancel();
+    _holdTimer = Timer(const Duration(milliseconds: 600), () {
+      HapticFeedback.heavyImpact();
+      setState(() => _isDragModeActive = true);
     });
   }
+
+  void _cancelHoldTimer() => _holdTimer?.cancel();
   
   @override
   void didUpdateWidget(FolderDetailScreen oldWidget) {
@@ -131,7 +155,10 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       
       // We ONLY save items that are local additions (marked by us)
       // This prevents saving server-side items into local shared_prefs
-      final localItems = _contents.where((e) => e['isLocal'] == true).toList();
+      final localItems = _contents.where((e) {
+        // Efficiency: Don't save video paths in draft to save storage (MX Player style)
+        return e['isLocal'] == true && e['type'] != 'video';
+      }).toList();
       
       if (localItems.isEmpty) {
          // If no local items, clear the key to avoid loading stale data
@@ -166,6 +193,13 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
 
   void _refresh() {
     if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    // Storage Optimization: Clear temporary files from picker cache
+    // unawaited(FilePicker.platform.clearTemporaryFiles());
+    super.dispose();
   }
 
   void _enterSelectionMode(int index) {
@@ -213,7 +247,18 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                  final List<int> indices = _selectedIndices.toList()..sort((a, b) => b.compareTo(a));
                  setState(() {
                     for (int i in indices) {
-                       if (i < _contents.length) _contents.removeAt(i);
+                       if (i < _contents.length) {
+                          // Free up cache space
+                          final item = _contents[i];
+                          final path = item['path'];
+                          if (path != null && path.contains('/cache/')) {
+                            try {
+                              final file = File(path);
+                              if (file.existsSync()) file.deleteSync();
+                            } catch (_) {}
+                          }
+                          _contents.removeAt(i);
+                       }
                     }
                      _isSelectionMode = false;
                     _selectedIndices.clear();
@@ -327,6 +372,14 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           TextButton(
             onPressed: () {
+              final item = _contents[index];
+              final path = item['path'];
+              if (path != null && path.contains('/cache/')) {
+                try {
+                  final file = File(path);
+                  if (file.existsSync()) file.deleteSync();
+                } catch (_) {}
+              }
               setState(() { _contents.removeAt(index); });
               _savePersistentContent();
               Navigator.pop(context);
@@ -356,12 +409,12 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                 runSpacing: 24,
                 alignment: WrapAlignment.center,
                 children: [
-                   _buildOptionItem(Icons.create_new_folder, 'Folder', Colors.orange, () => _showCreateFolderDialog()),
-                   _buildOptionItem(Icons.video_library, 'Video', Colors.red, () => _pickContentFile('video', FileType.custom, ['mp4', 'mkv'])),
-                   _buildOptionItem(Icons.picture_as_pdf, 'PDF', Colors.redAccent, () => _pickContentFile('pdf', FileType.custom, ['pdf'])),
-                   _buildOptionItem(Icons.image, 'Image', Colors.purple, () => _pickContentFile('image', FileType.custom, ['jpg', 'jpeg', 'png', 'webp'])),
-                   _buildOptionItem(Icons.folder_zip, 'Zip', Colors.blueGrey, () => _pickContentFile('zip', FileType.custom, ['zip', 'rar'])),
-                   _buildOptionItem(Icons.content_paste, 'Paste', Colors.grey, _pasteContent),
+   _buildOptionItem(Icons.create_new_folder, 'Folder', Colors.orange, () => _showCreateFolderDialog()),
+   _buildOptionItem(Icons.video_library, 'Video', Colors.red, () => _pickContentFile('video', ['mp4', 'mkv', 'avi'])),
+   _buildOptionItem(Icons.picture_as_pdf, 'PDF', Colors.redAccent, () => _pickContentFile('pdf', ['pdf'])),
+   _buildOptionItem(Icons.image, 'Image', Colors.purple, () => _pickContentFile('image', ['jpg', 'jpeg', 'png', 'webp'])),
+   _buildOptionItem(Icons.folder_zip, 'Zip', Colors.blueGrey, () => _pickContentFile('zip', ['zip', 'rar'])),
+   _buildOptionItem(Icons.content_paste, 'Paste', Colors.grey, _pasteContent),
                 ],
               ),
               const SizedBox(height: 16),
@@ -414,89 +467,59 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
     );
   }
 
-  Future<void> _pickContentFile(String type, FileType fileType, [List<String>? extensions]) async {
-    try {
-      final FilePickerResult? result = await FilePicker.platform.pickFiles(type: fileType, allowedExtensions: extensions, allowMultiple: true);
-      if (result != null) {
-        for (var file in result.files) {
-          if (file.path != null) {
-            String durationStr = "00:00";
-            if (type == 'video') {
-              durationStr = await _getVideoDuration(file.path!);
-            }
-            if (mounted) {
-              setState(() {
-                _contents.add({
-                  'type': type, 
-                  'name': file.name, 
-                  'path': file.path, 
-                  'duration': durationStr,
-                  'isLocal': true
-                });
-              });
-            }
-          }
-        }
-        unawaited(_savePersistentContent());
+  Future<void> _pickContentFile(String type, [List<String>? extensions]) async {
+      // Use Custom Explorer for ALL types to prevent Cache Bloat
+      final String? path = await Navigator.push(
+        context, 
+        MaterialPageRoute(builder: (_) => SimpleFileExplorer(
+          allowedExtensions: extensions ?? [],
+        ))
+      );
+      
+      if (path != null) {
+         final newItem = {
+             'type': type, 
+             'name': path.split('/').last, 
+             'path': path, 
+             'duration': type == 'video' ? "..." : null, 
+             'thumbnail': null,
+             'isLocal': true
+         };
+         
+         setState(() {
+           _contents.add(newItem);
+         });
+         
+         // Only process video if needed (currently disabled for cache safety)
+         if (type == 'video') {
+            _processVideosInParallel([newItem]);
+         } else {
+            _savePersistentContent();
+         }
       }
-    } catch (e) { 
-       // debugPrint('Error picking file: $e'); 
-    }
+  }
+
+  Future<void> _processVideosInParallel(List<Map<String, dynamic>> items) async {
+      // COMPLETELY REMOVED as requested.
+      // No duration check. No thumbnail generation.
+      // Just save the list.
+      unawaited(_savePersistentContent());
+  }
+
+  Future<String?> _generateThumbnail(String path) async {
+    return null; // System Removed
   }
 
   Future<String> _getVideoDuration(String path) async {
-    final player = Player();
-    final completer = Completer<String>();
-    
-    final subscription = player.stream.duration.listen((dur) {
-      if (dur != Duration.zero && !completer.isCompleted) {
-        completer.complete(_formatDurationString(dur));
-      }
-    });
-
-    try {
-      await player.open(Media(path), play: false);
-      final result = await completer.future.timeout(
-        const Duration(seconds: 5), 
-        onTimeout: () => "00:00"
-      );
-      await subscription.cancel();
-      await player.dispose();
-      return result;
-    } catch (e) {
-      // debugPrint("Error extracting duration: $e");
-      await subscription.cancel();
-      await player.dispose();
-      return "00:00";
-    }
+    return ""; // System Removed
   }
 
   String _formatDurationString(Duration dur) {
-    String two(int n) => n.toString().padLeft(2, "0");
-    if (dur.inHours > 0) {
-      return "${dur.inHours}:${two(dur.inMinutes % 60)}:${two(dur.inSeconds % 60)}";
-    } else {
-      return "${two(dur.inMinutes)}:${two(dur.inSeconds % 60)}";
-    }
+    return "";
   }
 
-  Future<void> _fixMissingDurations() async {
-    bool changed = false;
-    for (int i = 0; i < _contents.length; i++) {
-      if (_contents[i]['type'] == 'video' && 
-          (_contents[i]['duration'] == null || _contents[i]['duration'] == '00:00') &&
-          _contents[i]['path'] != null) {
-        final realDur = await _getVideoDuration(_contents[i]['path']);
-        if (realDur != '00:00') {
-          _contents[i]['duration'] = realDur;
-          changed = true;
-        }
-      }
-    }
-    if (changed && mounted) {
-      setState(() {});
-      unawaited(_savePersistentContent());
-    }
+  Future<void> _fixMissingData() async {
+    return; // System Removed
   }
 
   void _handleContentTap(Map<String, dynamic> item, int index) {
@@ -506,7 +529,10 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       if (item['type'] == 'folder') {
           Navigator.push(context, MaterialPageRoute(builder: (_) => FolderDetailScreen(folderName: item['name'], contentList: (item['contents'] as List?)?.cast<Map<String, dynamic>>() ?? []))).then((_) => _refresh());
       } else if (item['type'] == 'image' && path != null) {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => ImageViewerScreen(filePath: path)));
+          Navigator.push(context, MaterialPageRoute(builder: (_) => ImageViewerScreen(
+            filePath: path,
+            title: item['name'],
+          )));
       } else if (item['type'] == 'video' && path != null) {
           // CREATE PLAYLIST: Filter only video items
           final videoList = _contents.where((element) => element['type'] == 'video' && element['path'] != null).toList();
@@ -517,7 +543,10 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
             initialIndex: initialIndex >= 0 ? initialIndex : 0,
           )));
       } else if (item['type'] == 'pdf' && path != null) {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => PDFViewerScreen(filePath: path)));
+          Navigator.push(context, MaterialPageRoute(builder: (_) => PDFViewerScreen(
+            filePath: path,
+            title: item['name'],
+          )));
       }
   }
 
@@ -533,12 +562,12 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       },
       child: Scaffold(
       appBar: AppBar(
-        backgroundColor: _isSelectionMode ? AppTheme.primaryColor : null,
-        iconTheme: IconThemeData(color: _isSelectionMode ? Colors.white : null),
-        leading: _isSelectionMode 
-          ? IconButton(icon: const Icon(Icons.close), onPressed: () => setState(() { _isSelectionMode = false; _selectedIndices.clear(); }))
-          : null,
-        title: Text(_isSelectionMode ? '${_selectedIndices.length} Selected' : widget.folderName, style: TextStyle(color: _isSelectionMode ? Colors.white : null)),
+        leading: _isDragModeActive
+          ? IconButton(icon: const Icon(Icons.close), onPressed: () => setState(() => _isDragModeActive = false))
+          : _isSelectionMode 
+            ? IconButton(icon: const Icon(Icons.close), onPressed: () => setState(() { _isSelectionMode = false; _selectedIndices.clear(); }))
+            : null,
+        title: Text(_isDragModeActive ? 'Drag to Reorder' : _isSelectionMode ? '${_selectedIndices.length} Selected' : widget.folderName, style: TextStyle(color: (_isSelectionMode || _isDragModeActive) ? Colors.white : null)),
         actions: [
           if (_isSelectionMode) ...[
             TextButton(
@@ -552,9 +581,8 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       ),
       body: CustomScrollView(
         slivers: [
-          // Add Button (Top Right aligned, scrolls with content)
           SliverToBoxAdapter(
-            child: (!_isSelectionMode)
+            child: (!_isSelectionMode && !_isDragModeActive)
              ? Align(
                 alignment: Alignment.centerRight,
                 child: Padding(
@@ -580,69 +608,147 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
              : const SizedBox.shrink(),
           ),
 
-          // Content List
-          _contents.isEmpty
-             ? SliverFillRemaining(
-                 hasScrollBody: false,
-                 child: Center(
-                   child: Column(
-                     mainAxisAlignment: MainAxisAlignment.center,
-                     children: [
-                       Icon(Icons.folder_open, size: 64, color: Colors.grey.shade300),
-                       const SizedBox(height: 16),
-                       Text('No content in this folder', style: TextStyle(color: Colors.grey.shade400)),
-                     ],
-                   ),
-                 ),
-               )
-             : SliverPadding(
-                 padding: EdgeInsets.fromLTRB(16, (_isSelectionMode) ? 20 : 12, 16, 24),
-                 sliver: SliverList(
-                   delegate: SliverChildBuilderDelegate(
-                     (context, index) {
-                        final item = _contents[index];
-                        final isSelected = _selectedIndices.contains(index);
-                        IconData icon; Color color;
-                        switch(item['type']) {
-                          case 'folder': icon = Icons.folder; color = Colors.orange; break;
-                          case 'video': icon = Icons.video_library; color = Colors.red; break;
-                          case 'pdf': icon = Icons.picture_as_pdf; color = Colors.redAccent; break;
-                          case 'image': icon = Icons.image; color = Colors.purple; break;
-                          default: icon = Icons.insert_drive_file; color = Colors.blue;
-                        }
-                        
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: ListTile(
-                            tileColor: isSelected ? AppTheme.primaryColor.withValues(alpha: 0.1) : Theme.of(context).cardColor,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: isSelected ? AppTheme.primaryColor : Colors.grey.shade200, width: isSelected ? 2 : 1)),
-                            onLongPress: () => _enterSelectionMode(index),
-                            onTap: () => _handleContentTap(item, index),
-                            leading: CircleAvatar(backgroundColor: color.withValues(alpha: 0.1), child: Icon(icon, color: color, size: 20)),
-                            title: Text(item['name'], style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? AppTheme.primaryColor : null)),
-                            trailing: _isSelectionMode 
-                              ? (isSelected ? const Icon(Icons.check_circle, color: Colors.blue) : const Icon(Icons.circle_outlined)) 
-                              : PopupMenuButton<String>(
-                                  icon: const Icon(Icons.more_vert),
-                                  onSelected: (value) {
-                                    if (value == 'rename') _renameContent(index);
-                                    if (value == 'remove') _confirmRemoveContent(index);
-                                  },
-                                  itemBuilder: (context) => [
-                                    const PopupMenuItem(value: 'rename', child: Text('Rename')),
-                                    const PopupMenuItem(value: 'remove', child: Text('Remove', style: TextStyle(color: Colors.red))),
-                                  ],
-                                ),
-                          ),
-                        );
-                     },
-                     childCount: _contents.length,
-                   ),
-                 ),
-               ),
+          _isInitialLoading
+             ? SliverToBoxAdapter(child: _buildShimmerList())
+             : _contents.isEmpty
+                ? SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.folder_open, size: 64, color: Colors.grey.shade300),
+                          const SizedBox(height: 8),
+                          Text('No content in this folder', style: TextStyle(color: Colors.grey.shade400)),
+                        ],
+                      ),
+                    ),
+                  )
+                : SliverPadding(
+                    padding: EdgeInsets.fromLTRB(16, (_isSelectionMode || _isDragModeActive) ? 20 : 12, 16, 24),
+                    sliver: SliverReorderableList(
+                      itemCount: _contents.length,
+                      onReorder: (oldIndex, newIndex) {
+                        setState(() {
+                          if (oldIndex < newIndex) newIndex -= 1;
+                          final item = _contents.removeAt(oldIndex);
+                          _contents.insert(newIndex, item);
+                        });
+                        _savePersistentContent();
+                      },
+                      itemBuilder: (context, index) {
+                         final item = _contents[index];
+                         final isSelected = _selectedIndices.contains(index);
+                         IconData icon; Color color;
+                         switch(item['type']) {
+                           case 'folder': icon = Icons.folder; color = Colors.orange; break;
+                           case 'video': icon = Icons.video_library; color = Colors.red; break;
+                           case 'pdf': icon = Icons.picture_as_pdf; color = Colors.redAccent; break;
+                           case 'image': icon = Icons.image; color = Colors.purple; break;
+                           case 'zip': icon = Icons.folder_zip; color = Colors.blueGrey; break;
+                           default: icon = Icons.insert_drive_file; color = Colors.blue;
+                         }
+                         
+                         return Material(
+                           key: ValueKey('item_${item['name']}_${item['path']}_$index'),
+                           color: Colors.transparent,
+                           child: Stack(
+                             children: [
+                                Padding(
+                                 padding: const EdgeInsets.only(bottom: 12),
+                                 child: ListTile(
+                                    tileColor: isSelected ? AppTheme.primaryColor.withValues(alpha: 0.1) : Theme.of(context).cardColor,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: isSelected ? AppTheme.primaryColor : Colors.grey.shade200, width: isSelected ? 2 : 1)),
+                                    leading: Hero(
+                                      tag: item['path'] ?? item['name'] + index.toString(),
+                                      child: Container(
+                                        width: 44,
+                                        height: 44,
+                                        decoration: BoxDecoration(
+                                          color: color.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: (item['type'] == 'video' && item['thumbnail'] != null)
+                                          ? ClipRRect(
+                                              borderRadius: BorderRadius.circular(8),
+                                              child: Image.file(File(item['thumbnail']), fit: BoxFit.cover),
+                                            )
+                                          : Icon(icon, color: color, size: 20),
+                                      ),
+                                    ),
+                                    title: Text(item['name'], style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? AppTheme.primaryColor : null), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                    subtitle: item['type'] == 'video' ? Text(item['duration'] ?? '...', style: const TextStyle(fontSize: 10)) : null,
+                                    trailing: _isSelectionMode 
+                                      ? (isSelected ? const Icon(Icons.check_circle, color: AppTheme.primaryColor) : const Icon(Icons.circle_outlined)) 
+                                      : _isDragModeActive ? const Icon(Icons.drag_handle, color: Colors.grey) : null,
+                                 ),
+                               ),
+                               
+                               if (!_isSelectionMode && !_isDragModeActive)
+                               Positioned(
+                                 right: 0, top: 0, bottom: 12,
+                                 child: PopupMenuButton<String>(
+                                   icon: const Icon(Icons.more_vert),
+                                   onSelected: (value) {
+                                     if (value == 'rename') _renameContent(index);
+                                     if (value == 'remove') _confirmRemoveContent(index);
+                                   },
+                                   itemBuilder: (context) => [
+                                     const PopupMenuItem(value: 'rename', child: Text('Rename')),
+                                     const PopupMenuItem(value: 'remove', child: Text('Remove', style: TextStyle(color: Colors.red))),
+                                   ],
+                                 ),
+                               ),
+
+                               // Gesture Overlay
+                               Positioned.fill(
+                                 bottom: 12,
+                                 child: _isDragModeActive
+                                   ? ReorderableDragStartListener(
+                                       index: index,
+                                       child: Container(color: Colors.transparent),
+                                     )
+                                   : GestureDetector(
+                                       behavior: HitTestBehavior.translucent,
+                                       onTapDown: (_) => _startHoldTimer(),
+                                       onTapUp: (_) => _cancelHoldTimer(),
+                                       onTapCancel: () => _cancelHoldTimer(),
+                                       onLongPress: () => _enterSelectionMode(index),
+                                       onTap: () => _handleContentTap(item, index),
+                                       child: Container(color: Colors.transparent),
+                                     ),
+                               ),
+                             ],
+                           ),
+                         );
+                      },
+                    ),
+                  ),
         ],
       ),
-     ),
+      ),
+    );
+  }
+
+  Widget _buildShimmerList() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: List.generate(5, (index) => 
+          Shimmer.fromColors(
+            baseColor: Colors.grey[300]!,
+            highlightColor: Colors.grey[100]!,
+            child: Container(
+              height: 70,
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -7,6 +7,9 @@ import '../../services/firestore_service.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/custom_video_player.dart';
 import 'add_video_screen.dart';
+import '../content_viewers/video_player_screen.dart';
+import '../content_viewers/pdf_viewer_screen.dart';
+import 'folder_detail_screen.dart';
 
 class CourseDetailScreen extends StatefulWidget {
   final CourseModel course;
@@ -132,6 +135,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
   }
 
   Widget _buildContentTab() {
+    // 1. Check for Nested Content (New Structure)
+    if (widget.course.contents.isNotEmpty) {
+      return _buildNestedContentList(widget.course.contents.cast<Map<String, dynamic>>());
+    }
+
+    // 2. Fallback to Legacy Video Collection
     return StreamBuilder<List<VideoModel>>(
       stream: _firestoreService.getVideosForCourse(widget.course.id),
       builder: (context, snapshot) {
@@ -200,6 +209,67 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
               ),
             );
           },
+        );
+      },
+    );
+  }
+
+  Widget _buildNestedContentList(List<Map<String, dynamic>> contents) {
+    if (contents.isEmpty) {
+       return Center(child: Text('No content available', style: AppTheme.bodyMedium(context)));
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: contents.length,
+      itemBuilder: (context, index) {
+        final item = contents[index];
+        final type = item['type'];
+        final name = item['name'] ?? 'Untitled';
+        
+        IconData icon;
+        Color color;
+        if (type == 'folder') {
+          icon = Icons.folder;
+          color = Colors.orange;
+        } else if (type == 'video') {
+          icon = Icons.play_circle_fill;
+          color = Colors.red;
+        } else if (type == 'pdf') {
+          icon = Icons.picture_as_pdf;
+          color = Colors.redAccent;
+        } else {
+          icon = Icons.insert_drive_file;
+          color = Colors.grey;
+        }
+
+        return Card(
+           margin: const EdgeInsets.only(bottom: 8),
+           child: ListTile(
+             leading: CircleAvatar(backgroundColor: color.withValues(alpha: 0.1), child: Icon(icon, color: color)),
+             title: Text(name),
+             subtitle: type == 'video' ? Text(item['duration'] ?? '') : null,
+             trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+             onTap: () {
+               if (type == 'folder') {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => FolderDetailScreen(
+                    folderName: name, 
+                    contentList: (item['contents'] as List?)?.cast<Map<String, dynamic>>() ?? []
+                  )));
+               } else if (type == 'video') {
+                   // Build playlist for the player from all videos in this current list
+                   final videoList = contents.where((e) => e['type'] == 'video' && e['path'] != null).toList();
+                   final initialIndex = videoList.indexOf(item);
+                   if (initialIndex >= 0) {
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => VideoPlayerScreen(
+                        playlist: videoList, 
+                        initialIndex: initialIndex
+                      )));
+                   }
+               } else if (type == 'pdf') {
+                   Navigator.push(context, MaterialPageRoute(builder: (_) => PDFViewerScreen(filePath: item['path'])));
+               }
+             },
+           ),
         );
       },
     );

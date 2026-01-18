@@ -4,6 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../utils/app_theme.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../widgets/course_card.dart';
 import 'add_course_screen.dart';
 
@@ -45,6 +46,10 @@ class CoursesTab extends StatelessWidget {
         },
         child: Consumer<DashboardProvider>(
           builder: (context, provider, child) {
+            if (provider.isLoading) {
+              return _buildShimmerGrid();
+            }
+
             if (provider.courses.isEmpty) {
               return Stack(
                 children: [
@@ -53,20 +58,20 @@ class CoursesTab extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const FaIcon(
+                        FaIcon(
                           FontAwesomeIcons.graduationCap,
                           size: 64,
-                          color: Colors.grey,
+                          color: Colors.grey[300],
                         ),
                         const SizedBox(height: 16),
                         Text(
                           'No courses yet',
-                          style: AppTheme.heading3(context),
+                          style: AppTheme.heading3(context).copyWith(color: Colors.grey[500]),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           'Tap "Add Course" above to start',
-                          style: AppTheme.bodyMedium(context),
+                          style: AppTheme.bodyMedium(context).copyWith(color: Colors.grey[400]),
                         ),
                       ],
                     ),
@@ -88,6 +93,25 @@ class CoursesTab extends StatelessWidget {
               },
             );
           },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShimmerGrid() {
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: 4,
+      separatorBuilder: (context, index) => const SizedBox(height: 16),
+      itemBuilder: (context, index) => Shimmer.fromColors(
+        baseColor: Colors.grey[300]!,
+        highlightColor: Colors.grey[100]!,
+        child: Container(
+          height: 120,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
       ),
     );

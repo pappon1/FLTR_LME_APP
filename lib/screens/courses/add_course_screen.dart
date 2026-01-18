@@ -1,24 +1,27 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:convert';
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import '../../models/course_model.dart';
 import '../../providers/dashboard_provider.dart';
+import '../utils/simple_file_explorer.dart';
 import '../../services/bunny_cdn_service.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'components/collapsing_step_indicator.dart';
 import 'folder_detail_screen.dart';
 import '../../utils/app_theme.dart';
-import 'dart:convert';
-import 'package:flutter/services.dart';
-import '../../screens/content_viewers/image_viewer_screen.dart';
-import '../../screens/content_viewers/video_player_screen.dart';
-import '../../screens/content_viewers/pdf_viewer_screen.dart';
-
+import 'package:video_thumbnail/video_thumbnail.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../utils/clipboard_manager.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../content_viewers/image_viewer_screen.dart';
+import '../content_viewers/video_player_screen.dart';
+import '../content_viewers/pdf_viewer_screen.dart';
 
 class AddCourseScreen extends StatefulWidget {
   const AddCourseScreen({super.key});
@@ -58,6 +61,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   File? _thumbnailImage;
   bool _isLoading = false;
   bool _isPublished = true;
+  bool _isInitialLoading = true;
   int _newBatchDurationDays = 90;
   String _difficulty = 'Beginner'; // Acts as Course Type
   
@@ -77,7 +81,9 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     _discountAmountController.addListener(_saveCourseDraft);
     
     // Load Draft
-    _loadCourseDraft();
+    _loadCourseDraft().then((_) {
+      if (mounted) setState(() => _isInitialLoading = false);
+    });
   }
 
   // --- Persistence Logic ---
@@ -116,6 +122,17 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   Future<void> _saveCourseDraft() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      // Efficiency: Don't save video paths in draft to avoid cache bloat
+      // Similar to MX Player/VLC, we don't want to keep large temporary references
+      final filteredContents = _courseContents.map((item) {
+        if (item['type'] == 'video' || item['type'] == 'folder') {
+           // Deep copy folders but handle their nested videos if needed
+           // For now, we filter top-level videos as requested
+           return item['type'] == 'video' ? null : item;
+        }
+        return item;
+      }).where((item) => item != null).toList();
+
       final Map<String, dynamic> draft = {
          'title': _titleController.text,
          'desc': _descController.text,
@@ -123,7 +140,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
          'discount': _discountAmountController.text,
          'category': _selectedCategory,
          'difficulty': _difficulty,
-         'contents': _courseContents,
+         'contents': filteredContents,
       };
       
       await prefs.setString('course_creation_draft', jsonEncode(draft));
@@ -159,6 +176,9 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     _pageController.dispose();
     _scrollController.dispose();
 
+    // Storage Optimization: Clear temporary files from picker cache
+    unawaited(FilePicker.platform.clearTemporaryFiles());
+    
     super.dispose();
   }
 
@@ -593,7 +613,17 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                  final List<int> indices = _selectedIndices.toList()..sort((a, b) => b.compareTo(a));
                  setState(() {
                     for (int i in indices) {
-                       if (i < _courseContents.length) _courseContents.removeAt(i);
+                       if (i < _courseContents.length) {
+                          final item = _courseContents[i];
+                          final path = item['path'];
+                          if (path != null && path.contains('/cache/')) {
+                            try {
+                              final file = File(path);
+                              if (file.existsSync()) file.deleteSync();
+                            } catch (_) {}
+                          }
+                          _courseContents.removeAt(i);
+                       }
                     }
                     _isSelectionMode = false;
                     _selectedIndices.clear();
@@ -712,8 +742,10 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
              SliverPadding(
                key: const ValueKey('step2_content_padding'),
                padding: EdgeInsets.fromLTRB(24, (_isSelectionMode || _isDragModeActive) ? 20 : 12, 24, 24),
-               sliver: _courseContents.isEmpty 
-                  ? SliverToBoxAdapter(
+                sliver: _isInitialLoading 
+                   ? SliverToBoxAdapter(child: _buildShimmerList())
+                   : _courseContents.isEmpty 
+                   ? SliverToBoxAdapter(
                       key: const ValueKey('add_course_empty_state'),
                       child: Container(
                         height: 300,
@@ -760,8 +792,24 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                                     borderRadius: BorderRadius.circular(12), 
                                     side: BorderSide(color: isSelected ? AppTheme.primaryColor : Colors.grey.shade200, width: isSelected ? 2 : 1)
                                   ),
-                                  leading: CircleAvatar(backgroundColor: color.withValues(alpha: 0.1), child: Icon(icon, color: color, size: 20)),
-                                  title: Text(item['name'], style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? AppTheme.primaryColor : null)),
+                                  leading: Hero(
+                                    tag: item['path'] ?? item['name'] + index.toString(),
+                                    child: Container(
+                                      width: 44,
+                                      height: 44,
+                                      decoration: BoxDecoration(
+                                        color: color.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: (item['type'] == 'video' && item['thumbnail'] != null)
+                                        ? ClipRRect(
+                                            borderRadius: BorderRadius.circular(8),
+                                            child: Image.file(File(item['thumbnail']), fit: BoxFit.cover),
+                                          )
+                                        : Icon(icon, color: color, size: 20),
+                                    ),
+                                  ),
+                                  title: Text(item['name'], style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? AppTheme.primaryColor : null), maxLines: 1, overflow: TextOverflow.ellipsis),
                                   trailing: _isSelectionMode
                                     ? GestureDetector(
                                         onTap: () => _toggleSelection(index),
@@ -838,6 +886,32 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                       },
                     ),
             ),
+            if (_courseContents.isNotEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Efficiency Mode Active: Videos are accessed directly to save storage. Please do not delete or move the original files until the course is published.',
+                            style: TextStyle(color: Colors.blue.shade800, fontSize: 12, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             SliverFillRemaining(
                hasScrollBody: false,
                child: Align(
@@ -884,7 +958,10 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
              unawaited(_saveCourseDraft());
           }
       } else if (type == 'image') {
-          unawaited(Navigator.push(context, MaterialPageRoute(builder: (_) => ImageViewerScreen(filePath: path))));
+          unawaited(Navigator.push(context, MaterialPageRoute(builder: (_) => ImageViewerScreen(
+            filePath: path,
+            title: item['name'],
+          ))));
       } else if (type == 'video') {
           final videoList = _courseContents.where((element) => element['type'] == 'video').toList();
           final initialIndex = videoList.indexOf(item);
@@ -893,7 +970,10 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
             initialIndex: initialIndex >= 0 ? initialIndex : 0,
           ))));
       } else if (type == 'pdf') {
-          unawaited(Navigator.push(context, MaterialPageRoute(builder: (_) => PDFViewerScreen(filePath: path))));
+          unawaited(Navigator.push(context, MaterialPageRoute(builder: (_) => PDFViewerScreen(
+            filePath: path,
+            title: item['name'],
+          ))));
       }
   }
 
@@ -943,6 +1023,16 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
           ),
           TextButton(
             onPressed: () {
+              // Free up cache space
+              final item = _courseContents[index];
+              final path = item['path'];
+              if (path != null && path.contains('/cache/')) {
+                try {
+                  final file = File(path);
+                  if (file.existsSync()) file.deleteSync();
+                } catch (_) {}
+              }
+              
               setState(() {
                 _courseContents.removeAt(index);
               });
@@ -997,10 +1087,10 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                 alignment: WrapAlignment.center,
                 children: [
                   _buildOptionItem(Icons.create_new_folder, 'Folder', Colors.orange, () => _showCreateFolderDialog()),
-                  _buildOptionItem(Icons.video_library, 'Video', Colors.red, () => _pickContentFile('video', FileType.custom, ['mp4', 'mkv'])),
-                  _buildOptionItem(Icons.picture_as_pdf, 'PDF', Colors.redAccent, () => _pickContentFile('pdf', FileType.custom, ['pdf'])),
-                  _buildOptionItem(Icons.image, 'Image', Colors.purple, () => _pickContentFile('image', FileType.custom, ['jpg', 'jpeg', 'png', 'webp'])),
-                  _buildOptionItem(Icons.folder_zip, 'Zip', Colors.blueGrey, () => _pickContentFile('zip', FileType.custom, ['zip', 'rar'])),
+                  _buildOptionItem(Icons.video_library, 'Video', Colors.red, () => _pickContentFile('video', ['mp4', 'mkv', 'avi'])),
+                  _buildOptionItem(Icons.picture_as_pdf, 'PDF', Colors.redAccent, () => _pickContentFile('pdf', ['pdf'])),
+                  _buildOptionItem(Icons.image, 'Image', Colors.purple, () => _pickContentFile('image', ['jpg', 'jpeg', 'png', 'webp'])),
+                  _buildOptionItem(Icons.folder_zip, 'Zip', Colors.blueGrey, () => _pickContentFile('zip', ['zip', 'rar'])),
                   _buildOptionItem(Icons.content_paste, 'Paste', Colors.grey, _pasteContent),
                 ],
               ),
@@ -1071,48 +1161,40 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     );
   }
 
-  // File Picker Logic
-  Future<void> _pickContentFile(String type, FileType fileType, [List<String>? allowedExtensions]) async {
-    try {
-      final FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: fileType,
-        allowedExtensions: allowedExtensions,
-        allowMultiple: true, 
+  Future<void> _pickContentFile(String type, [List<String>? allowedExtensions]) async {
+      // ZERO CACHE: Use custom explorer for ALL types
+      final String? path = await Navigator.push(
+        context, 
+        MaterialPageRoute(builder: (_) => SimpleFileExplorer(
+          allowedExtensions: allowedExtensions ?? [],
+        ))
       );
-
-      if (result != null) {
-        final List<String> invalidFiles = [];
-        setState(() {
-          for (var file in result.files) {
-             if (file.path == null) continue;
-
-             final String ext = file.extension?.toLowerCase() ?? '';
-             if (allowedExtensions != null && !allowedExtensions.contains(ext)) {
-                 invalidFiles.add(file.name);
-                 continue;
-             }
-
-             _courseContents.add({
-                'type': type,
-                'name': file.name,
-                'path': file.path,
-                'isLocal': true,
-             });
-          }
-        });
-        unawaited(_saveCourseDraft());
-
-        if (mounted && invalidFiles.isNotEmpty) {
-           ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-             content: Text('Skipped ${invalidFiles.length} invalid files.'), 
-             backgroundColor: Colors.orange
-           ));
-        }
+      
+      if (path != null) {
+         final newItem = {
+             'type': type,
+             'name': path.split('/').last,
+             'path': path,
+             'isLocal': true,
+             'thumbnail': null,
+         };
+         
+         setState(() {
+           _courseContents.add(newItem);
+         });
+         
+         // Only process video if needed (currently disabled)
+         if (type == 'video') {
+            unawaited(_processVideos([newItem]));
+         } else {
+            unawaited(_saveCourseDraft());
+         }
       }
-    } catch (e) {
-      // debugPrint('Error picking file: $e');
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
-    }
+  }
+
+  Future<void> _processVideos(List<Map<String, dynamic>> items) async {
+    // DISABLED: Thumbnail Generation to prevent cache bloat
+    unawaited(_saveCourseDraft());
   }
 
 
@@ -1206,6 +1288,28 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
               ? (Theme.of(context).brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100)
               : Theme.of(context).cardColor,
           counterText: maxLength != null ? null : '',
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShimmerList() {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: List.generate(5, (index) => 
+          Shimmer.fromColors(
+            baseColor: Colors.grey[300]!,
+            highlightColor: Colors.grey[100]!,
+            child: Container(
+              height: 70,
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
         ),
       ),
     );

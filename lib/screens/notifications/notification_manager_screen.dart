@@ -1,69 +1,63 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../utils/app_theme.dart';
 import 'tabs/send_notification_tab.dart';
 import 'tabs/scheduled_notifications_tab.dart';
 import 'tabs/received_messages_tab.dart';
 
-class NotificationManagerScreen extends StatelessWidget {
+class NotificationManagerScreen extends StatefulWidget {
   const NotificationManagerScreen({super.key});
 
   @override
+  State<NotificationManagerScreen> createState() => _NotificationManagerScreenState();
+}
+
+class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
+  @override
   Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('notifications')
-          .where('status', isEqualTo: 'scheduled')
-          .limit(1)
-          .snapshots(),
-      builder: (context, snapshot) {
-        
-        bool hasScheduled = false;
-        if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
-          hasScheduled = true;
-        }
+    const tabs = [
+      Tab(text: 'Send'),
+      Tab(text: 'Scheduled'),
+      Tab(text: 'Received'),
+    ];
 
-        final tabs = [
-          const Tab(text: 'Send'),
-          if (hasScheduled) const Tab(text: 'Scheduled'),
-          const Tab(text: 'Received'),
-        ];
+    const tabViews = [
+      SendNotificationTab(),
+      ScheduledNotificationsTab(),
+      ReceivedMessagesTab(),
+    ];
 
-        final tabViews = [
-          const SendNotificationTab(),
-          if (hasScheduled) const ScheduledNotificationsTab(),
-          const ReceivedMessagesTab(),
-        ];
-
-        return DefaultTabController(
-          length: tabs.length,
-          child: GestureDetector(
-            onTap: () {
-              FocusManager.instance.primaryFocus?.unfocus();
-            },
-            behavior: HitTestBehavior.opaque,
-            child: Scaffold(
-              resizeToAvoidBottomInset: false, // Prevents keyboard from pushing content up unnecessarily if scrolling handles it
-              appBar: AppBar(
-                title: const Text('Notifications'),
-                centerTitle: true,
-                bottom: TabBar(
-                  labelColor: AppTheme.primaryColor,
-                  unselectedLabelColor: Colors.grey,
-                  indicatorColor: AppTheme.primaryColor,
-                  indicatorWeight: 3,
-                  labelStyle: const TextStyle(fontWeight: FontWeight.bold),
-                  onTap: (_) => FocusManager.instance.primaryFocus?.unfocus(),
-                  tabs: tabs,
-                ),
+    return DefaultTabController(
+      length: tabs.length,
+      child: GestureDetector(
+        onTap: () {
+          FocusManager.instance.primaryFocus?.unfocus();
+        },
+        behavior: HitTestBehavior.opaque,
+        child: Scaffold(
+          resizeToAvoidBottomInset: false,
+          appBar: AppBar(
+            title: const Text('Notifications'),
+            centerTitle: true,
+            bottom: TabBar(
+              labelColor: AppTheme.primaryColor,
+              unselectedLabelColor: Colors.grey,
+              indicatorSize: TabBarIndicatorSize.label,
+              indicator: const UnderlineTabIndicator(
+                borderSide: BorderSide(width: 3, color: AppTheme.primaryColor),
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(3), topRight: Radius.circular(3)),
               ),
-              body: TabBarView(
-                children: tabViews,
-              ),
+              labelStyle: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 14),
+              unselectedLabelStyle: GoogleFonts.outfit(fontWeight: FontWeight.w500, fontSize: 14),
+              onTap: (_) => FocusManager.instance.primaryFocus?.unfocus(),
+              tabs: tabs,
             ),
           ),
-        );
-      },
+          body: const TabBarView(
+            children: tabViews,
+          ),
+        ),
+      ),
     );
   }
 }

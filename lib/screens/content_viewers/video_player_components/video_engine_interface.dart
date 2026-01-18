@@ -8,6 +8,7 @@ abstract class BaseVideoEngine {
   Future<void> playOrPause();
   Future<void> seek(Duration duration);
   Future<void> setRate(double rate);
+  Future<void> setVideoTrack(String quality);
   Future<void> dispose();
 
   Stream<Duration> get positionStream;

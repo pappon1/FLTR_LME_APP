@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../models/dashboard_stats.dart';
 import '../models/course_model.dart';
 import '../models/student_model.dart';
 import '../services/firestore_service.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class DashboardProvider extends ChangeNotifier {
   int _selectedIndex = 0;
@@ -25,6 +25,11 @@ class DashboardProvider extends ChangeNotifier {
   final List<CourseModel> _courses = [];
   final List<StudentModel> _students = [];
   
+  // Pagination State for Students
+  DocumentSnapshot? _lastStudentDoc;
+  bool _hasMoreStudents = true;
+  bool _isLoadingMoreStudents = false;
+  
   StreamSubscription? _coursesSubscription;
   StreamSubscription? _studentsSubscription;
 
@@ -34,6 +39,8 @@ class DashboardProvider extends ChangeNotifier {
   DashboardStats get stats => _stats;
   List<CourseModel> get courses => _courses;
   List<StudentModel> get students => _students;
+  bool get hasMoreStudents => _hasMoreStudents;
+  bool get isLoadingMoreStudents => _isLoadingMoreStudents;
 
   DashboardProvider() {
     // Initial fetch
@@ -51,10 +58,15 @@ class DashboardProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
+      // Reset pagination on full refresh
+      _lastStudentDoc = null;
+      _hasMoreStudents = true;
+      _students.clear();
+
       await Future.wait([
         _fetchStats(),
         _fetchCourses(),
-        _fetchStudents(),
+        _fetchStudents(), // This will now fetch the first page
       ]);
     } catch (e) {
       // print('Error refreshing dashboard data: $e');
@@ -100,50 +112,59 @@ class DashboardProvider extends ChangeNotifier {
 
     Future<void> _fetchStudents() async {
     try {
-      await _studentsSubscription?.cancel();
-      // Get current logged in admin email to exclude from list
-      final currentAdminEmail = FirebaseAuth.instance.currentUser?.email;
+      // Logic Fix: Switch to paginated fetch to prevent app hang with large user base
+      final snapshot = await _firestoreService.getStudentsPaginated(limit: 50);
       
-      _studentsSubscription = _firestoreService.getStudents().listen((studentList) {
+      if (snapshot.docs.isNotEmpty) {
+        _lastStudentDoc = snapshot.docs.last;
         _students.clear();
-        // Filter out admin
-        final filteredList = studentList.where((s) {
-          return s.email != currentAdminEmail && !s.email.toLowerCase().contains('admin');
-        }).toList();
         
-        _students.addAll(filteredList);
-
-        // --- DEMO / DUMMY DATA (If list is empty) ---
-        if (_students.isEmpty) {
-          _students.add(StudentModel(
-            id: 'dummy1',
-            name: 'Rahul Sharma (Demo)',
-            email: 'rahul.demo@example.com',
-            phone: '9876543210',
-            enrolledCourses: 1,
-            joinedDate: DateTime.now().subtract(const Duration(days: 2)),
-            isActive: true,
-            avatarUrl: 'https://ui-avatars.com/api/?name=Rahul+Sharma&background=0D8ABC&color=fff'
-          ));
-           _students.add(StudentModel(
-            id: 'dummy2',
-            name: 'Priya Patel (Demo)',
-            email: 'priya.demo@example.com',
-            phone: '',
-            enrolledCourses: 0,
-            joinedDate: DateTime.now().subtract(const Duration(days: 5)),
-            isActive: true,
-            avatarUrl: 'https://ui-avatars.com/api/?name=Priya+Patel&background=FF4081&color=fff'
-          ));
-        }
-
-        // Sync Stats Count with actual list
-        _stats = _stats.copyWith(totalStudents: _students.length);
-        
-        notifyListeners();
-      });
+        final newList = snapshot.docs
+            .map((doc) => StudentModel.fromFirestore(doc))
+            .where((s) => !s.email.toLowerCase().contains('admin'))
+            .toList();
+            
+        _students.addAll(newList);
+        _hasMoreStudents = snapshot.docs.length == 50;
+      } else {
+        _hasMoreStudents = false;
+      }
+      notifyListeners();
     } catch (e) {
-      // print('Error fetching students: $e');
+      // debugPrint('Error fetching students: $e');
+    }
+  }
+
+  Future<void> loadMoreStudents() async {
+    if (_isLoadingMoreStudents || !_hasMoreStudents) return;
+
+    _isLoadingMoreStudents = true;
+    notifyListeners();
+
+    try {
+      final snapshot = await _firestoreService.getStudentsPaginated(
+        limit: 50, 
+        startAfter: _lastStudentDoc
+      );
+
+      if (snapshot.docs.isNotEmpty) {
+        _lastStudentDoc = snapshot.docs.last;
+        
+        final newList = snapshot.docs
+            .map((doc) => StudentModel.fromFirestore(doc))
+            .where((s) => !s.email.toLowerCase().contains('admin'))
+            .toList();
+            
+        _students.addAll(newList);
+        _hasMoreStudents = snapshot.docs.length == 50;
+      } else {
+        _hasMoreStudents = false;
+      }
+    } catch (e) {
+      // debugPrint('Error loading more students: $e');
+    } finally {
+      _isLoadingMoreStudents = false;
+      notifyListeners();
     }
   }
 

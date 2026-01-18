@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
 class VideoTray extends StatelessWidget {
@@ -38,40 +39,53 @@ class VideoTray extends StatelessWidget {
     final closeBg = forceDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05);
     final closeIcon = forceDark ? Colors.white : Colors.black87;
 
-    return Listener(
-      onPointerDown: (_) => onInteraction(),
-      onPointerMove: (_) => onInteraction(),
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 350),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: borderColor),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(right: 30),
-              child: _buildContent(context, isDark, forceDark),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Listener(
+          onPointerDown: (_) => onInteraction(),
+          onPointerMove: (_) => onInteraction(),
+          child: Container(
+            constraints: const BoxConstraints(maxWidth: 350),
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: borderColor),
+              boxShadow: isDark ? [] : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                )
+              ],
             ),
-            Positioned(
-              right: 0,
-              top: 0,
-              bottom: 0,
-              child: Center(
-                child: GestureDetector(
-                  onTap: onClose,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(color: closeBg, shape: BoxShape.circle),
-                    child: Icon(Icons.close, color: closeIcon, size: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            child: Stack(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 30),
+                  child: _buildContent(context, isDark, forceDark),
+                ),
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  child: Center(
+                    child: GestureDetector(
+                      onTap: onClose,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(color: closeBg, shape: BoxShape.circle),
+                        child: Icon(Icons.close, color: closeIcon, size: 14),
+                      ),
+                    ),
                   ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

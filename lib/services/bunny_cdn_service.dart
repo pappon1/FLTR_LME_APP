@@ -6,56 +6,66 @@ class BunnyCDNService {
   // Bunny.net Storage Zone Configuration
   // Bunny.net Storage Zone Configuration
   static const String storageZoneName = 'lme-media-storage';
-  static const String hostname = 'sg.storage.bunnycdn.com';
+  static const String hostname = 'storage.bunnycdn.com';
   static const String apiKey = 'eae59342-6952-4d56-bb2fb8745da1-adf7-402d'; // Renamed to apiKey for clarity
   static const String cdnUrl = 'https://lme-media-storage.b-cdn.net';
   
   final Dio _dio = Dio();
 
-  /// Upload file to Bunny.net CDN
+  /// Upload file to Bunny.net CDN with Stream (Memory Efficient) and Retry Logic
   Future<String> uploadFile({
     required String filePath,
     required String remotePath,
     Function(int sent, int total)? onProgress,
   }) async {
-    try {
-      final file = File(filePath);
-      if (!await file.exists()) {
-        throw Exception('File not found: $filePath');
-      }
+    int attempts = 0;
+    const int maxRetries = 3;
 
-      final fileBytes = await file.readAsBytes();
-      final fileName = path.basename(filePath);
-      
-      // Construct API endpoint
-      final apiUrl = 'https://$hostname/$storageZoneName/$remotePath';
-      
-      // print('🚀 Uploading to Bunny CDN: $apiUrl (Size: ${fileBytes.length} bytes)');
-      
-      final response = await _dio.put(
-        apiUrl,
-        data: Stream.fromIterable([fileBytes]), 
-        options: Options(
-          headers: {
-            'AccessKey': apiKey,
-            'Content-Type': _getContentType(fileName),
-            'Content-Length': fileBytes.length,
-          },
-        ),
-        onSendProgress: onProgress,
-      );
+    while (attempts < maxRetries) {
+      try {
+        attempts++;
+        final file = File(filePath);
+        if (!await file.exists()) {
+          throw Exception('File not found: $filePath');
+        }
 
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        final publicUrl = '$cdnUrl/$remotePath';
-        // print('✅ Upload successful: $publicUrl');
-        return Uri.encodeFull(publicUrl);
-      } else {
-        throw Exception('Upload failed with status: ${response.statusCode}');
+        final fileSize = await file.length();
+        final fileName = path.basename(filePath);
+        
+        // Construct API endpoint
+        final apiUrl = 'https://$hostname/$storageZoneName/$remotePath';
+        
+        // Use openRead for streaming (Low RAM usage)
+        final stream = file.openRead();
+
+        final response = await _dio.put(
+          apiUrl,
+          data: stream, 
+          options: Options(
+            headers: {
+              'AccessKey': apiKey,
+              'Content-Type': _getContentType(fileName),
+              'Content-Length': fileSize, // Critical for Stream upload
+            },
+          ),
+          onSendProgress: onProgress,
+        );
+
+        if (response.statusCode == 201 || response.statusCode == 200) {
+          final publicUrl = '$cdnUrl/$remotePath';
+          return Uri.encodeFull(publicUrl);
+        } else {
+          throw Exception('Upload failed with status: ${response.statusCode}');
+        }
+      } catch (e) {
+        if (attempts >= maxRetries) {
+           rethrow;
+        }
+        // Wait before retrying (exponential backoff)
+        await Future.delayed(Duration(seconds: attempts * 2));
       }
-    } catch (e) {
-      // print('❌ Bunny CDN upload error: $e');
-      rethrow;
     }
+    throw Exception('Upload failed after $maxRetries attempts');
   }
 
   /// Delete file from Bunny.net CDN

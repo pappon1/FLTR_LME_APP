@@ -12,6 +12,7 @@ import 'video_playlist_manager.dart';
 import 'video_gesture_handler.dart';
 import 'video_engine_interface.dart';
 import 'mediakit_video_engine.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObserver {
   final VideoPlaylistManager playlistManager;
@@ -38,6 +39,7 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
   final ValueNotifier<double> brightnessNotifier = ValueNotifier(VideoPlayerConstants.defaultBrightness);
   final ValueNotifier<bool> showVolumeLabelNotifier = ValueNotifier(false);
   final ValueNotifier<bool> showBrightnessLabelNotifier = ValueNotifier(false);
+  final ValueNotifier<Map<String, double>> progressNotifier = ValueNotifier({});
 
   // Seek Animation State
   final ValueNotifier<int?> seekIndicatorNotifier = ValueNotifier(null); 
@@ -65,7 +67,6 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
   Timer? _trayHideTimer;
 
   // Persistence & Sensors
-  Map<String, double> _videoProgress = {};
   StreamSubscription<AccelerometerEvent>? _accelerometerSubscription;
   DeviceOrientation? _lastSensorOrientation;
   
@@ -98,7 +99,7 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
   double get brightness => brightnessNotifier.value;
   bool get showVolumeLabel => showVolumeLabelNotifier.value;
   bool get showBrightnessLabel => showBrightnessLabelNotifier.value;
-  Map<String, double> get videoProgress => _videoProgress;
+  Map<String, double> get videoProgress => progressNotifier.value;
   String? get errorMessage => errorMessageNotifier.value;
 
   VideoPlayerLogicController({
@@ -126,6 +127,10 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
     _setupPlayerListeners();
     _initSensor();
     await _initProgress();
+    
+    // UI/UX Optimization: Load preferred quality (Defaults to 480p to save user data)
+    final prefs = await SharedPreferences.getInstance();
+    _currentQuality = prefs.getString('pref_video_quality') ?? "480p";
 
     if (playlist.isNotEmpty) {
       await playVideo(currentIndex);
@@ -198,20 +203,13 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
       }
     }));
 
-    _subscriptions.add(engine.errorStream.listen((error) {
-      if (!_isDisposed) errorMessageNotifier.value = error.toString();
-      // Smart Auto-Skip after 5 seconds if not fixed
-      if (error != null) {
-        Future.delayed(const Duration(seconds: 5), () {
-           if (errorMessage != null && !_isDisposed) { // If error still persists
-              // debugPrint("Auto-skipping failing video...");
-              if (playlistManager.next()) {
-                playVideo(currentIndex);
-              }
-           }
-        });
+    final errorSub = engine.errorStream.listen((error) {
+      if (!_isDisposed) {
+        errorMessageNotifier.value = error.toString();
+        _handleError();
       }
-    }));
+    });
+    _subscriptions.add(errorSub);
 
     FlutterVolumeController.addListener((v) {
       if (!gestureHandler.isChangingVolumeViaGesture) {
@@ -234,7 +232,7 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
   Future<void> _initProgress() async {
     await VideoPersistenceService.init();
     final paths = playlist.map((e) => e['path'] as String?).whereType<String>().toList();
-    _videoProgress = await VideoPersistenceService.getAllProgress(paths);
+    progressNotifier.value = await VideoPersistenceService.getAllProgress(paths);
   }
 
   void _initSensor() {
@@ -243,8 +241,11 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
 
   void _resumeSensor() {
     _accelerometerSubscription?.cancel();
+    // Optimization: Only listen to sensor in Landscape mode to save battery
+    // because our specific logic only handles Landscape Left <-> Right rotation
+    if (!_isLandscape) return;
+
     _accelerometerSubscription = accelerometerEventStream().listen((event) {
-      if (!_isLandscape) return;
       const double threshold = VideoPlayerConstants.sensorRotationThreshold;
       if (event.x > threshold) {
         if (_lastSensorOrientation != DeviceOrientation.landscapeLeft) {
@@ -275,26 +276,59 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
       final path = playlistManager.currentPath;
       if (path != null) {
         await engine.open(path, play: true);
-        final progress = _videoProgress[path];
+        
+        if (playbackSpeedNotifier.value != 1.0) {
+          await engine.setRate(playbackSpeedNotifier.value);
+        }
+
+        // Apply persistent quality preference
+        if (_currentQuality != "Auto") {
+          await engine.setVideoTrack(_currentQuality);
+        }
+
+        final progress = progressNotifier.value[path];
         if (progress != null && progress > 0 && progress < VideoPlayerConstants.watchedThreshold) {
           _resumeProgress(path, progress);
         }
+        _retryCount = 0; // Reset retry on success
       }
     } catch (e) {
-      // debugPrint('Error playing video: $e');
+      _handleError();
     }
     notifyListeners();
   }
 
+  int _retryCount = 0;
+  static const int maxRetries = 3;
+
+  void _handleError() {
+    if (_retryCount < maxRetries) {
+      _retryCount++;
+      debugPrint('Retrying video playback... attempt $_retryCount');
+      Future.delayed(Duration(seconds: _retryCount * 2), () {
+        if (!_isDisposed && errorMessageNotifier.value != null) {
+          playVideo(currentIndex);
+        }
+      });
+    }
+  }
+
   Future<void> retryCurrentVideo() async {
+    _retryCount = 0;
     unawaited(playVideo(currentIndex));
   }
 
   void _resumeProgress(String path, double ratio) async {
-    int attempts = 0;
-    while (engine.duration <= Duration.zero && attempts < 20) {
-      await Future.delayed(const Duration(milliseconds: 100));
-      attempts++;
+    // Logic Fix: Wait for duration using Stream instead of polling loop
+    if (engine.duration <= Duration.zero) {
+       try {
+         await engine.durationStream
+             .firstWhere((d) => d > Duration.zero)
+             .timeout(const Duration(seconds: 10));
+       } catch (e) {
+         // Timeout, cannot resume
+         return;
+       }
     }
     if (engine.duration > Duration.zero) {
       final targetMs = (engine.duration.inMilliseconds * ratio).toInt();
@@ -312,21 +346,21 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
     final currentPath = playlistManager.currentPath;
     if (currentPath == null) return;
 
-    final double oldRatio = _videoProgress[currentPath] ?? 0.0;
+    final double oldRatio = progressNotifier.value[currentPath] ?? 0.0;
 
     if ((ratio - oldRatio).abs() > VideoPlayerConstants.significantProgressChange || 
         (oldRatio < VideoPlayerConstants.watchedThreshold && ratio >= VideoPlayerConstants.watchedThreshold)) {
-      _videoProgress[currentPath] = ratio;
-      // Granularly notify playlist if needed, for now we do notifyListeners 
-      // but less frequently thanks to significantProgressChange
-      notifyListeners();
+      final newMap = Map<String, double>.from(progressNotifier.value);
+      newMap[currentPath] = ratio;
+      progressNotifier.value = newMap;
     }
     if (ratio >= VideoPlayerConstants.completionThreshold && oldRatio < VideoPlayerConstants.completionThreshold) {
-      _videoProgress[currentPath] = 1.0;
+      final newMap = Map<String, double>.from(progressNotifier.value);
+      newMap[currentPath] = 1.0;
+      progressNotifier.value = newMap;
       _lastSavedPath = currentPath;
       _lastSavedRatio = 1.0;
       VideoPersistenceService.saveProgress(currentPath, 1.0);
-      notifyListeners();
     }
     
     // Debounced Persistence
@@ -437,7 +471,15 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
   }
 
   void setTrayItem(String item) {
-    if (activeTray == 'quality') _currentQuality = item;
+    if (activeTray == 'quality') {
+       _currentQuality = item;
+       unawaited(engine.setVideoTrack(item));
+       
+       // Persist preference
+       unawaited(SharedPreferences.getInstance().then((prefs) {
+         prefs.setString('pref_video_quality', item);
+       }));
+    }
     activeTrayNotifier.value = null;
     startHideTimer();
     notifyListeners();
@@ -533,6 +575,7 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
       await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
       _isLandscape = false;
       _lastSensorOrientation = null;
+      _pauseSensor(); // Stop sensor in Portrait
     } else {
       await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       await SystemChrome.setPreferredOrientations([
@@ -540,6 +583,7 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
         DeviceOrientation.landscapeRight,
       ]);
       _isLandscape = true;
+      _resumeSensor(); // Start sensor in Landscape
     }
     notifyListeners();
 
@@ -626,6 +670,7 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
     showBrightnessLabelNotifier.dispose();
     seekIndicatorNotifier.dispose();
     isReadyNotifier.dispose();
+    progressNotifier.dispose();
     super.dispose();
   }
 }

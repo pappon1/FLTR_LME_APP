@@ -66,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (states.contains(WidgetState.selected)) {
                     return const IconThemeData(color: Colors.white);
                   }
-                  return IconThemeData(color: Colors.grey[600]);
+                  return IconThemeData(color: Theme.of(context).textTheme.bodyMedium?.color);
                 }),
                 labelTextStyle: WidgetStateProperty.resolveWith((states) {
                   if (states.contains(WidgetState.selected)) {
@@ -79,7 +79,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   return GoogleFonts.inter(
                     fontSize: 12,
                     fontWeight: FontWeight.normal,
-                    color: Colors.grey[600],
+                    color: Theme.of(context).textTheme.bodyMedium?.color,
                   );
                 }),
               ),

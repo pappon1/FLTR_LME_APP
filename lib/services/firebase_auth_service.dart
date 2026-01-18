@@ -1,11 +1,19 @@
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class FirebaseAuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  
+  // Use getter to ensure fresh instance/config
+  GoogleSignIn get _googleSignIn => GoogleSignIn(
+    scopes: [
+      'email',
+      'https://www.googleapis.com/auth/contacts.readonly',
+    ],
+  );
 
   // Current user stream
   Stream<User?> get authStateChanges => _auth.authStateChanges();
@@ -16,15 +24,21 @@ class FirebaseAuthService {
   /// Sign in with Google
   Future<UserCredential?> signInWithGoogle() async {
     try {
-      // Trigger Google Sign-In flow (v7 uses authenticate)
-      final GoogleSignInAccount googleUser = await _googleSignIn.authenticate();
+      // Trigger Google Sign-In flow
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      
+      if (googleUser == null) {
+        // User cancelled flow
+        return null; 
+      }
       
       // Obtain auth details from request
-      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
 
       // Create a new credential
       final credential = GoogleAuthProvider.credential(
         idToken: googleAuth.idToken,
+        accessToken: googleAuth.accessToken,
       );
 
       // Sign in to Firebase with the credential
@@ -35,11 +49,11 @@ class FirebaseAuthService {
       
       return userCredential;
     } catch (e) {
-      // print('Error signing in with Google: $e');
+      debugPrint('GOOGLE SIGN IN ERROR: $e');
       rethrow;
     }
   }
-
+ 
   /// Check if user exists in Firestore and create/update profile
   Future<void> _checkAndCreateUserProfile(User user) async {
     final userDoc = await _firestore.collection('users').doc(user.uid).get();
@@ -79,7 +93,7 @@ class FirebaseAuthService {
       
       return false;
     } catch (e) {
-      // print('Error checking admin status: $e');
+      debugPrint('Error checking admin status: $e');
       return false;
     }
   }
@@ -100,7 +114,7 @@ class FirebaseAuthService {
       
       return 'user';
     } catch (e) {
-      // print('Error getting user role: $e');
+      debugPrint('Error getting user role: $e');
       return 'user';
     }
   }
