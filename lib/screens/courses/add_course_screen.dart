@@ -122,17 +122,6 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   Future<void> _saveCourseDraft() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      // Efficiency: Don't save video paths in draft to avoid cache bloat
-      // Similar to MX Player/VLC, we don't want to keep large temporary references
-      final filteredContents = _courseContents.map((item) {
-        if (item['type'] == 'video' || item['type'] == 'folder') {
-           // Deep copy folders but handle their nested videos if needed
-           // For now, we filter top-level videos as requested
-           return item['type'] == 'video' ? null : item;
-        }
-        return item;
-      }).where((item) => item != null).toList();
-
       final Map<String, dynamic> draft = {
          'title': _titleController.text,
          'desc': _descController.text,
@@ -140,7 +129,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
          'discount': _discountAmountController.text,
          'category': _selectedCategory,
          'difficulty': _difficulty,
-         'contents': filteredContents,
+         'contents': _courseContents,
       };
       
       await prefs.setString('course_creation_draft', jsonEncode(draft));
@@ -886,32 +875,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                       },
                     ),
             ),
-            if (_courseContents.isNotEmpty)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.info_outline, color: Colors.blue, size: 20),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            'Efficiency Mode Active: Videos are accessed directly to save storage. Please do not delete or move the original files until the course is published.',
-                            style: TextStyle(color: Colors.blue.shade800, fontSize: 12, fontWeight: FontWeight.w500),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+
             SliverFillRemaining(
                hasScrollBody: false,
                child: Align(

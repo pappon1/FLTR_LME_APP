@@ -156,8 +156,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       // We ONLY save items that are local additions (marked by us)
       // This prevents saving server-side items into local shared_prefs
       final localItems = _contents.where((e) {
-        // Efficiency: Don't save video paths in draft to save storage (MX Player style)
-        return e['isLocal'] == true && e['type'] != 'video';
+        return e['isLocal'] == true;
       }).toList();
       
       if (localItems.isEmpty) {
