@@ -294,12 +294,12 @@ class _ReceivedMessagesTabState extends State<ReceivedMessagesTab> {
                     ],
                     
                     if (type == 'purchase') ...[
-                      Text('Purchased: $title', style: const TextStyle(fontWeight: FontWeight.w600)),
+                      Text('Purchased: $title', style: const TextStyle(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
                       const SizedBox(height: 4),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
-                        child: Text('Received ₹$amount', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12)),
+                        child: FittedBox(fit: BoxFit.scaleDown, child: Text('Received ₹$amount', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12))),
                       ),
                     ],
                     

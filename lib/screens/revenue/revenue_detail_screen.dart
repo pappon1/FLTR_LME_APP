@@ -132,7 +132,10 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text('Revenue Analytics', style: GoogleFonts.outfit(color: textColor, fontWeight: FontWeight.w600)),
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text('Revenue Analytics', style: GoogleFonts.outfit(color: textColor, fontWeight: FontWeight.w600)),
+        ),
         centerTitle: true,
         backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
@@ -215,18 +218,17 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
                           style: GoogleFonts.inter(color: subTextColor, fontSize: 14, fontWeight: FontWeight.w500),
                         ),
                         const SizedBox(height: 8),
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              '₹${NumberFormat('#,##,###').format(_totalRevenue)}',
-                              style: GoogleFonts.outfit(
-                                color: textColor,
-                                fontSize: 40,
-                                fontWeight: FontWeight.bold,
-                              ),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            '₹${NumberFormat('#,##,###').format(_totalRevenue)}',
+                            style: GoogleFonts.outfit(
+                              color: textColor,
+                              fontSize: 40,
+                              fontWeight: FontWeight.bold,
                             ),
-                          ],
+                          ),
                         ),
                         const SizedBox(height: 12),
                         Container(
@@ -413,18 +415,26 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
                                      children: [
                                        Text(
                                          data['studentName'] ?? 'Unknown User',
+                                         maxLines: 1,
+                                         overflow: TextOverflow.ellipsis,
                                          style: GoogleFonts.inter(color: textColor, fontWeight: FontWeight.w600, fontSize: 15),
                                        ),
                                        Text(
                                          '${DateFormat('MMM d, h:mm a').format(date)} • ${data['courseId'] ?? ''}',
+                                         maxLines: 1,
+                                         overflow: TextOverflow.ellipsis,
                                          style: GoogleFonts.inter(color: subTextColor, fontSize: 12),
                                        ),
                                      ],
                                    ),
                                  ),
-                                 Text(
-                                   '+₹${price.toInt()}',
-                                   style: GoogleFonts.inter(color: successColor, fontWeight: FontWeight.bold, fontSize: 16),
+                                 FittedBox(
+                                   fit: BoxFit.scaleDown,
+                                   alignment: Alignment.centerRight,
+                                   child: Text(
+                                     '+₹${price.toInt()}',
+                                     style: GoogleFonts.inter(color: successColor, fontWeight: FontWeight.bold, fontSize: 16),
+                                   ),
                                  ),
                                ],
                              ),

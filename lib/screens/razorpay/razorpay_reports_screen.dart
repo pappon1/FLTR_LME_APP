@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:intl/intl.dart';
 import '../../services/razorpay_service.dart';
+import '../../widgets/shimmer_loading.dart';
 
 class RazorpayReportsScreen extends StatefulWidget {
   const RazorpayReportsScreen({super.key});
@@ -44,7 +46,7 @@ class _RazorpayReportsScreenState extends State<RazorpayReportsScreen> {
         title: Text("Recent Payments (Reports)", style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? SimpleShimmerList(itemHeight: 90.0)
           : _error != null
               ? Center(child: Padding(padding: const EdgeInsets.all(20), child: Text("Error: $_error\n\nPlease check your API Keys in Config.", textAlign: TextAlign.center)))
               : ListView.builder(
@@ -65,11 +67,20 @@ class _RazorpayReportsScreenState extends State<RazorpayReportsScreen> {
                           backgroundColor: status == 'captured' ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
                           child: Icon(status == 'captured' ? Icons.check : Icons.error, color: status == 'captured' ? Colors.green : Colors.red, size: 20),
                         ),
-                        title: Text("₹$amount", style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                        title: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text("₹$amount", style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                        ),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text("$email • $contact", style: const TextStyle(fontSize: 12)),
+                            Text(
+                              "$email • $contact", 
+                              style: const TextStyle(fontSize: 12),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                             Text(DateFormat('MMM d, y • h:mm a').format(date), style: const TextStyle(fontSize: 11, color: Colors.grey)),
                           ],
                         ),

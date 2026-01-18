@@ -132,20 +132,26 @@ class _VideoSeekbarState extends State<VideoSeekbar> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  _formatDuration(Duration(milliseconds: (currentSeconds * 1000).toInt())),
-                  style: TextStyle(
-                    color: textColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    _formatDuration(Duration(milliseconds: (currentSeconds * 1000).toInt())),
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-                Text(
-                  _formatDuration(widget.duration),
-                  style: TextStyle(
-                    color: forceWhite ? (isDark ? const Color(0xFF22C55E) : Colors.white) : Colors.black87,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    _formatDuration(widget.duration),
+                    style: TextStyle(
+                      color: forceWhite ? (isDark ? const Color(0xFF22C55E) : Colors.white) : Colors.black87,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ],

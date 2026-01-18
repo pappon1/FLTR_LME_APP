@@ -158,7 +158,10 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
     
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Upload Announcement'),
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: const Text('Upload Announcement'),
+        ),
         centerTitle: true,
       ),
       body: SingleChildScrollView(

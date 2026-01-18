@@ -28,9 +28,13 @@ class RemoteConfigCard extends StatelessWidget {
             children: [
               const Icon(Icons.settings_remote, color: Colors.tealAccent, size: 20),
               const SizedBox(width: 10),
-              Text(
-                'Diagnostic Tools',
-                style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600, color: theme.textTheme.bodyLarge?.color),
+              Expanded(
+                child: Text(
+                  'Diagnostic Tools',
+                  style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600, color: theme.textTheme.bodyLarge?.color),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
@@ -41,8 +45,8 @@ class RemoteConfigCard extends StatelessWidget {
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: divIcon(Icons.person_search, Colors.blue),
-            title: Text("User X-Ray Tool", style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-            subtitle: Text("Deep scan user account issues", style: GoogleFonts.inter(fontSize: 12)),
+            title: Text("User X-Ray Tool", style: GoogleFonts.inter(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+            subtitle: Text("Deep scan user account issues", style: GoogleFonts.inter(fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
             trailing: const Icon(Icons.arrow_forward_ios, size: 14),
             onTap: () {
                Navigator.push(context, MaterialPageRoute(builder: (_) => const UserXRayScreen()));
@@ -55,8 +59,8 @@ class RemoteConfigCard extends StatelessWidget {
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: divIcon(Icons.wallpaper, Colors.pinkAccent),
-            title: Text("Splash Screen Manager", style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-            subtitle: Text("Change app startup image", style: GoogleFonts.inter(fontSize: 12)),
+            title: Text("Splash Screen Manager", style: GoogleFonts.inter(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+            subtitle: Text("Change app startup image", style: GoogleFonts.inter(fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
             trailing: const Icon(Icons.arrow_forward_ios, size: 14),
             onTap: () {
                Navigator.push(context, MaterialPageRoute(builder: (_) => const SplashManagerScreen()));

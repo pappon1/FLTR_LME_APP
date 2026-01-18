@@ -73,28 +73,31 @@ class StatCard extends StatelessWidget {
                         color: Colors.white.withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: Row(
-                        children: [
-                          FaIcon(
-                            isPositive
-                                ? FontAwesomeIcons.arrowUp
-                                : FontAwesomeIcons.arrowDown,
-                            color: Colors.white,
-                            size: 9,
-                          ),
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: Text(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            FaIcon(
+                              isPositive
+                                  ? FontAwesomeIcons.arrowUp
+                                  : FontAwesomeIcons.arrowDown,
+                              color: Colors.white,
+                              size: 9,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
                               trend.split(' ').first,
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 9,
                                 fontWeight: FontWeight.bold,
                               ),
+                              maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),

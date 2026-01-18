@@ -1010,7 +1010,13 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                             ), 
                             child: _isSending 
                               ? const CircularProgressIndicator(color: Colors.white) 
-                              : Text((_isScheduled && _scheduledDate != null && _scheduledTime != null) ? 'Schedule Notification' : 'Send Now', style: const TextStyle(fontWeight: FontWeight.bold))
+                              : FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    (_isScheduled && _scheduledDate != null && _scheduledTime != null) ? 'Schedule Notification' : 'Send Now', 
+                                    style: const TextStyle(fontWeight: FontWeight.bold)
+                                  ),
+                                )
                           ),
                         ),
                       ),

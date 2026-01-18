@@ -50,6 +50,8 @@ class StudentListItem extends StatelessWidget {
         ),
         title: Text(
           student.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: AppTheme.bodyMedium(context).copyWith(
             fontWeight: FontWeight.w600,
           ),

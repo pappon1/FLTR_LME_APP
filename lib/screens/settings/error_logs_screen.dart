@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import '../../widgets/shimmer_loading.dart';
 
 class ErrorLogsScreen extends StatelessWidget {
   const ErrorLogsScreen({super.key});
@@ -13,7 +14,10 @@ class ErrorLogsScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("System Error Logs", style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text("System Error Logs", style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
+        ),
         backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
         iconTheme: IconThemeData(color: theme.textTheme.bodyLarge?.color),
@@ -26,7 +30,7 @@ class ErrorLogsScreen extends StatelessWidget {
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+            return SimpleShimmerList(itemCount: 4, itemHeight: 120.0);
           }
 
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
@@ -81,10 +85,15 @@ class ErrorLogsScreen extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          data['title'] ?? 'Unknown Error',
-                          style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.redAccent),
+                        Expanded(
+                          child: Text(
+                            data['title'] ?? 'Unknown Error',
+                            style: GoogleFonts.inter(fontWeight: FontWeight.bold, color: Colors.redAccent),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
+                        const SizedBox(width: 8),
                         Text(
                           DateFormat('MMM d, h:mm a').format(timestamp),
                           style: GoogleFonts.inter(fontSize: 12, color: Colors.grey),

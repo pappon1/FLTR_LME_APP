@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
+import '../../widgets/shimmer_loading.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -181,7 +182,7 @@ class _DashboardTabState extends State<DashboardTab> {
       body: Consumer<DashboardProvider>(
         builder: (context, provider, child) {
           if (provider.isLoading && provider.courses.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
+            return _buildShimmerDashboard(context);
           }
           
           final stats = provider.stats;
@@ -209,16 +210,21 @@ class _DashboardTabState extends State<DashboardTab> {
                             ),
                             const SizedBox(width: 12),
                             Flexible(
-                              child: Text(
-                                'Announcements', 
-                                style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.bodyLarge?.color),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  'Announcements', 
+                                  style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.bodyLarge?.color),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ),
+                      const SizedBox(width: 8),
                       InkWell(
                          onTap: () {
                            Navigator.push(context, MaterialPageRoute(builder: (_) => const UploadAnnouncementScreen()));
@@ -231,7 +237,10 @@ class _DashboardTabState extends State<DashboardTab> {
                              borderRadius: BorderRadius.circular(20),
                              border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3))
                            ),
-                           child: Text('Manage', style: GoogleFonts.inter(color: AppTheme.primaryColor, fontSize: 12, fontWeight: FontWeight.w600)),
+                           child: FittedBox(
+                             fit: BoxFit.scaleDown,
+                             child: Text('Manage', style: GoogleFonts.inter(color: AppTheme.primaryColor, fontSize: 12, fontWeight: FontWeight.w600))
+                           ),
                          ),
                       )
                     ],
@@ -434,7 +443,7 @@ class _DashboardTabState extends State<DashboardTab> {
             const SizedBox(height: 24),
             
             // Popular Courses Header Shimmer
-            Container(height: 20, width: 150, color: Colors.white),
+            Container(height: 20, width: 150, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4))),
             const SizedBox(height: 16),
             
             // Popular Courses Carousel Shimmer

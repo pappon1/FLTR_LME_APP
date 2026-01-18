@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../utils/app_theme.dart';
 import 'package:shimmer/shimmer.dart';
+import '../../widgets/shimmer_loading.dart';
 import '../../widgets/course_card.dart';
 import 'add_course_screen.dart';
 
@@ -15,9 +16,13 @@ class CoursesTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Courses',
-          style: AppTheme.heading2(context),
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Courses',
+            style: AppTheme.heading2(context),
+          ),
         ),
         actions: [
           Padding(
@@ -30,7 +35,10 @@ class CoursesTab extends StatelessWidget {
                 );
               },
               icon: const FaIcon(FontAwesomeIcons.plus, size: 16),
-              label: const Text('Add Course'),
+              label: const FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text('Add Course'),
+              ),
               style: FilledButton.styleFrom(
                 backgroundColor: AppTheme.primaryColor,
                 foregroundColor: Colors.white,
@@ -99,21 +107,6 @@ class CoursesTab extends StatelessWidget {
   }
 
   Widget _buildShimmerGrid() {
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: 4,
-      separatorBuilder: (context, index) => const SizedBox(height: 16),
-      itemBuilder: (context, index) => Shimmer.fromColors(
-        baseColor: Colors.grey[300]!,
-        highlightColor: Colors.grey[100]!,
-        child: Container(
-          height: 120,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-      ),
-    );
+    return SimpleShimmerList(itemCount: 4, itemHeight: 120.0);
   }
 }

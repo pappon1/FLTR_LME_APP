@@ -102,12 +102,16 @@ class _SentHistoryScreenState extends State<SentHistoryScreen> {
                   title: Text(
                     data['title'] ?? 'No Title',
                     style: const TextStyle(fontWeight: FontWeight.bold),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   subtitle: Text(
                     date != null
                         ? DateFormat('MMM d, h:mm a').format(date)
                         : 'Just now',
                     style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   children: [
                     Padding(

@@ -114,16 +114,22 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                             Text(
                               data['studentName'] ?? 'Unknown User',
                               style: GoogleFonts.inter(color: textColor, fontWeight: FontWeight.w600, fontSize: 16),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 4),
                             Text(
                               DateFormat('MMM d, y • h:mm a').format(date),
                               style: GoogleFonts.inter(color: subTextColor, fontSize: 12),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                              const SizedBox(height: 2),
                             Text(
                               'Valid: ${data['validityType'] ?? 'Lifetime'}',
                               style: GoogleFonts.inter(color: primaryColor, fontSize: 11, fontWeight: FontWeight.w500),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
@@ -131,9 +137,13 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text(
-                            '+ ₹${price.toInt()}',
-                            style: GoogleFonts.inter(color: successColor, fontWeight: FontWeight.bold, fontSize: 16),
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerRight,
+                            child: Text(
+                              '+ ₹${price.toInt()}',
+                              style: GoogleFonts.inter(color: successColor, fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
                           ),
                           Container(
                             margin: const EdgeInsets.only(top: 4),

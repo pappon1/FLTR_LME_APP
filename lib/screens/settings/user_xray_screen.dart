@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import '../../widgets/shimmer_loading.dart';
 import 'ghost_home_screen.dart';
 
 class UserXRayScreen extends StatefulWidget {
@@ -105,7 +106,8 @@ class _UserXRayScreenState extends State<UserXRayScreen> {
              
              const SizedBox(height: 30),
 
-             if (_isLoading) const CircularProgressIndicator(),
+             if (_isLoading) 
+               const ShimmerLoading.rectangular(height: 400),
 
              if (_error != null)
                Text(_error!, style: GoogleFonts.inter(color: Colors.red, fontWeight: FontWeight.bold)),
@@ -149,8 +151,17 @@ class _UserXRayScreenState extends State<UserXRayScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(_userData!['name'] ?? 'No Name', style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold)),
-                    Text(_userData!['email'] ?? '', style: GoogleFonts.inter(fontSize: 14, color: Colors.grey)),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(_userData!['name'] ?? 'No Name', style: GoogleFonts.outfit(fontSize: 22, fontWeight: FontWeight.bold)),
+                    ),
+                    Text(
+                      _userData!['email'] ?? '', 
+                      style: GoogleFonts.inter(fontSize: 14, color: Colors.grey),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ],
                 ),
               ),
@@ -239,9 +250,9 @@ class _UserXRayScreenState extends State<UserXRayScreen> {
             child: Icon(icon, color: color, size: 16),
           ),
           const SizedBox(width: 12),
-          Text(label, style: GoogleFonts.inter(color: Colors.grey[600], fontSize: 14)),
-          const Spacer(),
-          Text(value, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14)),
+          Flexible(child: Text(label, style: GoogleFonts.inter(color: Colors.grey[600], fontSize: 14), overflow: TextOverflow.ellipsis)),
+          const SizedBox(width: 8),
+          Flexible(child: Text(value, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14), textAlign: TextAlign.right, overflow: TextOverflow.ellipsis)),
         ],
       ),
     );
@@ -334,35 +345,37 @@ class _ScreenshotSpyDialogState extends State<ScreenshotSpyDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Container(
         padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-             if (_imageUrl != null)
-               Column(
-                 children: [
-                   Text("Target Screen View", style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18)),
-                   const SizedBox(height: 16),
-                   ClipRRect(
-                     borderRadius: BorderRadius.circular(12),
-                     child: Image.network(_imageUrl!, height: 400, fit: BoxFit.contain),
-                   ),
-                   const SizedBox(height: 16),
-                   ElevatedButton(onPressed: () => Navigator.pop(context), child: const Text("Close"))
-                 ],
-               )
-             else 
-               Column(
-                 children: [
-                   if (!_isError) const CircularProgressIndicator(color: Colors.redAccent),
-                   if (_isError) const Icon(Icons.error_outline, color: Colors.red, size: 50),
-                   const SizedBox(height: 20),
-                   Text(_status, textAlign: TextAlign.center, style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
-                   const SizedBox(height: 20),
-                   if (_imageUrl == null)
-                     TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-                 ],
-               )
-          ],
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+               if (_imageUrl != null)
+                 Column(
+                   children: [
+                     Text("Target Screen View", style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18)),
+                     const SizedBox(height: 16),
+                     ClipRRect(
+                       borderRadius: BorderRadius.circular(12),
+                       child: Image.network(_imageUrl!, height: 400, fit: BoxFit.contain),
+                     ),
+                     const SizedBox(height: 16),
+                     ElevatedButton(onPressed: () => Navigator.pop(context), child: const Text("Close"))
+                   ],
+                 )
+               else 
+                 Column(
+                   children: [
+                     if (!_isError) const CircularProgressIndicator(color: Colors.redAccent),
+                     if (_isError) const Icon(Icons.error_outline, color: Colors.red, size: 50),
+                     const SizedBox(height: 20),
+                     Text(_status, textAlign: TextAlign.center, style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
+                     const SizedBox(height: 20),
+                     if (_imageUrl == null)
+                       TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+                   ],
+                 )
+            ],
+          ),
         ),
       ),
     );

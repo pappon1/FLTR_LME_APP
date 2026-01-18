@@ -107,15 +107,21 @@ class _SystemHealthCardState extends State<SystemHealthCard> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Icon(Icons.monitor_heart_outlined, color: Colors.blueAccent[100], size: 20),
-                  const SizedBox(width: 10),
-                  Text(
-                    'System Health',
-                    style: GoogleFonts.outfit(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                ],
+              Expanded(
+                child: Row(
+                  children: [
+                    Icon(Icons.monitor_heart_outlined, color: Colors.blueAccent[100], size: 20),
+                    const SizedBox(width: 10),
+                    Flexible(
+                      child: Text(
+                        'System Health',
+                        style: GoogleFonts.outfit(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               InkWell(
                 onTap: _performChecks,
@@ -145,9 +151,9 @@ class _SystemHealthCardState extends State<SystemHealthCard> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             crossAxisCount: 2,
-            childAspectRatio: 2.5,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
+            childAspectRatio: 2.0, // Increased height to prevent vertical overflow
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
             children: [
               _buildStatusItem("Database", "Firestore", _dbStatus, FontAwesomeIcons.database),
               _buildStatusItem("Video Server", "BunnyCDN", _cdnStatus, FontAwesomeIcons.server),
@@ -195,7 +201,7 @@ class _SystemHealthCardState extends State<SystemHealthCard> {
     }
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(12),
@@ -204,31 +210,49 @@ class _SystemHealthCardState extends State<SystemHealthCard> {
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: statusColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: FaIcon(icon, color: statusColor, size: 14),
+            child: FaIcon(icon, color: statusColor, size: 13),
           ),
-          const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(label, style: GoogleFonts.inter(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 2),
-              Row(
-                children: [
-                  if (status == 0) 
-                     SizedBox(width: 8, height: 8, child: CircularProgressIndicator(strokeWidth: 1, color: statusColor))
-                  else
-                     Icon(statusIcon, color: statusColor, size: 10),
-                  const SizedBox(width: 4),
-                  Text(statusText, style: GoogleFonts.inter(color: statusColor, fontSize: 10)),
-                ],
-              )
-            ],
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  label, 
+                  style: GoogleFonts.inter(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 1),
+                Row(
+                  children: [
+                    if (status == 0) 
+                       SizedBox(width: 8, height: 8, child: CircularProgressIndicator(strokeWidth: 1, color: statusColor))
+                    else
+                       Icon(statusIcon, color: statusColor, size: 9),
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          statusText, 
+                          style: GoogleFonts.inter(color: statusColor, fontSize: 9),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ],
+                )
+              ],
+            ),
           ),
         ],
       ),

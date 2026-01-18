@@ -39,15 +39,21 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
             horizontal: 16, 
             vertical: 10 - (progress * 5) 
           ), 
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildStepCircle(0, 'Basic Info', progress),
-              _buildStepLine(0, progress),
-              _buildStepCircle(1, 'Contents', progress),
-              _buildStepLine(1, progress),
-              _buildStepCircle(2, 'Advance', progress),
-            ],
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: SizedBox(
+              width: MediaQuery.of(context).size.width - 80, // Allow some padding
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(child: _buildStepCircle(0, 'Basic Info', progress)),
+                  _buildStepLine(0, progress),
+                  Flexible(child: _buildStepCircle(1, 'Contents', progress)),
+                  _buildStepLine(1, progress),
+                  Flexible(child: _buildStepCircle(2, 'Advance', progress)),
+                ],
+              ),
+            ),
           ),
         ),
       ),
@@ -86,11 +92,18 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
           SizedBox(height: 6 - (progress * 6)),
           Opacity(
               opacity: (1.0 - progress * 2.0).clamp(0.0, 1.0), 
-              child: Text(label, style: TextStyle(
-                fontSize: fontSize, 
-                color: isActive ? AppTheme.primaryColor : Colors.grey.shade500,
-                fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-              )),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  label, 
+                  maxLines: 1,
+                  style: TextStyle(
+                    fontSize: fontSize, 
+                    color: isActive ? AppTheme.primaryColor : Colors.grey.shade500,
+                    fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
+                  ),
+                ),
+              ),
           ),
         ]
       ],

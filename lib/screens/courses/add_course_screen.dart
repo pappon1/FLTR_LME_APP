@@ -354,10 +354,13 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
            icon: const Icon(Icons.close),
            onPressed: () => setState(() => _isDragModeActive = false),
          ),
-         title: const Text('Drag and Drop Mode', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-         centerTitle: true,
-         elevation: 2,
-       );
+          title: const FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text('Drag and Drop Mode', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          ),
+          centerTitle: true,
+          elevation: 2,
+        );
     }
     if (_isSelectionMode) {
        return AppBar(
@@ -370,22 +373,28 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                _selectedIndices.clear();
             }),
           ),
-          title: Text('${_selectedIndices.length} Selected', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          title: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text('${_selectedIndices.length} Selected', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))
+          ),
           actions: [
-            TextButton(
-                onPressed: () {
-                   setState(() {
-                      if (_selectedIndices.length == _courseContents.length) {
-                         _selectedIndices.clear();
-                      } else {
-                         _selectedIndices.clear();
-                         for(int i=0; i<_courseContents.length; i++) {
-                           _selectedIndices.add(i);
-                         }
-                      }
-                   });
-                },
-                child: Text(_selectedIndices.length == _courseContents.length ? 'Unselect All' : 'Select All', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white))
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: TextButton(
+                  onPressed: () {
+                     setState(() {
+                        if (_selectedIndices.length == _courseContents.length) {
+                           _selectedIndices.clear();
+                        } else {
+                           _selectedIndices.clear();
+                           for(int i=0; i<_courseContents.length; i++) {
+                             _selectedIndices.add(i);
+                           }
+                        }
+                     });
+                  },
+                  child: Text(_selectedIndices.length == _courseContents.length ? 'Unselect' : 'All', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white))
+              ),
             ),
             IconButton(icon: const Icon(Icons.copy), onPressed: () => _handleBulkCopyCut(false)),
             IconButton(icon: const Icon(Icons.delete, color: Colors.redAccent), onPressed: _handleBulkDelete),
@@ -428,7 +437,12 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
             child: ElevatedButton(
               onPressed: _currentStep == 2 ? (_isLoading ? null : _submitCourse) : _nextStep,
               style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-              child: _isLoading ? const CircularProgressIndicator(color: Colors.white) : Text(_currentStep == 2 ? 'Create Course' : 'Next Step', style: const TextStyle(color: Colors.white)),
+              child: _isLoading 
+                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
+                : FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(_currentStep == 2 ? 'Create Course' : 'Next Step', style: const TextStyle(color: Colors.white))
+                  ),
             ),
           ),
         ],
@@ -503,15 +517,15 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                   alignTop: true, 
                 ),
 
-                // 4. Pricing (Row of 3)
+                // 4. Pricing (Row of 3) - Removed icons for compact view on narrow screens
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                     Expanded(child: _buildTextField(controller: _mrpController, label: 'MRP', icon: Icons.currency_rupee, keyboardType: TextInputType.number)),
+                     Expanded(flex: 2, child: _buildTextField(controller: _mrpController, label: 'MRP', keyboardType: TextInputType.number)),
                      const SizedBox(width: 8),
-                     Expanded(child: _buildTextField(controller: _discountAmountController, label: 'Discount ₹', icon: Icons.remove_circle_outline, keyboardType: TextInputType.number)),
+                     Expanded(flex: 3, child: _buildTextField(controller: _discountAmountController, label: 'Discount ₹', keyboardType: TextInputType.number)),
                      const SizedBox(width: 8),
-                     Expanded(child: _buildTextField(controller: _finalPriceController, label: 'Final', icon: Icons.currency_rupee, keyboardType: TextInputType.number, readOnly: true)),
+                     Expanded(flex: 2, child: _buildTextField(controller: _finalPriceController, label: 'Final', keyboardType: TextInputType.number, readOnly: true)),
                   ],
                 ),
 
@@ -520,18 +534,20 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
+                        isExpanded: true,
                         initialValue: _selectedCategory,
                         decoration: InputDecoration(labelText: 'Category', floatingLabelBehavior: FloatingLabelBehavior.always, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), filled: true, fillColor: Theme.of(context).cardColor),
-                        items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                        items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))).toList(),
                         onChanged: (v) => setState(() => _selectedCategory = v),
                       ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: DropdownButtonFormField<String>(
+                        isExpanded: true,
                         initialValue: _difficulty,
                         decoration: InputDecoration(labelText: 'Course Type', floatingLabelBehavior: FloatingLabelBehavior.always, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), filled: true, fillColor: Theme.of(context).cardColor),
-                        items: _difficultyLevels.map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
+                        items: _difficultyLevels.map((l) => DropdownMenuItem(value: l, child: Text(l, overflow: TextOverflow.ellipsis))).toList(),
                         onChanged: (v) => setState(() => _difficulty = v!),
                       ),
                     ),
@@ -1188,8 +1204,8 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                  _buildTextField(controller: _durationController, label: 'Total Duration (e.g. 12 Hours)', icon: Icons.timer),
                  const SizedBox(height: 20),
                  SwitchListTile(
-                   title: const Text('Publish Course'),
-                   subtitle: const Text('Make this course visible to students immediately'),
+                   title: const Text('Publish Course', maxLines: 1, overflow: TextOverflow.ellipsis),
+                   subtitle: const Text('Visible to students immediately', maxLines: 1, overflow: TextOverflow.ellipsis),
                    value: _isPublished,
                    onChanged: (v) => setState(() => _isPublished = v),
                    activeThumbColor: AppTheme.primaryColor,

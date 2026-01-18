@@ -64,12 +64,15 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> with SingleTi
                 title: AnimatedOpacity(
                   duration: const Duration(milliseconds: 300),
                   opacity: innerBoxIsScrolled ? 1.0 : 0.0,
-                  child: Text(
-                    widget.student.name,
-                    style: GoogleFonts.poppins(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 16,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      widget.student.name,
+                      style: GoogleFonts.poppins(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
                 ),
@@ -147,14 +150,16 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> with SingleTi
                            const SizedBox(height: 16),
                            
                            // Name
-                           Text(
-                             widget.student.name,
-                             textAlign: TextAlign.center,
-                             style: GoogleFonts.poppins(
-                               fontSize: 24, 
-                               fontWeight: FontWeight.bold, 
-                               color: Colors.white,
-                               shadows: [const Shadow(color: Colors.black26, offset: Offset(0, 2), blurRadius: 4)]
+                           FittedBox(
+                             child: Text(
+                               widget.student.name,
+                               textAlign: TextAlign.center,
+                               style: GoogleFonts.poppins(
+                                 fontSize: 24, 
+                                 fontWeight: FontWeight.bold, 
+                                 color: Colors.white,
+                                 shadows: [const Shadow(color: Colors.black26, offset: Offset(0, 2), blurRadius: 4)]
+                               ),
                              ),
                            ).animate().fadeIn().moveY(begin: 10, end: 0),
                            
@@ -177,13 +182,18 @@ class _StudentDetailScreenState extends State<StudentDetailScreen> with SingleTi
                                   size: 10
                                 ),
                                 const SizedBox(width: 8),
-                                Text(
-                                  widget.student.isActive ? "ACTIVE ACCOUNT" : "INACTIVE ACCOUNT",
-                                  style: GoogleFonts.poppins(
-                                    color: Colors.white, 
-                                    fontSize: 11, 
-                                    fontWeight: FontWeight.w600, 
-                                    letterSpacing: 1.2
+                                Flexible(
+                                  child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      widget.student.isActive ? "ACTIVE ACCOUNT" : "INACTIVE ACCOUNT",
+                                      style: GoogleFonts.poppins(
+                                        color: Colors.white, 
+                                        fontSize: 11, 
+                                        fontWeight: FontWeight.w600, 
+                                        letterSpacing: 1.2
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ],
@@ -312,7 +322,12 @@ class _UserInfoTab extends StatelessWidget {
           child: FaIcon(icon, color: color, size: 20),
         ),
         title: Text(label, style: GoogleFonts.poppins(fontSize: 12, color: Theme.of(context).hintColor)),
-        subtitle: Text(value, style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600, color: Theme.of(context).textTheme.bodyLarge?.color)),
+        subtitle: Text(
+          value, 
+          style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600, color: Theme.of(context).textTheme.bodyLarge?.color),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
         trailing: IconButton(
           icon: Icon(Icons.copy_rounded, color: Theme.of(context).hintColor, size: 20),
           onPressed: () => _copy(context, value, label),
@@ -336,8 +351,12 @@ class _UserInfoTab extends StatelessWidget {
         children: [
           FaIcon(icon, color: color, size: 20),
           const SizedBox(height: 12),
-          Text(value, style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.bodyLarge?.color)),
-          Text(label, style: GoogleFonts.poppins(fontSize: 12, color: Theme.of(context).hintColor)),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(value, style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.bodyLarge?.color))
+          ),
+          Text(label, style: GoogleFonts.poppins(fontSize: 12, color: Theme.of(context).hintColor), maxLines: 1, overflow: TextOverflow.ellipsis),
         ],
       ),
     );
@@ -522,11 +541,11 @@ class _DeviceHistoryTab extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(log['device'] ?? 'Unknown', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Theme.of(context).textTheme.bodyLarge?.color)),
+                        Text(log['device'] ?? 'Unknown', style: GoogleFonts.poppins(fontWeight: FontWeight.w600, color: Theme.of(context).textTheme.bodyLarge?.color), maxLines: 1, overflow: TextOverflow.ellipsis),
                         const SizedBox(height: 4),
-                        Text('${log['location']} • ${log['ip']}', style: TextStyle(fontSize: 12, color: Theme.of(context).hintColor)),
+                        Text('${log['location']} • ${log['ip']}', style: TextStyle(fontSize: 12, color: Theme.of(context).hintColor), maxLines: 1, overflow: TextOverflow.ellipsis),
                         const SizedBox(height: 8),
-                        Text(DateFormat('MMM d, y • hh:mm a').format(DateTime.parse(log['time']!)), style: TextStyle(fontSize: 11, color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold)),
+                        Text(DateFormat('MMM d, y • hh:mm a').format(DateTime.parse(log['time']!)), style: TextStyle(fontSize: 11, color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
                       ],
                     ),
                   ),

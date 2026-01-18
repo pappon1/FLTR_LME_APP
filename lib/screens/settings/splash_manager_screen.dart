@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'dart:io';
+import '../../widgets/shimmer_loading.dart';
 
 class SplashManagerScreen extends StatefulWidget {
   const SplashManagerScreen({super.key});
@@ -87,7 +88,10 @@ class _SplashManagerScreenState extends State<SplashManagerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Splash Screen Manager", style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text("Splash Screen Manager", style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
+        ),
         elevation: 0,
       ),
       body: SingleChildScrollView(
@@ -107,7 +111,7 @@ class _SplashManagerScreenState extends State<SplashManagerScreen> {
                   : null,
               ),
               child: _isLoading 
-                ? const Center(child: CircularProgressIndicator())
+                ? const ShimmerLoading.rectangular(height: 400)
                 : _currentSplashUrl == null 
                   ? Center(child: Text("No Custom Splash Set", style: GoogleFonts.inter(color: Colors.white54)))
                   : Stack(
@@ -137,8 +141,8 @@ class _SplashManagerScreenState extends State<SplashManagerScreen> {
             
             // Controls
             SwitchListTile(
-              title: Text("Enable Custom Splash", style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-              subtitle: Text("If disabled, default app logo will be shown", style: GoogleFonts.inter(fontSize: 12)),
+              title: Text("Enable Custom Splash", style: GoogleFonts.inter(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+              subtitle: Text("If disabled, default app logo will be shown", style: GoogleFonts.inter(fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
               value: _isActive,
               onChanged: _toggleActive,
               contentPadding: EdgeInsets.zero,

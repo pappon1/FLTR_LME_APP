@@ -109,9 +109,13 @@ class _PopularCoursesCarouselState extends State<PopularCoursesCarousel> {
             children: [
               const FaIcon(FontAwesomeIcons.fire, color: Colors.orange, size: 20),
               const SizedBox(width: 8),
-              Text(
-                'Popular Courses',
-                style: AppTheme.heading3(context),
+              Flexible(
+                child: Text(
+                  'Popular Courses',
+                  style: AppTheme.heading3(context),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
@@ -141,21 +145,30 @@ class _PopularCoursesCarouselState extends State<PopularCoursesCarousel> {
             ),
           )
         else
-          SizedBox(
-            height: 320, 
-            child: PageView.builder(
-              controller: _pageController,
-              onPageChanged: (index) {
-                setState(() {
-                  _currentPage = index;
-                });
-              },
-              itemCount: courses.length,
-              itemBuilder: (context, index) {
-                final course = courses[index];
-                return _buildCourseCard(context, course);
-              },
-            ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              // Calculate a dynamic height based on width to avoid overflow on wide screens
+              // Image is 16:9, plus we need space for text (approx 100-120px)
+              final imageHeight = constraints.maxWidth * (9/16);
+              final dynamicHeight = imageHeight + 100; // 100px for text and padding
+              
+              return SizedBox(
+                height: dynamicHeight, 
+                child: PageView.builder(
+                  controller: _pageController,
+                  onPageChanged: (index) {
+                    setState(() {
+                      _currentPage = index;
+                    });
+                  },
+                  itemCount: courses.length,
+                  itemBuilder: (context, index) {
+                    final course = courses[index];
+                    return _buildCourseCard(context, course);
+                  },
+                ),
+              );
+            }
           ),
 
         const SizedBox(height: 12),
@@ -247,12 +260,16 @@ class _PopularCoursesCarouselState extends State<PopularCoursesCarousel> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // Title
-                  Text(
-                    course.title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTheme.heading3(context).copyWith(fontSize: 18),
-                  ),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        course.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTheme.heading3(context).copyWith(fontSize: 18),
+                      ),
+                    ),
                   
                   const SizedBox(height: 8),
 

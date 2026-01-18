@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:intl/intl.dart';
 import '../../services/razorpay_service.dart';
+import '../../widgets/shimmer_loading.dart';
 
 class RazorpaySettlementsScreen extends StatefulWidget {
   const RazorpaySettlementsScreen({super.key});
@@ -44,7 +46,7 @@ class _RazorpaySettlementsScreenState extends State<RazorpaySettlementsScreen> {
         title: Text("Settlements", style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? SimpleShimmerList(itemHeight: 80.0)
           : _error != null
               ? Center(child: Padding(padding: const EdgeInsets.all(20), child: Text("Error: $_error\n\nPlease check your API Keys in Config.", textAlign: TextAlign.center)))
               : ListView.builder(
@@ -63,7 +65,11 @@ class _RazorpaySettlementsScreenState extends State<RazorpaySettlementsScreen> {
                           backgroundColor: status == 'processed' ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
                           child: Icon(Icons.account_balance, color: status == 'processed' ? Colors.green : Colors.orange, size: 20),
                         ),
-                        title: Text("₹$amount", style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                        title: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text("₹$amount", style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+                        ),
                         subtitle: Text(DateFormat('MMM d, y • h:mm a').format(date)),
                         trailing: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

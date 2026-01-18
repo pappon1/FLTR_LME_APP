@@ -132,7 +132,7 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Video')),
+      appBar: AppBar(title: const FittedBox(fit: BoxFit.scaleDown, child: Text('Add Video'))),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -156,10 +156,17 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
                     children: [
                       Icon(Icons.video_file, size: 50, color: _videoFile != null ? Colors.green : Colors.grey),
                       const SizedBox(height: 8),
-                      Text(
-                        _videoFile != null ? _videoFile!.path.split('/').last : 'Tap to select Video',
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      Flexible(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 8),
+                          child: Text(
+                            _videoFile != null ? _videoFile!.path.split('/').last : 'Tap to select Video',
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -188,7 +195,13 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
                       child: _thumbnailFile == null ? const Icon(Icons.image) : null,
                     ),
                     const SizedBox(width: 16),
-                    const Text('Select Thumbnail (Optional)'),
+                    const Expanded(
+                      child: Text(
+                        'Select Thumbnail (Optional)',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
               ),

@@ -48,8 +48,22 @@ class UserProfileScreen extends StatelessWidget {
                         child: imageUrl.isEmpty ? const FaIcon(FontAwesomeIcons.user, size: 40, color: Colors.grey) : null,
                       ),
                       const SizedBox(height: 16),
-                      Text(name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24, color: Colors.white)),
-                      Text(email, style: const TextStyle(color: Colors.white70)),
+                      FittedBox(
+                        child: Text(
+                          name, 
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 24, color: Colors.white),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      FittedBox(
+                        child: Text(
+                          email, 
+                          style: const TextStyle(color: Colors.white70),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
                     ],
                   ),
                 ),

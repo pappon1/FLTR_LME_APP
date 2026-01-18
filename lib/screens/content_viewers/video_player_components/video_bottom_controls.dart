@@ -134,21 +134,27 @@ class VideoBottomControls extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 3),
-                    if (!isLocked)
-                      Text(
-                        "Lock",
-                        style: TextStyle(color: color, fontSize: 10),
-                      ),
+                      if (!isLocked)
+                        const FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            "Lock",
+                            style: TextStyle(color: Colors.white, fontSize: 10), // Fixed color access since we are in builder but using local var 'color'
+                          ),
+                        ),
                     if (isLocked && isUnlockControlsVisible)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          "Double tap\nto unlock",
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: color,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            "Double tap\nto unlock",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: color,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       )
@@ -203,9 +209,12 @@ class VideoBottomControls extends StatelessWidget {
               children: [
                 Icon(icon, color: color, size: 22),
                 const SizedBox(height: 3),
-                Text(
-                  label,
-                  style: TextStyle(color: color, fontSize: 10),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    label,
+                    style: TextStyle(color: color, fontSize: 10),
+                  ),
                 ),
               ],
             ),

@@ -123,11 +123,17 @@ class EnrollmentDetailScreen extends StatelessWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      student.name.toUpperCase(),
-                                      style: GoogleFonts.montserrat(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.1),
-                                    ),
-                                    const SizedBox(height: 4),
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          student.name.toUpperCase(),
+                                          style: GoogleFonts.montserrat(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.1),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
                                     Row(
                                       children: [
                                         Icon(Icons.message, size: 12, color: Colors.white.withValues(alpha: 0.6)),
@@ -239,7 +245,9 @@ class EnrollmentDetailScreen extends StatelessWidget {
                     color: isHighlighted ? Colors.white : Colors.white70, 
                     fontSize: isHighlighted ? 16 : 14, 
                     fontWeight: isHighlighted ? FontWeight.bold : FontWeight.normal
-                  )
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
                 ),
               ],
             ),

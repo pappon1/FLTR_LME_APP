@@ -89,9 +89,13 @@ class _TechManagementCardState extends State<TechManagementCard> {
             children: [
               const Icon(Icons.terminal, color: Colors.purpleAccent, size: 20),
               const SizedBox(width: 10),
-              Text(
-                'Adv. Technical Controls',
-                style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600, color: theme.textTheme.bodyLarge?.color),
+              Expanded(
+                child: Text(
+                  'Adv. Technical Controls',
+                  style: GoogleFonts.outfit(fontSize: 16, fontWeight: FontWeight.w600, color: theme.textTheme.bodyLarge?.color),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
@@ -146,13 +150,19 @@ class _TechManagementCardState extends State<TechManagementCard> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text("Refresh Rate:", style: GoogleFonts.inter(fontSize: 12, color: theme.textTheme.bodyMedium?.color)),
-                    Text(
-                      _cacheDurationHours >= 24 
-                          ? "Every 24 Hours (Best Savings)" 
-                          : _cacheDurationHours < 1 
-                              ? "Every 30 Mins (High Cost)" 
-                              : "Every ${_cacheDurationHours.toStringAsFixed(0)} Hours",
-                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueAccent),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _cacheDurationHours >= 24 
+                            ? "Every 24 Hours (Best Savings)" 
+                            : _cacheDurationHours < 1 
+                                ? "Every 30 Mins (High Cost)" 
+                                : "Every ${_cacheDurationHours.toStringAsFixed(0)} Hours",
+                        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.blueAccent),
+                        textAlign: TextAlign.right,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),
@@ -196,7 +206,7 @@ class _TechManagementCardState extends State<TechManagementCard> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         decoration: BoxDecoration(
           color: theme.scaffoldBackgroundColor,
           borderRadius: BorderRadius.circular(12),
@@ -209,10 +219,17 @@ class _TechManagementCardState extends State<TechManagementCard> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             isLoading 
-              ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: color))
-              : Icon(icon, color: color, size: 18),
-            const SizedBox(width: 8),
-            Text(label, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: theme.textTheme.bodyLarge?.color)),
+              ? SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: color))
+              : Icon(icon, color: color, size: 16),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                label, 
+                style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: theme.textTheme.bodyLarge?.color),
+                maxLines: 1, 
+                overflow: TextOverflow.ellipsis
+              ),
+            ),
           ],
         ),
       ),

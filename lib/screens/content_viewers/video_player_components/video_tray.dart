@@ -9,6 +9,7 @@ class VideoTray extends StatelessWidget {
   final bool isDraggingSpeedSlider;
   final Function(String) onItemSelected;
   final Function(double) onSpeedChanged;
+  final Function(double) onSpeedChangeEnd;
   final VoidCallback onClose;
   final VoidCallback onInteraction;
 
@@ -23,6 +24,7 @@ class VideoTray extends StatelessWidget {
     required this.isDraggingSpeedSlider,
     required this.onItemSelected,
     required this.onSpeedChanged,
+    required this.onSpeedChangeEnd,
     required this.onClose,
     required this.onInteraction,
     this.isLandscape = false,
@@ -113,6 +115,7 @@ class VideoTray extends StatelessWidget {
               max: 3.0,
               divisions: 50,
               onChanged: onSpeedChanged,
+              onChangeEnd: onSpeedChangeEnd,
             ),
           ),
         ],

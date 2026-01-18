@@ -49,6 +49,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
               flexibleSpace: FlexibleSpaceBar(
                 title: Text(
                   widget.course.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 16,
@@ -100,8 +102,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
                   unselectedLabelColor: Colors.grey,
                   indicatorColor: AppTheme.primaryColor,
                   tabs: const [
-                    Tab(text: 'Content'),
-                    Tab(text: 'Students'),
+                    Tab(child: FittedBox(fit: BoxFit.scaleDown, child: Text('Content'))),
+                    Tab(child: FittedBox(fit: BoxFit.scaleDown, child: Text('Students'))),
                   ],
                 ),
               ),
@@ -201,7 +203,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
                       : const Center(child: Icon(Icons.play_circle_outline, color: Colors.white70, size: 32)),
                 ),
                 title: Text(video.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                subtitle: Text('${video.duration} min • ${video.isFree ? "Free" : "Paid"}'),
+                subtitle: Text('${video.duration} min • ${video.isFree ? "Free" : "Paid"}', maxLines: 1, overflow: TextOverflow.ellipsis),
                 trailing: IconButton(
                   icon: const Icon(Icons.more_vert),
                   onPressed: () => _confirmDeleteVideo(video),
@@ -246,8 +248,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
            margin: const EdgeInsets.only(bottom: 8),
            child: ListTile(
              leading: CircleAvatar(backgroundColor: color.withValues(alpha: 0.1), child: Icon(icon, color: color)),
-             title: Text(name),
-             subtitle: type == 'video' ? Text(item['duration'] ?? '') : null,
+             title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
+             subtitle: type == 'video' ? Text(item['duration'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis) : null,
              trailing: const Icon(Icons.arrow_forward_ios, size: 16),
              onTap: () {
                if (type == 'folder') {

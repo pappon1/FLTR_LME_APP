@@ -591,24 +591,39 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
     notifyListeners();
   }
 
+  void resetTrayHideTimer() {
+    if (activeTrayNotifier.value != null) {
+      _startTrayHideTimer();
+    } else {
+      startHideTimer();
+    }
+  }
+
   // Optimized Speed Handling
-  void updatePlaybackSpeed(double s, {bool isFinal = false}) {
+  void updatePlaybackSpeed(double s) {
     engine.setRate(s);
     playbackSpeedNotifier.value = s;
-    _isDraggingSpeedSlider = !isFinal;
+    _isDraggingSpeedSlider = true;
     
-    if (isFinal) {
-      activeTrayNotifier.value = null;
-      startHideTimer();
-    } else {
-      _hideTimer?.cancel();
-      _trayHideTimer?.cancel();
-    }
+    // While dragging, cancel timers
+    _hideTimer?.cancel();
+    _trayHideTimer?.cancel();
     notifyListeners();
   }
 
+  void onSpeedSliderEnd(double s) {
+    _isDraggingSpeedSlider = false;
+    // Don't close immediately, just restart timer (Smart optimize)
+    _startTrayHideTimer();
+  }
+
   void setPlaybackSpeed(double s) {
-    updatePlaybackSpeed(s, isFinal: true);
+    // For direct button presses, close immediately
+    engine.setRate(s);
+    playbackSpeedNotifier.value = s;
+    activeTrayNotifier.value = null;
+    startHideTimer();
+    notifyListeners();
   }
 
   void seekRelative(int seconds) {

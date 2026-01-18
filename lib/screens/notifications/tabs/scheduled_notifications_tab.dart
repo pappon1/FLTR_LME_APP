@@ -231,6 +231,8 @@ class _ScheduledNotificationsTabState extends State<ScheduledNotificationsTab> {
                     children: [
                       Text(
                         title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
@@ -240,6 +242,8 @@ class _ScheduledNotificationsTabState extends State<ScheduledNotificationsTab> {
                       const SizedBox(height: 4),
                       Text(
                         message,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 14,
                           color: isDark ? Colors.grey[400] : Colors.black87,

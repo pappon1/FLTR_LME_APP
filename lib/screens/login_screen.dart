@@ -112,11 +112,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 40),
 
                   // Title
-                  Text(
-                    'Admin Dashboard',
-                    style: AppTheme.heading1(context).copyWith(
-                      color: Colors.white,
-                      fontSize: 32,
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      'Admin Dashboard',
+                      style: AppTheme.heading1(context).copyWith(
+                        color: Colors.white,
+                        fontSize: 32,
+                      ),
                     ),
                   )
                       .animate()
@@ -131,6 +134,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: AppTheme.bodyLarge(context).copyWith(
                       color: Colors.white.withValues(alpha: 0.9),
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   )
                       .animate()
                       .fadeIn(delay: 400.ms, duration: 600.ms)
@@ -147,11 +152,14 @@ class _LoginScreenState extends State<LoginScreen> {
                             FontAwesomeIcons.google,
                             size: 20,
                           ),
-                          label: const Text(
-                            'Sign in with Google',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                          label: const FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(
+                              'Sign in with Google',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                           style: ElevatedButton.styleFrom(

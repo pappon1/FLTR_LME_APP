@@ -337,8 +337,8 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
                    unselectedLabelColor: Colors.white70,
                    labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 12),
                    tabs: const [
-                     Tab(text: 'EXISTING USER'),
-                     Tab(text: 'NEW USER (CREATE)'),
+                     Tab(child: FittedBox(fit: BoxFit.scaleDown, child: Text('EXISTING USER'))),
+                     Tab(child: FittedBox(fit: BoxFit.scaleDown, child: Text('NEW USER (CREATE)'))),
                    ],
                  ),
                ),
@@ -564,14 +564,15 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
         children: [
           Text("SELECT COURSE", style: GoogleFonts.rubik(color: Colors.white70, fontSize: 10, letterSpacing: 1.5)),
           const SizedBox(height: 8),
-          DropdownButtonFormField<String>(
+           DropdownButtonFormField<String>(
             dropdownColor: _techDark,
+            isExpanded: true,
             style: const TextStyle(color: Colors.white),
             decoration: _inputDecoration(null),
             initialValue: _selectedCourseId,
-            items: _courses.map((c) => DropdownMenuItem(value: c.id, child: Text(c.title))).toList(),
+            items: _courses.map((c) => DropdownMenuItem(value: c.id, child: Text(c.title, overflow: TextOverflow.ellipsis))).toList(),
             onChanged: (v) => setState(() => _selectedCourseId = v),
-            hint: const Text("Choose Course", style: TextStyle(color: Colors.white38)),
+            hint: const Text("Choose Course", style: TextStyle(color: Colors.white38), overflow: TextOverflow.ellipsis),
           ),
           
           const SizedBox(height: 20),
@@ -579,13 +580,14 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
           const SizedBox(height: 8),
           Row(
             children: [
-              Expanded(
+               Expanded(
                 child: DropdownButtonFormField<String>(
                   dropdownColor: _techDark,
+                  isExpanded: true,
                   style: const TextStyle(color: Colors.white),
                   decoration: _inputDecoration(null),
                   initialValue: _validityType,
-                  items: ['Course Validity', 'Lifetime', '1 Year', 'Custom'].map((v) => DropdownMenuItem(value: v, child: Text(v))).toList(),
+                  items: ['Course Validity', 'Lifetime', '1 Year', 'Custom'].map((v) => DropdownMenuItem(value: v, child: Text(v, overflow: TextOverflow.ellipsis))).toList(),
                   onChanged: (v) => setState(() => _validityType = v!),
                 ),
               ),

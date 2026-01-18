@@ -248,20 +248,25 @@ class _VideoControlsSection extends StatelessWidget {
                           child: ValueListenableBuilder<double>(
                               valueListenable: logic.playbackSpeedNotifier,
                               builder: (context, speed, _) {
-                                return VideoBottomControls(
-                                  isLocked: isLocked,
-                                  isLandscape: false,
-                                  isUnlockControlsVisible: logic.isUnlockControlsVisible,
-                                  playbackSpeed: speed,
-                                  currentQuality: logic.currentQuality,
-                                  activeTray: logic.activeTray,
-                                  onToggleTraySpeed: () => logic.toggleTray('speed'),
-                                  onToggleTrayQuality: () => logic.toggleTray('quality'),
-                                  onLockTap: isLocked ? logic.handleLockedTap : logic.toggleLock,
-                                  onDoubleLockTap: logic.toggleLock,
-                                  onOrientationTap: () => logic.toggleOrientation(context),
-                                  onResetSpeed: () => logic.setPlaybackSpeed(1.0),
-                                  onResetQuality: () => logic.setTrayItem("Auto"),
+                                return ValueListenableBuilder<bool>(
+                                  valueListenable: logic.isUnlockControlsVisibleNotifier,
+                                  builder: (context, isUnlockVisible, _) {
+                                    return VideoBottomControls(
+                                      isLocked: isLocked,
+                                      isLandscape: false,
+                                      isUnlockControlsVisible: isUnlockVisible,
+                                      playbackSpeed: speed,
+                                      currentQuality: logic.currentQuality,
+                                      activeTray: logic.activeTray,
+                                      onToggleTraySpeed: () => logic.toggleTray('speed'),
+                                      onToggleTrayQuality: () => logic.toggleTray('quality'),
+                                      onLockTap: isLocked ? logic.handleLockedTap : logic.toggleLock,
+                                      onDoubleLockTap: logic.toggleLock,
+                                      onOrientationTap: () => logic.toggleOrientation(context),
+                                      onResetSpeed: () => logic.setPlaybackSpeed(1.0),
+                                      onResetQuality: () => logic.setTrayItem("Auto"),
+                                    );
+                                  },
                                 );
                               }),
                         ),
@@ -293,9 +298,10 @@ class _VideoControlsSection extends StatelessWidget {
                                             playbackSpeed: logic.playbackSpeed,
                                             isDraggingSpeedSlider: logic.isDraggingSpeedSlider,
                                             onItemSelected: logic.setTrayItem,
-                                            onSpeedChanged: (s) => logic.updatePlaybackSpeed(s, isFinal: false),
+                                            onSpeedChanged: logic.updatePlaybackSpeed,
+                                            onSpeedChangeEnd: logic.onSpeedSliderEnd,
                                             onClose: () => logic.toggleTray(activeTray),
-                                            onInteraction: () => logic.startHideTimer(),
+                                            onInteraction: () => logic.resetTrayHideTimer(),
                                           ),
                                         ),
                                       ),

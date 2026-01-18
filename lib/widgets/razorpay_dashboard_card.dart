@@ -57,14 +57,18 @@ class RazorpayDashboardCard extends StatelessWidget {
                       child: const FaIcon(FontAwesomeIcons.registered, color: Color(0xFF0C2444), size: 16), // Fake R logo
                     ),
                     const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'Razorpay Gateway',
-                        style: GoogleFonts.outfit(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      Expanded(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Razorpay Gateway',
+                            style: GoogleFonts.outfit(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ),
-                    ),
                   ],
                 ),
               ),
@@ -94,35 +98,53 @@ class RazorpayDashboardCard extends StatelessWidget {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Next Settlement',
-                      style: GoogleFonts.inter(color: Colors.white60, fontSize: 12),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '₹ 12,450.00', // Dummy dynamic look
-                      style: GoogleFonts.outfit(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Due by Tomorrow, 10 AM',
-                      style: GoogleFonts.inter(color: rzpBlue, fontSize: 11, fontWeight: FontWeight.w500),
-                    ),
-                  ],
+                    children: [
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Next Settlement',
+                          style: GoogleFonts.inter(color: Colors.white60, fontSize: 12),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          '₹ 12,450.00', // Dummy dynamic look
+                          style: GoogleFonts.outfit(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Due by Tomorrow, 10 AM',
+                          style: GoogleFonts.inter(color: rzpBlue, fontSize: 11, fontWeight: FontWeight.w500),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                 ),
               ),
               Container(width: 1, height: 50, color: Colors.white10),
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.only(left: 20),
+                  padding: const EdgeInsets.only(left: 12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                       Text(
-                        'Today\'s Collection',
-                        style: GoogleFonts.inter(color: Colors.white60, fontSize: 12),
-                      ),
+                       FittedBox(
+                         fit: BoxFit.scaleDown,
+                         alignment: Alignment.centerLeft,
+                         child: Text(
+                          'Today\'s Collection',
+                          style: GoogleFonts.inter(color: Colors.white60, fontSize: 12),
+                        ),
+                       ),
                       const SizedBox(height: 4),
                       FittedBox(
                         fit: BoxFit.scaleDown,
@@ -134,15 +156,21 @@ class RazorpayDashboardCard extends StatelessWidget {
                               '₹ 4,200',
                               style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
                             ),
-                            const SizedBox(width: 8),
-                            const Icon(Icons.trending_up, color: Colors.greenAccent, size: 18),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.trending_up, color: Colors.greenAccent, size: 16),
                           ],
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        '12 Successful Payments',
-                        style: GoogleFonts.inter(color: Colors.white54, fontSize: 11),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          '12 Successful Payments',
+                          style: GoogleFonts.inter(color: Colors.white54, fontSize: 11),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),

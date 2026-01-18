@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import '../../widgets/shimmer_loading.dart';
 
 class GhostHomeScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -72,7 +73,12 @@ class _GhostHomeScreenState extends State<GhostHomeScreen> {
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Viewing as: ${widget.userData['name']}", style: GoogleFonts.outfit(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold)),
+              Text(
+                "Viewing as: ${widget.userData['name']}",
+                style: GoogleFonts.outfit(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
               Text("Ghost Mode Active 👻", style: GoogleFonts.inter(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold)),
             ],
           ),
@@ -87,7 +93,7 @@ class _GhostHomeScreenState extends State<GhostHomeScreen> {
           ],
         ),
         body: _isLoading 
-            ? const Center(child: CircularProgressIndicator())
+            ? SafeArea(child: SimpleShimmerList(itemCount: 3, itemHeight: 200.0))
             : SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -150,7 +156,12 @@ class _GhostHomeScreenState extends State<GhostHomeScreen> {
                                     : const Icon(Icons.movie, color: Colors.grey),
                                 ),
                               ),
-                              title: Text(course['title'] ?? 'Untitled', style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+                              title: Text(
+                                course['title'] ?? 'Untitled', 
+                                style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [

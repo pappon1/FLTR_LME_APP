@@ -572,7 +572,15 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
           : _isSelectionMode 
             ? IconButton(icon: const Icon(Icons.close), onPressed: () => setState(() { _isSelectionMode = false; _selectedIndices.clear(); }))
             : null,
-        title: Text(_isDragModeActive ? 'Drag to Reorder' : _isSelectionMode ? '${_selectedIndices.length} Selected' : widget.folderName, style: TextStyle(color: (_isSelectionMode || _isDragModeActive) ? Colors.white : null)),
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            _isDragModeActive ? 'Drag to Reorder' : _isSelectionMode ? '${_selectedIndices.length} Selected' : widget.folderName, 
+            style: TextStyle(color: (_isSelectionMode || _isDragModeActive) ? Colors.white : null),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
         actions: [
           if (_isSelectionMode) ...[
             TextButton(
@@ -682,7 +690,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                                       ),
                                     ),
                                     title: Text(item['name'], style: TextStyle(fontWeight: FontWeight.bold, color: isSelected ? AppTheme.primaryColor : null), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                    subtitle: item['type'] == 'video' ? Text(item['duration'] ?? '...', style: const TextStyle(fontSize: 10)) : null,
+                                    subtitle: item['type'] == 'video' ? Text(item['duration'] ?? '...', style: const TextStyle(fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis) : null,
                                     trailing: _isSelectionMode 
                                       ? (isSelected ? const Icon(Icons.check_circle, color: AppTheme.primaryColor) : const Icon(Icons.circle_outlined)) 
                                       : _isDragModeActive ? const Icon(Icons.drag_handle, color: Colors.grey) : null,

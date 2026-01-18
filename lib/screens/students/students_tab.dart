@@ -7,7 +7,8 @@ import '../../providers/dashboard_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/student_list_item.dart';
 import '../../models/student_model.dart';
-import 'package:shimmer/shimmer.dart'; // Add this
+import 'package:shimmer/shimmer.dart'; 
+import '../../widgets/shimmer_loading.dart';
 import 'enrollment/manual_enrollment_screen.dart';
 
 class StudentsTab extends StatefulWidget {
@@ -71,9 +72,13 @@ class _StudentsTabState extends State<StudentsTab> {
                   });
                 },
               )
-            : Text(
-                widget.showOnlyBuyers ? 'Course Buyers' : 'App Download (Students)',
-                style: AppTheme.heading2(context),
+            : FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  widget.showOnlyBuyers ? 'Course Buyers' : 'App Download (Students)',
+                  style: AppTheme.heading2(context),
+                ),
               ),
         actions: [
           IconButton(
@@ -196,21 +201,10 @@ class _StudentsTabState extends State<StudentsTab> {
   }
 
   Widget _buildShimmerList() {
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
+    return ShimmerList(
       itemCount: 8,
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
-      itemBuilder: (context, index) => Shimmer.fromColors(
-        baseColor: Colors.grey[300]!,
-        highlightColor: Colors.grey[100]!,
-        child: Container(
-          height: 80,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      ),
+      padding: const EdgeInsets.all(16),
+      itemBuilder: const StudentShimmerItem(),
     );
   }
 }

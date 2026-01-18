@@ -125,30 +125,34 @@ class TopCoursesCard extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                           const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              const FaIcon(
-                                FontAwesomeIcons.users,
-                                size: 10,
-                                color: Colors.grey,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${course.enrolledStudents} students',
-                                style: AppTheme.bodySmall(context),
-                              ),
-                              const SizedBox(width: 12),
-                              const FaIcon(
-                                FontAwesomeIcons.star,
-                                size: 10,
-                                color: Colors.amber,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                course.rating.toString(),
-                                style: AppTheme.bodySmall(context),
-                              ),
-                            ],
+                          FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Row(
+                              children: [
+                                const FaIcon(
+                                  FontAwesomeIcons.users,
+                                  size: 10,
+                                  color: Colors.grey,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '${course.enrolledStudents} students',
+                                  style: AppTheme.bodySmall(context),
+                                ),
+                                const SizedBox(width: 12),
+                                const FaIcon(
+                                  FontAwesomeIcons.star,
+                                  size: 10,
+                                  color: Colors.amber,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  course.rating.toString(),
+                                  style: AppTheme.bodySmall(context),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),

@@ -92,7 +92,10 @@ class _ContactLinksScreenState extends State<ContactLinksScreen> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text('Manage Contact Links', style: GoogleFonts.outfit(color: textColor, fontWeight: FontWeight.w600)),
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text('Manage Contact Links', style: GoogleFonts.outfit(color: textColor, fontWeight: FontWeight.w600)),
+        ),
         centerTitle: true,
         backgroundColor: theme.scaffoldBackgroundColor,
         elevation: 0,
@@ -101,7 +104,7 @@ class _ContactLinksScreenState extends State<ContactLinksScreen> {
       body: _isLoading 
         ? Center(child: CircularProgressIndicator(color: theme.primaryColor))
         : SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
             child: Form(
               key: _formKey,
               child: Column(

@@ -16,9 +16,9 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
   @override
   Widget build(BuildContext context) {
     const tabs = [
-      Tab(text: 'Send'),
-      Tab(text: 'Scheduled'),
-      Tab(text: 'Received'),
+      Tab(child: FittedBox(fit: BoxFit.scaleDown, child: Text('Send'))),
+      Tab(child: FittedBox(fit: BoxFit.scaleDown, child: Text('Scheduled'))),
+      Tab(child: FittedBox(fit: BoxFit.scaleDown, child: Text('Received'))),
     ];
 
     const tabViews = [

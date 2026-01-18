@@ -98,16 +98,20 @@ class CourseCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                    // 1. Title (Top priority)
-                   Text(
-                      course.title,
-                      style: AppTheme.heading3(context).copyWith(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        height: 1.2,
+                   FittedBox(
+                     fit: BoxFit.scaleDown,
+                     alignment: Alignment.centerLeft,
+                     child: Text(
+                        course.title,
+                        style: AppTheme.heading3(context).copyWith(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          height: 1.2,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                   ),
 
                    const SizedBox(height: 12),
 
@@ -130,20 +134,24 @@ class CourseCard extends StatelessWidget {
                              ),
                            ),
                          ),
-                         const Spacer(),
+                         const SizedBox(width: 8),
                        ],
                        
                        // Demos (Moves to Left if Not New)
-                       Text(
-                         '$demoCount Demo Videos',
-                         style: TextStyle(
-                           color: Colors.blue.shade600,
-                           fontSize: 13,
-                           fontWeight: FontWeight.w700,
+                       Flexible(
+                         child: Text(
+                           '$demoCount Demo Videos',
+                           style: TextStyle(
+                             color: Colors.blue.shade600,
+                             fontSize: 13,
+                             fontWeight: FontWeight.w700,
+                           ),
+                           maxLines: 1,
+                           overflow: TextOverflow.ellipsis,
                          ),
                        ),
                        
-                       const Spacer(),
+                       const SizedBox(width: 12),
                        
                        // Total Videos (Right)
                        Text(
@@ -163,40 +171,46 @@ class CourseCard extends StatelessWidget {
                    Row(
                      children: [
                        // Category
-                       Text(
+                       const Text(
                          'Category: ',
                          style: TextStyle(
-                           color: Theme.of(context).textTheme.bodyMedium?.color ?? Colors.black87,
                            fontSize: 12,
                            fontWeight: FontWeight.bold,
                          ),
                        ),
-                       Text(
-                         course.category,
-                         style: TextStyle(
-                           color: Theme.of(context).primaryColor,
-                           fontSize: 12,
-                           fontWeight: FontWeight.bold,
+                       Flexible(
+                         child: Text(
+                           course.category,
+                           style: TextStyle(
+                             color: Theme.of(context).primaryColor,
+                             fontSize: 12,
+                             fontWeight: FontWeight.bold,
+                           ),
+                           maxLines: 1,
+                           overflow: TextOverflow.ellipsis,
                          ),
                        ),
                        
-                       const Spacer(),
+                       const SizedBox(width: 16),
                        
                        // Type
-                       Text(
+                       const Text(
                          'Type: ',
                          style: TextStyle(
-                           color: Theme.of(context).textTheme.bodyMedium?.color ?? Colors.black87,
                            fontSize: 12,
                            fontWeight: FontWeight.bold,
                          ),
                        ),
-                       Text(
-                         course.difficulty,
-                         style: TextStyle(
-                           color: _getDifficultyColor(course.difficulty),
-                           fontSize: 12,
-                           fontWeight: FontWeight.bold,
+                       Flexible(
+                         child: Text(
+                           course.difficulty,
+                           style: TextStyle(
+                             color: _getDifficultyColor(course.difficulty),
+                             fontSize: 12,
+                             fontWeight: FontWeight.bold,
+                           ),
+                           maxLines: 1,
+                           overflow: TextOverflow.ellipsis,
                          ),
                        ),
                      ],
@@ -207,75 +221,79 @@ class CourseCard extends StatelessWidget {
                    const SizedBox(height: 12),
 
                    // 4. Pricing
-                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      // Current Price (Selling)
-                      Text(
-                        '₹${course.price}',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black,
-                        ),
-                      ),
-                      
-                      const SizedBox(width: 24),
-                      
-                      // Discounted/Cut Price (Red Strikethrough)
-                      Text(
-                        '₹${originalPrice.toInt()}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.red,
-                          decoration: TextDecoration.lineThrough,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                      
-                      const SizedBox(width: 24), // Fixed gap instead of Spacer
-                      
-                      // Discount Percentage Badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.green.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.green.withValues(alpha: 0.5))
-                        ),
-                        child: Text(
-                          '$discountPercent% OFF',
-                          style: const TextStyle(
-                            color: Colors.green,
-                            fontSize: 12,
+                   FittedBox(
+                     fit: BoxFit.scaleDown,
+                     alignment: Alignment.centerLeft,
+                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        // Current Price (Selling)
+                        Text(
+                          '₹${course.price}',
+                          style: TextStyle(
+                            fontSize: 20,
                             fontWeight: FontWeight.bold,
+                            color: Theme.of(context).textTheme.bodyLarge?.color ?? Colors.black,
                           ),
                         ),
-                      ),
-
-                      const Spacer(),
-                      
-                      // Buyers Count
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.people_outline,
-                            size: 14,
-                            color: Theme.of(context).textTheme.bodySmall?.color ?? Colors.grey,
+                        
+                        const SizedBox(width: 16),
+                        
+                        // Discounted/Cut Price (Red Strikethrough)
+                        Text(
+                          '₹${originalPrice.toInt()}',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.red,
+                            decoration: TextDecoration.lineThrough,
+                            fontWeight: FontWeight.w500,
                           ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${course.enrolledStudents} Buyers',
-                            style: TextStyle(
-                              color: Theme.of(context).textTheme.bodySmall?.color ?? Colors.grey,
+                        ),
+                        
+                        const SizedBox(width: 16),
+                        
+                        // Discount Percentage Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.green.withValues(alpha: 0.5))
+                          ),
+                          child: Text(
+                            '$discountPercent% OFF',
+                            style: const TextStyle(
+                              color: Colors.green,
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
+                        ),
+  
+                        const SizedBox(width: 16),
+                        
+                        // Buyers Count
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.people_outline,
+                              size: 14,
+                              color: Theme.of(context).textTheme.bodySmall?.color ?? Colors.grey,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${course.enrolledStudents} Buyers',
+                              style: TextStyle(
+                                color: Theme.of(context).textTheme.bodySmall?.color ?? Colors.grey,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                   ),
                 ],
               ),
             ),
