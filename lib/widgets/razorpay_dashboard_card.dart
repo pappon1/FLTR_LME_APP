@@ -48,19 +48,25 @@ class RazorpayDashboardCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
-                    child: const FaIcon(FontAwesomeIcons.registered, color: Color(0xFF0C2444), size: 16), // Fake R logo
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Razorpay Gateway',
-                    style: GoogleFonts.outfit(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
-                  ),
-                ],
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+                      child: const FaIcon(FontAwesomeIcons.registered, color: Color(0xFF0C2444), size: 16), // Fake R logo
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Razorpay Gateway',
+                        style: GoogleFonts.outfit(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -118,15 +124,20 @@ class RazorpayDashboardCard extends StatelessWidget {
                         style: GoogleFonts.inter(color: Colors.white60, fontSize: 12),
                       ),
                       const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Text(
-                            '₹ 4,200',
-                            style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
-                          ),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.trending_up, color: Colors.greenAccent, size: 18),
-                        ],
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '₹ 4,200',
+                              style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.trending_up, color: Colors.greenAccent, size: 18),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(

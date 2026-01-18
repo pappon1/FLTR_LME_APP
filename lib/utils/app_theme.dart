@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
@@ -10,10 +11,10 @@ class AppTheme {
   static const Color errorColor = Color(0xFFEF4444); // Red
   static const Color infoColor = Color(0xFF3B82F6); // Blue
   
-  static const Color darkBg = Color(0xFF0A0E27);
-  static const Color darkCard = Color(0xFF151935);
-  static const Color darkCardAlt = Color(0xFF1E2442);
-  static const Color darkBorder = Color(0xFF2A3150);
+  static const Color darkBg = Colors.black;
+  static const Color darkCard = Color(0xFF121212);
+  static const Color darkCardAlt = Color(0xFF1A1A1A);
+  static const Color darkBorder = Color(0xFF222222);
   
   static const Color lightBg = Color(0xFFF8FAFC);
   static const Color lightCard = Color(0xFFFFFFFF);
@@ -111,40 +112,45 @@ class AppTheme {
       backgroundColor: lightCard,
       elevation: 0,
       centerTitle: false,
+      systemOverlayStyle: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark, 
+        statusBarBrightness: Brightness.light,
+      ),
       titleTextStyle: GoogleFonts.outfit(
         fontSize: 20,
         fontWeight: FontWeight.w600,
-        color: Colors.black87,
+        color: Colors.black,
       ),
-      iconTheme: const IconThemeData(color: Colors.black87),
+      iconTheme: const IconThemeData(color: Colors.black),
     ),
     textTheme: TextTheme(
       headlineLarge: GoogleFonts.outfit(
         fontSize: 32,
         fontWeight: FontWeight.bold,
-        color: Colors.black87,
+        color: Colors.black,
       ),
       headlineMedium: GoogleFonts.outfit(
         fontSize: 24,
         fontWeight: FontWeight.bold,
-        color: Colors.black87,
+        color: Colors.black,
       ),
       headlineSmall: GoogleFonts.outfit(
         fontSize: 20,
         fontWeight: FontWeight.w600,
-        color: Colors.black87,
+        color: Colors.black,
       ),
       bodyLarge: GoogleFonts.inter(
         fontSize: 16,
-        color: Colors.black54,
+        color: Colors.black87,
       ),
       bodyMedium: GoogleFonts.inter(
         fontSize: 14,
-        color: Colors.black54,
+        color: Colors.black87,
       ),
       bodySmall: GoogleFonts.inter(
         fontSize: 12,
-        color: Colors.black45,
+        color: Colors.black54,
       ),
     ),
   );
@@ -173,6 +179,11 @@ class AppTheme {
       backgroundColor: darkCard,
       elevation: 0,
       centerTitle: false,
+      systemOverlayStyle: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light, 
+        statusBarBrightness: Brightness.dark,
+      ),
       titleTextStyle: GoogleFonts.outfit(
         fontSize: 20,
         fontWeight: FontWeight.w600,

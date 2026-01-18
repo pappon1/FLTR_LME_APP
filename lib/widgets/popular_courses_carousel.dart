@@ -100,10 +100,6 @@ class _PopularCoursesCarouselState extends State<PopularCoursesCarousel> {
   Widget build(BuildContext context) {
     final courses = _popularCourses;
 
-    if (courses.isEmpty) {
-      return const SizedBox.shrink(); 
-    }
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -121,23 +117,46 @@ class _PopularCoursesCarouselState extends State<PopularCoursesCarousel> {
           ),
         ),
         
-        // Carousel Container with fixed height
-        SizedBox(
-          height: 320, // Height for 16:9 Image + Details
-          child: PageView.builder(
-            controller: _pageController,
-            onPageChanged: (index) {
-              setState(() {
-                _currentPage = index;
-              });
-            },
-            itemCount: courses.length,
-            itemBuilder: (context, index) {
-              final course = courses[index];
-              return _buildCourseCard(context, course);
-            },
+        // Carousel Container
+        if (courses.isEmpty)
+          Container(
+            height: 200,
+            width: double.infinity,
+            margin: const EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(
+              color: Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.3)),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                FaIcon(FontAwesomeIcons.graduationCap, size: 40, color: Colors.grey.withValues(alpha: 0.3)),
+                const SizedBox(height: 12),
+                Text(
+                  'No courses available yet',
+                  style: GoogleFonts.inter(color: Colors.grey, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          )
+        else
+          SizedBox(
+            height: 320, 
+            child: PageView.builder(
+              controller: _pageController,
+              onPageChanged: (index) {
+                setState(() {
+                  _currentPage = index;
+                });
+              },
+              itemCount: courses.length,
+              itemBuilder: (context, index) {
+                final course = courses[index];
+                return _buildCourseCard(context, course);
+              },
+            ),
           ),
-        ),
 
         const SizedBox(height: 12),
 
@@ -238,51 +257,56 @@ class _PopularCoursesCarouselState extends State<PopularCoursesCarousel> {
                   const SizedBox(height: 8),
 
                   // Price Row
-                  Row(
-                    children: [
-                      // Discounted Price
-                      Text(
-                        '₹${course.discountPrice > 0 ? course.discountPrice : course.price}',
-                        style: GoogleFonts.inter(
-                          color: AppTheme.primaryColor,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      
-                      const SizedBox(width: 8),
-
-                      // Original Price (Strikethrough)
-                      if (discountPercent > 0) ...[
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Discounted Price
                         Text(
-                          '₹${course.price}',
+                          '₹${course.discountPrice > 0 ? course.discountPrice : course.price}',
                           style: GoogleFonts.inter(
-                            color: Colors.grey,
-                            fontSize: 14,
-                            decoration: TextDecoration.lineThrough,
+                            color: AppTheme.primaryColor,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                         
                         const SizedBox(width: 8),
-
-                        // Discount Badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.red.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            '$discountPercent% OFF',
+  
+                        // Original Price (Strikethrough)
+                        if (discountPercent > 0) ...[
+                          Text(
+                            '₹${course.price}',
                             style: GoogleFonts.inter(
-                              color: Colors.red,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
+                              color: Colors.grey,
+                              fontSize: 14,
+                              decoration: TextDecoration.lineThrough,
                             ),
                           ),
-                        ),
+                          
+                          const SizedBox(width: 8),
+  
+                          // Discount Badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '$discountPercent% OFF',
+                              style: GoogleFonts.inter(
+                                color: Colors.red,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ],
               ),

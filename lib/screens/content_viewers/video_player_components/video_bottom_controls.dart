@@ -10,7 +10,8 @@ class VideoBottomControls extends StatelessWidget {
   final String? activeTray;
   
   final VoidCallback onToggleTraySpeed;
-  final VoidCallback onToggleTrayQuality;
+  final VoidCallback? onToggleTrayQuality;
+  final VoidCallback? onTogglePlaylist;
   final VoidCallback onLockTap;
   final VoidCallback onDoubleLockTap;
   final VoidCallback onOrientationTap;
@@ -27,7 +28,8 @@ class VideoBottomControls extends StatelessWidget {
     required this.currentQuality,
     this.activeTray,
     required this.onToggleTraySpeed,
-    required this.onToggleTrayQuality,
+    this.onToggleTrayQuality,
+    this.onTogglePlaylist,
     required this.onLockTap,
     required this.onDoubleLockTap,
     required this.onOrientationTap,
@@ -63,6 +65,18 @@ class VideoBottomControls extends StatelessWidget {
             onReset: onResetQuality,
           ),
         ),
+
+        // Playlist Button (only if onTogglePlaylist is provided)
+        if (onTogglePlaylist != null)
+          _buildAnimatedControl(
+            isVisible: !isLocked,
+            child: _buildControlIcon(
+              Icons.playlist_play,
+              'List',
+              onTogglePlaylist!,
+              isActive: false,
+            ),
+          ),
 
         // Lock Button
         _buildLockButton(),
@@ -155,7 +169,7 @@ class VideoBottomControls extends StatelessWidget {
     );
   }
 
-  Widget _buildControlIcon(IconData icon, String label, VoidCallback onTap,
+  Widget _buildControlIcon(IconData icon, String label, VoidCallback? onTap,
       {bool isActive = false, VoidCallback? onReset}) {
     
     // In BuildContext isn't readily available in helper method if not passed, 

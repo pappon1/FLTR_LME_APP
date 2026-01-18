@@ -56,39 +56,52 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           final isDark = Theme.of(context).brightness == Brightness.dark;
           // debugPrint("VideoPlayerScreen Rebuild: isDark=$isDark");
           return Scaffold(
-            backgroundColor: isDark ? Colors.black : Colors.white,
-            body: SafeArea(
-              top: !_logic.isLandscape, 
-              bottom: !_logic.isLandscape,
-              child: ValueListenableBuilder<bool>(
-                valueListenable: _logic.isReadyNotifier,
-                builder: (context, isReady, child) {
-                  return AnimatedOpacity(
-                    duration: const Duration(milliseconds: 400),
-                    opacity: isReady ? 1.0 : 0.0,
-                    child: child,
-                  );
-                },
-                child: ListenableBuilder(
-                  listenable: _logic,
-                  // We only listen for structural changes (orientation) here
-                  builder: (context, _) {
-                    if (_logic.isLandscape) {
-                      return VideoPlayerLandscapeLayout(logic: _logic);
-                    }
-
-                    return VideoPlayerPortraitLayout(
-                      logic: _logic,
-                      size: size,
-                      videoHeight: videoHeight,
+            backgroundColor: Colors.black,
+            body: AnnotatedRegion<SystemUiOverlayStyle>(
+              value: const SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                statusBarIconBrightness: Brightness.light,
+                statusBarBrightness: Brightness.dark,
+              ),
+              child: Theme(
+                data: ThemeData(
+                  brightness: Brightness.dark,
+                  scaffoldBackgroundColor: Colors.black,
+                ),
+                child: SafeArea(
+                top: !_logic.isLandscape, 
+                bottom: !_logic.isLandscape,
+                child: ValueListenableBuilder<bool>(
+                  valueListenable: _logic.isReadyNotifier,
+                  builder: (context, isReady, child) {
+                    return AnimatedOpacity(
+                      duration: const Duration(milliseconds: 400),
+                      opacity: isReady ? 1.0 : 0.0,
+                      child: child,
                     );
                   },
+                  child: ListenableBuilder(
+                    listenable: _logic,
+                    // We only listen for structural changes (orientation) here
+                    builder: (context, _) {
+                      if (_logic.isLandscape) {
+                        return VideoPlayerLandscapeLayout(logic: _logic);
+                      }
+  
+                      return VideoPlayerPortraitLayout(
+                        logic: _logic,
+                        size: size,
+                        videoHeight: videoHeight,
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
-          );
-        }
-      ),
-    );
+          ),
+        );
+      },
+    ),
+  );
   }
 }

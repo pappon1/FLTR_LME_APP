@@ -1163,29 +1163,35 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
 
   Future<void> _pickContentFile(String type, [List<String>? allowedExtensions]) async {
       // ZERO CACHE: Use custom explorer for ALL types
-      final String? path = await Navigator.push(
+      final result = await Navigator.push(
         context, 
         MaterialPageRoute(builder: (_) => SimpleFileExplorer(
           allowedExtensions: allowedExtensions ?? [],
         ))
       );
       
-      if (path != null) {
-         final newItem = {
-             'type': type,
-             'name': path.split('/').last,
-             'path': path,
-             'isLocal': true,
-             'thumbnail': null,
-         };
+      if (result != null && result is List) {
+         final List<String> paths = result.cast<String>();
+         if (paths.isEmpty) return;
+         
+         final List<Map<String, dynamic>> newItems = [];
+         for (var path in paths) {
+            newItems.add({
+               'type': type,
+               'name': path.split('/').last,
+               'path': path,
+               'isLocal': true,
+               'thumbnail': null,
+            });
+         }
          
          setState(() {
-           _courseContents.add(newItem);
+           _courseContents.addAll(newItems);
          });
          
          // Only process video if needed (currently disabled)
          if (type == 'video') {
-            unawaited(_processVideos([newItem]));
+            unawaited(_processVideos(newItems));
          } else {
             unawaited(_saveCourseDraft());
          }

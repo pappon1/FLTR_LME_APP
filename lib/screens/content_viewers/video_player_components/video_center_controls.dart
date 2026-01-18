@@ -5,6 +5,10 @@ class VideoCenterControls extends StatelessWidget {
   final bool isVisible;
   final VoidCallback onPlayPause;
   final Function(int) onSeek;
+  final VoidCallback? onNext;
+  final VoidCallback? onPrev;
+  final bool hasNext;
+  final bool hasPrev;
   final double iconSize;
 
   const VideoCenterControls({
@@ -13,6 +17,10 @@ class VideoCenterControls extends StatelessWidget {
     required this.isVisible,
     required this.onPlayPause,
     required this.onSeek,
+    this.onNext,
+    this.onPrev,
+    this.hasNext = false,
+    this.hasPrev = false,
     this.iconSize = 32,
   });
 
@@ -32,6 +40,15 @@ class VideoCenterControls extends StatelessWidget {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // Previous
+              if (onPrev != null) ...[
+                 IconButton(
+                   onPressed: hasPrev ? onPrev : null,
+                   icon: Icon(Icons.skip_previous_rounded, color: hasPrev ? iconColor : Colors.white24, size: iconSize * 1.2),
+                 ),
+                 const SizedBox(width: 32),
+              ],
+            
               // Replay 10s
               _buildControlButton(
                 icon: Icons.replay_10,
@@ -40,7 +57,7 @@ class VideoCenterControls extends StatelessWidget {
                 color: iconColor,
                 bgColor: bgColor,
               ),
-              const SizedBox(width: 24),
+              const SizedBox(width: 48),
 
               // Play/Pause
               GestureDetector(
@@ -59,7 +76,7 @@ class VideoCenterControls extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 24),
+              const SizedBox(width: 48),
 
               // Forward 10s
               _buildControlButton(
@@ -69,6 +86,14 @@ class VideoCenterControls extends StatelessWidget {
                 color: iconColor,
                 bgColor: bgColor,
               ),
+
+              if (onNext != null) ...[
+                 const SizedBox(width: 32),
+                 IconButton(
+                   onPressed: hasNext ? onNext : null,
+                   icon: Icon(Icons.skip_next_rounded, color: hasNext ? iconColor : Colors.white24, size: iconSize * 1.2),
+                 ),
+              ],
             ],
           ),
         ),

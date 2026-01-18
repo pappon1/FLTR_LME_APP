@@ -87,8 +87,9 @@ class _VideoPlayerStack extends StatelessWidget {
 
                         return Stack(
                           children: [
+                            // 1. Video Display (Base)
                             logic.engine.buildVideoWidget(),
-
+                            
                             // Buffering Spinner
                             ValueListenableBuilder<bool>(
                               valueListenable: logic.isBufferingNotifier,
@@ -100,26 +101,15 @@ class _VideoPlayerStack extends StatelessWidget {
 
                             if (isLocked) Positioned.fill(child: Container(color: Colors.black54)),
 
-                            // Gesture Detector
-                            Positioned.fill(
-                              child: GestureDetector(
-                                behavior: HitTestBehavior.translucent,
-                                onTap: logic.toggleControls,
-                                onDoubleTapDown: (details) {
-                                  if (isLocked) return;
-                                  final x = details.localPosition.dx;
-                                  if (x > size.width / 2) {
-                                    logic.seekRelative(10);
-                                  } else {
-                                    logic.seekRelative(-10);
-                                  }
-                                },
-                                onVerticalDragStart: isLocked ? null : (_) => logic.handleVerticalDragStart(),
-                                onVerticalDragUpdate: isLocked
-                                    ? null
-                                    : (details) => logic.handleVerticalDrag(details, size.width),
-                                child: Container(color: Colors.transparent),
-                              ),
+                            // 2. Control Gestures (Volume, Brightness, Seek, Toggle)
+                            GestureDetector(
+                              behavior: HitTestBehavior.translucent,
+                              onTap: logic.toggleControls,
+                              onDoubleTapDown: (details) => logic.handleDoubleTap(details.localPosition.dx, size.width),
+                              onVerticalDragStart: (details) => logic.handleVerticalDragStart(details, size.width),
+                              onVerticalDragUpdate: (details) => logic.handleVerticalDrag(details, size.width),
+                              onVerticalDragEnd: (_) => logic.handleVerticalDragEnd(),
+                              child: Container(color: Colors.transparent),
                             ),
 
                             // Seek Indicator Overlay
@@ -225,7 +215,7 @@ class _VideoControlsSection extends StatelessWidget {
                   children: [
                     // Seekbar
                     Container(
-                      color: Theme.of(context).scaffoldBackgroundColor,
+                      color: Colors.black,
                       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                       child: ValueListenableBuilder<Duration>(
                         valueListenable: logic.positionNotifier,
@@ -253,7 +243,7 @@ class _VideoControlsSection extends StatelessWidget {
                       clipBehavior: Clip.none,
                       children: [
                         Container(
-                          color: Theme.of(context).scaffoldBackgroundColor,
+                          color: Colors.black,
                           padding: const EdgeInsets.only(left: 20, right: 20, bottom: 8),
                           child: ValueListenableBuilder<double>(
                               valueListenable: logic.playbackSpeedNotifier,
@@ -314,18 +304,14 @@ class _VideoControlsSection extends StatelessWidget {
                       ],
                     ),
 
-                    // Divider
-                    AnimatedOpacity(
-                      duration: const Duration(milliseconds: 300),
-                      opacity: (isLocked ? 0.0 : (showControls ? 1.0 : 0.0)),
-                      child: Divider(height: 1, color: Theme.of(context).dividerColor),
-                    ),
+                    // Divider Removed for cleaner UI
                   ],
                 );
               });
         });
   }
 }
+
 
 class _VideoPlaylistSection extends StatelessWidget {
   final VideoPlayerLogicController logic;
@@ -339,7 +325,7 @@ class _VideoPlaylistSection extends StatelessWidget {
           if (logic.isLocked) logic.handleLockedTap();
         },
         child: Container(
-          color: Theme.of(context).scaffoldBackgroundColor,
+          color: Colors.black,
           width: double.infinity,
           child: ValueListenableBuilder<bool>(
               valueListenable: logic.isLockedNotifier,

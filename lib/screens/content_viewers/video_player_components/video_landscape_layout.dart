@@ -8,6 +8,7 @@ import 'package:local_mobile_engineer_official/screens/content_viewers/video_pla
 import 'video_lock_overlay.dart';
 import 'video_error_overlay.dart';
 import 'video_player_logic_controller.dart';
+import 'video_playlist_widget.dart';
 import 'video_seek_indicator.dart';
 
 class VideoPlayerLandscapeLayout extends StatelessWidget {
@@ -43,6 +44,9 @@ class VideoPlayerLandscapeLayout extends StatelessWidget {
                     else ...[
                       // Scrims & Controls
                       _VideoControlsLayer(logic: logic, showControls: showControls),
+                      
+                      // Playlist Overlay (New Modern Feature)
+                      _VideoPlaylistOverlay(logic: logic),
                     ],
 
                     // Global components (Errors, Seek Indicators)
@@ -64,7 +68,9 @@ class _VideoBaseLayer extends StatelessWidget {
       color: Colors.black,
       child: Stack(
         children: [
-          Center(child: logic.engine.buildVideoWidget()),
+          Center(
+            child: logic.engine.buildVideoWidget(),
+          ),
           ValueListenableBuilder<bool>(
             valueListenable: logic.isBufferingNotifier,
             builder: (context, isBuffering, _) {
@@ -87,22 +93,29 @@ class _VideoGestureLayer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Positioned.fill(
-      child: GestureDetector(
-        behavior: HitTestBehavior.translucent,
-        onTap: logic.toggleControls,
-        onDoubleTapDown: (details) {
-          if (isLocked) return;
-          final x = details.localPosition.dx;
-          if (x > size.width / 2) {
-            logic.seekRelative(10);
-          } else {
-            logic.seekRelative(-10);
-          }
-        },
-        onVerticalDragStart: isLocked ? null : (_) => logic.handleVerticalDragStart(),
-        onVerticalDragUpdate: isLocked ? null : (details) => logic.handleVerticalDrag(details, size.width),
-        child: Container(color: Colors.transparent),
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onTap: logic.toggleControls,
+      onDoubleTapDown: (details) => logic.handleDoubleTap(details.localPosition.dx, size.width),
+      onVerticalDragStart: (details) => logic.handleVerticalDragStart(details, size.width),
+      onVerticalDragUpdate: (details) => logic.handleVerticalDrag(details, size.width),
+      onVerticalDragEnd: (_) => logic.handleVerticalDragEnd(),
+      child: Container(
+        color: Colors.black,
+        child: Stack(
+          children: [
+            Center(
+              child: logic.engine.buildVideoWidget(),
+            ),
+            ValueListenableBuilder<bool>(
+              valueListenable: logic.isBufferingNotifier,
+              builder: (context, isBuffering, _) {
+                if (!isBuffering) return const SizedBox();
+                return const Center(child: CircularProgressIndicator(color: Colors.white70));
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -153,7 +166,11 @@ class _VideoControlsLayer extends StatelessWidget {
                         isVisible: showControls,
                         onPlayPause: logic.togglePlayPause,
                         onSeek: logic.seekRelative,
-                        iconSize: 48,
+                        onNext: logic.playNextVideo,
+                        onPrev: logic.playPreviousVideo,
+                        hasNext: logic.playlistManager.hasNext,
+                        hasPrev: logic.playlistManager.hasPrev,
+                        iconSize: 32,
                       )
                     : const SizedBox(),
               );
@@ -288,6 +305,7 @@ class _VideoBottomControlsLandscape extends StatelessWidget {
                 activeTray: logic.activeTray,
                 onToggleTraySpeed: () => logic.toggleTray('speed'),
                 onToggleTrayQuality: () => logic.toggleTray('quality'),
+                onTogglePlaylist: logic.togglePlaylist,
                 onLockTap: logic.toggleLock,
                 onDoubleLockTap: logic.toggleLock,
                 onOrientationTap: () => logic.toggleOrientation(context),
@@ -397,3 +415,88 @@ class _VideoGlobalOverlays extends StatelessWidget {
     );
   }
 }
+
+class _VideoPlaylistOverlay extends StatelessWidget {
+  final VideoPlayerLogicController logic;
+  const _VideoPlaylistOverlay({required this.logic});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: logic.showPlaylistNotifier,
+      builder: (context, isVisible, _) {
+        return Stack(
+          children: [
+            // Backdrop to close
+            if (isVisible)
+              Positioned.fill(
+                child: GestureDetector(
+                  onTap: logic.togglePlaylist,
+                  child: Container(color: Colors.black54),
+                ),
+              ),
+              
+            // Sliding Side Drawer
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOutCubic,
+              right: isVisible ? 0 : -350,
+              top: 0,
+              bottom: 0,
+              width: 350,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.9), // Glassy Dark
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 20)],
+                  border: Border.all(color: Colors.white10),
+                ),
+                child: Column(
+                  children: [
+                    // Header
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: const BoxDecoration(
+                         border: Border(bottom: BorderSide(color: Colors.white10)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.playlist_play, color: Colors.white),
+                          const SizedBox(width: 12),
+                          const Text('Playlist', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                          const Spacer(),
+                          IconButton(icon: const Icon(Icons.close, color: Colors.white), onPressed: logic.togglePlaylist),
+                        ],
+                      ),
+                    ),
+                    
+                    // List
+                    Expanded(
+                      child: ValueListenableBuilder<int>(
+                          valueListenable: logic.currentIndexNotifier,
+                          builder: (context, currentIndex, _) {
+                            return ValueListenableBuilder<Map<String, double>>(
+                                valueListenable: logic.progressNotifier,
+                                builder: (context, progress, _) {
+                                  return VideoPlaylistWidget(
+                                    playlist: logic.playlist,
+                                    currentIndex: currentIndex,
+                                    videoProgress: progress,
+                                    onVideoTap: (idx) {
+                                       logic.playVideo(idx);
+                                       logic.togglePlaylist(); // Auto-close on selection
+                                    },
+                                  );
+                                });
+                          }),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      }
+    );
+  }
+}
+

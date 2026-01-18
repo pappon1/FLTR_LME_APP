@@ -13,6 +13,7 @@ import 'video_gesture_handler.dart';
 import 'video_engine_interface.dart';
 import 'mediakit_video_engine.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:media_kit/media_kit.dart'; // Direct access for metadata extraction
 
 class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObserver {
   final VideoPlaylistManager playlistManager;
@@ -40,6 +41,14 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
   final ValueNotifier<bool> showVolumeLabelNotifier = ValueNotifier(false);
   final ValueNotifier<bool> showBrightnessLabelNotifier = ValueNotifier(false);
   final ValueNotifier<Map<String, double>> progressNotifier = ValueNotifier({});
+  
+  // Landscape Playlist State
+  final ValueNotifier<bool> showPlaylistNotifier = ValueNotifier(false);
+
+  // Smart Metadata Extraction State
+  final _metadataPlayer = Player(); // Dedicated player for background metadata
+  bool _isExtractingMetadata = false;
+  final List<int> _metadataQueue = [];
 
   // Seek Animation State
   final ValueNotifier<int?> seekIndicatorNotifier = ValueNotifier(null); 
@@ -141,6 +150,9 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
     });
 
     startHideTimer();
+    
+    // Start Smart Duration Extraction (Low Priority)
+    Future.delayed(const Duration(seconds: 2), _processDurationQueue);
   }
 
   Future<void> _initAudioSession() async {
@@ -266,6 +278,86 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
     _accelerometerSubscription = null;
   }
 
+  // --- Smart Duration Extraction Logic (Lag-Free & No Cache) ---
+  Future<void> _processDurationQueue() async {
+    if (_isExtractingMetadata) return;
+    
+    // 1. Identify missing durations
+    for (int i = 0; i < playlist.length; i++) {
+      final item = playlist[i];
+      if (item['duration'] == null || item['duration'] == "00:00") {
+         _metadataQueue.add(i);
+      }
+    }
+
+    if (_metadataQueue.isEmpty) return;
+
+    _isExtractingMetadata = true;
+    final prefs = await SharedPreferences.getInstance();
+
+    // 2. Process Queue Sequentially
+    while (_metadataQueue.isNotEmpty && !_isDisposed) {
+      final index = _metadataQueue.removeAt(0);
+      if (index >= playlist.length) continue;
+
+      final item = playlist[index];
+      final path = item['path'];
+      
+      // Check Cache First (Strong Persistence)
+      final cachedDuration = prefs.getString('dur_$path');
+      if (cachedDuration != null) {
+        playlistManager.updateDuration(index, cachedDuration);
+        continue;
+      }
+
+      // Extract using Background Player
+      if (path != null) {
+        try {
+          await _metadataPlayer.open(Media(path), play: false);
+          // Wait for metadata
+           await _metadataPlayer.stream.duration.firstWhere((d) => d != Duration.zero).timeout(const Duration(seconds: 2));
+           final duration = _metadataPlayer.state.duration;
+           
+           if (duration != Duration.zero) {
+             final fmt = formatDurationString(duration);
+             playlistManager.updateDuration(index, fmt);
+             
+             // Save to DB (One-time save)
+             await prefs.setString('dur_$path', fmt);
+           }
+        } catch (e) {
+          // Ignore errors, skip item
+        }
+      }
+      
+      // Anti-Lag Delay: Yield control back to UI
+      await Future.delayed(const Duration(milliseconds: 300));
+    }
+    
+    _isExtractingMetadata = false;
+  }
+
+  void togglePlaylist() {
+    showPlaylistNotifier.value = !showPlaylistNotifier.value;
+    if (showPlaylistNotifier.value) {
+      startHideTimer(const Duration(seconds: 5)); // Longer timer for playlist
+    } else {
+      startHideTimer();
+    }
+  }
+
+  void playNextVideo() {
+    if (playlistManager.hasNext) {
+       playVideo(currentIndex + 1);
+    }
+  }
+
+  void playPreviousVideo() {
+    if (playlistManager.hasPrev) {
+       playVideo(currentIndex - 1);
+    }
+  }
+
   Future<void> playVideo(int index) async {
     if (index < 0 || index >= playlist.length) return;
     playlistManager.goToIndex(index);
@@ -374,12 +466,26 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
     });
   }
 
-  void handleVerticalDragStart() {
-    gestureHandler.handleVerticalDragStart();
+  // --- Manual Pointer Logic (Replaces GestureDetector for Zoom Compatibility) ---
+  void handleDoubleTap(double x, double screenWidth) {
+    if (isLocked) return;
+    if (x > screenWidth / 2) {
+      seekRelative(10);
+    } else {
+      seekRelative(-10);
+    }
+  }
+
+  void handleVerticalDragStart(DragStartDetails details, double screenWidth) {
+    gestureHandler.handleVerticalDragStart(details.localPosition.dx, screenWidth);
   }
 
   void handleVerticalDrag(DragUpdateDetails details, double screenWidth) {
     gestureHandler.handleVerticalDrag(details, screenWidth);
+  }
+
+  void handleVerticalDragEnd() {
+    gestureHandler.handleVerticalDragEnd();
   }
 
   void startHideTimer([Duration? duration, bool forcePlayCheck = false]) {
@@ -645,6 +751,7 @@ class VideoPlayerLogicController extends ChangeNotifier with WidgetsBindingObser
     _trayHideTimer?.cancel();
     _saveDebounceTimer?.cancel();
     _seekIndicatorTimer?.cancel();
+    _metadataPlayer.dispose(); // Cleanup background player
     gestureHandler.dispose();
     _accelerometerSubscription?.cancel();
     WidgetsBinding.instance.removeObserver(this);

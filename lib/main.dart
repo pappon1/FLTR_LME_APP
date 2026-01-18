@@ -36,16 +36,6 @@ void main() async {
   // Initialize Google Sign In (Required for v7+)
   // await GoogleSignIn().signInSilently(); // Optional: Check for existing session
   
-  // Set system UI overlay style
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: Color(0xFF0A0E27),
-      systemNavigationBarIconBrightness: Brightness.light,
-    ),
-  );
-  
   // Lock to portrait mode
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,

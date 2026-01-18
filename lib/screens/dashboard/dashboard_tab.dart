@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -99,14 +100,19 @@ class _DashboardTabState extends State<DashboardTab> {
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
             Text(
               'Dashboard',
               style: AppTheme.heading2(context),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
             Text(
               DateFormat('EEEE, MMMM d, y').format(DateTime.now()),
               style: AppTheme.bodySmall(context),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
@@ -174,6 +180,10 @@ class _DashboardTabState extends State<DashboardTab> {
       ),
       body: Consumer<DashboardProvider>(
         builder: (context, provider, child) {
+          if (provider.isLoading && provider.courses.isEmpty) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          
           final stats = provider.stats;
           
           return RefreshIndicator(
@@ -181,26 +191,33 @@ class _DashboardTabState extends State<DashboardTab> {
                await provider.refreshData();
                unawaited(_checkDraftStatus());
             },
-            child: SingleChildScrollView(
+            child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Announcement Section
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
+              children: [
+                // Announcement Section
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
-                            child: const Text('📢', style: TextStyle(fontSize: 16)),
-                          ),
-                          const SizedBox(width: 12),
-                          Text('Announcements', style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.bodyLarge?.color)),
-                        ],
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                              child: const Text('📢', style: TextStyle(fontSize: 16)),
+                            ),
+                            const SizedBox(width: 12),
+                            Flexible(
+                              child: Text(
+                                'Announcements', 
+                                style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: Theme.of(context).textTheme.bodyLarge?.color),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       InkWell(
                          onTap: () {
@@ -249,17 +266,13 @@ class _DashboardTabState extends State<DashboardTab> {
                               borderRadius: BorderRadius.circular(12),
                               child: AspectRatio(
                                 aspectRatio: 16/9,
-                                child: Stack(
-                                  children: [
-                                    CachedNetworkImage(
-                                      imageUrl: BunnyCDNService().getAuthenticatedUrl(imageUrl),
-                                      httpHeaders: const {'AccessKey': BunnyCDNService.apiKey},
-                                      fit: BoxFit.cover,
-                                      width: double.infinity,
-                                      placeholder: (c, u) => Container(color: Colors.grey[900], child: const Center(child: CircularProgressIndicator())),
-                                      errorWidget: (c, u, e) => Container(color: Colors.grey[900], child: const Icon(Icons.broken_image)),
-                                    ),
-                                  ],
+                                child: CachedNetworkImage(
+                                  imageUrl: BunnyCDNService().getAuthenticatedUrl(imageUrl),
+                                  httpHeaders: const {'AccessKey': BunnyCDNService.apiKey},
+                                  fit: BoxFit.cover,
+                                  width: double.infinity,
+                                  placeholder: (c, u) => Container(color: Colors.grey[900], child: const Center(child: CircularProgressIndicator())),
+                                  errorWidget: (c, u, e) => Container(color: Colors.grey[900], child: const Icon(Icons.broken_image)),
                                 ),
                               ),
                             ),
@@ -302,71 +315,77 @@ class _DashboardTabState extends State<DashboardTab> {
                   const SizedBox(height: 20),
 
                   // Stats Cards Grid
-                  GridView.count(
-                    crossAxisCount: 2,
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                    childAspectRatio: 1.1,
+                  Row(
                     children: [
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentsTab(showOnlyBuyers: false)));
-                        },
-                        child: StatCard(
-                          title: 'App Downloads',
-                          value: stats.totalStudents.toString(),
-                          icon: FontAwesomeIcons.download,
-                          gradient: AppTheme.infoGradient,
-                          trend: 'Total Installs', 
-                          isPositive: true,
-                        ).animate().fadeIn(duration: 400.ms, delay: 100.ms).slideX(begin: -0.2, end: 0),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => const StudentsTab(showOnlyBuyers: false)));
+                          },
+                          child: StatCard(
+                            title: 'App Downloads',
+                            value: stats.totalStudents.toString(),
+                            icon: FontAwesomeIcons.download,
+                            gradient: AppTheme.infoGradient,
+                            trend: 'Total Installs', 
+                            isPositive: true,
+                          ).animate().fadeIn(duration: 400.ms, delay: 100.ms).slideX(begin: -0.2, end: 0),
+                        ),
                       ),
-                      
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => const StudentsTab(showOnlyBuyers: true)),
-                          );
-                        },
-                        child: StatCard(
-                          title: 'Course Buyers',
-                          value: provider.students.where((s) => s.enrolledCourses > 0).length.toString(),
-                          icon: FontAwesomeIcons.userCheck,
-                          gradient: AppTheme.successGradient,
-                          trend: 'Active Students',
-                          isPositive: true,
-                        ).animate().fadeIn(duration: 400.ms, delay: 200.ms).slideX(begin: -0.2, end: 0),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => const StudentsTab(showOnlyBuyers: true)),
+                            );
+                          },
+                          child: StatCard(
+                            title: 'Course Buyers',
+                            value: provider.students.where((s) => s.enrolledCourses > 0).length.toString(),
+                            icon: FontAwesomeIcons.userCheck,
+                            gradient: AppTheme.successGradient,
+                            trend: 'Active Students',
+                            isPositive: true,
+                          ).animate().fadeIn(duration: 400.ms, delay: 200.ms).slideX(begin: -0.2, end: 0),
+                        ),
                       ),
-                      
-                      GestureDetector(
-                        onTap: () {
-                           Navigator.push(context, MaterialPageRoute(builder: (_) => const RevenueDetailScreen()));
-                        },
-                        child: StatCard(
-                          title: 'Revenue',
-                          value: '₹${NumberFormat.compact().format(stats.totalRevenue)}',
-                          icon: FontAwesomeIcons.indianRupeeSign,
-                          gradient: AppTheme.warningGradient,
-                          trend: '+${stats.revenueGrowth}% vs last month',
-                          isPositive: true,
-                        ).animate().fadeIn(duration: 400.ms, delay: 300.ms).slideX(begin: -0.2, end: 0),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                             Navigator.push(context, MaterialPageRoute(builder: (_) => const RevenueDetailScreen()));
+                          },
+                          child: StatCard(
+                            title: 'Revenue',
+                            value: '₹${NumberFormat.compact().format(stats.totalRevenue)}',
+                            icon: FontAwesomeIcons.indianRupeeSign,
+                            gradient: AppTheme.warningGradient,
+                            trend: '+${stats.revenueGrowth}% vs last month',
+                            isPositive: true,
+                          ).animate().fadeIn(duration: 400.ms, delay: 300.ms).slideX(begin: -0.2, end: 0),
+                        ),
                       ),
-
-                      GestureDetector(
-                        onTap: () {
-                           Navigator.push(context, MaterialPageRoute(builder: (_) => const ContactLinksScreen()));
-                        },
-                        child: const StatCard(
-                          title: 'Contact Links',
-                          value: 'Socials', // Or just '4 Links'
-                          icon: FontAwesomeIcons.shareNodes, // Represents sharing/socials
-                          gradient: AppTheme.primaryGradient, // Use primary brand gradient
-                          trend: 'Manage WhatsApp, YT...',
-                          isPositive: true, // Neutral icon
-                        ).animate().fadeIn(duration: 400.ms, delay: 400.ms).slideX(begin: -0.2, end: 0),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                             Navigator.push(context, MaterialPageRoute(builder: (_) => const ContactLinksScreen()));
+                          },
+                          child: const StatCard(
+                            title: 'Contact Links',
+                            value: 'Socials', // Or just '4 Links'
+                            icon: FontAwesomeIcons.shareNodes, // Represents sharing/socials
+                            gradient: AppTheme.primaryGradient, // Use primary brand gradient
+                            trend: 'Manage WhatsApp, YT...',
+                            isPositive: true, // Neutral icon
+                          ).animate().fadeIn(duration: 400.ms, delay: 400.ms).slideX(begin: -0.2, end: 0),
+                        ),
                       ),
                     ],
                   ),
@@ -384,9 +403,79 @@ class _DashboardTabState extends State<DashboardTab> {
                   const SizedBox(height: 40),
                 ],
               ),
-            ),
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildShimmerDashboard(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseColor = isDark ? Colors.grey[900]! : Colors.grey[300]!;
+    final highlightColor = isDark ? Colors.grey[800]! : Colors.grey[100]!;
+
+    return Shimmer.fromColors(
+      baseColor: baseColor,
+      highlightColor: highlightColor,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Announcement Shimmer
+            Container(
+              height: 200,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            const SizedBox(height: 24),
+            
+            // Popular Courses Header Shimmer
+            Container(height: 20, width: 150, color: Colors.white),
+            const SizedBox(height: 16),
+            
+            // Popular Courses Carousel Shimmer
+            Container(
+              height: 320,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            const SizedBox(height: 24),
+            
+            // Grid Shimmer
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 0.95,
+              children: List.generate(4, (index) => Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              )),
+            ),
+            const SizedBox(height: 24),
+            
+            // Razorpay Card Shimmer
+            Container(
+              height: 180,
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(24),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

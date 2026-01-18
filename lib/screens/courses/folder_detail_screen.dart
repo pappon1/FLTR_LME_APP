@@ -469,30 +469,36 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
 
   Future<void> _pickContentFile(String type, [List<String>? extensions]) async {
       // Use Custom Explorer for ALL types to prevent Cache Bloat
-      final String? path = await Navigator.push(
+      final result = await Navigator.push(
         context, 
         MaterialPageRoute(builder: (_) => SimpleFileExplorer(
           allowedExtensions: extensions ?? [],
         ))
       );
       
-      if (path != null) {
-         final newItem = {
+      if (result != null && result is List) {
+         final List<String> paths = result.cast<String>();
+         if (paths.isEmpty) return;
+         
+         final List<Map<String, dynamic>> newItems = [];
+         for (var path in paths) {
+           newItems.add({
              'type': type, 
              'name': path.split('/').last, 
              'path': path, 
              'duration': type == 'video' ? "..." : null, 
              'thumbnail': null,
              'isLocal': true
-         };
+           });
+         }
          
          setState(() {
-           _contents.add(newItem);
+           _contents.addAll(newItems);
          });
          
          // Only process video if needed (currently disabled for cache safety)
          if (type == 'video') {
-            _processVideosInParallel([newItem]);
+            _processVideosInParallel(newItems);
          } else {
             _savePersistentContent();
          }

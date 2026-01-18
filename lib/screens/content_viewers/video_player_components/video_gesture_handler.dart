@@ -26,9 +26,14 @@ class VideoGestureHandler {
     required this.showBrightnessLabelNotifier,
   });
 
-  void handleVerticalDragStart() {
+  // Point 6: Gesture Locking
+  bool? _isVolumeGesture;
+
+  void handleVerticalDragStart(double x, double screenWidth) {
     _cumulativeDelta = 0;
     _hasPassedThreshold = false;
+    // Lock the gesture type at the start: Right side = Volume, Left = Brightness
+    _isVolumeGesture = x > screenWidth / 2;
   }
 
   void handleVerticalDrag(DragUpdateDetails details, double screenWidth) {
@@ -41,52 +46,77 @@ class VideoGestureHandler {
       }
     }
 
-    final dx = details.localPosition.dx;
     final delta = details.primaryDelta ?? 0;
     if (delta.abs() < 0.2) return;
 
     const double sensitivity = VideoPlayerConstants.gestureSensitivity;
-    if (dx > screenWidth / 2) {
+    
+    // Strict Lock Check
+    if (_isVolumeGesture == true) {
       _updateVolume(delta, sensitivity);
     } else {
       _updateBrightness(delta, sensitivity);
     }
   }
 
+  // Platform Channel Throttling
+  int _lastVolumeUpdateTimestamp = 0;
+  int _lastBrightnessUpdateTimestamp = 0;
+  static const int _updateIntervalMs = 40; // ~25 updates per second max (Human ear/eye limit)
+
   void _updateVolume(double delta, double sensitivity) {
     double newVolume = volumeNotifier.value - (delta * sensitivity);
     newVolume = newVolume.clamp(0.0, 1.0);
     
-    if ((newVolume - volumeNotifier.value).abs() > 0.01 || newVolume == 0 || newVolume == 1) {
-      volumeNotifier.value = newVolume;
-      isChangingVolumeViaGesture = true;
-      FlutterVolumeController.setVolume(newVolume);
-      showVolumeLabelNotifier.value = true;
-      showBrightnessLabelNotifier.value = false;
-      
-      _volumeTimer?.cancel();
-      _volumeTimer = Timer(VideoPlayerConstants.labelHideDuration, () {
-        isChangingVolumeViaGesture = false;
-        showVolumeLabelNotifier.value = false;
-      });
+    // 1. Update UI Instantly (Zero Lags for User Eyes)
+    volumeNotifier.value = newVolume;
+    showVolumeLabelNotifier.value = true;
+    showBrightnessLabelNotifier.value = false;
+    isChangingVolumeViaGesture = true;
+
+    // 2. Throttle System Calls (Save CPU for Video Rendering)
+    final int now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _lastVolumeUpdateTimestamp > _updateIntervalMs || newVolume == 0.0 || newVolume == 1.0) {
+       _lastVolumeUpdateTimestamp = now;
+       FlutterVolumeController.setVolume(newVolume);
     }
+      
+    _volumeTimer?.cancel();
+    _volumeTimer = Timer(VideoPlayerConstants.labelHideDuration, () {
+      isChangingVolumeViaGesture = false;
+      showVolumeLabelNotifier.value = false;
+      // Ensure final sync
+      FlutterVolumeController.setVolume(volumeNotifier.value);
+    });
   }
 
   void _updateBrightness(double delta, double sensitivity) {
     double newBrightness = brightnessNotifier.value - (delta * sensitivity);
     newBrightness = newBrightness.clamp(0.0, 1.0);
     
-    if ((newBrightness - brightnessNotifier.value).abs() > 0.01 || newBrightness == 0 || newBrightness == 1) {
-      brightnessNotifier.value = newBrightness;
-      ScreenBrightness().setApplicationScreenBrightness(newBrightness);
-      showBrightnessLabelNotifier.value = true;
-      showVolumeLabelNotifier.value = false;
-      
-      _brightnessTimer?.cancel();
-      _brightnessTimer = Timer(VideoPlayerConstants.labelHideDuration, () {
-        showBrightnessLabelNotifier.value = false;
-      });
+    // 1. Update UI Instantly
+    brightnessNotifier.value = newBrightness;
+    showBrightnessLabelNotifier.value = true;
+    showVolumeLabelNotifier.value = false;
+    
+    // 2. Throttle System Calls
+    final int now = DateTime.now().millisecondsSinceEpoch;
+    if (now - _lastBrightnessUpdateTimestamp > _updateIntervalMs || newBrightness == 0.0 || newBrightness == 1.0) {
+       _lastBrightnessUpdateTimestamp = now;
+       ScreenBrightness().setApplicationScreenBrightness(newBrightness);
     }
+      
+    _brightnessTimer?.cancel();
+    _brightnessTimer = Timer(VideoPlayerConstants.labelHideDuration, () {
+      showBrightnessLabelNotifier.value = false;
+      // Ensure final sync
+      ScreenBrightness().setApplicationScreenBrightness(brightnessNotifier.value);
+    });
+  }
+
+  void handleVerticalDragEnd() {
+    // Reset flags if needed, or hide labels after a delay
+    _isVolumeGesture = null;
   }
 
   void dispose() {
@@ -94,3 +124,4 @@ class VideoGestureHandler {
     _brightnessTimer?.cancel();
   }
 }
+

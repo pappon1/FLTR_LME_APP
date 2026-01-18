@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:video_thumbnail/video_thumbnail.dart';
+import 'dart:typed_data';
 import '../../utils/app_theme.dart';
 
 class SimpleFileExplorer extends StatefulWidget {
@@ -30,6 +32,10 @@ class _SimpleFileExplorerState extends State<SimpleFileExplorer> {
   List<FileSystemEntity> _folderFiles = [];
   bool _isLoadingFolder = false;
   
+  // Selection Data
+  final Set<String> _selectedPaths = {};
+  bool _isSelectionMode = false;
+  
   String? _errorMessage;
 
   @override
@@ -38,13 +44,12 @@ class _SimpleFileExplorerState extends State<SimpleFileExplorer> {
     _initPath();
   }
 
+  // ... (Init Path and Smart Scan Logic remains same, only UI interactions change) ... 
   Future<void> _initPath() async {
     // 1. Permissions
     if (Platform.isAndroid) {
       if (!await Permission.manageExternalStorage.isGranted) {
-        // Try requesting
         final status = await Permission.manageExternalStorage.request();
-        // If that fails or is not available (older android), try storage
         if (!status.isGranted) {
              if (!await Permission.storage.isGranted) {
                  await Permission.storage.request();
@@ -53,14 +58,12 @@ class _SimpleFileExplorerState extends State<SimpleFileExplorer> {
       }
     }
 
-    // 2. Initialize Folder View Path
     final rootPath = widget.initialPath ?? '/storage/emulated/0';
     _currentDirectory = Directory(rootPath);
     if (!await _currentDirectory.exists()) {
        _currentDirectory = Directory.systemTemp;
     }
 
-    // 3. Start Smart Scan
     _startSmartScan();
   }
 
@@ -69,6 +72,8 @@ class _SimpleFileExplorerState extends State<SimpleFileExplorer> {
     setState(() {
       _isScanning = true;
       _galleryFiles.clear();
+      _selectedPaths.clear();
+      _isSelectionMode = false;
     });
 
     try {
@@ -92,11 +97,6 @@ class _SimpleFileExplorerState extends State<SimpleFileExplorer> {
          }
       }
       
-      // Sort by Recent (Modification Date)
-      // Getting stats for all files might be slow, so we sort by path or just reverse finding order?
-      // Let's try to get stats for the top 50, but for now just show them.
-      // Reversing gives a slight "recent-ish" feel if system returns chronological
-      
       if (mounted) {
         setState(() {
           _galleryFiles = found.reversed.toList();
@@ -109,13 +109,13 @@ class _SimpleFileExplorerState extends State<SimpleFileExplorer> {
   }
 
   Future<void> _recursiveScan(Directory dir, List<File> found, Set<String> processed, int depth) async {
-    if (depth > 4) return; // Prevent too deep
+    if (depth > 4) return; 
     try {
       final List<FileSystemEntity> entities = await dir.list(followLinks: false).toList();
       for (var e in entities) {
          if (e is Directory) {
             final name = e.path.split('/').last;
-            if (!name.startsWith('.') && name != 'Android') { // Skip hidden and Android data
+            if (!name.startsWith('.') && name != 'Android') { 
                await _recursiveScan(e, found, processed, depth + 1);
             }
          } else if (e is File) {
@@ -172,12 +172,40 @@ class _SimpleFileExplorerState extends State<SimpleFileExplorer> {
     }
   }
 
+  // --- SELECTION LOGIC ---
+  void _onFileTap(String path) {
+     if (_isSelectionMode) {
+        setState(() {
+           if (_selectedPaths.contains(path)) {
+              _selectedPaths.remove(path);
+              if (_selectedPaths.isEmpty) _isSelectionMode = false;
+           } else {
+              _selectedPaths.add(path);
+           }
+        });
+     } else {
+        // Single Pick (Legacy behavior, but return as List)
+        Navigator.pop(context, [path]);
+     }
+  }
+
+  void _onFileLongPress(String path) {
+     setState(() {
+        _isSelectionMode = true;
+        _selectedPaths.add(path);
+     });
+  }
+
+  void _submitSelection() {
+     Navigator.pop(context, _selectedPaths.toList());
+  }
+
   void _onFolderTap(FileSystemEntity entity) {
     if (entity is Directory) {
       setState(() => _currentDirectory = entity);
       _refreshFolderFiles();
     } else if (entity is File) {
-      Navigator.pop(context, entity.path);
+      _onFileTap(entity.path); 
     }
   }
 
@@ -195,8 +223,20 @@ class _SimpleFileExplorerState extends State<SimpleFileExplorer> {
     
     return Scaffold(
       appBar: AppBar(
-        title: Text('${_getFileTypeLabel()} Selector', style: const TextStyle(fontSize: 16)),
+        title: Text(_isSelectionMode ? '${_selectedPaths.length} Selected' : 'Select ${_getFileTypeLabel()}', style: const TextStyle(fontSize: 16)),
+        leading: _isSelectionMode 
+           ? IconButton(icon: const Icon(Icons.close), onPressed: () => setState(() { _isSelectionMode = false; _selectedPaths.clear(); }))
+           : (_currentDirectory.path == '/storage/emulated/0' 
+                   ? const CloseButton() 
+                   : IconButton(icon: const Icon(Icons.arrow_back), onPressed: _folderGoUp)),
         actions: [
+           if (_isSelectionMode)
+              TextButton(
+                 onPressed: _selectedPaths.isNotEmpty ? _submitSelection : null,
+                 child: const Text('ADD', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+              ),
+
+           if (!_isSelectionMode)
            IconButton(
              icon: Icon(isGallery ? Icons.folder_open : Icons.grid_view),
              tooltip: isGallery ? 'Browse Folders' : 'Smart Gallery',
@@ -243,22 +283,78 @@ class _SimpleFileExplorerState extends State<SimpleFileExplorer> {
      }
 
      return Scrollbar(
-       child: ListView.builder(
+       child: GridView.builder(
+         padding: const EdgeInsets.all(8),
+         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+           crossAxisCount: 3,
+           childAspectRatio: 1.0, 
+           crossAxisSpacing: 8,
+           mainAxisSpacing: 8,
+         ),
          itemCount: _galleryFiles.length,
          itemBuilder: (context, index) {
             final file = _galleryFiles[index];
             final name = file.path.split('/').last;
-            
-            return ListTile(
-              leading: Icon(_getFileIcon(name), color: _getFileColor(name)),
-              title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
-              subtitle: Text(file.path.replaceFirst('/storage/emulated/0/', ''), style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
-              onTap: () => Navigator.pop(context, file.path),
+            final isVideo = widget.allowedExtensions.contains('mp4') || widget.allowedExtensions.contains('mkv');
+            final isImage = widget.allowedExtensions.contains('jpg') || widget.allowedExtensions.contains('png');
+            final isSelected = _selectedPaths.contains(file.path);
+
+            return Material(
+              color: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(8),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: () => _onFileTap(file.path),
+                onLongPress: () => _onFileLongPress(file.path),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                     // Thumbnail Layer
+                     if (isImage)
+                        Image.file(file, fit: BoxFit.cover, cacheWidth: 200)
+                     else if (isVideo)
+                        _VideoThumbnailBox(file: file)
+                     else
+                        Center(child: Icon(_getFileIcon(name), size: 40, color: _getFileColor(name))),
+
+                     // Name Gradient Layer
+                     Positioned(
+                       bottom: 0, left: 0, right: 0,
+                       child: Container(
+                         decoration: BoxDecoration(gradient: LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [Colors.black.withValues(alpha: 0.7), Colors.transparent])),
+                         padding: const EdgeInsets.all(4),
+                         child: Text(name, style: const TextStyle(color: Colors.white, fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis),
+                       ),
+                     ),
+                     
+                     // Format Badge
+                     if (!isSelected)
+                     Positioned(
+                       top: 4, right: 4,
+                       child: Container(
+                         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                         decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(4)),
+                         child: Text(name.split('.').last.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 8)),
+                       ),
+                     ),
+                     
+                     // SELECTION OVERLAY
+                     if (isSelected)
+                        Container(
+                          color: AppTheme.primaryColor.withValues(alpha: 0.4),
+                          child: const Center(
+                            child: Icon(Icons.check_circle, color: Colors.white, size: 32),
+                          ),
+                        )
+                  ],
+                ),
+              ),
             );
          },
        ),
      );
   }
+
 
   Widget _buildFolderView() {
     if (_isLoadingFolder) return const Center(child: CircularProgressIndicator());
@@ -319,4 +415,47 @@ class _SimpleFileExplorerState extends State<SimpleFileExplorer> {
      return Colors.red;
   }
 }
+
+class _VideoThumbnailBox extends StatefulWidget {
+  final File file;
+  const _VideoThumbnailBox({required this.file});
+
+  @override
+  State<_VideoThumbnailBox> createState() => _VideoThumbnailBoxState();
+}
+
+class _VideoThumbnailBoxState extends State<_VideoThumbnailBox> {
+  Uint8List? _bytes;
+
+  @override
+  void initState() {
+    super.initState();
+    _generate();
+  }
+
+  Future<void> _generate() async {
+    try {
+      // Memory Only - No File Cache
+      final uint8list = await VideoThumbnail.thumbnailData(
+        video: widget.file.path,
+        imageFormat: ImageFormat.JPEG,
+        maxWidth: 128, 
+        quality: 50,
+      );
+      if (mounted) setState(() => _bytes = uint8list);
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_bytes != null) {
+      return Image.memory(_bytes!, fit: BoxFit.cover, gaplessPlayback: true);
+    }
+    return Container(
+      color: Colors.black12,
+      child: const Center(child: Icon(Icons.play_circle_outline, color: Colors.white54)),
+    );
+  }
+}
+
 
