@@ -670,10 +670,9 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
   }
 
   Future<void> _processVideosInParallel(List<Map<String, dynamic>> items) async {
-      // COMPLETELY REMOVED as requested.
-      // No duration check. No thumbnail generation.
-      // Just save the list.
-      unawaited(_savePersistentContent());
+      await _savePersistentContent();
+      // Start background processing
+      Future.delayed(const Duration(milliseconds: 500), () => _fixMissingData());
   }
 
   Future<String?> _generateThumbnail(String path) async {
@@ -681,15 +680,65 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
   }
 
   Future<String> _getVideoDuration(String path) async {
-    return ""; // System Removed
+    final player = Player();
+    try {
+      final completer = Completer<void>();
+      late final StreamSubscription sub;
+      
+      sub = player.stream.duration.listen((d) {
+        if (d.inSeconds > 0) {
+          if (!completer.isCompleted) completer.complete();
+        }
+      });
+
+      await player.open(Media(path), play: false);
+      
+      // Wait for duration or timeout
+      await completer.future.timeout(const Duration(seconds: 5), onTimeout: () {});
+      
+      final dur = player.state.duration;
+      await sub.cancel();
+      await player.dispose();
+      
+      return _formatDurationString(dur);
+    } catch (e) {
+      await player.dispose();
+      return "00:00";
+    }
   }
 
   String _formatDurationString(Duration dur) {
-    return "";
+    if (dur.inSeconds == 0) return "00:00";
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final minutes = twoDigits(dur.inMinutes.remainder(60));
+    final seconds = twoDigits(dur.inSeconds.remainder(60));
+    if (dur.inHours > 0) {
+      return "${twoDigits(dur.inHours)}:$minutes:$seconds";
+    }
+    return "$minutes:$seconds";
   }
 
   Future<void> _fixMissingData() async {
-    return; // System Removed
+    bool hasChanges = false;
+    for (int i = 0; i < _contents.length; i++) {
+      if (_contents[i]['type'] == 'video' && 
+         (_contents[i]['duration'] == "..." || _contents[i]['duration'] == null || _contents[i]['duration'] == "")) {
+        
+        final path = _contents[i]['path'];
+        if (path != null && File(path).existsSync()) {
+          final duration = await _getVideoDuration(path);
+          if (mounted) {
+            setState(() {
+              _contents[i]['duration'] = duration;
+            });
+            hasChanges = true;
+          }
+        }
+      }
+    }
+    if (hasChanges) {
+      await _savePersistentContent();
+    }
   }
 
   void _handleContentTap(Map<String, dynamic> item, int index) async {
