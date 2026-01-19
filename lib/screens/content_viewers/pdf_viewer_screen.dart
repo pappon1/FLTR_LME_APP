@@ -1,13 +1,18 @@
 import 'dart:io';
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter_pdfview/flutter_pdfview.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../../utils/app_theme.dart';
 
 class PDFViewerScreen extends StatefulWidget {
   final String filePath;
@@ -26,28 +31,59 @@ class PDFViewerScreen extends StatefulWidget {
 }
 
 class _PDFViewerScreenState extends State<PDFViewerScreen> {
+  // State Management (Optimized for high-speed scrolling)
+  final ValueNotifier<int> _currentPageNotifier = ValueNotifier(0);
+  final ValueNotifier<int> _totalPagesNotifier = ValueNotifier(0);
+  final ValueNotifier<PdfTextSearchResult?> _searchResultNotifier = ValueNotifier(null);
+  
   String? _localPath;
   bool _isLoading = true;
-  int _totalPages = 0;
-  int _currentPage = 0;
-  bool _isReady = false;
-  bool _isHorizontal = false;
-  PDFViewController? _pdfViewController;
+  bool _showControls = true;
+  final PdfViewerController _pdfViewerController = PdfViewerController();
+  final GlobalKey<SfPdfViewerState> _pdfViewerKey = GlobalKey();
+  Timer? _hideControlsTimer;
+  Offset? _pointerDownPos;
+  bool _isSearching = false;
+  final TextEditingController _searchController = TextEditingController();
   
-  // Storage key for last read page
   String get _storageKey => 'pdf_last_page_${widget.filePath.hashCode}';
 
   @override
   void initState() {
     super.initState();
-    WakelockPlus.enable(); // Keep screen on while reading
+    WakelockPlus.enable();
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _prepareFile();
+    _startHideTimer();
   }
 
   @override
   void dispose() {
     WakelockPlus.disable();
+    _hideControlsTimer?.cancel();
+    _searchResultNotifier.value?.removeListener(_onSearchResultChanged);
+    _searchResultNotifier.dispose();
+    _currentPageNotifier.dispose();
+    _totalPagesNotifier.dispose();
+    _pdfViewerController.dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  void _startHideTimer() {
+    _hideControlsTimer?.cancel();
+    _hideControlsTimer = Timer(const Duration(seconds: 4), () {
+      if (mounted && _showControls) {
+        setState(() => _showControls = false);
+      }
+    });
+  }
+
+  void _toggleControls() {
+    setState(() {
+      _showControls = !_showControls;
+      if (_showControls) _startHideTimer();
+    });
   }
 
   Future<void> _prepareFile() async {
@@ -60,21 +96,24 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
           await file.writeAsBytes(response.bodyBytes);
           _localPath = file.path;
         } else {
-          throw Exception("Failed to download PDF (Status: ${response.statusCode})");
+          throw Exception("Failed to download PDF");
         }
       } else {
         _localPath = widget.filePath;
       }
 
-      // Load last read page
       final prefs = await SharedPreferences.getInstance();
-      _currentPage = prefs.getInt(_storageKey) ?? 0;
+      final lastPage = prefs.getInt(_storageKey) ?? 0;
+      _currentPageNotifier.value = lastPage;
 
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
+      
+      // Jump to last page after delay to ensure viewer is ready
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (lastPage > 0) {
+          _pdfViewerController.jumpToPage(lastPage + 1);
+        }
+      });
     } catch (e) {
       _handleError(e.toString());
     }
@@ -83,197 +122,483 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
   void _handleError(String error) {
     if (mounted) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $error'),
-          backgroundColor: Colors.redAccent,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $error')));
     }
   }
 
-  void _onPageChanged(int? page, int? total) {
-    if (page != null) {
-      setState(() => _currentPage = page);
-      // Save progress
-      unawaited(SharedPreferences.getInstance().then((prefs) {
-        prefs.setInt(_storageKey, page);
-      }));
-    }
-  }
-
-  void _jumpToPage(int page) {
-    _pdfViewController?.setPage(page);
+  void _onSearchResultChanged() {
+    // No more setState here! The ValueListenableBuilder will handle UI updates
+    // for the match counter and navigation buttons without rebuilding the TextField.
+    _searchResultNotifier.notifyListeners(); 
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    const primaryColor = Color(0xFF22C55E);
-
-    return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F172A) : Colors.grey[100],
-      appBar: AppBar(
-        title: Text(
-          widget.title ?? _localPath?.split('/').last ?? 'PDF Viewer',
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-        foregroundColor: isDark ? Colors.white : Colors.black87,
-        elevation: 0,
-        centerTitle: false,
-        actions: [
-          IconButton(
-            icon: Icon(_isHorizontal ? Icons.swap_vert : Icons.swap_horiz),
-            tooltip: _isHorizontal ? "Vertical Scroll" : "Horizontal Swipe",
-            onPressed: () => setState(() => _isHorizontal = !_isHorizontal),
+    
+    return PopScope(
+      canPop: !_isSearching,
+      onPopInvokedWithResult: (didPop, result) {
+        if (!didPop && _isSearching) {
+          _closeSearch();
+        }
+      },
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          // Hide keyboard when tapping anywhere outside text fields
+          final currentFocus = FocusScope.of(context);
+          if (!currentFocus.hasPrimaryFocus && currentFocus.focusedChild != null) {
+            FocusManager.instance.primaryFocus?.unfocus();
+          }
+        },
+        child: Scaffold(
+        backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+        body: AnnotatedRegion<SystemUiOverlayStyle>(
+          value: SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+            systemNavigationBarColor: isDark ? const Color(0xFF0F172A) : Colors.white,
           ),
-          if (_isReady && _totalPages > 0)
-            IconButton(
-              icon: const Icon(Icons.grid_view_rounded),
-              onPressed: _showJumpToPageDialog,
-            ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          if (_isLoading) _buildShimmerLoader(),
-          if (!_isLoading && _localPath != null)
-            PDFView(
-              filePath: _localPath!,
-              enableSwipe: true,
-              swipeHorizontal: _isHorizontal,
-              autoSpacing: true,
-              pageFling: true,
-              pageSnap: true,
-              defaultPage: _currentPage,
-              fitPolicy: FitPolicy.BOTH,
-              onRender: (pages) {
-                setState(() {
-                  _totalPages = pages!;
-                  _isReady = true;
-                });
-              },
-              onViewCreated: (controller) => _pdfViewController = controller,
-              onPageChanged: _onPageChanged,
-              onError: (error) => _handleError(error.toString()),
-            ),
-          
-          // Floating Page Indicator
-          if (_isReady && _totalPages > 0)
-            Positioned(
-              bottom: 30,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.black87 : Colors.white,
-                    borderRadius: BorderRadius.circular(25),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                    border: Border.all(
-                      color: primaryColor.withValues(alpha: 0.5),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        "${_currentPage + 1}",
-                        style: const TextStyle(
-                          color: primaryColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                      Text(
-                        " / $_totalPages",
-                        style: TextStyle(
-                          color: isDark ? Colors.white70 : Colors.black54,
-                          fontSize: 14,
-                        ),
-                      ),
+          child: Column(
+            children: [
+              // Premium Header - Now part of the Column (Linear Layout)
+              _buildHeader(isDark),
+              
+              // PDF Content Area
+              Expanded(
+                child: Stack(
+                  children: [
+                    _isLoading || _localPath == null
+                        ? _buildLoader()
+                        : SfPdfViewer.file(
+                            File(_localPath!),
+                            key: _pdfViewerKey,
+                            controller: _pdfViewerController,
+                            onPageChanged: (details) {
+                              _currentPageNotifier.value = details.newPageNumber - 1;
+                              SharedPreferences.getInstance().then((prefs) {
+                                prefs.setInt(_storageKey, details.newPageNumber - 1);
+                              });
+                            },
+                            onDocumentLoaded: (details) {
+                              _totalPagesNotifier.value = details.document.pages.count;
+                            },
+                            onTap: (details) {
+                              FocusManager.instance.primaryFocus?.unfocus();
+                              _toggleControls();
+                            },
+                            enableDoubleTapZooming: true,
+                            enableTextSelection: false, 
+                            otherSearchTextHighlightColor: Colors.red.withOpacity(0.15), // Very light red (pale) for text clarity
+                            currentSearchTextHighlightColor: Colors.red.withOpacity(0.4), // Medium red for active match
+                            maxZoomLevel: 15.0,
+                            pageSpacing: 2, 
+                            canShowScrollHead: true,
+                            canShowPaginationDialog: true, 
+                            enableHyperlinkNavigation: false, 
+                            pageLayoutMode: PdfPageLayoutMode.continuous,
+                            interactionMode: PdfInteractionMode.pan,
+                          ),
+
+
+                
                     ],
                   ),
                 ),
-              ).animate().fadeIn().slideY(begin: 1.0, end: 0.0),
+              ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoader() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator(color: AppTheme.primaryColor, strokeWidth: 3),
+          const SizedBox(height: 20),
+          Text("Loading HD PDF Engine...", style: GoogleFonts.inter(color: Colors.grey, fontWeight: FontWeight.w500)),
         ],
       ),
     );
   }
 
-  Widget _buildShimmerLoader() {
-    return Shimmer.fromColors(
-      baseColor: Colors.grey[300]!,
-      highlightColor: Colors.grey[100]!,
-      child: Column(
-        children: List.generate(3, (index) => 
+  Widget _buildHeader(bool isDark) {
+    return Container(
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 10,
+        bottom: 15,
+        left: 15,
+        right: 15,
+      ),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppTheme.primaryColor.withOpacity(0.1)),
+        ),
+        child: Row(
+          children: [
+          _buildGlassIconButton(
+            icon: Icons.arrow_back_ios_new_rounded,
+            onPressed: () => Navigator.pop(context),
+            isDark: isDark,
+          ),
+          const SizedBox(width: 12),
           Expanded(
-            child: Container(
-              margin: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-              ),
+            child: _isSearching 
+                ? Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Live Match Badge (ValueListenable ensures it updates without rebuilding TextField)
+                        ValueListenableBuilder<PdfTextSearchResult?>(
+                          valueListenable: _searchResultNotifier,
+                          builder: (context, result, _) {
+                            if (result == null || result.totalInstanceCount == 0) return const SizedBox();
+                            return Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                              margin: const EdgeInsets.only(right: 4),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryColor,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                "${result.currentInstanceIndex}/${result.totalInstanceCount}",
+                                style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white),
+                              ),
+                            );
+                          },
+                        ),
+                        
+                        Expanded(
+                          child: TextField(
+                            controller: _searchController,
+                            autofocus: true,
+                            textAlign: TextAlign.center,
+                            textInputAction: TextInputAction.done,
+                            keyboardType: TextInputType.text,
+                            style: GoogleFonts.inter(
+                              fontSize: 16, 
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : Colors.black87,
+                            ),
+                            decoration: InputDecoration(
+                              hintText: "Search PDF...",
+                              border: InputBorder.none,
+                              hintStyle: GoogleFonts.inter(color: Colors.grey, fontSize: 13),
+                              isDense: true,
+                            ),
+                            onChanged: (text) {
+                              _hideControlsTimer?.cancel();
+                              // Performance: Update search result without full setState rebuild
+                              _searchResultNotifier.value?.removeListener(_onSearchResultChanged);
+                              
+                              if (text.isNotEmpty) {
+                                final result = _pdfViewerController.searchText(text);
+                                result.addListener(_onSearchResultChanged);
+                                _searchResultNotifier.value = result;
+                              } else {
+                                _searchResultNotifier.value?.clear();
+                                _searchResultNotifier.value = null;
+                              }
+                            },
+                            onSubmitted: (_) {
+                              // Keyboard 'Done' action triggers EXIT search
+                              setState(() {
+                                _isSearching = false;
+                                _searchResultNotifier.value?.clear();
+                                _searchResultNotifier.value = null;
+                                _searchController.clear();
+                                FocusScope.of(context).unfocus();
+                              });
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                : Text(
+                    widget.title ?? "Reading...",
+                    style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
+          ),
+          
+          // Navigation & Page Counter
+          if (!_isSearching) ...[
+            ValueListenableBuilder2<int, int>(
+              first: _currentPageNotifier,
+              second: _totalPagesNotifier,
+              builder: (context, currentPage, totalPages, _) {
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    "${currentPage + 1} / $totalPages",
+                    style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.bold, 
+                      fontSize: 12,
+                      color: Colors.white,
+                    ),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(width: 8),
+            ValueListenableBuilder2<int, int>(
+              first: _currentPageNotifier,
+              second: _totalPagesNotifier,
+              builder: (context, currentPage, totalPages, _) {
+                return Row(
+                  children: [
+                    _buildGlassIconButton(
+                      icon: Icons.chevron_left_rounded,
+                      onPressed: currentPage > 0 ? () => _pdfViewerController.previousPage() : null,
+                      isDark: isDark,
+                    ),
+                    const SizedBox(width: 6),
+                    _buildGlassIconButton(
+                      icon: Icons.chevron_right_rounded,
+                      onPressed: currentPage < (totalPages - 1) ? () => _pdfViewerController.nextPage() : null,
+                      isDark: isDark,
+                    ),
+                  ],
+                );
+              },
+            ),
+          ]
+          else ...[
+            // Wrap in Builder to reactive to search result instance changes
+            ValueListenableBuilder<PdfTextSearchResult?>(
+              valueListenable: _searchResultNotifier,
+              builder: (context, result, _) {
+                return Row(
+                  children: [
+                    _buildGlassIconButton(
+                      icon: Icons.keyboard_arrow_up_rounded,
+                      onPressed: result != null && result.hasResult ? () {
+                        result.previousInstance();
+                        _hideControlsTimer?.cancel();
+                      } : null,
+                      isDark: isDark,
+                    ),
+                    const SizedBox(width: 6),
+                    _buildGlassIconButton(
+                      icon: Icons.keyboard_arrow_down_rounded,
+                      onPressed: result != null && result.hasResult ? () {
+                        result.nextInstance();
+                        _hideControlsTimer?.cancel();
+                      } : null,
+                      isDark: isDark,
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+          
+          const SizedBox(width: 6),
+          
+          _buildGlassIconButton(
+            icon: _isSearching ? Icons.close_rounded : Icons.search_rounded,
+            onPressed: () {
+              if (_isSearching) {
+                _closeSearch();
+              } else {
+                setState(() => _isSearching = true);
+              }
+            },
+            isDark: isDark,
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+  void _closeSearch() {
+    setState(() {
+      _searchController.clear();
+      _searchResultNotifier.value?.removeListener(_onSearchResultChanged);
+      _searchResultNotifier.value?.clear();
+      _searchResultNotifier.value = null;
+      _isSearching = false;
+      FocusScope.of(context).unfocus();
+    });
+  }
+
+  Widget _buildGlassIconButton({required IconData icon, required VoidCallback? onPressed, required bool isDark}) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            color: (isDark ? Colors.white : Colors.black).withOpacity(onPressed == null ? 0.05 : 0.1),
+            child: Icon(
+              icon, 
+              size: 20, 
+              color: (isDark ? Colors.white : Colors.black87).withOpacity(onPressed == null ? 0.3 : 1.0)
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildPageCard(bool isDark) {
+    return ValueListenableBuilder2<int, int>(
+      first: _currentPageNotifier,
+      second: _totalPagesNotifier,
+      builder: (context, currentPage, totalPages, _) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(30),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: (isDark ? const Color(0xFF1E293B) : Colors.white).withOpacity(0.8),
+                borderRadius: BorderRadius.circular(30),
+                border: Border.all(color: AppTheme.primaryColor.withOpacity(0.4), width: 1.5),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.import_contacts_rounded,
+                    size: 14,
+                    color: AppTheme.primaryColor.withOpacity(0.7),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    "${currentPage + 1}",
+                    style: GoogleFonts.outfit(
+                      fontWeight: FontWeight.w900, 
+                      color: isDark ? Colors.white : Colors.black87, 
+                      fontSize: 18,
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: Text(
+                      "/",
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        color: Colors.grey.withOpacity(0.5),
+                        fontWeight: FontWeight.w300,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    "$totalPages",
+                    style: GoogleFonts.inter(
+                      fontSize: 12, 
+                      fontWeight: FontWeight.bold, 
+                      color: AppTheme.primaryColor.withOpacity(0.8),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
   void _showJumpToPageDialog() {
-    double tempPage = _currentPage.toDouble();
+    final controller = TextEditingController();
+    final total = _totalPagesNotifier.value;
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text("Jump to Page"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text("Page: ${(tempPage + 1).toInt()} of $_totalPages"),
-              const SizedBox(height: 16),
-              Slider(
-                value: tempPage,
-                min: 0,
-                max: (_totalPages - 1).toDouble(),
-                activeColor: const Color(0xFF22C55E),
-                onChanged: (val) {
-                  setDialogState(() => tempPage = val);
-                },
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text("Jump to Page", style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          autofocus: true,
+          textAlign: TextAlign.center,
+          style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold),
+          decoration: InputDecoration(
+            hintText: "1 - $total",
+            filled: true,
+            fillColor: Colors.grey.withOpacity(0.1),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel"),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                _jumpToPage(tempPage.toInt());
-                Navigator.pop(context);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF22C55E),
-                foregroundColor: Colors.white,
-              ),
-              child: const Text("Go"),
-            ),
-          ],
         ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
+            onPressed: () {
+              final page = int.tryParse(controller.text);
+              if (page != null && page > 0 && page <= total) {
+                _pdfViewerController.jumpToPage(page);
+                Navigator.pop(context);
+              }
+            },
+            child: const Text("Go", style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }
+}
+
+/// A helper class to listen to two ValueListenables simultaneously.
+class ValueListenableBuilder2<A, B> extends StatelessWidget {
+  const ValueListenableBuilder2({
+    super.key,
+    required this.first,
+    required this.second,
+    required this.builder,
+    this.child,
+  });
+
+  final ValueListenable<A> first;
+  final ValueListenable<B> second;
+  final Widget? child;
+  final Widget Function(BuildContext context, A a, B b, Widget? child) builder;
+
+  @override
+  Widget build(BuildContext context) => ValueListenableBuilder<A>(
+        valueListenable: first,
+        builder: (_, a, __) => ValueListenableBuilder<B>(
+          valueListenable: second,
+          builder: (context, b, __) => builder(context, a, b, child),
+        ),
+      );
 }
