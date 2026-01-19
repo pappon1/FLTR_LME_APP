@@ -1,4 +1,5 @@
 import 'dart:typed_data';
+import 'dart:io' as java_io;
 import 'package:flutter/material.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 
@@ -8,9 +9,12 @@ class VideoThumbnailWidget extends StatefulWidget {
   final double? height;
   final BoxFit fit;
 
+  final String? customThumbnailPath;
+
   const VideoThumbnailWidget({
     super.key,
     required this.videoPath,
+    this.customThumbnailPath,
     this.width,
     this.height,
     this.fit = BoxFit.cover,
@@ -55,6 +59,13 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
   }
 
   void _checkCacheAndGenerate() {
+    // 1. Check Custom Thumbnail Path First
+    if (widget.customThumbnailPath != null) {
+       _loadCustomThumbnail();
+       return;
+    }
+
+    // 2. Then check memory cache for generated ones
     if (VideoThumbnailWidget._memoryCache.containsKey(widget.videoPath)) {
       // LRU: Refresh position
       VideoThumbnailWidget._cacheKeys.remove(widget.videoPath);
@@ -66,6 +77,43 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
         _hasError = false;
       });
     } else {
+      _generateThumbnail();
+    }
+  }
+
+  Future<void> _loadCustomThumbnail() async {
+    if (widget.customThumbnailPath == null) return;
+    
+    // Check if we already have it in memory (using path as key)
+    if (VideoThumbnailWidget._memoryCache.containsKey(widget.customThumbnailPath!)) {
+        setState(() {
+          _thumbnailData = VideoThumbnailWidget._memoryCache[widget.customThumbnailPath!];
+          _isLoading = false;
+          _hasError = false;
+        });
+        return;
+    }
+
+    try {
+      final file = java_io.File(widget.customThumbnailPath!); // Use alias if needed or just File
+      if (await file.exists()) {
+        final bytes = await file.readAsBytes();
+        
+        // Cache it
+        VideoThumbnailWidget._addToCache(widget.customThumbnailPath!, bytes);
+
+        if (mounted) {
+          setState(() {
+            _thumbnailData = bytes;
+            _isLoading = false;
+            _hasError = false;
+          });
+        }
+      } else {
+         // Fallback to generator if file missing
+         _generateThumbnail();
+      }
+    } catch (e) {
       _generateThumbnail();
     }
   }

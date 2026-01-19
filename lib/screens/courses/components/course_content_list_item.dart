@@ -15,6 +15,7 @@ class CourseContentListItem extends StatelessWidget {
   final VoidCallback onCancelHold;
   final VoidCallback onRename;
   final VoidCallback onRemove;
+  final VoidCallback? onAddThumbnail;
 
   const CourseContentListItem({
     super.key,
@@ -30,6 +31,7 @@ class CourseContentListItem extends StatelessWidget {
     required this.onCancelHold,
     required this.onRename,
     required this.onRemove,
+    this.onAddThumbnail,
   });
 
   @override
@@ -88,13 +90,7 @@ class CourseContentListItem extends StatelessWidget {
                     color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: (item['type'] == 'video' && item['thumbnail'] != null)
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child:
-                              Image.file(File(item['thumbnail']), fit: BoxFit.cover),
-                        )
-                      : Icon(icon, color: color, size: 20),
+                  child: Icon(icon, color: color, size: 20),
                 ),
               ),
               title: Text(item['name'],
@@ -128,6 +124,7 @@ class CourseContentListItem extends StatelessWidget {
                 onSelected: (value) {
                   if (value == 'rename') onRename();
                   if (value == 'remove') onRemove();
+                  if (value == 'manage_thumbnail') onAddThumbnail?.call();
                 },
                 itemBuilder: (context) => [
                   const PopupMenuItem(
@@ -144,6 +141,15 @@ class CourseContentListItem extends StatelessWidget {
                         SizedBox(width: 12),
                         Text('Remove', style: TextStyle(color: Colors.red))
                       ])),
+                  if (item['type'] == 'video')
+                    const PopupMenuItem(
+                      value: 'manage_thumbnail',
+                      child: Row(children: [
+                        Icon(Icons.image, size: 20),
+                        SizedBox(width: 12),
+                        Text('Thumbnail')
+                      ]),
+                    ),
                 ],
               ),
             ),
