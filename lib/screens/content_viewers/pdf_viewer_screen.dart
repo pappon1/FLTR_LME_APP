@@ -52,7 +52,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
   void initState() {
     super.initState();
     WakelockPlus.enable();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    // SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge); // Removed to respect global manual mode
     _prepareFile();
     _startHideTimer();
   }
@@ -158,10 +158,10 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
           value: SystemUiOverlayStyle(
             statusBarColor: Colors.transparent,
             statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-            systemNavigationBarColor: isDark ? const Color(0xFF111111) : Colors.white,
+            systemNavigationBarColor: isDark ? AppTheme.darkCard : AppTheme.lightCard,
             systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-            systemNavigationBarDividerColor: isDark ? const Color(0xFF1F1F1F) : Colors.transparent,
-            systemNavigationBarContrastEnforced: false,
+            systemNavigationBarDividerColor: isDark ? AppTheme.darkBorder : null,
+            systemNavigationBarContrastEnforced: true,
           ),
           child: Column(
             children: [
