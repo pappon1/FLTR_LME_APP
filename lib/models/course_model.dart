@@ -16,6 +16,13 @@ class CourseModel {
   final bool isPublished;
   final DateTime? createdAt;
   final int newBatchDays;
+  final int courseValidityDays;
+  final bool hasCertificate;
+  final String? certificateUrl1;
+  final String? certificateUrl2;
+  final int selectedCertificateSlot; // 1 or 2
+  final List<dynamic> demoVideos; // List of demo video objects
+  final bool isOfflineDownloadEnabled;
   final List<dynamic> contents; // Nested content structure (Folders, Videos, PDFs)
 
   CourseModel({
@@ -34,6 +41,13 @@ class CourseModel {
     required this.isPublished,
     DateTime? createdAt,
     this.newBatchDays = 90,
+    this.courseValidityDays = 0, // 0 for Lifetime
+    this.hasCertificate = false,
+    this.certificateUrl1,
+    this.certificateUrl2,
+    this.selectedCertificateSlot = 1,
+    this.demoVideos = const [],
+    this.isOfflineDownloadEnabled = true,
     this.contents = const [],
   }) : createdAt = createdAt ?? DateTime.now();
 
@@ -54,6 +68,13 @@ class CourseModel {
       'isPublished': isPublished,
       'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
       'newBatchDays': newBatchDays,
+      'courseValidityDays': courseValidityDays,
+      'hasCertificate': hasCertificate,
+      'certificateUrl1': certificateUrl1,
+      'certificateUrl2': certificateUrl2,
+      'selectedCertificateSlot': selectedCertificateSlot,
+      'demoVideos': demoVideos,
+      'isOfflineDownloadEnabled': isOfflineDownloadEnabled,
       'contents': contents,
     };
   }
@@ -77,6 +98,13 @@ class CourseModel {
       isPublished: data['isPublished'] ?? false,
       createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
       newBatchDays: data['newBatchDays'] ?? 90,
+      courseValidityDays: data['courseValidityDays'] ?? 0,
+      hasCertificate: data['hasCertificate'] ?? false,
+      certificateUrl1: data['certificateUrl1'],
+      certificateUrl2: data['certificateUrl2'],
+      selectedCertificateSlot: data['selectedCertificateSlot'] ?? 1,
+      demoVideos: data['demoVideos'] ?? [],
+      isOfflineDownloadEnabled: data['isOfflineDownloadEnabled'] ?? true,
       contents: data['contents'] ?? [],
     );
   }
@@ -101,6 +129,13 @@ class CourseModel {
           ? (map['createdAt'] as Timestamp).toDate()
           : DateTime.now(),
       newBatchDays: map['newBatchDays'] ?? 90,
+      courseValidityDays: map['courseValidityDays'] ?? 0,
+      hasCertificate: map['hasCertificate'] ?? false,
+      certificateUrl1: map['certificateUrl1'],
+      certificateUrl2: map['certificateUrl2'],
+      selectedCertificateSlot: map['selectedCertificateSlot'] ?? 1,
+      demoVideos: map['demoVideos'] ?? [],
+      isOfflineDownloadEnabled: map['isOfflineDownloadEnabled'] ?? true,
       contents: map['contents'] ?? [],
     );
   }
@@ -121,6 +156,13 @@ class CourseModel {
     bool? isPublished,
     DateTime? createdAt,
     int? newBatchDays,
+    int? courseValidityDays,
+    bool? hasCertificate,
+    String? certificateUrl1,
+    String? certificateUrl2,
+    int? selectedCertificateSlot,
+    List<dynamic>? demoVideos,
+    bool? isOfflineDownloadEnabled,
     List<dynamic>? contents,
   }) {
     return CourseModel(
@@ -139,6 +181,13 @@ class CourseModel {
       isPublished: isPublished ?? this.isPublished,
       createdAt: createdAt ?? this.createdAt,
       newBatchDays: newBatchDays ?? this.newBatchDays,
+      courseValidityDays: courseValidityDays ?? this.courseValidityDays,
+      hasCertificate: hasCertificate ?? this.hasCertificate,
+      certificateUrl1: certificateUrl1 ?? this.certificateUrl1,
+      certificateUrl2: certificateUrl2 ?? this.certificateUrl2,
+      selectedCertificateSlot: selectedCertificateSlot ?? this.selectedCertificateSlot,
+      demoVideos: demoVideos ?? this.demoVideos,
+      isOfflineDownloadEnabled: isOfflineDownloadEnabled ?? this.isOfflineDownloadEnabled,
       contents: contents ?? this.contents,
     );
   }
