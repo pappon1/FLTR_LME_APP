@@ -106,11 +106,13 @@ class _VideoPlaylistWidgetState extends State<VideoPlaylistWidget> {
                   child: Stack(
                     children: [
                       path != null
-                          ? VideoThumbnailWidget(
-                              videoPath: path, 
-                              customThumbnailPath: item['thumbnail'],
-                              fit: BoxFit.cover
-                            )
+                            ? VideoThumbnailWidget(
+                                videoPath: path, 
+                                customThumbnailPath: item['thumbnail'],
+                                width: double.infinity,
+                                height: double.infinity,
+                                fit: BoxFit.cover
+                              )
                           : Center(
                               child: Icon(
                                 isPlaying ? Icons.pause : Icons.play_arrow,

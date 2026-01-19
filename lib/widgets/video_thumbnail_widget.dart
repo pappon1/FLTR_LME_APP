@@ -186,7 +186,9 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
       height: widget.height,
       fit: widget.fit,
       gaplessPlayback: true,
-      cacheWidth: 200, // Enforce cache resizing
+      cacheWidth: (widget.width != null && widget.width! > 0 && widget.width! != double.infinity) 
+          ? widget.width!.toInt() 
+          : null, 
     );
   }
 }
