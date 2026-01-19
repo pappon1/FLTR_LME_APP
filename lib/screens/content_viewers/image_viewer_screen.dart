@@ -45,110 +45,71 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
       extendBodyBehindAppBar: true,
       body: Stack(
         children: [
-          // Image Viewer Layer
-          PhotoView.customChild(
-            scaleStateController: _scaleStateController,
-            backgroundDecoration: const BoxDecoration(color: Colors.black),
-            minScale: PhotoViewComputedScale.contained,
-            maxScale: PhotoViewComputedScale.covered * 4.0,
-            initialScale: PhotoViewComputedScale.contained,
-            basePosition: Alignment.center,
-            heroAttributes: PhotoViewHeroAttributes(tag: widget.filePath),
-            onTapUp: (context, details, value) => _toggleControls(),
-            child: widget.isNetwork
-                ? CachedNetworkImage(
-                    imageUrl: widget.filePath,
-                    fit: BoxFit.contain,
-                    placeholder: (context, url) => _buildShimmerLoader(),
-                    errorWidget: (context, url, error) => _buildErrorWidget(),
-                  )
-                : Image.file(
-                    File(widget.filePath),
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) => _buildErrorWidget(),
-                  ),
+          // Image Viewer Layer (Starts below header)
+          Padding(
+            padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 60),
+            child: PhotoView.customChild(
+              scaleStateController: _scaleStateController,
+              backgroundDecoration: const BoxDecoration(color: Colors.black),
+              minScale: PhotoViewComputedScale.contained,
+              maxScale: PhotoViewComputedScale.covered * 4.0,
+              initialScale: PhotoViewComputedScale.contained,
+              basePosition: Alignment.center, // Ensures center alignment in the available space
+              heroAttributes: PhotoViewHeroAttributes(tag: widget.filePath),
+              onTapUp: (context, details, value) => _toggleControls(),
+              child: widget.isNetwork
+                  ? CachedNetworkImage(
+                      imageUrl: widget.filePath,
+                      fit: BoxFit.contain,
+                      placeholder: (context, url) => _buildShimmerLoader(),
+                      errorWidget: (context, url, error) => _buildErrorWidget(),
+                    )
+                  : Image.file(
+                      File(widget.filePath),
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) => _buildErrorWidget(),
+                    ),
+            ),
           ),
 
-          // Top Control Bar (Glassmorphism)
-          AnimatedPositioned(
-            duration: const Duration(milliseconds: 300),
-            top: _showControls ? 0 : -120,
+          // Top Control Bar (Fixed & Opaque)
+          Positioned(
+            top: 0,
             left: 0,
             right: 0,
             child: Container(
-              height: 110,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.8),
-                    Colors.black.withValues(alpha: 0.4),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
+              height: MediaQuery.of(context).padding.top + 60,
+              color: Colors.black,
+              alignment: Alignment.bottomCenter,
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: SafeArea(
                 bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      _buildGlassButton(
-                        icon: Icons.arrow_back,
-                        onTap: () => Navigator.pop(context),
-                      ),
-                      const SizedBox(width: 16),
-                      if (widget.title != null)
-                        Expanded(
-                          child: Text(
-                            widget.title!,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ).animate().fadeIn().slideX(begin: -0.2, end: 0.0),
+                child: Row(
+                  children: [
+                    _buildGlassButton(
+                      icon: Icons.arrow_back,
+                      onTap: () => Navigator.pop(context),
+                    ),
+                    const SizedBox(width: 16),
+                    if (widget.title != null)
+                      Expanded(
+                        child: Text(
+                          widget.title!,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                    ],
-                  ),
+                      ),
+                  ],
                 ),
               ),
             ),
           ),
 
-          // Bottom Hint Overlay
-          if (_showControls)
-            Positioned(
-              bottom: 40,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.black45,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.white10, width: 0.5),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.pinch_outlined, color: Colors.white70, size: 16),
-                      const SizedBox(width: 8),
-                      Text(
-                        "Pinch or Double tap to zoom",
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.7),
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.5, end: 0.0),
-            ),
+
         ],
       ),
     );

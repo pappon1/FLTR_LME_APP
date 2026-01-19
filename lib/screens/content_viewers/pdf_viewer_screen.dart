@@ -30,7 +30,7 @@ class PDFViewerScreen extends StatefulWidget {
   State<PDFViewerScreen> createState() => _PDFViewerScreenState();
 }
 
-class _PDFViewerScreenState extends State<PDFViewerScreen> {
+class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProviderStateMixin {
   // State Management (Optimized for high-speed scrolling)
   final ValueNotifier<int> _currentPageNotifier = ValueNotifier(0);
   final ValueNotifier<int> _totalPagesNotifier = ValueNotifier(0);
@@ -45,6 +45,8 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
   Offset? _pointerDownPos;
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
+  late AnimationController _fadeController;
+  late Animation<double> _fadeAnimation;
   
   String get _storageKey => 'pdf_last_page_${widget.filePath.hashCode}';
 
@@ -52,7 +54,8 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
   void initState() {
     super.initState();
     WakelockPlus.enable();
-    // SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge); // Removed to respect global manual mode
+    _fadeController = AnimationController(vsync: this, duration: 400.ms);
+    _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeIn);
     _prepareFile();
     _startHideTimer();
   }
@@ -67,6 +70,11 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
     _totalPagesNotifier.dispose();
     _pdfViewerController.dispose();
     _searchController.dispose();
+    _fadeController.dispose();
+    // Memory optimization: Clear temp PDF files
+    if (widget.isNetwork && _localPath != null) {
+      File(_localPath!).delete().catchError((_) {});
+    }
     super.dispose();
   }
 
@@ -106,7 +114,10 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
       final lastPage = prefs.getInt(_storageKey) ?? 0;
       _currentPageNotifier.value = lastPage;
 
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _fadeController.forward(); // Smooth fade-in animation
+      }
       
       // Jump to last page after delay to ensure viewer is ready
       Future.delayed(const Duration(milliseconds: 500), () {
@@ -174,34 +185,37 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
                   children: [
                     _isLoading || _localPath == null
                         ? _buildLoader()
-                        : SfPdfViewer.file(
-                            File(_localPath!),
-                            key: _pdfViewerKey,
-                            controller: _pdfViewerController,
-                            onPageChanged: (details) {
-                              _currentPageNotifier.value = details.newPageNumber - 1;
-                              SharedPreferences.getInstance().then((prefs) {
-                                prefs.setInt(_storageKey, details.newPageNumber - 1);
-                              });
-                            },
-                            onDocumentLoaded: (details) {
-                              _totalPagesNotifier.value = details.document.pages.count;
-                            },
-                            onTap: (details) {
-                              FocusManager.instance.primaryFocus?.unfocus();
-                              _toggleControls();
-                            },
-                            enableDoubleTapZooming: true,
-                            enableTextSelection: false, 
-                            otherSearchTextHighlightColor: Colors.red.withOpacity(0.15), // Very light red (pale) for text clarity
-                            currentSearchTextHighlightColor: Colors.red.withOpacity(0.4), // Medium red for active match
-                            maxZoomLevel: 15.0,
-                            pageSpacing: 2, 
-                            canShowScrollHead: true,
-                            canShowPaginationDialog: true, 
-                            enableHyperlinkNavigation: false, 
-                            pageLayoutMode: PdfPageLayoutMode.continuous,
-                            interactionMode: PdfInteractionMode.pan,
+                        : FadeTransition(
+                            opacity: _fadeAnimation,
+                            child: SfPdfViewer.file(
+                              File(_localPath!),
+                              key: _pdfViewerKey,
+                              controller: _pdfViewerController,
+                              onPageChanged: (details) {
+                                _currentPageNotifier.value = details.newPageNumber - 1;
+                                SharedPreferences.getInstance().then((prefs) {
+                                  prefs.setInt(_storageKey, details.newPageNumber - 1);
+                                });
+                              },
+                              onDocumentLoaded: (details) {
+                                _totalPagesNotifier.value = details.document.pages.count;
+                              },
+                              onTap: (details) {
+                                FocusManager.instance.primaryFocus?.unfocus();
+                                _toggleControls();
+                              },
+                              enableDoubleTapZooming: true,
+                              enableTextSelection: false, 
+                              otherSearchTextHighlightColor: Colors.red.withOpacity(0.15),
+                              currentSearchTextHighlightColor: Colors.red.withOpacity(0.4),
+                              maxZoomLevel: 15.0,
+                              pageSpacing: 2, 
+                              canShowScrollHead: true,
+                              canShowPaginationDialog: true, 
+                              enableHyperlinkNavigation: false, 
+                              pageLayoutMode: PdfPageLayoutMode.continuous,
+                              interactionMode: PdfInteractionMode.pan,
+                            ),
                           ),
 
 
@@ -218,13 +232,36 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
   }
 
   Widget _buildLoader() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const CircularProgressIndicator(color: AppTheme.primaryColor, strokeWidth: 3),
-          const SizedBox(height: 20),
-          Text("Loading HD PDF Engine...", style: GoogleFonts.inter(color: Colors.grey, fontWeight: FontWeight.w500)),
+          Shimmer.fromColors(
+            baseColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+            highlightColor: isDark ? Colors.grey[700]! : Colors.grey[100]!,
+            child: Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Shimmer.fromColors(
+            baseColor: isDark ? Colors.grey[800]! : Colors.grey[300]!,
+            highlightColor: isDark ? Colors.grey[700]! : Colors.grey[100]!,
+            child: Container(
+              width: 200,
+              height: 16,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -233,10 +270,10 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
   Widget _buildHeader(bool isDark) {
     return Container(
       padding: EdgeInsets.only(
-        top: MediaQuery.of(context).padding.top + 10,
-        bottom: 15,
-        left: 15,
-        right: 15,
+        top: MediaQuery.of(context).padding.top + 4,
+        bottom: 8,
+        left: 12,
+        right: 12,
       ),
       decoration: BoxDecoration(
         color: isDark ? Colors.black : Colors.white,
@@ -249,7 +286,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
         ],
       ),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
           borderRadius: BorderRadius.circular(16),
@@ -259,7 +296,10 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
           children: [
           _buildGlassIconButton(
             icon: Icons.arrow_back_ios_new_rounded,
-            onPressed: () => Navigator.pop(context),
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              Navigator.pop(context);
+            },
             isDark: isDark,
           ),
           const SizedBox(width: 12),
@@ -378,13 +418,19 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
                   children: [
                     _buildGlassIconButton(
                       icon: Icons.chevron_left_rounded,
-                      onPressed: currentPage > 0 ? () => _pdfViewerController.previousPage() : null,
+                      onPressed: currentPage > 0 ? () {
+                        HapticFeedback.selectionClick();
+                        _pdfViewerController.previousPage();
+                      } : null,
                       isDark: isDark,
                     ),
                     const SizedBox(width: 6),
                     _buildGlassIconButton(
                       icon: Icons.chevron_right_rounded,
-                      onPressed: currentPage < (totalPages - 1) ? () => _pdfViewerController.nextPage() : null,
+                      onPressed: currentPage < (totalPages - 1) ? () {
+                        HapticFeedback.selectionClick();
+                        _pdfViewerController.nextPage();
+                      } : null,
                       isDark: isDark,
                     ),
                   ],
@@ -427,6 +473,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
           _buildGlassIconButton(
             icon: _isSearching ? Icons.close_rounded : Icons.search_rounded,
             onPressed: () {
+              HapticFeedback.mediumImpact();
               if (_isSearching) {
                 _closeSearch();
               } else {
@@ -457,7 +504,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
       onTap: onPressed,
       child: AnimatedContainer(
         duration: 200.ms,
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           // Solid Black Card look
           color: isDark 
