@@ -106,12 +106,14 @@ class _VideoPlaylistWidgetState extends State<VideoPlaylistWidget> {
                   child: Stack(
                     children: [
                       path != null
-                            ? VideoThumbnailWidget(
-                                videoPath: path, 
-                                customThumbnailPath: item['thumbnail'],
-                                width: double.infinity,
-                                height: double.infinity,
-                                fit: BoxFit.cover
+                            ? Positioned.fill(
+                                child: VideoThumbnailWidget(
+                                    videoPath: path, 
+                                    customThumbnailPath: item['thumbnail'],
+                                    width: double.infinity,
+                                    height: double.infinity,
+                                    fit: BoxFit.cover
+                                  ),
                               )
                           : Center(
                               child: Icon(
@@ -140,13 +142,10 @@ class _VideoPlaylistWidgetState extends State<VideoPlaylistWidget> {
                   ),
                 ),
                 if (isPlaying)
-                  Positioned.fill(
-                    child: Container(
-                      color: Colors.black45,
-                      child: const Center(
-                        child: Icon(Icons.play_circle_fill,
-                            color: Color(0xFF22C55E), size: 30),
-                      ),
+                  const Positioned.fill(
+                    child: Center(
+                      child: Icon(Icons.play_circle_fill,
+                          color: Color(0xFF22C55E), size: 30),
                     ),
                   ),
               ],
