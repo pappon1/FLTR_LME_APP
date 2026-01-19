@@ -1,10 +1,8 @@
 import 'dart:io';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
 class ImageViewerScreen extends StatefulWidget {
   final String filePath;
@@ -23,14 +21,8 @@ class ImageViewerScreen extends StatefulWidget {
 }
 
 class _ImageViewerScreenState extends State<ImageViewerScreen> {
-  bool _showControls = true;
   final PhotoViewScaleStateController _scaleStateController = PhotoViewScaleStateController();
-
-  void _toggleControls() {
-    setState(() {
-      _showControls = !_showControls;
-    });
-  }
+  int _retryKey = 0;
 
   @override
   void dispose() {
@@ -56,17 +48,21 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
               initialScale: PhotoViewComputedScale.contained,
               basePosition: Alignment.center, // Ensures center alignment in the available space
               heroAttributes: PhotoViewHeroAttributes(tag: widget.filePath),
-              onTapUp: (context, details, value) => _toggleControls(),
               child: widget.isNetwork
                   ? CachedNetworkImage(
+                      key: ValueKey("network_$_retryKey"),
                       imageUrl: widget.filePath,
                       fit: BoxFit.contain,
+                      memCacheWidth: 2048, // Memory optimization
+                      // maxWidthDiskCache: 2048, // Optional: Cache on disk resized
                       placeholder: (context, url) => _buildShimmerLoader(),
                       errorWidget: (context, url, error) => _buildErrorWidget(),
                     )
                   : Image.file(
                       File(widget.filePath),
+                      key: ValueKey("file_$_retryKey"),
                       fit: BoxFit.contain,
+                      cacheWidth: 2048, // Memory optimization
                       errorBuilder: (context, error, stackTrace) => _buildErrorWidget(),
                     ),
             ),
@@ -86,7 +82,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
                 bottom: false,
                 child: Row(
                   children: [
-                    _buildGlassButton(
+                    _buildSimpleButton(
                       icon: Icons.arrow_back,
                       onTap: () => Navigator.pop(context),
                     ),
@@ -115,28 +111,14 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
     );
   }
 
-  Widget _buildGlassButton({required IconData icon, required VoidCallback onTap}) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(50),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(50),
-            child: Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white24, width: 0.5),
-              ),
-              child: Icon(icon, color: Colors.white, size: 22),
-            ),
-          ),
-        ),
+  Widget _buildSimpleButton({required IconData icon, required VoidCallback onTap}) {
+    return IconButton(
+      onPressed: onTap,
+      icon: Icon(icon, color: Colors.white, size: 24),
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(),
+      style: IconButton.styleFrom(
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
     );
   }
@@ -165,15 +147,30 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
             style: TextStyle(color: Colors.white54, fontSize: 16),
           ),
           const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: () => Navigator.pop(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF22C55E),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            icon: const Icon(Icons.arrow_back),
-            label: const Text("Go Back"),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.arrow_back, color: Colors.white70),
+                label: const Text("Back", style: TextStyle(color: Colors.white70)),
+              ),
+              const SizedBox(width: 16),
+              ElevatedButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _retryKey++;
+                  });
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF6366F1),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                icon: const Icon(Icons.refresh),
+                label: const Text("Retry"),
+              ),
+            ],
           )
         ],
       ),
