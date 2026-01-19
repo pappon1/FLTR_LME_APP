@@ -344,7 +344,6 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
                           lineTouchData: LineTouchData(
                             touchTooltipData: LineTouchTooltipData(
                               getTooltipColor: (_) => isDark ? Colors.white : Colors.blueGrey.shade800,
-                              tooltipBorderRadius: BorderRadius.circular(8),
                               tooltipPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               tooltipMargin: 10,
                               getTooltipItems: (touchedSpots) {

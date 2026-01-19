@@ -153,12 +153,15 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
           }
         },
         child: Scaffold(
-        backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+        backgroundColor: isDark ? Colors.black : const Color(0xFFF8FAFC),
         body: AnnotatedRegion<SystemUiOverlayStyle>(
           value: SystemUiOverlayStyle(
             statusBarColor: Colors.transparent,
             statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-            systemNavigationBarColor: isDark ? const Color(0xFF0F172A) : Colors.white,
+            systemNavigationBarColor: isDark ? const Color(0xFF111111) : Colors.white,
+            systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+            systemNavigationBarDividerColor: isDark ? const Color(0xFF1F1F1F) : Colors.transparent,
+            systemNavigationBarContrastEnforced: false,
           ),
           child: Column(
             children: [
@@ -236,10 +239,10 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
         right: 15,
       ),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        color: isDark ? Colors.black : Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withOpacity(isDark ? 0.4 : 0.1),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -452,19 +455,32 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> {
   Widget _buildGlassIconButton({required IconData icon, required VoidCallback? onPressed, required bool isDark}) {
     return GestureDetector(
       onTap: onPressed,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            color: (isDark ? Colors.white : Colors.black).withOpacity(onPressed == null ? 0.05 : 0.1),
-            child: Icon(
-              icon, 
-              size: 20, 
-              color: (isDark ? Colors.white : Colors.black87).withOpacity(onPressed == null ? 0.3 : 1.0)
-            ),
+      child: AnimatedContainer(
+        duration: 200.ms,
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          // Solid Black Card look
+          color: isDark 
+              ? (onPressed == null ? Colors.white.withOpacity(0.05) : const Color(0xFF1A1A1A)) 
+              : Colors.black.withOpacity(onPressed == null ? 0.02 : 0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: (isDark ? Colors.white : Colors.black).withOpacity(isDark ? 0.1 : 0.08),
+            width: 1.2,
           ),
+          boxShadow: [
+            if (isDark && onPressed != null)
+              BoxShadow(
+                color: Colors.black.withOpacity(0.5),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+          ],
+        ),
+        child: Icon(
+          icon, 
+          size: 20, 
+          color: (isDark ? Colors.white : Colors.black87).withOpacity(onPressed == null ? 0.3 : 1.0)
         ),
       ),
     );

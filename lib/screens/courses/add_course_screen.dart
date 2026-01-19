@@ -109,11 +109,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
             }
          });
          
-         if (mounted && _courseContents.isNotEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: const Text('Restored course draft'), backgroundColor: Colors.teal.shade700)
-            );
-         }
+         // Silent restoration, no SnackBar
       }
     } catch (e) {
        // debugPrint("Error loading draft: $e");
@@ -203,26 +199,6 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
 
   bool _validateCurrentStep() {
     return true; // DEV MODE: Bypass Validation
-    /* 
-    if (_currentStep == 0) {
-      if (_titleController.text.isEmpty || 
-          _mrpController.text.isEmpty || 
-          _descController.text.isEmpty ||
-          _selectedCategory == null || 
-          _thumbnailImage == null) {
-        
-        String msg = 'Please fill all fields';
-        if (_thumbnailImage == null) msg = 'Please upload a 16:9 Image';
-        else if (_descController.text.isEmpty) msg = 'Description is required';
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-           SnackBar(content: Text(msg), backgroundColor: Colors.red)
-        );
-        return false;
-      }
-    }
-    return true;
-    */
   }
 
   void _nextStep() async {
@@ -312,37 +288,40 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (bool didPop, dynamic result) async {
-         if (didPop) return;
-         await _saveCourseDraft();
-         if (context.mounted) Navigator.pop(context);
+        if (didPop) return;
+        await _saveCourseDraft();
+        if (context.mounted) Navigator.pop(context);
       },
       child: Scaffold(
+        backgroundColor: isDark ? Colors.black : const Color(0xFFF8FAFC),
         appBar: _buildAppBar(),
         body: Form(
-        key: _formKey,
-        child: Column(
-          children: [
-            Expanded(
-              child: PageView(
-                controller: _pageController,
-                physics: const NeverScrollableScrollPhysics(),
-                onPageChanged: (idx) {
-                   setState(() => _currentStep = idx);
-                },
-                children: [
-                  KeepAliveWrapper(child: _buildStep1Basic()),
-                  KeepAliveWrapper(child: _buildStep2Content()),
-                  KeepAliveWrapper(child: _buildStep3Advance()),
-                ],
+          key: _formKey,
+          child: Column(
+            children: [
+              Expanded(
+                child: PageView(
+                  controller: _pageController,
+                  physics: const NeverScrollableScrollPhysics(),
+                  onPageChanged: (idx) {
+                    setState(() => _currentStep = idx);
+                  },
+                  children: [
+                    KeepAliveWrapper(child: _buildStep1Basic()),
+                    KeepAliveWrapper(child: _buildStep2Content()),
+                    KeepAliveWrapper(child: _buildStep3Advance()),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-     ),
     );
   }
 

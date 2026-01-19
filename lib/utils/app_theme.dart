@@ -116,6 +116,9 @@ class AppTheme {
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.dark, 
         statusBarBrightness: Brightness.light,
+        systemNavigationBarColor: lightCard,
+        systemNavigationBarIconBrightness: Brightness.dark,
+        systemNavigationBarDividerColor: null,
       ),
       titleTextStyle: GoogleFonts.outfit(
         fontSize: 20,
@@ -183,6 +186,9 @@ class AppTheme {
         statusBarColor: Colors.transparent,
         statusBarIconBrightness: Brightness.light, 
         statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: darkCard,
+        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarDividerColor: darkBorder,
       ),
       titleTextStyle: GoogleFonts.outfit(
         fontSize: 20,

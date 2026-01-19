@@ -41,6 +41,9 @@ void main() async {
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
+
+  // Force Disable Edge-to-Edge / Immersive Mode - Standard System UI
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
   
   runApp(const MyApp());
 }
@@ -58,13 +61,29 @@ class MyApp extends StatelessWidget {
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
-          return MaterialApp(
-            title: 'Local Mobile Engineer Official - Admin',
-            debugShowCheckedModeBanner: false,
-            theme: AppTheme.lightTheme,
-            darkTheme: AppTheme.darkTheme,
-            themeMode: themeProvider.themeMode,
-            home: const AuthWrapper(),
+          // Correctly determine if we should render dark mode
+          final isSystemDark = View.of(context).platformDispatcher.platformBrightness == Brightness.dark;
+          final bool isDark = themeProvider.themeMode == ThemeMode.system
+              ? isSystemDark
+              : themeProvider.themeMode == ThemeMode.dark;
+          
+          return AnnotatedRegion<SystemUiOverlayStyle>(
+            value: SystemUiOverlayStyle(
+              statusBarColor: Colors.transparent,
+              statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+              systemNavigationBarColor: isDark ? AppTheme.darkCard : AppTheme.lightCard,
+              systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+              systemNavigationBarDividerColor: isDark ? AppTheme.darkBorder : null,
+              systemNavigationBarContrastEnforced: true,
+            ),
+            child: MaterialApp(
+              title: 'Local Mobile Engineer Official - Admin',
+              debugShowCheckedModeBanner: false,
+              theme: AppTheme.lightTheme,
+              darkTheme: AppTheme.darkTheme,
+              themeMode: themeProvider.themeMode,
+              home: const AuthWrapper(),
+            ),
           );
         },
       ),

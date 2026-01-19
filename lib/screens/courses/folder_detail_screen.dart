@@ -141,14 +141,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
           
           if (hasChanges && mounted) {
              setState(() {});
-             ScaffoldMessenger.of(context).showSnackBar(
-               SnackBar(
-                 content: Text('✅ Restored $loadedCount items from draft'), 
-                 duration: const Duration(seconds: 2),
-                 backgroundColor: Colors.blueGrey.shade800,
-                 behavior: SnackBarBehavior.floating,
-               ),
-             );
+             // Silent restoration, no SnackBar
           }
       } else {
          // debugPrint("No draft found for key: $key");
