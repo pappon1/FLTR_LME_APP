@@ -161,7 +161,7 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
       return Container(
         width: widget.width,
         height: widget.height,
-        color: Colors.black12,
+        color: Colors.transparent,
         child: const Center(
           child: SizedBox(
             width: 20,
@@ -176,8 +176,7 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
       return Container(
         width: widget.width,
         height: widget.height,
-        color: Colors.grey[900],
-        child: const Icon(Icons.videocam_off, color: Colors.white54, size: 24),
+        color: Colors.transparent,
       );
     }
 

@@ -80,7 +80,7 @@ class _VideoPlaylistWidgetState extends State<VideoPlaylistWidget> {
     final subTextColor = isPlaying
         ? const Color(0xFF22C55E).withValues(alpha: 0.8)
         : (isDark ? Colors.white54 : Colors.black54);
-    final thumbnailBg = isDark ? const Color(0xFF1E293B) : Colors.grey[200];
+    final thumbnailBg = isDark ? const Color(0xFF202020) : const Color(0xFFEEEEEE);
 
     return InkWell(
       onTap: () => widget.onVideoTap(index),
@@ -113,9 +113,9 @@ class _VideoPlaylistWidgetState extends State<VideoPlaylistWidget> {
                             )
                           : Center(
                               child: Icon(
-                                isPlaying ? Icons.equalizer : Icons.play_circle_outline,
-                                color: isPlaying ? const Color(0xFF22C55E) : (isDark ? Colors.white : Colors.black45),
-                                size: 40,
+                                isPlaying ? Icons.pause : Icons.play_arrow,
+                                color: isDark ? Colors.white24 : Colors.black12,
+                                size: 32,
                               ),
                             ),
                       // Progress Bar at the bottom
