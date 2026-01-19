@@ -97,15 +97,19 @@ class BunnyCDNService {
       case '.mp4':
       case '.mov':
       case '.avi':
+      case '.mkv':
         return 'video/mp4';
       case '.jpg':
       case '.jpeg':
         return 'image/jpeg';
       case '.png':
         return 'image/png';
+      case '.webp':
+        return 'image/webp';
       case '.pdf':
         return 'application/pdf';
       case '.zip':
+      case '.rar':
         return 'application/zip';
       default:
         return 'application/octet-stream';

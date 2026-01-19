@@ -12,7 +12,9 @@ import '../../models/course_model.dart';
 import '../../providers/dashboard_provider.dart';
 import '../utils/simple_file_explorer.dart';
 import '../../services/bunny_cdn_service.dart';
+import 'dart:ui' as ui;
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'components/collapsing_step_indicator.dart';
 import 'folder_detail_screen.dart';
 import 'components/course_content_list_item.dart';
@@ -31,6 +33,12 @@ class AddCourseScreen extends StatefulWidget {
 
   @override
   State<AddCourseScreen> createState() => _AddCourseScreenState();
+}
+
+class CourseUploadTask {
+  final String label;
+  double progress;
+  CourseUploadTask({required this.label, this.progress = 0.0});
 }
 
 class _AddCourseScreenState extends State<AddCourseScreen> {
@@ -80,6 +88,11 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   final List<String> _difficultyLevels = ['Beginner', 'Intermediate', 'Advanced'];
   final List<String> _categories = ['Hardware', 'Software'];
 
+  // Parallel Upload Progress State
+  List<CourseUploadTask> _uploadTasks = [];
+  bool _isUploading = false;
+  double _totalProgress = 0.0;
+  String _uploadStatus = '';
   @override
   void initState() {
     super.initState();
@@ -262,9 +275,9 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                     repeat: false,
                     errorBuilder: (c, e, s) => const Icon(Icons.check_circle, color: Colors.green, size: 100),
                   ),
-                  const Text('Mubarak Ho! 🎉', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  const Text('Congratulations! 🎉', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
-                  const Text('Aapka course safaltapurvak ban gaya hai.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+                  const Text('Your course has been created successfully.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
                   const SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: () {
@@ -292,18 +305,22 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
    bool _validateAllFields() {
     // 1. Basic Info Check
     if (_thumbnailImage == null) {
+      _jumpToStep(0);
       _showWarning('Please select a course thumbnail (Step 1)');
       return false;
     }
     if (_titleController.text.trim().isEmpty) {
+      _jumpToStep(0);
       _showWarning('Please enter course title (Step 1)');
       return false;
     }
     if (_selectedCategory == null) {
+      _jumpToStep(0);
       _showWarning('Please select a category (Step 1)');
       return false;
     }
     if (_mrpController.text.isEmpty) {
+      _jumpToStep(0);
       _showWarning('Please enter selling price (Step 1)');
       return false;
     }
@@ -325,16 +342,24 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     return true; 
   }
 
+  void _jumpToStep(int step) {
+    _pageController.animateToPage(
+      step,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeOutQuart,
+    );
+  }
+
   void _showWarning(String message) {
+    HapticFeedback.vibrate();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.orange.shade800,
+        backgroundColor: Colors.red.shade800,
         behavior: SnackBarBehavior.floating,
       ),
     );
   }
-
   Widget _buildCourseReviewCard() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -354,13 +379,13 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
             ],
           ),
           const Divider(height: 24),
-          _buildReviewItem(Icons.title, 'Title', _titleController.text.isEmpty ? 'Not Set' : _titleController.text),
-          _buildReviewItem(Icons.category_outlined, 'Category', _selectedCategory ?? 'Not Selected'),
-          _buildReviewItem(Icons.payments_outlined, 'Price', '₹${_finalPriceController.text}'),
-          _buildReviewItem(Icons.video_collection_outlined, 'Content', '${_getAllVideosFromContents(_courseContents).length} Videos'),
-          _buildReviewItem(Icons.history_toggle_off, 'Validity', _getValidityText(_courseValidityDays)),
-          _buildReviewItem(Icons.workspace_premium_outlined, 'Certificate', _hasCertificate ? 'Enabled' : 'Disabled'),
-          _buildReviewItem(Icons.public, 'Status', _isPublished ? 'Public' : 'Hidden'),
+          _buildReviewItem(Icons.title, 'Title', _titleController.text.isEmpty ? 'Not Set' : _titleController.text, () => _jumpToStep(0)),
+          _buildReviewItem(Icons.category_outlined, 'Category', _selectedCategory ?? 'Not Selected', () => _jumpToStep(0)),
+          _buildReviewItem(Icons.payments_outlined, 'Price', '₹${_finalPriceController.text}', () => _jumpToStep(0)),
+          _buildReviewItem(Icons.video_collection_outlined, 'Content', '${_getAllVideosFromContents(_courseContents).length} Videos', () => _jumpToStep(1)),
+          _buildReviewItem(Icons.history_toggle_off, 'Validity', _getValidityText(_courseValidityDays), null),
+          _buildReviewItem(Icons.workspace_premium_outlined, 'Certificate', _hasCertificate ? 'Enabled' : 'Disabled', null),
+          _buildReviewItem(Icons.public, 'Status', _isPublished ? 'Public' : 'Hidden', null),
         ],
       ),
     );
@@ -376,20 +401,27 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     return '$days Days';
   }
 
-  Widget _buildReviewItem(IconData icon, String label, String value) {
+  Widget _buildReviewItem(IconData icon, String label, String value, VoidCallback? onEdit) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Icon(icon, size: 14, color: Colors.grey),
-          const SizedBox(width: 8),
-          Text('$label: ', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-          Expanded(child: Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
-        ],
+      child: InkWell(
+        onTap: onEdit,
+        borderRadius: BorderRadius.circular(4),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 2),
+          child: Row(
+            children: [
+              Icon(icon, size: 14, color: Colors.grey),
+              const SizedBox(width: 8),
+              Text('$label: ', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+              Expanded(child: Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
+              if (onEdit != null) Icon(Icons.edit_note_rounded, size: 16, color: AppTheme.primaryColor),
+            ],
+          ),
+        ),
       ),
     );
   }
-
    void _nextStep() async {
     if (_currentStep < 2) {
       FocusScope.of(context).unfocus();
@@ -407,29 +439,124 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
 
    Future<void> _submitCourse() async {
     if (!_validateAllFields()) return; 
-    setState(() => _isLoading = true);
+
+    setState(() {
+      _isLoading = true;
+      _isUploading = true;
+      _uploadTasks = [];
+    });
 
     try {
+      await WakelockPlus.enable(); // Keep screen on during upload
+
+      // 1. Initialize Tasks
+      if (_thumbnailImage != null) _uploadTasks.add(CourseUploadTask(label: 'Course Thumbnail'));
+      if (_hasCertificate && _certificate1Image != null) _uploadTasks.add(CourseUploadTask(label: 'Certificate Design A'));
+      if (_hasCertificate && _certificate2Image != null) _uploadTasks.add(CourseUploadTask(label: 'Certificate Design B'));
+      
+      final allLocalFiles = _getAllLocalFilesFromContents(_courseContents);
+      for (var file in allLocalFiles) {
+        _uploadTasks.add(CourseUploadTask(label: '${file['type'].toString().toUpperCase()}: ${file['name']}'));
+      }
+
+      // 2. Start Parallel Uploads
+      setState(() {}); // Refresh UI to show tasks
+
       String thumbnailUrl = '';
-      if (_thumbnailImage != null) {
-        thumbnailUrl = await _bunnyService.uploadImage(filePath: _thumbnailImage!.path, folder: 'thumbnails');
-      }
-
       String? cert1Url;
-      if (_certificate1Image != null) {
-        cert1Url = await _bunnyService.uploadImage(filePath: _certificate1Image!.path, folder: 'certificates');
+      String? cert2Url;
+
+      // Wrap upload functions to update our task list
+      Future<String> uploadWithProgress(File file, String folder, int taskIndex) async {
+        return await _bunnyService.uploadImage(
+          filePath: file.path,
+          folder: folder,
+          onProgress: (sent, total) {
+            if (mounted) {
+              setState(() {
+                _uploadTasks[taskIndex].progress = sent / total;
+                _calculateOverallProgress();
+              });
+            }
+          },
+        );
       }
 
-      String? cert2Url;
-      if (_certificate2Image != null) {
-        cert2Url = await _bunnyService.uploadImage(filePath: _certificate2Image!.path, folder: 'certificates');
+      int currentTaskIndex = 0;
+      List<Future<void>> uploadFutures = [];
+
+      if (_thumbnailImage != null) {
+        final tIdx = currentTaskIndex++;
+        uploadFutures.add(uploadWithProgress(_thumbnailImage!, 'thumbnails', tIdx)
+          .then((url) => thumbnailUrl = url));
       }
+
+      if (_hasCertificate && _certificate1Image != null) {
+        final c1Idx = currentTaskIndex++;
+        uploadFutures.add(uploadWithProgress(_certificate1Image!, 'certificates', c1Idx)
+          .then((url) => cert1Url = url));
+      }
+
+      if (_hasCertificate && _certificate2Image != null) {
+        final c2Idx = currentTaskIndex++;
+        uploadFutures.add(uploadWithProgress(_certificate2Image!, 'certificates', c2Idx)
+          .then((url) => cert2Url = url));
+      }
+
+      // Generate Session ID for Unique Folder
+      final sessionId = DateTime.now().millisecondsSinceEpoch.toString();
+
+      // Add All File Uploads to Parallel Queue
+      for (int i = 0; i < allLocalFiles.length; i++) {
+        final fIdx = currentTaskIndex++;
+        final item = allLocalFiles[i];
+        final path = item['path'];
+        final name = item['name'];
+        final type = item['type'];
+        
+        // Determine remote folder based on type
+        String folder = 'others';
+        if (type == 'video') folder = 'videos';
+        else if (type == 'pdf') folder = 'pdfs';
+        else if (type == 'image') folder = 'images';
+        // Use Index to ensure uniqueness on server even if filenames differ
+        final uniqueName = '${fIdx}_$name';
+
+        uploadFutures.add(_bunnyService.uploadFile(
+          filePath: path,
+          remotePath: 'courses/$sessionId/$folder/$uniqueName', 
+          onProgress: (sent, total) {
+            if (mounted) {
+              setState(() {
+                _uploadTasks[fIdx].progress = sent / total;
+                _calculateOverallProgress();
+              });
+            }
+          },
+        ).then((url) {
+          // DIRECT UPDATE (By Reference)
+          item['path'] = url;
+          item['isLocal'] = false;
+
+          // Sync Demo Videos (Match by original path since that's what we have locally)
+          if (type == 'video') {
+             for (var demo in _demoVideos) {
+                if (demo['path'] == path) { // Match by original path
+                   demo['path'] = url;
+                   demo['isLocal'] = false;
+                }
+             }
+          }
+        }));
+      }
+
+      // Wait for all uploads to complete
+      await Future.wait(uploadFutures);
 
       final String finalDesc = _descController.text.trim();
-      
       final int finalValidity = _courseValidityDays == -1 
           ? (int.tryParse(_customValidityController.text) ?? 0) 
-          : _courseValidityDays!; // Now guaranteed not null by validation
+          : _courseValidityDays!;
 
       final newCourse = CourseModel(
         id: '', 
@@ -443,16 +570,15 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         difficulty: _difficulty,
         enrolledStudents: 0,
         rating: 0.0,
-        totalVideos: 0,
+        totalVideos: _getAllVideosFromContents(_courseContents).length,
         isPublished: _isPublished,
         createdAt: DateTime.now(),
         newBatchDays: _newBatchDurationDays,
         courseValidityDays: finalValidity,
-        // Certificate Safety: Don't send data if disabled
         hasCertificate: _hasCertificate,
-        certificateUrl1: _hasCertificate ? cert1Url : null,
-        certificateUrl2: _hasCertificate ? cert2Url : null,
-        selectedCertificateSlot: _hasCertificate ? _selectedCertSlot : 1,
+        certificateUrl1: cert1Url,
+        certificateUrl2: cert2Url,
+        selectedCertificateSlot: _selectedCertSlot,
         demoVideos: _demoVideos,
         isOfflineDownloadEnabled: _isOfflineDownloadEnabled,
         contents: _courseContents,
@@ -460,20 +586,47 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
 
       if (mounted) {
         await Provider.of<DashboardProvider>(context, listen: false).addCourse(newCourse);
-        if (!mounted) return;
-        // Show Success Dialog
-      if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() {
+          _isUploading = false;
+          _isLoading = false;
+        });
         _showSuccessCelebration();
-      }
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        setState(() {
+          _isLoading = false;
+          _isUploading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
       }
     } finally {
+      await WakelockPlus.disable(); // Allow screen to turn off
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _calculateOverallProgress() {
+    if (_uploadTasks.isEmpty) return;
+    double total = 0;
+    for (var task in _uploadTasks) {
+      total += task.progress;
+    }
+    _totalProgress = total / _uploadTasks.length;
+  }
+
+
+  // Helper to get ALL local files for upload
+  List<Map<String, dynamic>> _getAllLocalFilesFromContents(List<dynamic> items) {
+    List<Map<String, dynamic>> files = [];
+    for (var item in items) {
+      if ((item['type'] == 'video' || item['type'] == 'pdf' || item['type'] == 'zip' || item['type'] == 'image') && item['isLocal'] == true) {
+         files.add(item); // PASS BY REFERENCE
+      } else if (item['type'] == 'folder' && item['contents'] != null) {
+         files.addAll(_getAllLocalFilesFromContents(item['contents']));
+      }
+    }
+    return files;
   }
 
   bool _isDragModeActive = false;
@@ -495,44 +648,141 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+   Widget build(BuildContext context) {
+     return Scaffold(
+       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+       appBar: _buildAppBar(),
+       body: Form(
+         key: _formKey,
+         child: Stack(
+           children: [
+             PageView(
+               controller: _pageController,
+               physics: const NeverScrollableScrollPhysics(), // Force button usage
+               onPageChanged: (idx) {
+                 setState(() => _currentStep = idx);
+               },
+               children: [
+                 KeepAliveWrapper(child: _buildStep1Basic()),
+                 KeepAliveWrapper(child: _buildStep2Content()),
+                 KeepAliveWrapper(child: _buildStep3Advance()),
+               ],
+             ),
+             if (_isUploading) _buildUploadingOverlay(),
+             if (_isLoading && !_isUploading) const Center(child: CircularProgressIndicator()),
+           ],
+         ),
+       ),
+     );
+   }
 
-    return PopScope(
-      canPop: false,
-      onPopInvokedWithResult: (bool didPop, dynamic result) async {
-        if (didPop) return;
-        await _saveCourseDraft();
-        if (context.mounted) Navigator.pop(context);
-      },
-      child: Scaffold(
-        backgroundColor: isDark ? Colors.black : const Color(0xFFF8FAFC),
-        appBar: _buildAppBar(),
-        body: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              Expanded(
-                child: PageView(
-                  controller: _pageController,
-                  physics: const NeverScrollableScrollPhysics(),
-                  onPageChanged: (idx) {
-                    setState(() => _currentStep = idx);
-                  },
-                  children: [
-                    KeepAliveWrapper(child: _buildStep1Basic()),
-                    KeepAliveWrapper(child: _buildStep2Content()),
-                    KeepAliveWrapper(child: _buildStep3Advance()),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
+   Widget _buildUploadingOverlay() {
+     return Container(
+       color: Colors.black.withOpacity(0.85),
+       width: double.infinity,
+       height: double.infinity,
+       child: BackdropFilter(
+         filter: ui.ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+         child: SafeArea(
+           child: Column(
+             children: [
+               const SizedBox(height: 40),
+               Lottie.network(
+                 'https://assets9.lottiefiles.com/packages/lf20_yzn8uNCX7t.json', // Uploading animation
+                 width: 150, height: 150,
+                 animate: true,
+                 repeat: true,
+                 errorBuilder: (c, e, s) => const Icon(Icons.cloud_upload_outlined, size: 80, color: Colors.white),
+               ),
+               const Text('Uploading Course Materials', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+               const SizedBox(height: 8),
+               Text('Upload will continue even if you switch apps', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12)),
+               const SizedBox(height: 40),
+               
+               // Overall Progress
+               Padding(
+                 padding: const EdgeInsets.symmetric(horizontal: 40),
+                 child: Column(
+                   children: [
+                     Row(
+                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                       children: [
+                         const Text('Overall Progress', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                         Text('${(_totalProgress * 100).toInt()}%', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                       ],
+                     ),
+                     const SizedBox(height: 12),
+                     ClipRRect(
+                       borderRadius: BorderRadius.circular(10),
+                       child: LinearProgressIndicator(
+                         value: _totalProgress,
+                         minHeight: 12,
+                         backgroundColor: Colors.white.withOpacity(0.1),
+                         valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                       ),
+                     ),
+                   ],
+                 ),
+               ),
+               
+               const SizedBox(height: 40),
+               const Padding(
+                 padding: EdgeInsets.symmetric(horizontal: 24),
+                 child: Align(alignment: Alignment.centerLeft, child: Text('BATCH DETAILS', style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2))),
+               ),
+               const SizedBox(height: 16),
+               
+               // Individual Task List
+               Expanded(
+                 child: ListView.builder(
+                   padding: const EdgeInsets.symmetric(horizontal: 24),
+                   itemCount: _uploadTasks.length,
+                   itemBuilder: (context, index) {
+                     final task = _uploadTasks[index];
+                     return Container(
+                       margin: const EdgeInsets.only(bottom: 12),
+                       padding: const EdgeInsets.all(16),
+                       decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
+                       child: Column(
+                         crossAxisAlignment: CrossAxisAlignment.start,
+                         children: [
+                           Row(
+                             children: [
+                               Icon(task.progress == 1.0 ? Icons.check_circle : Icons.upload_file, color: task.progress == 1.0 ? Colors.green : Colors.blue, size: 20),
+                               const SizedBox(width: 12),
+                               Expanded(child: Text(task.label, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500))),
+                               Text('${(task.progress * 100).toInt()}%', style: TextStyle(color: task.progress == 1.0 ? Colors.green : Colors.grey, fontSize: 11)),
+                             ],
+                           ),
+                           if (task.progress < 1.0) ...[
+                             const SizedBox(height: 10),
+                             LinearProgressIndicator(value: task.progress, minHeight: 4, backgroundColor: Colors.white12, valueColor: AlwaysStoppedAnimation<Color>(task.progress == 1.0 ? Colors.green : Colors.blue)),
+                           ],
+                         ],
+                       ),
+                     );
+                   },
+                 ),
+               ),
+               
+               // Warning Footer
+               Container(
+                 padding: const EdgeInsets.all(16),
+                 decoration: BoxDecoration(color: Colors.red.withOpacity(0.1)),
+                 child: const Row(
+                   children: [
+                     Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
+                     const SizedBox(width: 12),
+                     Expanded(child: Text('Please do not close or kill the app until the upload is complete.', style: TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.bold))),
+                   ],
+                 ),
+               ),
+             ],
+           ),
+         ),
+       ),
+     );
+   }
   PreferredSizeWidget _buildAppBar() {
     if (_isDragModeActive) {
        return AppBar(
@@ -817,6 +1067,16 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       }
     }
     return videos;
+    return videos;
+  }
+
+  void _syncDemoVideos() {
+    final allAvailable = _getAllVideosFromContents(_courseContents);
+    final availableNames = allAvailable.map((v) => v['name']).toSet();
+    
+    setState(() {
+       _demoVideos.removeWhere((demo) => !availableNames.contains(demo['name']));
+    });
   }
 
   Future<void> _showDemoSelectionDialog() async {
@@ -1092,8 +1352,8 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                child: Align(
                  alignment: Alignment.bottomCenter,
                  child: Padding(
-                   padding: const EdgeInsets.symmetric(horizontal: 24),
-                   child: _buildNavButtons(),
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: _buildNavButtons(),
                  ),
                ),
             ),
@@ -1174,6 +1434,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                   setState(() {
                     _courseContents[index]['name'] = renameController.text.trim();
                   });
+                  _syncDemoVideos();
                   _saveCourseDraft();
                   Navigator.pop(context);
                 }
@@ -1210,6 +1471,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
               
               setState(() {
                 _courseContents.removeAt(index);
+                _syncDemoVideos();
               });
               _saveCourseDraft();
               Navigator.pop(context);
@@ -1786,11 +2048,9 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: _isPublished ? Colors.green.withOpacity(0.3) : Colors.grey.shade200)),
                 ),
                 
-                const SizedBox(height: 40),
+                const SizedBox(height: 24),
                 _buildCourseReviewCard(),
-                const SizedBox(height: 40),
-                Center(child: Icon(Icons.verified_user_outlined, size: 48, color: AppTheme.primaryColor.withOpacity(0.2))),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
               ],
             ),
           ),
