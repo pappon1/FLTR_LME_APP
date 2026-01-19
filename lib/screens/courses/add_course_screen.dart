@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:lottie/lottie.dart';
+import 'package:responsive_framework/responsive_framework.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import '../../models/course_model.dart';
@@ -70,6 +72,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   File? _certificate2Image;
   int _selectedCertSlot = 1; // 1 or 2
   bool _isOfflineDownloadEnabled = true;
+  bool _isSavingDraft = false;
   final List<Map<String, dynamic>> _demoVideos = [];
   final _customValidityController = TextEditingController(); // For custom days
   String _difficulty = 'Beginner'; // Acts as Course Type
@@ -98,6 +101,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   // --- Persistence Logic ---
   Future<void> _loadCourseDraft() async {
     try {
+       setState(() => _isSavingDraft = true);
       final prefs = await SharedPreferences.getInstance();
       final String? jsonString = prefs.getString('course_creation_draft');
       if (jsonString != null) {
@@ -139,6 +143,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
 
   Future<void> _saveCourseDraft() async {
     try {
+      setState(() => _isSavingDraft = true);
       final prefs = await SharedPreferences.getInstance();
       final Map<String, dynamic> draft = {
          'title': _titleController.text,
@@ -157,8 +162,13 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
           'customDays': int.tryParse(_customValidityController.text),
        };
       
-      await prefs.setString('course_creation_draft', jsonEncode(draft));
-      // debugPrint("Course Draft Saved");
+       await prefs.setString('course_creation_draft', jsonEncode(draft));
+       
+       if (mounted) {
+         Future.delayed(const Duration(seconds: 1), () {
+           if (mounted) setState(() => _isSavingDraft = false);
+         });
+       }
     } catch (e) {
        // debugPrint("Error saving draft: $e");
     }
@@ -221,9 +231,62 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       }
 
       setState(() => _thumbnailImage = file);
+      unawaited(_saveCourseDraft());
     }
   }
   
+  void _showSuccessCelebration() {
+    HapticFeedback.heavyImpact();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(24),
+                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20, spreadRadius: 5)],
+              ),
+              child: Column(
+                children: [
+                  Lottie.network(
+                    'https://assets10.lottiefiles.com/packages/lf20_pqnfmone.json', // Confetti Lottie
+                    width: 200, height: 200,
+                    animate: true,
+                    repeat: false,
+                    errorBuilder: (c, e, s) => const Icon(Icons.check_circle, color: Colors.green, size: 100),
+                  ),
+                  const Text('Mubarak Ho! 🎉', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  const Text('Aapka course safaltapurvak ban gaya hai.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () {
+                       Navigator.pop(context); // Close Dialog
+                       Navigator.pop(context, true); // Close Screen and Return Success
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 50),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('DHANYAWAAD', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
 
    bool _validateAllFields() {
@@ -271,6 +334,62 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       ),
     );
   }
+
+  Widget _buildCourseReviewCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryColor.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.primaryColor.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.rate_review_outlined, color: AppTheme.primaryColor, size: 20),
+              const SizedBox(width: 8),
+              const Text('Quick Course Review', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+            ],
+          ),
+          const Divider(height: 24),
+          _buildReviewItem(Icons.title, 'Title', _titleController.text.isEmpty ? 'Not Set' : _titleController.text),
+          _buildReviewItem(Icons.category_outlined, 'Category', _selectedCategory ?? 'Not Selected'),
+          _buildReviewItem(Icons.payments_outlined, 'Price', '₹${_finalPriceController.text}'),
+          _buildReviewItem(Icons.video_collection_outlined, 'Content', '${_getAllVideosFromContents(_courseContents).length} Videos'),
+          _buildReviewItem(Icons.history_toggle_off, 'Validity', _getValidityText(_courseValidityDays)),
+          _buildReviewItem(Icons.workspace_premium_outlined, 'Certificate', _hasCertificate ? 'Enabled' : 'Disabled'),
+          _buildReviewItem(Icons.public, 'Status', _isPublished ? 'Public' : 'Hidden'),
+        ],
+      ),
+    );
+  }
+
+  String _getValidityText(int? days) {
+    if (days == null) return 'Not Selected';
+    if (days == 0) return 'Lifetime Access';
+    if (days == 184) return '6 Months';
+    if (days == 365) return '1 Year';
+    if (days == 730) return '2 Years';
+    if (days == 1095) return '3 Years';
+    return '$days Days';
+  }
+
+  Widget _buildReviewItem(IconData icon, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: Colors.grey),
+          const SizedBox(width: 8),
+          Text('$label: ', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          Expanded(child: Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
+        ],
+      ),
+    );
+  }
+
    void _nextStep() async {
     if (_currentStep < 2) {
       FocusScope.of(context).unfocus();
@@ -342,8 +461,11 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       if (mounted) {
         await Provider.of<DashboardProvider>(context, listen: false).addCourse(newCourse);
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Course Created Successfully!')));
-        Navigator.pop(context);
+        // Show Success Dialog
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showSuccessCelebration();
+      }
       }
     } catch (e) {
       if (mounted) {
@@ -483,8 +605,6 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   
 
 
-
-
   Widget _buildNavButtons() {
     return Padding(
       padding: EdgeInsets.only(top: 32, bottom: 12 + MediaQuery.of(context).padding.bottom),
@@ -535,6 +655,29 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const Text('Create New Course', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                if (_isSavingDraft) 
+                  TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0.0, end: 1.0),
+                    duration: const Duration(milliseconds: 300),
+                    builder: (context, value, child) => Opacity(
+                      opacity: value,
+                      child: Container(
+                        margin: const EdgeInsets.only(top: 4),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(4)),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.cloud_done_outlined, size: 12, color: Colors.blue),
+                            const SizedBox(width: 4),
+                            Text('Draft Saved', style: TextStyle(fontSize: 10, color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 24),
                  // 1. Image
                 const Text('Course Cover (16:9 Size)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 const SizedBox(height: 10),
@@ -547,7 +690,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                       decoration: BoxDecoration(
                         color: Theme.of(context).scaffoldBackgroundColor,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: _thumbnailImage == null ? Colors.grey.shade300 : AppTheme.primaryColor.withValues(alpha: 0.5), width: _thumbnailImage == null ? 1 : 2),
+                        border: Border.all(color: _thumbnailImage == null ? Colors.grey.shade300 : AppTheme.primaryColor.withOpacity(0.5), width: _thumbnailImage == null ? 1 : 2),
                         image: _thumbnailImage != null
                             ? DecorationImage(image: FileImage(_thumbnailImage!), fit: BoxFit.cover)
                             : null,
@@ -556,7 +699,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                           ? Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.add_photo_alternate_rounded, size: 48, color: AppTheme.primaryColor.withValues(alpha: 0.8)),
+                                Icon(Icons.add_photo_alternate_rounded, size: 48, color: AppTheme.primaryColor.withOpacity(0.8)),
                                 const SizedBox(height: 8),
                                 Text('Select 16:9 Image', style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
                               ],
@@ -884,7 +1027,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                              color: AppTheme.primaryColor,
                              shape: BoxShape.circle,
                              boxShadow: [
-                               BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 4))
+                               BoxShadow(color: AppTheme.primaryColor.withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 4))
                              ],
                            ),
                            child: const Icon(Icons.add, color: Colors.white, size: 28),
@@ -1017,8 +1160,8 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
           title: const Text('Rename Content'),
           content: TextField(
             controller: renameController,
-            decoration: const InputDecoration(hintText: 'Enter new name', border: OutlineInputBorder()),
             autofocus: true,
+            decoration: const InputDecoration(hintText: 'Enter new name', border: OutlineInputBorder()),
           ),
           actions: [
             TextButton(
@@ -1146,9 +1289,9 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                        margin: const EdgeInsets.only(bottom: 16),
                        padding: const EdgeInsets.all(12),
                        decoration: BoxDecoration(
-                         color: Colors.red.withValues(alpha: 0.1),
+                         color: Colors.red.withOpacity(0.1),
                          borderRadius: BorderRadius.circular(8),
-                         border: Border.all(color: Colors.red.withValues(alpha: 0.5))
+                         border: Border.all(color: Colors.red.withOpacity(0.5))
                        ),
                        child: Row(
                          children: [
@@ -1181,9 +1324,9 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                       height: 120,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: Colors.grey.withValues(alpha: 0.1),
+                        color: Colors.grey.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.withValues(alpha: 0.3), style: BorderStyle.solid)
+                        border: Border.all(color: Colors.grey.withOpacity(0.3), style: BorderStyle.solid)
                       ),
                       margin: const EdgeInsets.only(bottom: 16),
                       child: Column(
@@ -1311,7 +1454,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
+            decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
             child: Icon(icon, color: color, size: 28),
           ),
           const SizedBox(height: 8),
@@ -1452,7 +1595,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: _hasCertificate ? Colors.green.withValues(alpha: 0.1) : Colors.grey.withValues(alpha: 0.1),
+                        color: _hasCertificate ? Colors.green.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
@@ -1470,7 +1613,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                   onChanged: (v) => setState(() => _hasCertificate = v),
                   activeColor: AppTheme.primaryColor,
                   tileColor: Theme.of(context).cardColor,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: _hasCertificate ? AppTheme.primaryColor.withValues(alpha: 0.3) : Colors.grey.shade200)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: _hasCertificate ? AppTheme.primaryColor.withOpacity(0.3) : Colors.grey.shade200)),
                 ),
                 if (_hasCertificate) ...[
                   const SizedBox(height: 24),
@@ -1593,26 +1736,40 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                     ),
                   )
                 else
-                  ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: _demoVideos.length,
-                    separatorBuilder: (c, i) => const SizedBox(height: 8),
-                    itemBuilder: (context, index) {
-                      final video = _demoVideos[index];
-                      return Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
-                        child: Row(
-                          children: [
-                            Container(width: 60, height: 40, decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(6)), child: const Icon(Icons.play_circle_filled, color: Colors.white, size: 20)),
-                            const SizedBox(width: 12),
-                            Expanded(child: Text(video['name'], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                            IconButton(icon: const Icon(Icons.remove_circle_outline, color: Colors.red, size: 20), onPressed: () => setState(() => _demoVideos.removeAt(index))),
-                          ],
-                        ),
-                      );
-                    },
+                  Theme(
+                    data: Theme.of(context).copyWith(canvasColor: Colors.transparent),
+                    child: ReorderableListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _demoVideos.length,
+                      onReorder: (oldIndex, newIndex) {
+                        setState(() {
+                          if (newIndex > oldIndex) newIndex -= 1;
+                          final item = _demoVideos.removeAt(oldIndex);
+                          _demoVideos.insert(newIndex, item);
+                        });
+                        unawaited(_saveCourseDraft());
+                      },
+                      itemBuilder: (context, index) {
+                        final video = _demoVideos[index];
+                        return Container(
+                          key: ValueKey(video['name'] + index.toString()),
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.drag_indicator, color: Colors.grey, size: 20),
+                              const SizedBox(width: 8),
+                              Container(width: 60, height: 40, decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(6)), child: const Icon(Icons.play_circle_filled, color: Colors.white, size: 20)),
+                              const SizedBox(width: 12),
+                              Expanded(child: Text(video['name'], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                              IconButton(icon: const Icon(Icons.remove_circle_outline, color: Colors.red, size: 20), onPressed: () => setState(() => _demoVideos.removeAt(index))),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 const SizedBox(height: 32),
 
@@ -1626,11 +1783,13 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                   onChanged: (v) => setState(() => _isPublished = v),
                   activeColor: Colors.green,
                   tileColor: Theme.of(context).cardColor,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: _isPublished ? Colors.green.withValues(alpha: 0.3) : Colors.grey.shade200)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: _isPublished ? Colors.green.withOpacity(0.3) : Colors.grey.shade200)),
                 ),
                 
                 const SizedBox(height: 40),
-                Center(child: Icon(Icons.verified_user_outlined, size: 48, color: AppTheme.primaryColor.withValues(alpha: 0.2))),
+                _buildCourseReviewCard(),
+                const SizedBox(height: 40),
+                Center(child: Icon(Icons.verified_user_outlined, size: 48, color: AppTheme.primaryColor.withOpacity(0.2))),
                 const SizedBox(height: 16),
               ],
             ),
