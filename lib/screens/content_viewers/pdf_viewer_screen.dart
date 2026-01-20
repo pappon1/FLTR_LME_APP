@@ -276,10 +276,10 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
         right: 12,
       ),
       decoration: BoxDecoration(
-        color: isDark ? Colors.black : Colors.white,
+        color: Theme.of(context).cardColor,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.4 : 0.1),
+            color: Theme.of(context).shadowColor.withOpacity(0.1),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -288,7 +288,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.03),
+          color: Theme.of(context).canvasColor.withOpacity(0.05),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppTheme.primaryColor.withOpacity(0.1)),
         ),
@@ -506,19 +506,17 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
         duration: 200.ms,
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          // Solid Black Card look
-          color: isDark 
-              ? (onPressed == null ? Colors.white.withOpacity(0.05) : const Color(0xFF1A1A1A)) 
-              : Colors.black.withOpacity(onPressed == null ? 0.02 : 0.05),
+          // Solid Theme Card look
+          color: Theme.of(context).cardColor.withOpacity(onPressed == null ? 0.5 : 1.0),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: (isDark ? Colors.white : Colors.black).withOpacity(isDark ? 0.1 : 0.08),
+            color: Theme.of(context).dividerColor.withOpacity(0.1),
             width: 1.2,
           ),
           boxShadow: [
-            if (isDark && onPressed != null)
+            if (onPressed != null)
               BoxShadow(
-                color: Colors.black.withOpacity(0.5),
+                color: Theme.of(context).shadowColor.withOpacity(0.05),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),
@@ -527,7 +525,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
         child: Icon(
           icon, 
           size: 20, 
-          color: (isDark ? Colors.white : Colors.black87).withOpacity(onPressed == null ? 0.3 : 1.0)
+          color: Theme.of(context).iconTheme.color?.withOpacity(onPressed == null ? 0.3 : 1.0)
         ),
       ),
     );

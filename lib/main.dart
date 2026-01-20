@@ -13,6 +13,7 @@ import 'providers/dashboard_provider.dart';
 import 'providers/admin_notification_provider.dart';
 import 'services/firebase_auth_service.dart';
 import 'utils/app_theme.dart';
+import 'services/upload_service.dart';
 
 
 void main() async {
@@ -20,6 +21,13 @@ void main() async {
   
   // Initialize MediaKit
   MediaKit.ensureInitialized();
+  
+  // Initialize Background Upload Service
+  try {
+     await initializeUploadService();
+  } catch (e) {
+     print('Failed to initialize background service: $e');
+  }
   
   // Initialize Firebase
   await Firebase.initializeApp();

@@ -101,6 +101,7 @@ dependencies:
   audio_session: ^0.2.2
 
   path: any
+  flutter_background_service: ^5.1.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

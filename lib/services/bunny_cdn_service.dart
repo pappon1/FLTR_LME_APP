@@ -6,11 +6,15 @@ class BunnyCDNService {
   // Bunny.net Storage Zone Configuration
   // Bunny.net Storage Zone Configuration
   static const String storageZoneName = 'lme-media-storage';
-  static const String hostname = 'storage.bunnycdn.com';
-  static const String apiKey = 'eae59342-6952-4d56-bb2fb8745da1-adf7-402d'; // Renamed to apiKey for clarity
+  static const String hostname = 'sg.storage.bunnycdn.com'; // Verified Region: Singapore
+  static const String apiKey = 'eae59342-6952-4d56-bb2fb8745da1-adf7-402d'; // Verified API Key
   static const String cdnUrl = 'https://lme-media-storage.b-cdn.net';
   
-  final Dio _dio = Dio();
+  final Dio _dio = Dio(BaseOptions(
+    connectTimeout: const Duration(seconds: 30),
+    receiveTimeout: const Duration(minutes: 60), // Long timeout for large files
+    sendTimeout: const Duration(minutes: 60),
+  ));
 
   /// Upload file to Bunny.net CDN with Stream (Memory Efficient) and Retry Logic
   Future<String> uploadFile({

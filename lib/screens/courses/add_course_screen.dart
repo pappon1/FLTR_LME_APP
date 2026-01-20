@@ -15,6 +15,7 @@ import '../../services/bunny_cdn_service.dart';
 import 'dart:ui' as ui;
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'components/collapsing_step_indicator.dart';
 import 'folder_detail_screen.dart';
 import 'components/course_content_list_item.dart';
@@ -290,7 +291,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                       minimumSize: const Size(double.infinity, 50),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    child: const Text('DHANYAWAAD', style: TextStyle(fontWeight: FontWeight.bold)),
+                    child: const Text('DONE', style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
@@ -485,6 +486,12 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       int currentTaskIndex = 0;
       List<Future<void>> uploadFutures = [];
 
+      // START HEAVY SYSTEM: Protection Layer (Service + WakeLock)
+      final service = FlutterBackgroundService();
+      if (!await service.isRunning()) {
+        service.startService();
+      }
+
       if (_thumbnailImage != null) {
         final tIdx = currentTaskIndex++;
         uploadFutures.add(uploadWithProgress(_thumbnailImage!, 'thumbnails', tIdx)
@@ -506,7 +513,9 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       // Generate Session ID for Unique Folder
       final sessionId = DateTime.now().millisecondsSinceEpoch.toString();
 
-      // Add All File Uploads to Parallel Queue
+      // Add All File Uploads to Task Queue (Delayed Execution)
+      List<Future<void> Function()> contentTasks = [];
+      
       for (int i = 0; i < allLocalFiles.length; i++) {
         final fIdx = currentTaskIndex++;
         final item = allLocalFiles[i];
@@ -522,36 +531,56 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         // Use Index to ensure uniqueness on server even if filenames differ
         final uniqueName = '${fIdx}_$name';
 
-        uploadFutures.add(_bunnyService.uploadFile(
-          filePath: path,
-          remotePath: 'courses/$sessionId/$folder/$uniqueName', 
-          onProgress: (sent, total) {
-            if (mounted) {
-              setState(() {
-                _uploadTasks[fIdx].progress = sent / total;
-                _calculateOverallProgress();
-              });
-            }
-          },
-        ).then((url) {
-          // DIRECT UPDATE (By Reference)
-          item['path'] = url;
-          item['isLocal'] = false;
+        // Add task closure to queue
+        contentTasks.add(() async {
+          await _bunnyService.uploadFile(
+            filePath: path,
+            remotePath: 'courses/$sessionId/$folder/$uniqueName', 
+            onProgress: (sent, total) {
+              if (mounted) {
+                setState(() {
+                  _uploadTasks[fIdx].progress = sent / total;
+                  _calculateOverallProgress();
+                  
+                  // Update Notification Bar (Heavy System)
+                  service.invoke('update_notification', {
+                    'status': 'Uploading... ${(fIdx + 1)}/${_uploadTasks.length}',
+                    'progress': (_totalProgress * 100).toInt(),
+                  });
+                });
+              }
+            },
+          ).then((url) {
+            // DIRECT UPDATE (By Reference)
+            item['path'] = url;
+            item['isLocal'] = false;
 
-          // Sync Demo Videos (Match by original path since that's what we have locally)
-          if (type == 'video') {
-             for (var demo in _demoVideos) {
-                if (demo['path'] == path) { // Match by original path
-                   demo['path'] = url;
-                   demo['isLocal'] = false;
-                }
-             }
-          }
-        }));
+            // Sync Demo Videos (Match by original path since that's what we have locally)
+            if (type == 'video') {
+               for (var demo in _demoVideos) {
+                  if (demo['path'] == path) { // Match by original path
+                     demo['path'] = url;
+                     demo['isLocal'] = false;
+                  }
+               }
+            }
+          });
+        });
       }
 
-      // Wait for all uploads to complete
-      await Future.wait(uploadFutures);
+      // 1. Wait for Thumbnails/Certificates (Fast)
+      if (uploadFutures.isNotEmpty) {
+        await Future.wait(uploadFutures);
+      }
+
+      // 2. Process Content Queue with Concurrency Limit (Safe)
+      if (contentTasks.isNotEmpty) {
+        await _processQueue(contentTasks, concurrent: 5);
+      }
+
+      // Stop Service on Success
+      service.invoke("stop");
+      WakelockPlus.disable();
 
       final String finalDesc = _descController.text.trim();
       final int finalValidity = _courseValidityDays == -1 
@@ -602,6 +631,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       }
     } finally {
       await WakelockPlus.disable(); // Allow screen to turn off
+      FlutterBackgroundService().invoke("stop"); // Ensure service stops
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -1907,9 +1937,9 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                                     style: ElevatedButton.styleFrom(
                                       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                       minimumSize: Size(0, 0),
-                                      backgroundColor: _selectedCertSlot == 1 ? AppTheme.primaryColor : Colors.grey.shade200,
+                                      backgroundColor: _selectedCertSlot == 1 ? AppTheme.primaryColor : Theme.of(context).cardColor,
                                     ),
-                                    child: Text('Select', style: TextStyle(fontSize: 10, color: _selectedCertSlot == 1 ? Colors.white : Colors.black)),
+                                    child: Text('Select', style: TextStyle(fontSize: 10, color: _selectedCertSlot == 1 ? Colors.white : Theme.of(context).textTheme.bodyMedium?.color)),
                                   ),
                                 ),
                               ],
@@ -1940,9 +1970,9 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                                     style: ElevatedButton.styleFrom(
                                       padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                       minimumSize: Size(0, 0),
-                                      backgroundColor: _selectedCertSlot == 2 ? AppTheme.primaryColor : Colors.grey.shade200,
+                                      backgroundColor: _selectedCertSlot == 2 ? AppTheme.primaryColor : Theme.of(context).cardColor,
                                     ),
-                                    child: Text('Select', style: TextStyle(fontSize: 10, color: _selectedCertSlot == 2 ? Colors.white : Colors.black)),
+                                    child: Text('Select', style: TextStyle(fontSize: 10, color: _selectedCertSlot == 2 ? Colors.white : Theme.of(context).textTheme.bodyMedium?.color)),
                                   ),
                                 ),
                               ],
@@ -2078,7 +2108,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
           decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade300, style: BorderStyle.solid),
+            border: Border.all(color: Theme.of(context).dividerColor, style: BorderStyle.solid),
             image: image != null ? DecorationImage(image: FileImage(image), fit: BoxFit.contain) : null,
           ),
           child: image == null ? Column(
@@ -2187,13 +2217,13 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       child: Column(
         children: List.generate(5, (index) => 
           Shimmer.fromColors(
-            baseColor: Colors.grey[300]!,
-            highlightColor: Colors.grey[100]!,
+            baseColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800]! : Colors.grey[300]!,
+            highlightColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey[700]! : Colors.grey[100]!,
             child: Container(
               height: 70,
               margin: const EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
@@ -2201,6 +2231,23 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         ),
       ),
     );
+  }
+
+  // Concurrency Limited Queue Processor
+  Future<void> _processQueue(List<Future<void> Function()> tasks, {int concurrent = 2}) async {
+    final queue = List.of(tasks);
+    final active = <Future<void>>[];
+    
+    while (queue.isNotEmpty || active.isNotEmpty) {
+      while (active.length < concurrent && queue.isNotEmpty) {
+        final task = queue.removeAt(0);
+        final future = task();
+        active.add(future);
+        future.then((_) => active.remove(future));
+      }
+      if (active.isEmpty) break;
+      await Future.any(active); // Wait for at least one to finish
+    }
   }
 }
 
