@@ -11,6 +11,7 @@ import 'package:path/path.dart' as path;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'bunny_cdn_service.dart';
+import 'package:path_provider/path_provider.dart';
 
 // Key used for storage
 const String kQueueKey = 'upload_queue_v1';
@@ -53,7 +54,7 @@ Future<void> initializeUploadService() async {
   await service.configure(
     androidConfiguration: AndroidConfiguration(
       onStart: onStart,
-      autoStart: false, // Start only when needed
+      autoStart: false, // Manual start is safer for isolate dependencies
       isForegroundMode: true,
       notificationChannelId: kServiceNotificationChannelId,
       initialNotificationTitle: 'Upload Service',
@@ -90,8 +91,11 @@ void onStart(ServiceInstance service) async {
   // Initialize Firebase (Critical for Background Isolate)
   await Firebase.initializeApp();
 
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-      FlutterLocalNotificationsPlugin();
+  // Initialize Notifications for Background Isolate
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  const AndroidInitializationSettings initializationSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
+  const InitializationSettings initializationSettings = InitializationSettings(android: initializationSettingsAndroid);
+  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
 
   // Initialize Bunny Service (Isolated Instance)
   final bunnyService = BunnyCDNService();
@@ -99,6 +103,10 @@ void onStart(ServiceInstance service) async {
   // State
   List<Map<String, dynamic>> _queue = [];
   bool _isProcessing = false;
+  bool _isPaused = false; // NEW: Pause state
+  
+  // Track active uploads with CancelTokens (for real pause/cancel)
+  final Map<String, CancelToken> _activeUploads = {};
 
   // Load initial queue
   final prefs = await SharedPreferences.getInstance();
@@ -171,14 +179,22 @@ void onStart(ServiceInstance service) async {
          break;
       }
 
-      // 2. Count Active Uploads
+      // 2. Pause Check
+      if (_isPaused) {
+         await _updateNotification("Uploads Paused", 0);
+         await Future.delayed(const Duration(seconds: 2)); // Wait and check again
+         continue; // Skip slot filling when paused
+      }
+      
+      // 3. Count Active Uploads
       int activeCount = _queue.where((t) => t['status'] == 'uploading').length;
       
-         // 3. Fill Slots if available
+      // 4. Fill Slots if available
       if (activeCount < kMaxConcurrent) {
          final now = DateTime.now().millisecondsSinceEpoch;
          int nextIndex = _queue.indexWhere((t) => 
             t['status'] == 'pending' && 
+            t['paused'] != true && // Skip paused tasks
             (t['retryAt'] == null || now > t['retryAt'])
          );
 
@@ -187,22 +203,30 @@ void onStart(ServiceInstance service) async {
             final filePath = task['filePath'] as String;
             final remotePath = task['remotePath'] as String;
             final taskIndex = nextIndex; // Capture for closure
+            final taskId = task['id']; // Get task ID for tracking
 
             // Mark as Uploading
             task['status'] = 'uploading';
             _queue[taskIndex] = task;
             await _saveQueue(); // Persist "In Progress"
             
+            // Create CancelToken for this upload
+            final cancelToken = CancelToken();
+            _activeUploads[taskId] = cancelToken;
+            
             // Start Upload (Async - Fire and Forget, loop continues to fill more slots)
              bunnyService.uploadFile(
               filePath: filePath,
               remotePath: remotePath,
+              cancelToken: cancelToken, // ENABLE CANCELLATION
               onProgress: (sent, total) {
                 // Determine overall progress for notification
                 // Calculating total progress of 50GB files is expensive, just show file count or approximate
               },
             ).then((url) async {
-               // Success
+               // Success - Remove from active uploads
+               _activeUploads.remove(taskId);
+               
                _queue[taskIndex]['status'] = 'completed';
                _queue[taskIndex]['url'] = url; // Save URL
                await _saveQueue();
@@ -214,6 +238,16 @@ void onStart(ServiceInstance service) async {
                _triggerProcessing(); 
 
             }).catchError((e) async {
+               // Remove from active uploads
+               _activeUploads.remove(taskId);
+               
+               // Check if it was cancelled (not a real error)
+               if (e is DioException && e.type == DioExceptionType.cancel) {
+                  print("Upload Cancelled: $taskId");
+                  // Don't mark as failed, just leave as pending with paused flag
+                  return;
+               }
+               
                print("Upload Fail: $e. Retrying...");
                
                int retries = _queue[taskIndex]['retries'] ?? 0;
@@ -298,16 +332,252 @@ void onStart(ServiceInstance service) async {
     _triggerProcessing();
   });
 
-  // Clear Queue
+  // Clear Queue & DESTRUCT Server Files
   service.on('cancel_all').listen((event) async {
+    print("🔴 CANCEL ALL: Starting destructive cleanup...");
+    
+    // 1. DELETE UPLOADED FILES FROM SERVER (Critical)
+    try {
+      final List<String> uploadedRemotePaths = [];
+      for (var task in _queue) {
+         if (task['status'] == 'completed' && task['url'] != null) {
+            // Extract remote path from task
+            final String remotePath = task['remotePath'];
+            uploadedRemotePaths.add(remotePath);
+         }
+      }
+      
+      if (uploadedRemotePaths.isNotEmpty) {
+        print("🗑️ Deleting ${uploadedRemotePaths.length} files from server...");
+        for (var remotePath in uploadedRemotePaths) {
+           try {
+              final success = await bunnyService.deleteFile(remotePath);
+              print(success ? "✅ Deleted: $remotePath" : "⚠️ Failed to delete: $remotePath");
+           } catch (e) {
+              print("❌ Server delete error: $e");
+           }
+        }
+      }
+    } catch (e) {
+       print("Server cleanup error: $e");
+    }
+    
+    // 2. Clear Queue Logic
     _queue.clear();
     await _saveQueue();
     await _updateNotification("Uploads Cancelled", 0);
+    
+    // 3. Clear Course Metadata
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(kPendingCourseKey);
+
+    // 4. PHYSICAL CLEANUP (Delete pending_uploads folder contents)
+    try {
+       final directory = await getApplicationDocumentsDirectory();
+       final pendingDir = Directory('${directory.path}/pending_uploads');
+       if (await pendingDir.exists()) {
+          final List<FileSystemEntity> content = pendingDir.listSync();
+          for (var entity in content) {
+             try {
+                await entity.delete(recursive: true);
+             } catch (_) {}
+          }
+       }
+    } catch (e) {
+       print("Local cleanup error: $e");
+    }
+    
+    print("✅ Destructive cleanup complete!");
   });
 
   // UI - Update Notification Proxy (Legacy support, though we act autonomously now)
   service.on('update_notification').listen((event) async {
      // Optional: If UI wants to force a status update
+  });
+
+  // Pause Uploads (Global - Cancel ALL active uploads)
+  service.on('pause').listen((event) async {
+     _isPaused = true;
+     
+     // Cancel ALL active uploads
+     for (var taskId in _activeUploads.keys.toList()) {
+        _activeUploads[taskId]?.cancel('User paused all uploads');
+        print("⏸️ Cancelled upload: $taskId");
+     }
+     _activeUploads.clear();
+     
+     // Mark ALL pending/uploading tasks as paused (for UI sync)
+     for (var task in _queue) {
+        if (task['status'] == 'pending' || task['status'] == 'uploading') {
+           task['paused'] = true;
+           if (task['status'] == 'uploading') {
+              task['status'] = 'pending'; // Reset uploading to pending
+           }
+        }
+     }
+     await _saveQueue(); // Save updated queue with paused flags
+     
+     // Broadcast change to UI
+     service.invoke('update', {
+        'queue': _queue,
+        'isPaused': _isPaused,
+     });
+     
+     _updateNotification("Uploads Paused", 0);
+     print("⏸️ Uploads PAUSED (All active uploads cancelled)");
+  });
+
+  // Resume Uploads
+  service.on('resume').listen((event) async {
+     _isPaused = false;
+     
+     // Clear paused flag from ALL tasks (for UI sync)
+     for (var task in _queue) {
+        task['paused'] = false;
+     }
+     await _saveQueue(); // Save updated queue
+     
+     // Broadcast change to UI
+     service.invoke('update', {
+        'queue': _queue,
+        'isPaused': _isPaused,
+     });
+     
+     _triggerProcessing(); // Restart processing
+     print("▶️ Uploads RESUMED");
+  });
+
+  // NEW: Status Request (For UI Sync)
+  service.on('get_status').listen((event) {
+     service.invoke('update', {
+        'queue': _queue,
+        'isPaused': _isPaused,
+     });
+     print("📊 Status update sent to UI");
+  });
+
+  // Pause Individual Task
+  service.on('pause_task').listen((event) async {
+     if (event == null || event['taskId'] == null) return;
+     final taskId = event['taskId'];
+     
+     // Cancel active upload if it's currently uploading
+     if (_activeUploads.containsKey(taskId)) {
+        _activeUploads[taskId]?.cancel('User paused upload');
+        _activeUploads.remove(taskId);
+        print("⏸️ Task Upload CANCELLED: $taskId");
+     }
+     
+     final taskIndex = _queue.indexWhere((t) => t['id'] == taskId);
+     if (taskIndex != -1) {
+        _queue[taskIndex]['paused'] = true;
+        // If it's uploading, change to pending so it won't be picked up
+        if (_queue[taskIndex]['status'] == 'uploading') {
+           _queue[taskIndex]['status'] = 'pending';
+        }
+        await _saveQueue();
+        
+        // Broadcast change to UI
+        service.invoke('update', {
+           'queue': _queue,
+           'isPaused': _isPaused,
+        });
+        
+        print("⏸️ Task PAUSED: $taskId");
+     }
+  });
+
+  // Resume Individual Task
+  service.on('resume_task').listen((event) async {
+     if (event == null || event['taskId'] == null) return;
+     final taskId = event['taskId'];
+     
+     final taskIndex = _queue.indexWhere((t) => t['id'] == taskId);
+     if (taskIndex != -1) {
+        _queue[taskIndex]['paused'] = false;
+        await _saveQueue();
+        
+        // Broadcast change to UI
+        service.invoke('update', {
+           'queue': _queue,
+           'isPaused': _isPaused,
+        });
+        
+        _triggerProcessing(); // Restart processing to pick it up
+        print("▶️ Task RESUMED: $taskId");
+     }
+  });
+
+  // NEW: Delete Individual Task (Destructive)
+  service.on('delete_task').listen((event) async {
+     print("🗑️ SERVICE RECEIVED delete_task: $event");
+     if (event == null || event['taskId'] == null) return;
+     final taskId = event['taskId'];
+     
+     // 1. Cancel active upload if it's currently uploading
+     if (_activeUploads.containsKey(taskId)) {
+        _activeUploads[taskId]?.cancel('User deleted task');
+        _activeUploads.remove(taskId);
+        print("🗑️ Task Upload CANCELLED (Deletion): $taskId");
+     }
+     
+     final taskIndex = _queue.indexWhere((t) => t['id'] == taskId);
+     if (taskIndex != -1) {
+        final task = _queue[taskIndex];
+        final remotePath = task['remotePath'];
+        
+        // 2. Delete from BunnyCDN server
+        if (remotePath != null) {
+           final bunny = BunnyCDNService();
+           await bunny.deleteFile(remotePath);
+           print("🗑️ Task DELETED from Server: $remotePath");
+        }
+        
+        // 3. Remove from local queue
+        _queue.removeAt(taskIndex);
+        await _saveQueue();
+        
+        // 4. Cleanup Metadata: Ensure the file is removed from the course draft so it doesn't break finalization
+        final String? courseJson = prefs.getString(kPendingCourseKey);
+        if (courseJson != null) {
+           try {
+              final Map<String, dynamic> courseData = jsonDecode(courseJson);
+              final String? filePath = task['filePath'];
+              
+              if (filePath != null) {
+                 _removeFileFromMetadata(courseData, filePath);
+                 await prefs.setString(kPendingCourseKey, jsonEncode(courseData));
+                 print("🎯 Removed file from metadata: $filePath");
+              }
+           } catch (e) {
+              print("❌ Metadata cleanup error: $e");
+           }
+        }
+
+        // 5. Cleanup Local Safe Copy
+        final String? localPath = task['filePath'];
+        if (localPath != null && localPath.contains('pending_uploads')) {
+           try {
+              final f = File(localPath);
+              if (await f.exists()) await f.delete();
+              print("🧹 Deleted local safe copy: $localPath");
+           } catch(e) {}
+        }
+        
+        // 6. If queue is empty, clean up the pending course draft entirely
+        if (_queue.isEmpty) {
+           await prefs.remove(kPendingCourseKey);
+           print("🧹 Queue empty, cleaned up course draft");
+        }
+        
+        // 7. Broadcast change to UI
+        service.invoke('update', {
+           'queue': _queue,
+           'isPaused': _isPaused,
+        });
+        
+        print("🗑️ Task COMPLETELY REMOVED: $taskId");
+     }
   });
 
   // Stop Service
@@ -404,7 +674,9 @@ Future<void> _finalizeCourseIfPending() async {
 
      // 4. Create in Firestore (Idempotent using 'id')
      // Ensure timestamps are preserved
-     courseData['createdAt'] = Timestamp.now(); 
+     if (!courseData.containsKey('createdAt')) {
+        courseData['createdAt'] = Timestamp.now(); 
+     } 
      
      final String? courseId = courseData['id'];
      
@@ -474,6 +746,37 @@ void _updateContentPaths(List<dynamic> contents, Map<String, String> urlMap) {
      // Recursion for folders
      if (item['type'] == 'folder' && item['contents'] != null) {
        _updateContentPaths(item['contents'], urlMap);
+     }
+  }
+}
+void _removeFileFromMetadata(Map<String, dynamic> data, String filePath) {
+  // Normalize path for comparison (handling potential slashes differences)
+  if (data['thumbnailUrl'] == filePath) data['thumbnailUrl'] = '';
+  if (data['certificateUrl1'] == filePath) data['certificateUrl1'] = '';
+  if (data['certificateUrl2'] == filePath) data['certificateUrl2'] = '';
+
+  if (data['demoVideos'] != null) {
+     final List<dynamic> demos = data['demoVideos'];
+     demos.removeWhere((d) => d['path'] == filePath);
+  }
+
+  if (data['contents'] != null) {
+     _removeFileFromContentsRecursive(data['contents'] as List<dynamic>, filePath);
+  }
+}
+
+void _removeFileFromContentsRecursive(List<dynamic> contents, String filePath) {
+  for (int i = contents.length - 1; i >= 0; i--) {
+     final item = contents[i];
+     if (item['type'] == 'folder' && item['contents'] != null) {
+        _removeFileFromContentsRecursive(item['contents'] as List<dynamic>, filePath);
+     } else {
+        // Check if path or thumbnail matches
+        if (item['path'] == filePath) {
+           contents.removeAt(i);
+        } else if (item['thumbnail'] == filePath) {
+           item['thumbnail'] = null; // Just clear thumbnail, don't delete item
+        }
      }
   }
 }

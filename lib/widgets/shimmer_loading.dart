@@ -169,3 +169,42 @@ class SimpleShimmerList extends StatelessWidget {
     );
   }
 }
+class UploadShimmerItem extends StatelessWidget {
+  const UploadShimmerItem({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Container(
+        height: 80,
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16.0),
+          child: Row(
+            children: [
+              ShimmerLoading.circular(width: 40, height: 40),
+              SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ShimmerLoading.rectangular(height: 14, width: 200),
+                    SizedBox(height: 8),
+                    ShimmerLoading.rectangular(height: 10, width: 60),
+                  ],
+                ),
+              ),
+              SizedBox(width: 16),
+              ShimmerLoading.circular(width: 24, height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

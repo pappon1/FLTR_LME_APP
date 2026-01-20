@@ -21,6 +21,7 @@ class BunnyCDNService {
     required String filePath,
     required String remotePath,
     Function(int sent, int total)? onProgress,
+    CancelToken? cancelToken, // NEW: Allow cancellation
   }) async {
     int attempts = 0;
     const int maxRetries = 3;
@@ -53,6 +54,7 @@ class BunnyCDNService {
             },
           ),
           onSendProgress: onProgress,
+          cancelToken: cancelToken, // ENABLE CANCELLATION
         );
 
         if (response.statusCode == 201 || response.statusCode == 200) {

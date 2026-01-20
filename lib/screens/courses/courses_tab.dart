@@ -5,12 +5,28 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../utils/app_theme.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
+import '../uploads/upload_progress_screen.dart';
 import '../../widgets/shimmer_loading.dart';
 import '../../widgets/course_card.dart';
 import 'add_course_screen.dart';
 
-class CoursesTab extends StatelessWidget {
+class CoursesTab extends StatefulWidget {
   const CoursesTab({super.key});
+
+  @override
+  State<CoursesTab> createState() => _CoursesTabState();
+}
+
+class _CoursesTabState extends State<CoursesTab> {
+  @override
+  void initState() {
+    super.initState();
+    // Request status from background service once UI is ready
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+       FlutterBackgroundService().invoke('get_status');
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,6 +41,38 @@ class CoursesTab extends StatelessWidget {
           ),
         ),
         actions: [
+          // Upload Monitor Button
+          StreamBuilder<Map<String, dynamic>?>(
+            stream: FlutterBackgroundService().on('update'),
+            builder: (context, snapshot) {
+              bool hasActiveUploads = false;
+              if (snapshot.hasData && snapshot.data != null) {
+                 final List queue = snapshot.data!['queue'] ?? [];
+                 // Show badge if any uploads are pending, uploading, OR paused
+                 hasActiveUploads = queue.any((t) => 
+                    t['status'] == 'uploading' || 
+                    t['status'] == 'pending' ||
+                    t['paused'] == true
+                 );
+              }
+              
+              if (!hasActiveUploads) return const SizedBox.shrink();
+
+              return Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: IconButton(
+                  onPressed: () {
+                     Navigator.push(context, MaterialPageRoute(builder: (_) => const UploadProgressScreen()));
+                  },
+                  icon: Badge(
+                    label: const Text('!'),
+                    child: Icon(Icons.cloud_sync, color: AppTheme.primaryColor),
+                  ),
+                  tooltip: 'View Uploads',
+                ),
+              );
+            }
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
             child: FilledButton.icon(

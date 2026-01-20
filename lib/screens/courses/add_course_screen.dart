@@ -30,6 +30,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../content_viewers/image_viewer_screen.dart';
 import '../content_viewers/video_player_screen.dart';
 import '../content_viewers/pdf_viewer_screen.dart';
+import '../uploads/upload_progress_screen.dart';
 
 class AddCourseScreen extends StatefulWidget {
   const AddCourseScreen({super.key});
@@ -139,6 +140,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                 _demoVideos.clear();
                 _demoVideos.addAll(List<Map<String, dynamic>>.from(draft['demoVideos']));
              }
+                // _courseValidityDays = draft['validity']; // IGNORED: Force null by default as per user request
                 // _courseValidityDays = draft['validity']; // IGNORED: Force null by default as per user request
                 _courseValidityDays = null; 
                 _hasCertificate = draft['certificate'] ?? false;
@@ -667,7 +669,11 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       courseMap['createdAt'] = DateTime.now().toIso8601String(); // Service will convert back to Timestamp
 
       final service = FlutterBackgroundService();
-      if (!await service.isRunning()) await service.startService();
+      if (!await service.isRunning()) {
+         await service.startService();
+         // CRITICAL: Wait for service isolate to fully initialize before sending events
+         await Future.delayed(const Duration(seconds: 2));
+      }
 
       service.invoke('submit_course', {
         'course': courseMap,
@@ -677,38 +683,30 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       // 5. Success UI
       // We don't wait for upload. We tell user it started.
       
+      
       if (mounted) {
         setState(() {
-          _isUploading = true; // Show progress if they stay
+          _isUploading = true; 
         });
 
-        // Show "Background Started" Dialog
-        showDialog(
-          context: context,
-          barrierDismissible: false,
-          builder: (ctx) => AlertDialog(
-            title: const Text("Upload Started in Background 🚀"),
-            content: const Text(
-              "Your course is being uploaded securely in the background.\n\n"
-              "You can minimize the app or lock your screen. "
-              "Check the notification bar for progress.\n\n"
-              "Once finished, the course will be published automatically.",
-            ),
-            actions: [
-               TextButton(
-                 onPressed: () async {
-                   // Clear Local Draft on Success
-                   final prefs = await SharedPreferences.getInstance();
-                   await prefs.remove('course_creation_draft');
-                   
-                   Navigator.pop(ctx); // Close Dialog
-                   Navigator.pop(context); // Close Add Screen
-                 },
-                 child: const Text("OK, GO HOME"),
-               )
-            ],
-          ),
-        );
+        // Clear Local Draft
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('course_creation_draft');
+
+        if (mounted) {
+           ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Upload Started in Background 🚀'),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+              )
+           );
+
+           // IMMEDIATE NAVIGATION: No delay, direct push
+           Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const UploadProgressScreen()),
+           );
+        }
       }
 
     } catch (e) {

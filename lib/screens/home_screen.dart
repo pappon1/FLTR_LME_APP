@@ -6,7 +6,10 @@ import '../providers/dashboard_provider.dart';
 import '../utils/app_theme.dart';
 import 'dashboard/dashboard_tab.dart';
 import 'courses/courses_tab.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 import 'settings/settings_tab.dart';
+import 'uploads/upload_progress_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -39,6 +42,74 @@ class _HomeScreenState extends State<HomeScreen> {
       label: 'Settings',
     ),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    // Check Notification Permission on First Load
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+       _checkNotificationPermission();
+       _checkPendingUploads(); // Auto-navigate if upload is in progress
+    });
+  }
+
+  Future<void> _checkPendingUploads() async {
+    final service = FlutterBackgroundService();
+    if (await service.isRunning()) {
+      // Service is running, navigate to progress screen
+      if (mounted) {
+         Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const UploadProgressScreen()),
+         );
+      }
+    }
+  }
+
+  Future<void> _checkNotificationPermission() async {
+    // We import permission_handler at the top
+    // but using fully qualified name to avoid conflict with file pickers if any
+    if (await Permission.notification.isDenied) {
+        _showPermissionDialog();
+    }
+  }
+
+  void _showPermissionDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.notifications_active, color: Colors.orange),
+            SizedBox(width: 10),
+            Text('Notifications Required'),
+          ],
+        ),
+        content: const Text(
+          'To monitor background course uploads, this app needs notification permission. Without this, uploads might stop or fail silently.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Skip (Risk)', style: TextStyle(color: Colors.grey)),
+          ),
+          FilledButton.icon(
+            onPressed: () async {
+               await Permission.notification.request();
+               // Open Settings if permanently denied
+               if (await Permission.notification.isPermanentlyDenied) {
+                 openAppSettings();
+               }
+               if (context.mounted) Navigator.pop(context);
+            },
+            icon: const Icon(Icons.check),
+            label: const Text('Allow Access'),
+          )
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {

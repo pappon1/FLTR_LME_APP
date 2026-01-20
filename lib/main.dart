@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
@@ -14,6 +15,7 @@ import 'providers/admin_notification_provider.dart';
 import 'services/firebase_auth_service.dart';
 import 'utils/app_theme.dart';
 import 'services/upload_service.dart';
+import 'screens/uploads/upload_progress_screen.dart';
 
 
 void main() async {
@@ -25,6 +27,26 @@ void main() async {
   // Initialize Background Upload Service
   try {
      await initializeUploadService();
+     
+     // Setup Global Notification Tap Handler (For When Service is Running)
+     final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+     const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+     const InitializationSettings initializationSettings = InitializationSettings(
+       android: initializationSettingsAndroid,
+     );
+     await flutterLocalNotificationsPlugin.initialize(
+        initializationSettings,
+        onDidReceiveNotificationResponse: (details) {
+             // Navigate to Upload Screen if tapped
+             // Use a slight delay to ensure context is ready
+             Future.delayed(const Duration(milliseconds: 200), () {
+                 navigatorKey.currentState?.push(
+                    MaterialPageRoute(builder: (_) => const UploadProgressScreen())
+                 );
+             });
+        },
+     );
   } catch (e) {
      print('Failed to initialize background service: $e');
   }
@@ -56,6 +78,9 @@ void main() async {
   runApp(const MyApp());
 }
 
+// Global Navigation Key
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -86,6 +111,7 @@ class MyApp extends StatelessWidget {
             ),
             child: MaterialApp(
               title: 'Local Mobile Engineer Official - Admin',
+              navigatorKey: navigatorKey,
               debugShowCheckedModeBanner: false,
               theme: AppTheme.lightTheme,
               darkTheme: AppTheme.darkTheme,
