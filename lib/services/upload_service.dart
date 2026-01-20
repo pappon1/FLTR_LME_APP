@@ -102,16 +102,30 @@ void onStart(ServiceInstance service) async {
 
   // Load initial queue
   final prefs = await SharedPreferences.getInstance();
-  final String? queueJson = prefs.getString(kQueueKey);
-  if (queueJson != null) {
-    _queue = List<Map<String, dynamic>>.from(jsonDecode(queueJson));
-  }
 
-  // Helper to save queue
+  // Helper to save queue (Must be defined before usage)
   Future<void> _saveQueue() async {
     await prefs.setString(kQueueKey, jsonEncode(_queue));
     // Broadcast update to UI
     service.invoke('update', {'queue': _queue});
+  }
+
+  final String? queueJson = prefs.getString(kQueueKey);
+  if (queueJson != null) {
+    _queue = List<Map<String, dynamic>>.from(jsonDecode(queueJson));
+    
+    // SELF-HEALING: If service restarts, reset 'failed' tasks to 'pending' to give them another chance.
+    // This prevents a deadlock where the service thinks it's done but the course isn't finalized.
+    bool hasRestored = false;
+    for (var task in _queue) {
+       if (task['status'] == 'failed') {
+          task['status'] = 'pending';
+          task['retries'] = 0;
+          task['retryAt'] = null; // Reset wait timer
+          hasRestored = true;
+       }
+    }
+    if (hasRestored) await _saveQueue();
   }
 
   // Helper to update notification
@@ -160,9 +174,14 @@ void onStart(ServiceInstance service) async {
       // 2. Count Active Uploads
       int activeCount = _queue.where((t) => t['status'] == 'uploading').length;
       
-      // 3. Fill Slots if available
+         // 3. Fill Slots if available
       if (activeCount < kMaxConcurrent) {
-         int nextIndex = _queue.indexWhere((t) => t['status'] == 'pending');
+         final now = DateTime.now().millisecondsSinceEpoch;
+         int nextIndex = _queue.indexWhere((t) => 
+            t['status'] == 'pending' && 
+            (t['retryAt'] == null || now > t['retryAt'])
+         );
+
          if (nextIndex != -1) {
             final task = _queue[nextIndex];
             final filePath = task['filePath'] as String;
@@ -195,15 +214,22 @@ void onStart(ServiceInstance service) async {
                _triggerProcessing(); 
 
             }).catchError((e) async {
-               // Fail - BUT RETRY
                print("Upload Fail: $e. Retrying...");
-               // Instead of marking 'failed', we keep it 'pending' or mark 'failed' but the loop logic should pick it up again?
-               // Better approach: Mark 'pending' again to retry indefinitely until user cancels.
-               _queue[taskIndex]['status'] = 'pending'; 
-               await _saveQueue();
                
-               // Prevent rapid-fire loops on error
-               await Future.delayed(const Duration(seconds: 5));
+               int retries = _queue[taskIndex]['retries'] ?? 0;
+               if (retries >= 10) { // Max 10 retries
+                 _queue[taskIndex]['status'] = 'failed';
+                 _queue[taskIndex]['error'] = e.toString();
+                 await _updateNotification("Upload Failed: ${path.basename(filePath)}", 0);
+               } else {
+                 _queue[taskIndex]['retries'] = retries + 1;
+                 _queue[taskIndex]['status'] = 'pending'; 
+                 // Smart Backoff: Set specific time to retry
+                 int waitSeconds = 5 + (retries * 5); // 5s, 10s, 15s...
+                 _queue[taskIndex]['retryAt'] = DateTime.now().millisecondsSinceEpoch + (waitSeconds * 1000);
+               }
+               
+               await _saveQueue();
                _triggerProcessing(); 
             });
             
@@ -251,6 +277,7 @@ void onStart(ServiceInstance service) async {
     final task = Map<String, dynamic>.from(event);
     task['status'] = 'pending';
     task['progress'] = 0.0;
+    task['retries'] = 0;
     _queue.add(task);
     await _saveQueue();
     _triggerProcessing();
@@ -264,6 +291,7 @@ void onStart(ServiceInstance service) async {
       final task = Map<String, dynamic>.from(item);
       task['status'] = 'pending';
       task['progress'] = 0.0;
+      task['retries'] = 0;
       _queue.add(task);
     }
     await _saveQueue();
@@ -301,6 +329,7 @@ void onStart(ServiceInstance service) async {
       final task = Map<String, dynamic>.from(item);
       task['status'] = 'pending';
       task['progress'] = 0.0;
+      task['retries'] = 0;
       _queue.add(task);
     }
     await _saveQueue();
@@ -388,6 +417,20 @@ Future<void> _finalizeCourseIfPending() async {
      }
      
      // 5. Success!
+     
+     // CLEANUP: Delete temporary safe copies to free storage
+     try {
+       for (var localPath in urlMap.keys) {
+          // Only delete files we created in our safe directory
+          if (localPath.contains('pending_uploads')) {
+             final f = File(localPath);
+             if (await f.exists()) await f.delete();
+          }
+       }
+     } catch(e) {
+       print("Cleanup error (ignorable): $e");
+     }
+
      // Clear Data
      await prefs.remove(kPendingCourseKey);
      await prefs.remove(kQueueKey); // Clear file queue too as job is done
