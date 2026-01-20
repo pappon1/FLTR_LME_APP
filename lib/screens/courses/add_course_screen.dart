@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:io';
 import 'dart:convert';
+import 'package:path/path.dart' as path;
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -440,6 +442,24 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
 
    Future<void> _submitCourse() async {
     if (!_validateAllFields()) return; 
+    if (_courseContents.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please add some content to the course')));
+      return;
+    } 
+
+    // SAFETY LOCK: Check if another course is already uploading
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.containsKey('pending_course_v1')) {
+       showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text("Upload in Progress ⚠️"),
+            content: const Text("Another course is currently being uploaded in the background.\n\nTo ensure data safety, please wait for it to complete before creating a new one."),
+            actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("OK"))],
+          ),
+       );
+       return;
+    } 
 
     setState(() {
       _isLoading = true;
@@ -450,151 +470,80 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     try {
       await WakelockPlus.enable(); // Keep screen on during upload
 
-      // 1. Initialize Tasks
-      if (_thumbnailImage != null) _uploadTasks.add(CourseUploadTask(label: 'Course Thumbnail'));
-      if (_hasCertificate && _certificate1Image != null) _uploadTasks.add(CourseUploadTask(label: 'Certificate Design A'));
-      if (_hasCertificate && _certificate2Image != null) _uploadTasks.add(CourseUploadTask(label: 'Certificate Design B'));
-      
-      final allLocalFiles = _getAllLocalFilesFromContents(_courseContents);
-      for (var file in allLocalFiles) {
-        _uploadTasks.add(CourseUploadTask(label: '${file['type'].toString().toUpperCase()}: ${file['name']}'));
-      }
-
-      // 2. Start Parallel Uploads
-      setState(() {}); // Refresh UI to show tasks
-
-      String thumbnailUrl = '';
-      String? cert1Url;
-      String? cert2Url;
-
-      // Wrap upload functions to update our task list
-      Future<String> uploadWithProgress(File file, String folder, int taskIndex) async {
-        return await _bunnyService.uploadImage(
-          filePath: file.path,
-          folder: folder,
-          onProgress: (sent, total) {
-            if (mounted) {
-              setState(() {
-                _uploadTasks[taskIndex].progress = sent / total;
-                _calculateOverallProgress();
-              });
-            }
-          },
-        );
-      }
-
-      int currentTaskIndex = 0;
-      List<Future<void>> uploadFutures = [];
-
-      // START HEAVY SYSTEM: Protection Layer (Service + WakeLock)
-      final service = FlutterBackgroundService();
-      if (!await service.isRunning()) {
-        service.startService();
-      }
-
-      if (_thumbnailImage != null) {
-        final tIdx = currentTaskIndex++;
-        uploadFutures.add(uploadWithProgress(_thumbnailImage!, 'thumbnails', tIdx)
-          .then((url) => thumbnailUrl = url));
-      }
-
-      if (_hasCertificate && _certificate1Image != null) {
-        final c1Idx = currentTaskIndex++;
-        uploadFutures.add(uploadWithProgress(_certificate1Image!, 'certificates', c1Idx)
-          .then((url) => cert1Url = url));
-      }
-
-      if (_hasCertificate && _certificate2Image != null) {
-        final c2Idx = currentTaskIndex++;
-        uploadFutures.add(uploadWithProgress(_certificate2Image!, 'certificates', c2Idx)
-          .then((url) => cert2Url = url));
-      }
-
-      // Generate Session ID for Unique Folder
-      final sessionId = DateTime.now().millisecondsSinceEpoch.toString();
-
-      // Add All File Uploads to Task Queue (Delayed Execution)
-      List<Future<void> Function()> contentTasks = [];
-      
-      for (int i = 0; i < allLocalFiles.length; i++) {
-        final fIdx = currentTaskIndex++;
-        final item = allLocalFiles[i];
-        final path = item['path'];
-        final name = item['name'];
-        final type = item['type'];
-        
-        // Determine remote folder based on type
-        String folder = 'others';
-        if (type == 'video') folder = 'videos';
-        else if (type == 'pdf') folder = 'pdfs';
-        else if (type == 'image') folder = 'images';
-        // Use Index to ensure uniqueness on server even if filenames differ
-        final uniqueName = '${fIdx}_$name';
-
-        // Add task closure to queue
-        contentTasks.add(() async {
-          await _bunnyService.uploadFile(
-            filePath: path,
-            remotePath: 'courses/$sessionId/$folder/$uniqueName', 
-            onProgress: (sent, total) {
-              if (mounted) {
-                setState(() {
-                  _uploadTasks[fIdx].progress = sent / total;
-                  _calculateOverallProgress();
-                  
-                  // Update Notification Bar (Heavy System)
-                  service.invoke('update_notification', {
-                    'status': 'Uploading... ${(fIdx + 1)}/${_uploadTasks.length}',
-                    'progress': (_totalProgress * 100).toInt(),
-                  });
-                });
-              }
-            },
-          ).then((url) {
-            // DIRECT UPDATE (By Reference)
-            item['path'] = url;
-            item['isLocal'] = false;
-
-            // Sync Demo Videos (Match by original path since that's what we have locally)
-            if (type == 'video') {
-               for (var demo in _demoVideos) {
-                  if (demo['path'] == path) { // Match by original path
-                     demo['path'] = url;
-                     demo['isLocal'] = false;
-                  }
-               }
-            }
-          });
-        });
-      }
-
-      // 1. Wait for Thumbnails/Certificates (Fast)
-      if (uploadFutures.isNotEmpty) {
-        await Future.wait(uploadFutures);
-      }
-
-      // 2. Process Content Queue with Concurrency Limit (Safe)
-      if (contentTasks.isNotEmpty) {
-        await _processQueue(contentTasks, concurrent: 5);
-      }
-
-      // Stop Service on Success
-      service.invoke("stop");
-      WakelockPlus.disable();
-
       final String finalDesc = _descController.text.trim();
       final int finalValidity = _courseValidityDays == -1 
           ? (int.tryParse(_customValidityController.text) ?? 0) 
           : _courseValidityDays!;
+          
+      // SAFE COPY: Move ephemeral images (Cache) to Documents (Persistent)
+      // This ensures Background Service can find them even if Cache is cleared.
+      final appDir = await getApplicationDocumentsDirectory();
+      final safeDir = Directory('${appDir.path}/pending_uploads');
+      if (!safeDir.existsSync()) safeDir.createSync(recursive: true);
+      
+      Future<File> copyToSafe(File f) async {
+         final filename = '${DateTime.now().millisecondsSinceEpoch}_${path.basename(f.path)}';
+         final newPath = '${safeDir.path}/$filename';
+         return f.copy(newPath);
+      }
+      
+      if (_thumbnailImage != null) _thumbnailImage = await copyToSafe(_thumbnailImage!);
+      if (_certificate1Image != null) _certificate1Image = await copyToSafe(_certificate1Image!);
+      if (_certificate2Image != null) _certificate2Image = await copyToSafe(_certificate2Image!);
 
-      final newCourse = CourseModel(
-        id: '', 
+      // Recursive Safe Copy for ALL Content (Main Files & Thumbnails)
+      Future<void> safeCopyAllContent(List<dynamic> items) async {
+        for (var item in items) {
+           final String type = item['type'];
+           
+           // A. Safe Copy Main File (Video, PDF, Image)
+           if ((type == 'video' || type == 'pdf' || type == 'image') && item['isLocal'] == true) {
+              final String fPath = item['path'];
+              if (fPath.isNotEmpty) {
+                 final File safeFile = await copyToSafe(File(fPath));
+                 item['path'] = safeFile.path; // Update to persistent path
+              }
+           }
+
+           // B. Safe Copy Thumbnail (If exists)
+           if (item['thumbnail'] != null && item['thumbnail'] is String) {
+              final String tPath = item['thumbnail'];
+              if (tPath.isNotEmpty && !tPath.startsWith('http')) {
+                 final File safeFile = await copyToSafe(File(tPath));
+                 item['thumbnail'] = safeFile.path; // Update to persistent path
+              }
+           }
+           
+           // C. Recurse
+           if (type == 'folder' && item['contents'] != null) {
+              await safeCopyAllContent(item['contents']);
+           }
+        }
+      }
+      await safeCopyAllContent(_courseContents);
+
+      // Safe Copy for Demo Videos
+      for (var i = 0; i < _demoVideos.length; i++) {
+         final String dPath = _demoVideos[i]['path'];
+         if (dPath.isNotEmpty && !dPath.startsWith('http')) {
+             final File safeFile = await copyToSafe(File(dPath));
+             _demoVideos[i]['path'] = safeFile.path; // Update to persistent path
+         }
+      }
+
+
+      // 0. Generate ID Upfront (For Idempotency)
+      final newDocId = FirebaseFirestore.instance.collection('courses').doc().id;
+
+      // Create "Draft" Course Model to Serialize
+      final draftCourse = CourseModel(
+        id: newDocId, 
         title: _titleController.text.trim(),
         category: _selectedCategory!, 
         price: int.parse(_finalPriceController.text),
         discountPrice: int.parse(_mrpController.text),
         description: finalDesc,
-        thumbnailUrl: thumbnailUrl,
+        thumbnailUrl: _thumbnailImage?.path ?? '', // Temporary Local Path
         duration: '', 
         difficulty: _difficulty,
         enrolledStudents: 0,
@@ -605,22 +554,163 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         newBatchDays: _newBatchDurationDays,
         courseValidityDays: finalValidity,
         hasCertificate: _hasCertificate,
-        certificateUrl1: cert1Url,
-        certificateUrl2: cert2Url,
+        certificateUrl1: _certificate1Image?.path, // Temporary Local Path
+        certificateUrl2: _certificate2Image?.path, // Temporary Local Path
         selectedCertificateSlot: _selectedCertSlot,
         demoVideos: _demoVideos,
         isOfflineDownloadEnabled: _isOfflineDownloadEnabled,
         contents: _courseContents,
       );
 
-      if (mounted) {
-        await Provider.of<DashboardProvider>(context, listen: false).addCourse(newCourse);
-        setState(() {
-          _isUploading = false;
-          _isLoading = false;
+      // Generate Session ID for Unique Remote Folder
+      final sessionId = DateTime.now().millisecondsSinceEpoch.toString();
+      final List<Map<String, dynamic>> fileTasks = [];
+
+      // 1. Add Thumbnail Task
+      if (_thumbnailImage != null) {
+        fileTasks.add({
+          'filePath': _thumbnailImage!.path,
+          'remotePath': 'courses/$sessionId/thumbnails/thumb_${path.basename(_thumbnailImage!.path)}',
+          'id': 'thumb',
         });
-        _showSuccessCelebration();
       }
+
+      // 2. Add Certificate Tasks
+      if (_hasCertificate) {
+        if (_certificate1Image != null) {
+           fileTasks.add({
+            'filePath': _certificate1Image!.path,
+            'remotePath': 'courses/$sessionId/certificates/cert1_${path.basename(_certificate1Image!.path)}',
+            'id': 'cert1',
+          });
+        }
+        if (_certificate2Image != null) {
+           fileTasks.add({
+            'filePath': _certificate2Image!.path,
+            'remotePath': 'courses/$sessionId/certificates/cert2_${path.basename(_certificate2Image!.path)}',
+            'id': 'cert2',
+          });
+        }
+      }
+
+      // 3. Add Demo Videos
+      for (var i = 0; i < _demoVideos.length; i++) {
+        final demo = _demoVideos[i];
+        final String pathStr = demo['path'];
+        // Only upload if it's a local file (not already a URL)
+        if (pathStr.isNotEmpty && !pathStr.startsWith('http')) {
+           fileTasks.add({
+            'filePath': pathStr,
+            'remotePath': 'courses/$sessionId/demo_videos/demo_${i}_${path.basename(pathStr)}',
+            'id': pathStr,
+          });
+        }
+      }
+
+      // 4. Recursively Collect ALL Files & Thumbnails (Including from Folders)
+      
+      // 4. Recursively Collect ALL Files & Thumbnails (Including from Folders)
+      int globalCounter = 0; // Shared counter for absolute uniqueness
+      
+      void processItemRecursive(dynamic item) {
+          final int currentIndex = globalCounter++;
+          final String type = item['type'];
+          
+          // 1. Process Main File (If it's a file type)
+          if ((type == 'video' || type == 'pdf' || type == 'image') && item['isLocal'] == true) {
+             final filePath = item['path'];
+             if (filePath != null && filePath is String) {
+                // Determine remote folder
+                String folder = 'others';
+                if (type == 'video') folder = 'videos';
+                else if (type == 'pdf') folder = 'pdfs';
+                else if (type == 'image') folder = 'images';
+                
+                final uniqueName = '${currentIndex}_${item['name']}';
+                 
+                fileTasks.add({
+                  'filePath': filePath,
+                  'remotePath': 'courses/$sessionId/$folder/$uniqueName',
+                  'id': filePath, 
+                });
+             }
+          }
+
+          // 2. Process Thumbnail (For Files AND Folders)
+          if (item['thumbnail'] != null && item['thumbnail'] is String) {
+            final String thumbPath = item['thumbnail'];
+            if (thumbPath.isNotEmpty && !thumbPath.startsWith('http')) {
+               fileTasks.add({
+                 'filePath': thumbPath,
+                 'remotePath': 'courses/$sessionId/thumbnails/thumb_${currentIndex}_${path.basename(thumbPath)}',
+                 'id': thumbPath, // Use path as ID to map back
+               });
+            }
+          }
+
+          // 3. Recurse if Folder
+          if (type == 'folder' && item['contents'] != null) {
+              for (var sub in item['contents']) {
+                 processItemRecursive(sub); 
+              }
+          }
+      }
+
+      // Initial Scan
+      for (var item in _courseContents) {
+         processItemRecursive(item);
+      }
+
+      // 4. Send to Service (Fire and Forget)
+      // Note: We strip Timestamp/Dates to simple Iso8601 strings for JSON safety
+      final courseMap = draftCourse.toMap();
+      courseMap['createdAt'] = DateTime.now().toIso8601String(); // Service will convert back to Timestamp
+
+      final service = FlutterBackgroundService();
+      if (!await service.isRunning()) await service.startService();
+
+      service.invoke('submit_course', {
+        'course': courseMap,
+        'files': fileTasks,
+      });
+
+      // 5. Success UI
+      // We don't wait for upload. We tell user it started.
+      
+      if (mounted) {
+        setState(() {
+          _isUploading = true; // Show progress if they stay
+        });
+
+        // Show "Background Started" Dialog
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => AlertDialog(
+            title: const Text("Upload Started in Background 🚀"),
+            content: const Text(
+              "Your course is being uploaded securely in the background.\n\n"
+              "You can minimize the app or lock your screen. "
+              "Check the notification bar for progress.\n\n"
+              "Once finished, the course will be published automatically.",
+            ),
+            actions: [
+               TextButton(
+                 onPressed: () async {
+                   // Clear Local Draft on Success
+                   final prefs = await SharedPreferences.getInstance();
+                   await prefs.remove('course_creation_draft');
+                   
+                   Navigator.pop(ctx); // Close Dialog
+                   Navigator.pop(context); // Close Add Screen
+                 },
+                 child: const Text("OK, GO HOME"),
+               )
+            ],
+          ),
+        );
+      }
+
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -630,9 +720,8 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
       }
     } finally {
-      await WakelockPlus.disable(); // Allow screen to turn off
-      FlutterBackgroundService().invoke("stop"); // Ensure service stops
-      if (mounted) setState(() => _isLoading = false);
+      // Wakelock might be managed by service now, but we can disable ours
+      await WakelockPlus.disable(); 
     }
   }
 
