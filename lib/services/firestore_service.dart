@@ -10,13 +10,27 @@ class FirestoreService {
   
   /// Get all courses
   Stream<List<CourseModel>> getCourses() {
+    print("📡 FETCHING COURSES FROM FIRESTORE...");
     return _firestore
         .collection('courses')
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => CourseModel.fromFirestore(doc))
-            .toList());
+        .map((snapshot) {
+           print("📊 Firestore Emitted ${snapshot.docs.length} documents");
+           final courses = <CourseModel>[];
+           for (var doc in snapshot.docs) {
+              try {
+                 final course = CourseModel.fromFirestore(doc);
+                 print("📖 Loaded Course: ${course.title}");
+                 courses.add(course);
+              } catch (e) {
+                 print("❌ FAILED TO PARSE COURSE [${doc.id}]: $e");
+                 // Continue to next course instead of failing entire stream
+              }
+           }
+           print("✅ Successfully parsed ${courses.length} / ${snapshot.docs.length} courses");
+           return courses;
+        });
   }
 
   /// Add new course

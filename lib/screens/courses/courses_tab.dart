@@ -22,10 +22,11 @@ class _CoursesTabState extends State<CoursesTab> {
   @override
   void initState() {
     super.initState();
+    // DON'T invoke service on init - it starts the service!
     // Request status from background service once UI is ready
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-       FlutterBackgroundService().invoke('get_status');
-    });
+    // WidgetsBinding.instance.addPostFrameCallback((_) {
+    //    FlutterBackgroundService().invoke('get_status');
+    // });
   }
 
   @override

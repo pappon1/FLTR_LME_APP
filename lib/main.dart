@@ -24,32 +24,33 @@ void main() async {
   // Initialize MediaKit
   MediaKit.ensureInitialized();
   
+  // DON'T initialize service at startup - it will auto-start when needed!
+  // This prevents the notification from appearing when app launches
+  
   // Initialize Background Upload Service
-  try {
-     await initializeUploadService();
-     
-     // Setup Global Notification Tap Handler (For When Service is Running)
-     final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
-     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-     const InitializationSettings initializationSettings = InitializationSettings(
-       android: initializationSettingsAndroid,
-     );
-     await flutterLocalNotificationsPlugin.initialize(
-        initializationSettings,
-        onDidReceiveNotificationResponse: (details) {
-             // Navigate to Upload Screen if tapped
-             // Use a slight delay to ensure context is ready
-             Future.delayed(const Duration(milliseconds: 200), () {
-                 navigatorKey.currentState?.push(
-                    MaterialPageRoute(builder: (_) => const UploadProgressScreen())
-                 );
-             });
-        },
-     );
-  } catch (e) {
-     print('Failed to initialize background service: $e');
-  }
+  // try {
+  //    await initializeUploadService();
+  //    
+  //    // Setup Global Notification Tap Handler (For When Service is Running)
+  //    final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  //    const AndroidInitializationSettings initializationSettingsAndroid =
+  //       AndroidInitializationSettings('@mipmap/ic_launcher');
+  //    const InitializationSettings initializationSettings = InitializationSettings(
+  //      android: initializationSettingsAndroid,
+  //    );
+  //      await flutterLocalNotificationsPlugin.initialize(
+  //         initializationSettings,
+  //         onDidReceiveNotificationResponse: (details) {
+  //              // DON'T auto-navigate! This was causing issues.
+  //              // User can manually go to upload screen via badge in CoursesTab
+  //              
+  //              // If you really need this, add a check to ensure app is already running
+  //              // and not just starting up with a notification tap.
+  //         },
+  //      );
+  // } catch (e) {
+  //    print('Failed to initialize background service: $e');
+  // }
   
   // Initialize Firebase
   await Firebase.initializeApp();

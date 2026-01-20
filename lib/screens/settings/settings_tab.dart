@@ -4,6 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../providers/theme_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../services/firebase_auth_service.dart';
+import '../../utils/quick_cleanup.dart';
 import '../login_screen.dart';
 import 'dart:async';
 
@@ -235,6 +236,83 @@ class SettingsTab extends StatelessWidget {
                     size: 14,
                   ),
                   onTap: () {},
+                ),
+              ],
+            ),
+          ),
+          
+          
+          const SizedBox(height: 24),
+          
+          // 🔥 DEVELOPER ZONE Section
+          Text(
+            '🔥 DEVELOPER ZONE',
+            style: AppTheme.bodySmall(context).copyWith(
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1,
+              color: Colors.red,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            color: Colors.red.shade50,
+            elevation: 4,
+            child: Column(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade100,
+                    border: Border.all(color: Colors.orange.shade300, width: 2),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, color: Colors.deepOrange, size: 24),
+                      SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          '⚠️ DANGER: These options are irreversible!',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.deepOrange,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.red.shade600, Colors.red.shade800],
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const FaIcon(
+                      FontAwesomeIcons.trash,
+                      size: 20,
+                      color: Colors.white,
+                    ),
+                  ),
+                  title: const Text(
+                    'Database Cleanup',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                  ),
+                  subtitle: const Text(
+                    'Delete all courses & files from server',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  trailing: const FaIcon(
+                    FontAwesomeIcons.chevronRight,
+                    size: 14,
+                    color: Colors.red,
+                  ),
+                  onTap: () {
+                    QuickCleanup.showQuickDeleteButton(context);
+                  },
                 ),
               ],
             ),

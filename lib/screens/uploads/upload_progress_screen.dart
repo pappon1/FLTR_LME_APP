@@ -22,6 +22,7 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
   bool _isPaused = false; 
   bool _isManualRefreshing = false;
   Timer? _holdTimer;
+  StreamSubscription? _statusSubscription;
   @override
   void initState() {
     super.initState();
@@ -33,6 +34,7 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
   @override
   void dispose() {
     _holdTimer?.cancel();
+    _statusSubscription?.cancel();
     super.dispose();
   }
 
@@ -46,8 +48,8 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
       _isManualRefreshing = true;
     });
     _refreshStatus();
-    // Shimmer will show up for at least 2 seconds for a premium feel
-    await Future.delayed(const Duration(milliseconds: 2000));
+    // Shimmer will show up for at least 800ms for a premium feel (reduced from 2s)
+    await Future.delayed(const Duration(milliseconds: 800));
     if (mounted) {
       setState(() {
         _isLoading = false;
@@ -72,7 +74,7 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
   }
 
   void _setupListener() {
-    FlutterBackgroundService().on('update').listen((event) {
+    _statusSubscription = FlutterBackgroundService().on('update').listen((event) {
       if (mounted && event != null) {
         setState(() {
           if (event['queue'] != null) {
@@ -96,7 +98,15 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
 
   void _togglePause() {
     final service = FlutterBackgroundService();
-    setState(() => _isPaused = !_isPaused);
+    setState(() {
+      _isPaused = !_isPaused;
+      // Mirror state to all active items for instant visual sync
+      for (var task in _queue) {
+        if (task['status'] == 'pending' || task['status'] == 'uploading') {
+          task['paused'] = _isPaused;
+        }
+      }
+    });
     
     if (_isPaused) {
       service.invoke('pause');
@@ -201,10 +211,38 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
         title: const Text('Upload Status'),
         actions: [
           if (_queue.isNotEmpty)
-            IconButton(
-              icon: Icon(_isPaused ? Icons.play_arrow : Icons.pause, color: Colors.orange), 
-              onPressed: _togglePause,
-              tooltip: _isPaused ? 'Resume' : 'Pause',
+            Padding(
+              padding: const EdgeInsets.only(right: 12, top: 2),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                   InkWell(
+                    onTap: _togglePause,
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: _isPaused ? Colors.green : Colors.orange,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        _isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded, 
+                        color: Colors.black,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _isPaused ? 'RESUME' : 'PAUSE',
+                    style: TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                      color: _isPaused ? Colors.green : Colors.orange,
+                    ),
+                  ),
+                ],
+              ),
             ),
           if (_queue.isNotEmpty)
             IconButton(
@@ -425,6 +463,20 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
               ),
               if (status == 'failed' && task['error'] != null)
                 Text(task['error'], style: const TextStyle(fontSize: 10, color: Colors.red), maxLines: 1, overflow: TextOverflow.ellipsis),
+              
+              if (status == 'uploading' || (task['paused'] == true && (task['progress'] ?? 0) > 0))
+                Padding(
+                  padding: const EdgeInsets.only(top: 8.0),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(2),
+                    child: LinearProgressIndicator(
+                      value: (task['progress'] ?? 0).toDouble(),
+                      backgroundColor: statusColor.withOpacity(0.1),
+                      valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+                      minHeight: 3,
+                    ),
+                  ),
+                ),
             ],
           ),
           trailing: Row(
@@ -432,13 +484,73 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
             children: [
               // Individual Pause/Resume for pending or uploading tasks
               if (status == 'pending' || status == 'uploading' || task['paused'] == true)
-                IconButton(
-                  icon: Icon(
-                    task['paused'] == true ? Icons.play_circle : Icons.pause_circle,
-                    color: task['paused'] == true ? Colors.green : Colors.orange,
-                    size: 28,
+                Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      InkWell(
+                        onTap: () => _toggleTaskPause(task),
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: task['paused'] == true ? Colors.green : Colors.orange,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            task['paused'] == true ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                            color: Colors.black,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        task['paused'] == true ? 'RESUME' : 'PAUSE',
+                        style: TextStyle(
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                          color: task['paused'] == true ? Colors.green : Colors.orange,
+                        ),
+                      ),
+                    ],
                   ),
-                  onPressed: () => _toggleTaskPause(task),
+                ),
+              // Retry button for failed tasks
+              if (status == 'failed')
+                Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      InkWell(
+                        onTap: () => _toggleTaskPause(task), // resume_task will reset retries
+                        borderRadius: BorderRadius.circular(20),
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: const BoxDecoration(
+                            color: Colors.blue,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.refresh_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'RETRY',
+                        style: TextStyle(
+                          fontSize: 8,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               if (status == 'uploading' && task['paused'] != true)
                 const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)),
@@ -456,13 +568,19 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
     
     if (isPaused) {
       service.invoke('resume_task', {'taskId': taskId});
-      setState(() => task['paused'] = false);
+      setState(() {
+        task['paused'] = false;
+        // Independent: Resuming one task doesn't force-resume the master engine
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Resumed: ${task['remotePath'].toString().split('/').last}'), backgroundColor: Colors.green),
       );
     } else {
       service.invoke('pause_task', {'taskId': taskId});
-      setState(() => task['paused'] = true);
+      setState(() {
+        task['paused'] = true;
+        // Independent: Pausing one task doesn't force-pause the master engine
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Paused: ${task['remotePath'].toString().split('/').last}'), backgroundColor: Colors.orange),
       );
@@ -484,19 +602,10 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
           builder: (context, setDialogState) {
             return AlertDialog(
               title: Text('Delete $name?'),
-              content: Text(isCountingDown 
-                  ? 'File will be deleted in $seconds seconds...' 
-                  : 'This will stop the upload and permanently delete the file from the server. This cannot be undone.'),
+              content: const Text('This will stop the upload and permanently delete the file from the server. This cannot be undone.'),
               actions: [
-                if (!isCountingDown)
                   TextButton(
                     onPressed: () {
-                      setDialogState(() => isCountingDown = true);
-                      Future.doWhile(() async {
-                        await Future.delayed(const Duration(seconds: 1));
-                        if (!ctx.mounted) return false;
-                        setDialogState(() => seconds--);
-                        if (seconds <= 0) {
                           // Execute deletion
                           service.invoke('delete_task', {'taskId': task['id']});
                           
@@ -506,19 +615,9 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
                               SnackBar(content: Text('$name deleted completely'), backgroundColor: Colors.red),
                             );
                           }
-                          return false;
-                        }
-                        return true;
-                      });
                     }, 
                     child: const Text('Delete Permanently', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))
                   ),
-                if (isCountingDown)
-                   TextButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: Text('STOP ($seconds)', style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
-                  ),
-                if (!isCountingDown)
                   TextButton(
                     onPressed: () => Navigator.pop(ctx),
                     child: const Text('Cancel', style: TextStyle(color: Colors.grey)),

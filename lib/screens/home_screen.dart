@@ -56,13 +56,12 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _checkPendingUploads() async {
     final service = FlutterBackgroundService();
     if (await service.isRunning()) {
-      // Service is running, navigate to progress screen
-      if (mounted) {
-         Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const UploadProgressScreen()),
-         );
-      }
+      // Don't auto-navigate! User should manually open upload screen if they want.
+      // Background service runs always, but uploads might be idle.
+      // We'll just let the badge in CoursesTab handle notification.
+      
+      // Optional: You can add a one-time check here to show a toast/snackbar
+      // if there are active uploads, but DON'T force navigation.
     }
   }
 

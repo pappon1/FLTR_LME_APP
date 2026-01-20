@@ -126,10 +126,12 @@ void onStart(ServiceInstance service) async {
     // This prevents a deadlock where the service thinks it's done but the course isn't finalized.
     bool hasRestored = false;
     for (var task in _queue) {
-       if (task['status'] == 'failed') {
+       // Reset 'failed' OR 'uploading' (since we just restarted, nothing can be uploading yet)
+       if (task['status'] == 'failed' || task['status'] == 'uploading') {
           task['status'] = 'pending';
           task['retries'] = 0;
           task['retryAt'] = null; // Reset wait timer
+          task['paused'] = false; // Self-heal pause on restart if it was stuck
           hasRestored = true;
        }
     }
@@ -139,19 +141,24 @@ void onStart(ServiceInstance service) async {
   // Helper to update notification
   Future<void> _updateNotification(String status, int progress) async {
     if (Platform.isAndroid) {
+      // If idle (no uploads), show minimal notification
+      final bool isIdle = _queue.isEmpty || _queue.every((t) => t['status'] == 'completed' || t['status'] == 'failed');
+      
       await flutterLocalNotificationsPlugin.show(
         kServiceNotificationId,
-        'Uploading Course Files',
-        '$status ($progress%)',
+        isIdle ? 'Upload Service' : 'Uploading Course Files',
+        isIdle ? 'Ready' : '$status ($progress%)',
         NotificationDetails(
           android: AndroidNotificationDetails(
             kServiceNotificationChannelId,
             'Upload Service',
             icon: 'ic_bg_service_small',
             ongoing: true,
-            showProgress: true,
+            showProgress: !isIdle, // Hide progress bar when idle
             maxProgress: 100,
             progress: progress,
+            priority: isIdle ? Priority.min : Priority.defaultPriority, // Lower priority when idle
+            importance: isIdle ? Importance.min : Importance.low, // Minimal when idle
           ),
         ),
       );
@@ -161,144 +168,173 @@ void onStart(ServiceInstance service) async {
   // --- Event Listeners ---
 
   // Processor Trigger
+  // Processor Trigger
   void _triggerProcessing() async {
     if (_isProcessing) return;
     _isProcessing = true;
-    // WakelockPlus removed - Service Notification keeps it alive
-    const int kMaxConcurrent = 5; // Speed Limit
+    const int kMaxConcurrent = 5; 
 
     while (true) {
-      // 1. Check if all done
-      bool allComplete = _queue.any((t) => t['status'] == 'pending' || t['status'] == 'uploading');
-      if (!allComplete) {
-         if (_queue.isNotEmpty) {
-             await _updateNotification("All uploads completed", 100);
-             service.invoke('all_completed');
+      // 1. Check if we have active or pending work
+      final pendingQueue = _queue.where((t) => t['status'] == 'pending' && t['paused'] != true).toList();
+      final pendingCount = pendingQueue.length;
+      final activeCount = _activeUploads.length;
+      
+      if (pendingCount == 0 && activeCount == 0) {
+         // Check if anything is uploading or failed but retrying (not paused)
+         bool hasPotentialWork = _queue.any((t) => 
+            (t['status'] == 'uploading' && !_activeUploads.containsKey(t['id'])) || // Self-healing
+            (t['status'] == 'pending' && t['paused'] != true)
+         );
+
+         if (!hasPotentialWork) {
+            bool allFinished = _queue.isNotEmpty && _queue.every((t) => t['status'] == 'completed' || t['status'] == 'failed');
+            if (allFinished) {
+                print("✅ All tasks reached terminal state.");
+                _isProcessing = false;
+                await _finalizeCourseIfPending();
+                await _updateNotification("Processing complete", 100);
+                service.invoke('all_completed');
+                
+                // AUTO-STOP: Stop the service to remove notification
+                print("🛑 All uploads complete. Stopping background service to clear notification...");
+                await Future.delayed(const Duration(seconds: 2)); // Give time for finalization
+                service.stopSelf(); // This will kill the service and remove notification
+                break;
+            }
+
+            // If we are just idle, wait and re-check more frequently
+            print("💤 Processor IDLE (No pending/active work). Sleeping...");
+            await Future.delayed(const Duration(milliseconds: 800));
+            
+            // Final check before breaking loop
+            if (!_queue.any((t) => (t['status'] == 'pending' && t['paused'] != true) || t['status'] == 'uploading')) {
+               print("🛑 Stopping active processor loop.");
+               _isProcessing = false;
+               break;
+            }
+            continue;
          }
-         _isProcessing = false;
-         break;
       }
 
-      // 2. Pause Check
+      // 2. Inconsistent State Self-Healing
+      for (var task in _queue) {
+         if (task['status'] == 'uploading' && !_activeUploads.containsKey(task['id'])) {
+            print("🔧 Self-Healing: Task ${task['id']} was stuck in 'uploading' without token. Resetting to 'pending'.");
+            task['status'] = 'pending';
+            task['progress'] = 0.0;
+         }
+      }
+
+      // 3. Global Pause Check
       if (_isPaused) {
+         print("⏸️ Engine is GLOBALLY PAUSED. Waiting...");
          await _updateNotification("Uploads Paused", 0);
-         await Future.delayed(const Duration(seconds: 2)); // Wait and check again
-         continue; // Skip slot filling when paused
+         await Future.delayed(const Duration(seconds: 1)); 
+         continue; 
       }
       
-      // 3. Count Active Uploads
-      int activeCount = _queue.where((t) => t['status'] == 'uploading').length;
+      // 3. Slot filling logic
+      bool slotFilled = false;
       
-      // 4. Fill Slots if available
       if (activeCount < kMaxConcurrent) {
          final now = DateTime.now().millisecondsSinceEpoch;
+         
+         // Aggressive Debug Log
+         for(var t in _queue) {
+            if (t['status'] == 'pending' || t['status'] == 'uploading') {
+               print("🔎 Checking Task: ID=${t['id']} | Status=${t['status']} | Paused=${t['paused']} | RetryAt=${t['retryAt']} (Now=$now)");
+            }
+         }
+
          int nextIndex = _queue.indexWhere((t) => 
             t['status'] == 'pending' && 
-            t['paused'] != true && // Skip paused tasks
+            t['paused'] != true && 
             (t['retryAt'] == null || now > t['retryAt'])
          );
 
          if (nextIndex != -1) {
             final task = _queue[nextIndex];
+            print("🚀 Starting upload for: ${task['id']}");
             final filePath = task['filePath'] as String;
             final remotePath = task['remotePath'] as String;
-            final taskIndex = nextIndex; // Capture for closure
-            final taskId = task['id']; // Get task ID for tracking
+            final taskIndex = nextIndex;
+            final taskId = task['id'];
 
-            // Mark as Uploading
             task['status'] = 'uploading';
+            task['progress'] = 0.0; // Reset progress on start
             _queue[taskIndex] = task;
-            await _saveQueue(); // Persist "In Progress"
+            await _saveQueue();
             
-            // Create CancelToken for this upload
             final cancelToken = CancelToken();
             _activeUploads[taskId] = cancelToken;
+            slotFilled = true;
             
-            // Start Upload (Async - Fire and Forget, loop continues to fill more slots)
+            // Throttle progress updates to UI to every 500ms per task
+            int lastUiUpdate = 0;
+
              bunnyService.uploadFile(
               filePath: filePath,
               remotePath: remotePath,
-              cancelToken: cancelToken, // ENABLE CANCELLATION
+              cancelToken: cancelToken,
               onProgress: (sent, total) {
-                // Determine overall progress for notification
-                // Calculating total progress of 50GB files is expensive, just show file count or approximate
+                 if (total > 0) {
+                    final progress = sent / total;
+                    _queue[taskIndex]['progress'] = progress;
+                    
+                    // Throttle UI update
+                    final now = DateTime.now().millisecondsSinceEpoch;
+                    if (now - lastUiUpdate > 800) {
+                       lastUiUpdate = now;
+                       service.invoke('update', {'queue': _queue});
+                    }
+                 }
               },
             ).then((url) async {
-               // Success - Remove from active uploads
                _activeUploads.remove(taskId);
-               
                _queue[taskIndex]['status'] = 'completed';
-               _queue[taskIndex]['url'] = url; // Save URL
+               _queue[taskIndex]['progress'] = 1.0;
+               _queue[taskIndex]['url'] = url;
                await _saveQueue();
-               
-               // Notify UI
                service.invoke('task_completed', {'id': _queue[taskIndex]['id'], 'url': url});
-               
-               // Check if we need to spawn more
                _triggerProcessing(); 
-
             }).catchError((e) async {
-               // Remove from active uploads
                _activeUploads.remove(taskId);
                
-               // Check if it was cancelled (not a real error)
+               final currentIdx = _queue.indexWhere((t) => t['id'] == taskId);
+               if (currentIdx == -1) return;
+
                if (e is DioException && e.type == DioExceptionType.cancel) {
-                  print("Upload Cancelled: $taskId");
-                  // Don't mark as failed, just leave as pending with paused flag
+                  print("Upload Cancelled (Isolate): $taskId");
+                  _queue[currentIdx]['status'] = 'pending';
+                  await _saveQueue();
                   return;
                }
-               
-               print("Upload Fail: $e. Retrying...");
-               
-               int retries = _queue[taskIndex]['retries'] ?? 0;
-               if (retries >= 10) { // Max 10 retries
-                 _queue[taskIndex]['status'] = 'failed';
-                 _queue[taskIndex]['error'] = e.toString();
-                 await _updateNotification("Upload Failed: ${path.basename(filePath)}", 0);
-               } else {
-                 _queue[taskIndex]['retries'] = retries + 1;
-                 _queue[taskIndex]['status'] = 'pending'; 
-                 // Smart Backoff: Set specific time to retry
-                 int waitSeconds = 5 + (retries * 5); // 5s, 10s, 15s...
-                 _queue[taskIndex]['retryAt'] = DateTime.now().millisecondsSinceEpoch + (waitSeconds * 1000);
-               }
-               
+
+               _queue[currentIdx]['status'] = 'failed';
+               _queue[currentIdx]['progress'] = 0.0;
+               _queue[currentIdx]['error'] = (e as dynamic).toString();
+               _queue[currentIdx]['retries'] = (_queue[currentIdx]['retries'] ?? 0) + 1;
+               _queue[currentIdx]['retryAt'] = DateTime.now().add(const Duration(seconds: 30)).millisecondsSinceEpoch;
                await _saveQueue();
-               _triggerProcessing(); 
+               _triggerProcessing();
             });
-            
-            // Loop again immediately to fill next slot
-            continue;
          }
       }
-      
-      // Wait a bit if full or nothing to do
-      await Future.delayed(const Duration(seconds: 1));
-      
-      // Check again (loop condition handles exit)
-      // Recalculate 'active' for loop break check
-      // Check again (loop condition handles exit)
-      // Recalculate 'active' for loop break check
-      if (_queue.every((t) => t['status'] != 'pending' && t['status'] != 'uploading')) {
-          _isProcessing = false;
-          // WakelockPlus removed
-          
-          // --- ALL FILES UPLOADED: FINALIZE COURSE ---
-          await _finalizeCourseIfPending();
-          
-          await _updateNotification("All tasks finished", 100);
-          break;
-      }
-      
-      // Update Notification with Summary
-      int pending = _queue.where((t) => t['status'] == 'pending').length;
-      int uploading = _queue.where((t) => t['status'] == 'uploading').length;
+
+      // 4. Update Notification Progress
       int completed = _queue.where((t) => t['status'] == 'completed').length;
       int total = _queue.length;
-      
       if (total > 0) {
-         int percent = ((completed / total) * 100).toInt();
-         await _updateNotification("Uploading: $uploading active, $pending pending", percent);
+        int percent = ((completed / total) * 100).toInt();
+        await _updateNotification("Uploading: ${_activeUploads.length} active", percent);
+      }
+
+      // 5. Flow Control
+      if (!slotFilled) {
+         await Future.delayed(const Duration(milliseconds: 1000));
+      } else {
+         await Future.delayed(const Duration(milliseconds: 200));
       }
     }
   }
@@ -397,31 +433,28 @@ void onStart(ServiceInstance service) async {
 
   // Pause Uploads (Global - Cancel ALL active uploads)
   service.on('pause').listen((event) async {
-     _isPaused = true;
-     
-     // Cancel ALL active uploads
-     for (var taskId in _activeUploads.keys.toList()) {
-        _activeUploads[taskId]?.cancel('User paused all uploads');
-        print("⏸️ Cancelled upload: $taskId");
-     }
-     _activeUploads.clear();
-     
-     // Mark ALL pending/uploading tasks as paused (for UI sync)
-     for (var task in _queue) {
-        if (task['status'] == 'pending' || task['status'] == 'uploading') {
-           task['paused'] = true;
-           if (task['status'] == 'uploading') {
-              task['status'] = 'pending'; // Reset uploading to pending
-           }
-        }
-     }
-     await _saveQueue(); // Save updated queue with paused flags
-     
-     // Broadcast change to UI
-     service.invoke('update', {
-        'queue': _queue,
-        'isPaused': _isPaused,
-     });
+      _isPaused = true;
+      
+      // Cancel ALL active uploads
+      for (var taskId in _activeUploads.keys.toList()) {
+         _activeUploads[taskId]?.cancel('User paused all uploads');
+      }
+      _activeUploads.clear();
+
+      // Mark ALL pending/uploading tasks as paused (Full Sync)
+      for (var task in _queue) {
+         if (task['status'] == 'pending' || task['status'] == 'uploading') {
+            task['paused'] = true;
+            if (task['status'] == 'uploading') task['status'] = 'pending';
+         }
+      }
+      await _saveQueue(); 
+      
+      // Broadcast change to UI
+      service.invoke('update', {
+         'queue': _queue,
+         'isPaused': _isPaused,
+      });
      
      _updateNotification("Uploads Paused", 0);
      print("⏸️ Uploads PAUSED (All active uploads cancelled)");
@@ -461,30 +494,28 @@ void onStart(ServiceInstance service) async {
      if (event == null || event['taskId'] == null) return;
      final taskId = event['taskId'];
      
-     // Cancel active upload if it's currently uploading
-     if (_activeUploads.containsKey(taskId)) {
-        _activeUploads[taskId]?.cancel('User paused upload');
-        _activeUploads.remove(taskId);
-        print("⏸️ Task Upload CANCELLED: $taskId");
-     }
-     
      final taskIndex = _queue.indexWhere((t) => t['id'] == taskId);
      if (taskIndex != -1) {
-        _queue[taskIndex]['paused'] = true;
-        // If it's uploading, change to pending so it won't be picked up
-        if (_queue[taskIndex]['status'] == 'uploading') {
-           _queue[taskIndex]['status'] = 'pending';
-        }
-        await _saveQueue();
-        
-        // Broadcast change to UI
-        service.invoke('update', {
-           'queue': _queue,
-           'isPaused': _isPaused,
-        });
-        
-        print("⏸️ Task PAUSED: $taskId");
-     }
+         print("⏸️ SERVICE RECEIVED pause_task: $taskId");
+         _queue[taskIndex]['paused'] = true;
+
+         // If it's currently uploading, cancel it and move back to pending
+         if (_activeUploads.containsKey(taskId)) {
+            _activeUploads[taskId]?.cancel('User paused upload');
+            _activeUploads.remove(taskId);
+            _queue[taskIndex]['status'] = 'pending';
+         }
+         
+         await _saveQueue();
+         
+         // Broadcast change to UI
+         service.invoke('update', {
+            'queue': _queue,
+            'isPaused': _isPaused,
+         });
+         
+         print("⏸️ Task PAUSED successfully: $taskId");
+      }
   });
 
   // Resume Individual Task
@@ -493,19 +524,32 @@ void onStart(ServiceInstance service) async {
      final taskId = event['taskId'];
      
      final taskIndex = _queue.indexWhere((t) => t['id'] == taskId);
-     if (taskIndex != -1) {
-        _queue[taskIndex]['paused'] = false;
-        await _saveQueue();
-        
-        // Broadcast change to UI
-        service.invoke('update', {
-           'queue': _queue,
-           'isPaused': _isPaused,
-        });
-        
-        _triggerProcessing(); // Restart processing to pick it up
-        print("▶️ Task RESUMED: $taskId");
-     }
+      if (taskIndex != -1) {
+         // Reset state to ensure IMMEDIATE retry
+         _queue[taskIndex]['paused'] = false;
+         _queue[taskIndex]['retries'] = 0;
+         _queue[taskIndex]['retryAt'] = null;
+         
+         // Fix: If it was failed OR stuck in uploading, reset to pending
+         if (_queue[taskIndex]['status'] == 'failed' || _queue[taskIndex]['status'] == 'uploading') {
+            _queue[taskIndex]['status'] = 'pending';
+         }
+         
+         print("✅ Task RESUMED (Immediate Ready): ${_queue[taskIndex]['id']}");
+         
+         // Decoupled: One task resume DOES NOT wake up the global engine.
+         // If engine is global paused, this task remains 'pending' until global resume.
+         
+         await _saveQueue();
+         
+         // Broadcast change to UI
+         service.invoke('update', {
+            'queue': _queue,
+            'isPaused': _isPaused,
+         });
+         
+         _triggerProcessing(); 
+      }
   });
 
   // NEW: Delete Individual Task (Destructive)
@@ -681,11 +725,13 @@ Future<void> _finalizeCourseIfPending() async {
      final String? courseId = courseData['id'];
      
      if (courseId != null && courseId.isNotEmpty) {
+        print("📁 Updating Firestore Record: courses/$courseId");
         await FirebaseFirestore.instance.collection('courses').doc(courseId).set(courseData);
+        print("✅ Firestore Update SUCCESS!");
      } else {
-        // Fallback (Should not happen with new logic)
-        courseData.remove('id'); 
-        await FirebaseFirestore.instance.collection('courses').add(courseData);
+        print("📁 Adding NEW Firestore Record...");
+        final docRef = await FirebaseFirestore.instance.collection('courses').add(courseData);
+        print("✅ Firestore Add SUCCESS! ID: ${docRef.id}");
      }
      
      // 5. Success!

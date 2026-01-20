@@ -86,8 +86,8 @@ class CourseModel {
       id: doc.id,
       title: data['title'] ?? '',
       category: data['category'] ?? '',
-      price: data['price'] ?? 0,
-      discountPrice: data['discountPrice'] ?? data['price'] ?? 0,
+      price: _toInt(data['price'], 0),
+      discountPrice: _toInt(data['discountPrice'] ?? data['price'], 0),
       description: data['description'] ?? '',
       thumbnailUrl: data['thumbnailUrl'] ?? '',
       duration: data['duration'] ?? '0 hours',
@@ -96,17 +96,25 @@ class CourseModel {
       rating: (data['rating'] ?? 0.0).toDouble(),
       totalVideos: data['totalVideos'] ?? 0,
       isPublished: data['isPublished'] ?? false,
-      createdAt: (data['createdAt'] as Timestamp?)?.toDate(),
-      newBatchDays: data['newBatchDays'] ?? 90,
-      courseValidityDays: data['courseValidityDays'] ?? 0,
+      createdAt: (data['createdAt'] is Timestamp) ? (data['createdAt'] as Timestamp).toDate() : null,
+      newBatchDays: _toInt(data['newBatchDays'], 90),
+      courseValidityDays: _toInt(data['courseValidityDays'], 0),
       hasCertificate: data['hasCertificate'] ?? false,
-      certificateUrl1: data['certificateUrl1'],
-      certificateUrl2: data['certificateUrl2'],
-      selectedCertificateSlot: data['selectedCertificateSlot'] ?? 1,
+      certificateUrl1: data['certificateUrl1']?.toString(),
+      certificateUrl2: data['certificateUrl2']?.toString(),
+      selectedCertificateSlot: _toInt(data['selectedCertificateSlot'], 1),
       demoVideos: data['demoVideos'] ?? [],
       isOfflineDownloadEnabled: data['isOfflineDownloadEnabled'] ?? true,
       contents: data['contents'] ?? [],
     );
+  }
+
+  static int _toInt(dynamic value, int defaultValue) {
+    if (value == null) return defaultValue;
+    if (value is int) return value;
+    if (value is double) return value.toInt();
+    if (value is String) return int.tryParse(value) ?? defaultValue;
+    return defaultValue;
   }
 
   // Create from Map

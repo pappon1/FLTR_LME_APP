@@ -64,6 +64,11 @@ class BunnyCDNService {
           throw Exception('Upload failed with status: ${response.statusCode}');
         }
       } catch (e) {
+        // If it was cancelled, don't retry!
+        if (e is DioException && e.type == DioExceptionType.cancel) {
+           rethrow;
+        }
+        
         if (attempts >= maxRetries) {
            rethrow;
         }
