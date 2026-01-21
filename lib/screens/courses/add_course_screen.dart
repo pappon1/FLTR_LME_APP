@@ -477,46 +477,58 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
           ? (int.tryParse(_customValidityController.text) ?? 0) 
           : _courseValidityDays!;
           
-      // SAFE COPY: Move ephemeral images (Cache) to Documents (Persistent)
-      // This ensures Background Service can find them even if Cache is cleared.
+      // SAFE COPY: Deduplication and Persistence
       final appDir = await getApplicationDocumentsDirectory();
       final safeDir = Directory('${appDir.path}/pending_uploads');
       if (!safeDir.existsSync()) safeDir.createSync(recursive: true);
       
-      Future<File> copyToSafe(File f) async {
-         final filename = '${DateTime.now().millisecondsSinceEpoch}_${path.basename(f.path)}';
+      final Map<String, String> copiedPathMap = {};
+
+      Future<String> copyToSafe(String rawPath) async {
+         if (copiedPathMap.containsKey(rawPath)) return copiedPathMap[rawPath]!;
+         
+         final f = File(rawPath);
+         if (!f.existsSync()) return rawPath;
+
+         final filename = '${DateTime.now().millisecondsSinceEpoch}_${path.basename(rawPath)}';
          final newPath = '${safeDir.path}/$filename';
-         return f.copy(newPath);
+         await f.copy(newPath);
+         copiedPathMap[rawPath] = newPath;
+         return newPath;
       }
       
-      if (_thumbnailImage != null) _thumbnailImage = await copyToSafe(_thumbnailImage!);
-      if (_certificate1Image != null) _certificate1Image = await copyToSafe(_certificate1Image!);
-      if (_certificate2Image != null) _certificate2Image = await copyToSafe(_certificate2Image!);
+      if (_thumbnailImage != null) {
+          final newPath = await copyToSafe(_thumbnailImage!.path);
+          _thumbnailImage = File(newPath);
+      }
+      if (_certificate1Image != null) {
+          final newPath = await copyToSafe(_certificate1Image!.path);
+          _certificate1Image = File(newPath);
+      }
+      if (_certificate2Image != null) {
+          final newPath = await copyToSafe(_certificate2Image!.path);
+          _certificate2Image = File(newPath);
+      }
 
-      // Recursive Safe Copy for ALL Content (Main Files & Thumbnails)
+      // Recursive Safe Copy for ALL Content
       Future<void> safeCopyAllContent(List<dynamic> items) async {
         for (var item in items) {
            final String type = item['type'];
            
-           // A. Safe Copy Main File (Video, PDF, Image)
            if ((type == 'video' || type == 'pdf' || type == 'image') && item['isLocal'] == true) {
               final String fPath = item['path'];
               if (fPath.isNotEmpty) {
-                 final File safeFile = await copyToSafe(File(fPath));
-                 item['path'] = safeFile.path; // Update to persistent path
+                 item['path'] = await copyToSafe(fPath);
               }
            }
 
-           // B. Safe Copy Thumbnail (If exists)
            if (item['thumbnail'] != null && item['thumbnail'] is String) {
               final String tPath = item['thumbnail'];
               if (tPath.isNotEmpty && !tPath.startsWith('http')) {
-                 final File safeFile = await copyToSafe(File(tPath));
-                 item['thumbnail'] = safeFile.path; // Update to persistent path
+                 item['thumbnail'] = await copyToSafe(tPath);
               }
            }
            
-           // C. Recurse
            if (type == 'folder' && item['contents'] != null) {
               await safeCopyAllContent(item['contents']);
            }
@@ -528,16 +540,14 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       for (var i = 0; i < _demoVideos.length; i++) {
          final String dPath = _demoVideos[i]['path'];
          if (dPath.isNotEmpty && !dPath.startsWith('http')) {
-             final File safeFile = await copyToSafe(File(dPath));
-             _demoVideos[i]['path'] = safeFile.path; // Update to persistent path
+             _demoVideos[i]['path'] = await copyToSafe(dPath);
          }
       }
 
-
-      // 0. Generate ID Upfront (For Idempotency)
+      // 0. Generate ID Upfront
       final newDocId = FirebaseFirestore.instance.collection('courses').doc().id;
 
-      // Create "Draft" Course Model to Serialize
+      // Create "Draft" Course Model
       final draftCourse = CourseModel(
         id: newDocId, 
         title: _titleController.text.trim(),
@@ -545,7 +555,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         price: int.parse(_finalPriceController.text),
         discountPrice: int.parse(_mrpController.text),
         description: finalDesc,
-        thumbnailUrl: _thumbnailImage?.path ?? '', // Temporary Local Path
+        thumbnailUrl: _thumbnailImage?.path ?? '', 
         duration: '', 
         difficulty: _difficulty,
         enrolledStudents: 0,
@@ -556,42 +566,53 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         newBatchDays: _newBatchDurationDays,
         courseValidityDays: finalValidity,
         hasCertificate: _hasCertificate,
-        certificateUrl1: _certificate1Image?.path, // Temporary Local Path
-        certificateUrl2: _certificate2Image?.path, // Temporary Local Path
+        certificateUrl1: _certificate1Image?.path, 
+        certificateUrl2: _certificate2Image?.path, 
         selectedCertificateSlot: _selectedCertSlot,
         demoVideos: _demoVideos,
         isOfflineDownloadEnabled: _isOfflineDownloadEnabled,
         contents: _courseContents,
       );
 
-      // Generate Session ID for Unique Remote Folder
+      // Generate Session ID
       final sessionId = DateTime.now().millisecondsSinceEpoch.toString();
       final List<Map<String, dynamic>> fileTasks = [];
+      final Set<String> processedFilePaths = {};
+
+      void addTask(String filePath, String remotePath, String id) {
+          if (processedFilePaths.contains(filePath)) return;
+          processedFilePaths.add(filePath);
+          fileTasks.add({
+            'filePath': filePath,
+            'remotePath': remotePath,
+            'id': id,
+          });
+      }
 
       // 1. Add Thumbnail Task
       if (_thumbnailImage != null) {
-        fileTasks.add({
-          'filePath': _thumbnailImage!.path,
-          'remotePath': 'courses/$sessionId/thumbnails/thumb_${path.basename(_thumbnailImage!.path)}',
-          'id': 'thumb',
-        });
+        addTask(
+           _thumbnailImage!.path, 
+           'courses/$sessionId/thumbnails/thumb_${path.basename(_thumbnailImage!.path)}',
+           'thumb'
+        );
       }
 
       // 2. Add Certificate Tasks
       if (_hasCertificate) {
         if (_certificate1Image != null) {
-           fileTasks.add({
-            'filePath': _certificate1Image!.path,
-            'remotePath': 'courses/$sessionId/certificates/cert1_${path.basename(_certificate1Image!.path)}',
-            'id': 'cert1',
-          });
+           addTask(
+              _certificate1Image!.path,
+              'courses/$sessionId/certificates/cert1_${path.basename(_certificate1Image!.path)}',
+              'cert1'
+           );
         }
         if (_certificate2Image != null) {
-           fileTasks.add({
-            'filePath': _certificate2Image!.path,
-            'remotePath': 'courses/$sessionId/certificates/cert2_${path.basename(_certificate2Image!.path)}',
-            'id': 'cert2',
-          });
+           addTask(
+              _certificate2Image!.path,
+              'courses/$sessionId/certificates/cert2_${path.basename(_certificate2Image!.path)}',
+              'cert2'
+           );
         }
       }
 
@@ -599,58 +620,45 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       for (var i = 0; i < _demoVideos.length; i++) {
         final demo = _demoVideos[i];
         final String pathStr = demo['path'];
-        // Only upload if it's a local file (not already a URL)
         if (pathStr.isNotEmpty && !pathStr.startsWith('http')) {
-           fileTasks.add({
-            'filePath': pathStr,
-            'remotePath': 'courses/$sessionId/demo_videos/demo_${i}_${path.basename(pathStr)}',
-            'id': pathStr,
-          });
+           addTask(
+              pathStr,
+              'courses/$sessionId/demo_videos/demo_${i}_${path.basename(pathStr)}',
+              pathStr
+           );
         }
       }
 
-      // 4. Recursively Collect ALL Files & Thumbnails (Including from Folders)
-      
-      // 4. Recursively Collect ALL Files & Thumbnails (Including from Folders)
-      int globalCounter = 0; // Shared counter for absolute uniqueness
-      
+      // 4. Recursively Collect ALL Files & Thumbnails
+      int globalCounter = 0;
       void processItemRecursive(dynamic item) {
           final int currentIndex = globalCounter++;
           final String type = item['type'];
           
-          // 1. Process Main File (If it's a file type)
           if ((type == 'video' || type == 'pdf' || type == 'image') && item['isLocal'] == true) {
              final filePath = item['path'];
              if (filePath != null && filePath is String) {
-                // Determine remote folder
                 String folder = 'others';
                 if (type == 'video') folder = 'videos';
                 else if (type == 'pdf') folder = 'pdfs';
                 else if (type == 'image') folder = 'images';
                 
                 final uniqueName = '${currentIndex}_${item['name']}';
-                 
-                fileTasks.add({
-                  'filePath': filePath,
-                  'remotePath': 'courses/$sessionId/$folder/$uniqueName',
-                  'id': filePath, 
-                });
+                addTask(filePath, 'courses/$sessionId/$folder/$uniqueName', filePath);
              }
           }
 
-          // 2. Process Thumbnail (For Files AND Folders)
           if (item['thumbnail'] != null && item['thumbnail'] is String) {
             final String thumbPath = item['thumbnail'];
             if (thumbPath.isNotEmpty && !thumbPath.startsWith('http')) {
-               fileTasks.add({
-                 'filePath': thumbPath,
-                 'remotePath': 'courses/$sessionId/thumbnails/thumb_${currentIndex}_${path.basename(thumbPath)}',
-                 'id': thumbPath, // Use path as ID to map back
-               });
+               addTask(
+                  thumbPath, 
+                  'courses/$sessionId/thumbnails/thumb_${currentIndex}_${path.basename(thumbPath)}',
+                  thumbPath
+               );
             }
           }
 
-          // 3. Recurse if Folder
           if (type == 'folder' && item['contents'] != null) {
               for (var sub in item['contents']) {
                  processItemRecursive(sub); 
@@ -658,7 +666,6 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
           }
       }
 
-      // Initial Scan
       for (var item in _courseContents) {
          processItemRecursive(item);
       }

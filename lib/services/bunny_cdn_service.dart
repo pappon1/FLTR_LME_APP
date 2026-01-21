@@ -80,7 +80,7 @@ class BunnyCDNService {
     throw Exception('Upload failed after $maxRetries attempts');
   }
 
-  /// Delete file from Bunny.net CDN
+  /// Delete file from Bunny.net CDN (Storage)
   Future<bool> deleteFile(String remotePath) async {
     try {
       final apiUrl = 'https://$hostname/$storageZoneName/$remotePath';
@@ -96,7 +96,33 @@ class BunnyCDNService {
 
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
-      // print('❌ Bunny CDN delete error: $e');
+      print('❌ Bunny CDN Storage delete error: $e');
+      return false;
+    }
+  }
+
+  /// Delete video from Bunny.net Stream (API)
+  Future<bool> deleteVideo({
+    required String libraryId,
+    required String videoId,
+    required String apiKey,
+  }) async {
+    try {
+      final apiUrl = 'https://video.bunnycdn.com/library/$libraryId/videos/$videoId';
+      
+      final response = await _dio.delete(
+        apiUrl,
+        options: Options(
+          headers: {
+            'AccessKey': apiKey,
+            'accept': 'application/json',
+          },
+        ),
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print('❌ Bunny Stream delete error: $e');
       return false;
     }
   }

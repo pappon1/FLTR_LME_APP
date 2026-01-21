@@ -23,6 +23,8 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
   bool _isLoading = true;
   bool _isPaused = false; 
   bool _isManualRefreshing = false;
+  bool _isSelectionMode = false;
+  final Set<String> _selectedTaskIds = {};
   Timer? _holdTimer;
   StreamSubscription? _statusSubscription;
   final Map<String, DateTime> _lastManualUpdates = {};
@@ -131,6 +133,63 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
     FlutterBackgroundService().on('task_completed').listen((event) {
        // Optional: Trigger specific animations
     });
+  }
+
+  void _toggleSelection(String taskId) {
+    if (taskId.isEmpty) return;
+    HapticFeedback.selectionClick();
+    setState(() {
+      if (_selectedTaskIds.contains(taskId)) {
+        _selectedTaskIds.remove(taskId);
+        if (_selectedTaskIds.isEmpty) _isSelectionMode = false;
+      } else {
+        _isSelectionMode = true;
+        _selectedTaskIds.add(taskId);
+      }
+    });
+  }
+
+  void _deleteSelectedTasks() {
+    if (_selectedTaskIds.isEmpty) return;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete ${_selectedTaskIds.length} Tasks?'),
+        content: const Text('This will permanently delete the selected files from the server and local storage. This cannot be undone.'),
+        actions: [
+           TextButton(
+             onPressed: () {
+                final service = FlutterBackgroundService();
+                final idsToDelete = List<String>.from(_selectedTaskIds);
+                
+                service.startService().then((_) {
+                  for (final id in idsToDelete) {
+                    service.invoke('delete_task', {'taskId': id});
+                  }
+                });
+
+                setState(() {
+                  _queue.removeWhere((t) => idsToDelete.contains(t['taskId'] ?? t['id']));
+                  _isSelectionMode = false;
+                  _selectedTaskIds.clear();
+                });
+
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('${idsToDelete.length} tasks removed'), backgroundColor: Colors.red, duration: const Duration(seconds: 3)),
+                );
+             },
+             child: const Text('Delete Permanently', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+           ),
+           TextButton(
+             onPressed: () => Navigator.pop(ctx),
+             child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+           ),
+        ],
+      )
+    );
   }
 
   void _togglePause() async {
@@ -266,32 +325,59 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Uploads', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        titleSpacing: 0,
+        leading: _isSelectionMode 
+          ? IconButton(
+              icon: const Icon(Icons.close), 
+              onPressed: () => setState(() {
+                _isSelectionMode = false;
+                _selectedTaskIds.clear();
+              })
+            )
+          : null,
+        title: Text(_isSelectionMode ? '${_selectedTaskIds.length} Selected' : 'Uploads', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        titleSpacing: _isSelectionMode ? 0 : 20,
         actions: [
-          if (_queue.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-              child: TextButton.icon(
-                onPressed: _togglePause,
-                icon: Icon(_isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded, size: 18),
-                label: Text(_isPaused ? 'Resume' : 'Pause', style: const TextStyle(fontSize: 12)),
-                style: TextButton.styleFrom(
-                  backgroundColor: (_isPaused ? Colors.green : Colors.orange).withOpacity(0.1),
-                  foregroundColor: _isPaused ? Colors.green : Colors.orange,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          if (_isSelectionMode)
+            IconButton(
+              icon: const Icon(Icons.delete_sweep_rounded, color: Colors.redAccent, size: 26),
+              onPressed: _deleteSelectedTasks,
+              tooltip: 'Delete Selected',
+            )
+          else ...[
+            if (_queue.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                child: TextButton.icon(
+                  onPressed: _togglePause,
+                  icon: Icon(_isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded, size: 18),
+                  label: Text(_isPaused ? 'Resume' : 'Pause', style: const TextStyle(fontSize: 12)),
+                  style: TextButton.styleFrom(
+                    backgroundColor: (_isPaused ? Colors.green : Colors.orange).withOpacity(0.1),
+                    foregroundColor: _isPaused ? Colors.green : Colors.orange,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
                 ),
               ),
-            ),
-          if (_queue.isNotEmpty)
-            IconButton(
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-              icon: const Icon(Icons.delete_sweep, color: Colors.redAccent, size: 22), 
-              onPressed: _cancelAll,
-              tooltip: 'Cancel All',
-            ),
+            if (_queue.isNotEmpty)
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: const Icon(Icons.checklist_rounded, color: Colors.blueAccent, size: 24),
+                onPressed: () => setState(() {
+                  _isSelectionMode = true;
+                }),
+                tooltip: 'Selection Mode',
+              ),
+            if (_queue.isNotEmpty)
+              IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                icon: const Icon(Icons.delete_forever_rounded, color: Colors.redAccent, size: 22), 
+                onPressed: _cancelAll,
+                tooltip: 'Cancel All',
+              ),
+          ],
           const SizedBox(width: 8),
         ],
       ),
@@ -320,8 +406,14 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
                           itemCount: _queue.length,
                           itemBuilder: (context, index) {
                             final task = _queue[index];
+                            final taskId = (task['taskId'] ?? task['id']).toString();
+                            final isSelected = _selectedTaskIds.contains(taskId);
+
                             return UploadTaskCard(
                               task: task,
+                              isSelected: isSelected,
+                              isSelectionMode: _isSelectionMode,
+                              onToggleSelection: () => _toggleSelection(taskId),
                               onTogglePause: () => _toggleTaskPause(task),
                               onDelete: () => _showDeleteTaskDialog(task),
                             );
@@ -555,12 +647,18 @@ String _formatBytes(int? bytes, int decimals) {
 
 class UploadTaskCard extends StatelessWidget {
   final Map<String, dynamic> task;
+  final bool isSelected;
+  final bool isSelectionMode;
+  final VoidCallback onToggleSelection;
   final VoidCallback onTogglePause;
   final VoidCallback onDelete;
 
   const UploadTaskCard({
     super.key,
     required this.task,
+    this.isSelected = false,
+    this.isSelectionMode = false,
+    required this.onToggleSelection,
     required this.onTogglePause,
     required this.onDelete,
   });
@@ -587,18 +685,48 @@ class UploadTaskCard extends StatelessWidget {
 
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: isSelected ? 4 : 1,
+      shadowColor: isSelected ? AppTheme.primaryColor.withOpacity(0.4) : Colors.black12,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(
+          color: isSelected ? AppTheme.primaryColor : Colors.transparent,
+          width: 2,
+        ),
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
+        onTap: isSelectionMode ? onToggleSelection : null,
         onLongPress: () {
             HapticFeedback.heavyImpact();
-            onDelete();
+            if (!isSelectionMode) {
+              onToggleSelection();
+            } else {
+              onDelete();
+            }
         },
-        child: ListTile(
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          leading: _buildLeading(task),
-          title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+        child: Container(
+          color: isSelected ? AppTheme.primaryColor.withOpacity(0.05) : null,
+          child: ListTile(
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            leading: Stack(
+              children: [
+                _buildLeading(task),
+                if (isSelected)
+                  Positioned(
+                    top: -2,
+                    left: -2,
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.check_circle_rounded, color: AppTheme.primaryColor, size: 20),
+                    ),
+                  ),
+              ],
+            ),
+            title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -688,8 +816,9 @@ class UploadTaskCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildLeading(Map<String, dynamic> task) {
     final String path = (task['localPath'] ?? task['remotePath'] ?? '').toString().toLowerCase();

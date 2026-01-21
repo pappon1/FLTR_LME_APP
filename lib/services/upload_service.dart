@@ -673,29 +673,29 @@ void onStart(ServiceInstance service) async {
     }
     _activeUploads.clear();
 
-    // 2. DELETE UPLOADED FILES FROM SERVER (Critical)
+    // 2. DELETE UPLOADED FILES FROM SERVER (Aggressive Status-Independent)
     try {
-      final List<String> uploadedRemotePaths = [];
       for (var task in _queue) {
-         if (task['status'] == 'completed' && task['url'] != null) {
-            final String remotePath = task['remotePath'];
-            uploadedRemotePaths.add(remotePath);
+         final String? assetUrl = task['url'];
+         final String? remotePath = task['remotePath'];
+         final String taskId = task['taskId'] ?? task['id'] ?? 'unknown';
+
+         if (assetUrl != null && assetUrl.isNotEmpty && !assetUrl.startsWith('http')) {
+            // Video record cleanup
+            print("🎬 Bulk Cleanup: Deleting Video ID $assetUrl for task $taskId");
+            await bunnyService.deleteVideo(
+              libraryId: '583681', 
+              videoId: assetUrl, 
+              apiKey: '0db49ca1-ac4b-40ae-9aa5d710ef1d-00ec-4077'
+            );
+         } else if (remotePath != null && remotePath.isNotEmpty) {
+            // Storage file cleanup
+            print("📁 Bulk Cleanup: Deleting Storage Path $remotePath for task $taskId");
+            await bunnyService.deleteFile(remotePath);
          }
       }
-      
-      if (uploadedRemotePaths.isNotEmpty) {
-        print("🗑️ Deleting ${uploadedRemotePaths.length} files from server...");
-        for (var remotePath in uploadedRemotePaths) {
-           try {
-              final success = await bunnyService.deleteFile(remotePath);
-              print(success ? "✅ Deleted: $remotePath" : "⚠️ Failed to delete: $remotePath");
-           } catch (e) {
-              print("❌ Server delete error: $e");
-           }
-        }
-      }
     } catch (e) {
-       print("Server cleanup error: $e");
+       print("Bulk Server cleanup error: $e");
     }
     
     // 3. Clear Queue Logic
@@ -789,62 +789,92 @@ void onStart(ServiceInstance service) async {
     }
   });
 
-  service.on('delete_task').listen((event) async {
-     if (event == null || event['taskId'] == null) return;
-     final taskId = event['taskId'];
-     print("🗑️ SERVICE RECEIVED delete_task: $taskId");
-     
-     // 1. Cancel active upload
-     if (_activeUploads.containsKey(taskId)) {
-        _activeUploads[taskId]?.cancel('User deleted task');
-        _activeUploads.remove(taskId);
-     }
-     
-     final taskIndex = _queue.indexWhere((t) => (t['taskId'] ?? t['id']) == taskId);
-     if (taskIndex != -1) {
-        final task = _queue[taskIndex];
-        final remotePath = task['remotePath'];
-        
-        // 2. Delete from Server
-        if (remotePath != null) {
-           await bunnyService.deleteFile(remotePath);
-        }
-        
-        // 3. Remove from local queue
-        _queue.removeAt(taskIndex);
-        
-        // 4. Cleanup Metadata
-        final String? courseJson = prefs.getString(kPendingCourseKey);
-        if (courseJson != null) {
-           try {
-              final Map<String, dynamic> courseData = jsonDecode(courseJson);
-              final String? filePath = task['filePath'];
-              if (filePath != null) {
-                 _removeFileFromMetadata(courseData, filePath);
-                 await prefs.setString(kPendingCourseKey, jsonEncode(courseData));
-              }
-           } catch (_) {}
-        }
+      service.on('delete_task').listen((event) async {
+         if (event == null || event['taskId'] == null) return;
+         final taskId = event['taskId'];
+         print("🗑️ SERVICE RECEIVED delete_task: $taskId");
+         
+         // 1. Cancel active upload
+         if (_activeUploads.containsKey(taskId)) {
+            print("🚫 Cancelling active upload for $taskId before delete");
+            _activeUploads[taskId]?.cancel('User deleted task');
+            _activeUploads.remove(taskId);
+         }
+         
+         final taskIndex = _queue.indexWhere((t) => (t['taskId'] ?? t['id']) == taskId);
+         if (taskIndex != -1) {
+            final task = _queue[taskIndex];
+            final String? remotePath = task['remotePath'];
+            final String? assetUrl = task['url']; // Video ID or Storage URL
+            
+            // 2. Delete from Server (Aggressive Cleanup: Status doesn't matter)
+            try {
+               bool deletedFromServer = false;
+               
+               // Attempt server delete if we have ANY remote handle (ID or Path)
+               if (assetUrl != null && assetUrl.isNotEmpty && !assetUrl.startsWith('http')) {
+                  print("🎬 Status Independence: Deleting Video ID $assetUrl from Bunny Stream...");
+                  deletedFromServer = await bunnyService.deleteVideo(
+                    libraryId: '583681', 
+                    videoId: assetUrl, 
+                    apiKey: '0db49ca1-ac4b-40ae-9aa5d710ef1d-00ec-4077'
+                  );
+               } else if (remotePath != null && remotePath.isNotEmpty) {
+                  print("📁 Status Independence: Deleting Storage Path $remotePath from Bunny...");
+                  deletedFromServer = await bunnyService.deleteFile(remotePath);
+               }
+               
+               if (deletedFromServer) print("✅ Server Cleanup SUCCESS for $taskId");
+            } catch (e) {
+               print("❌ Server delete error (Target might not exist yet): $e");
+            }
+            
+            // 3. Remove from local queue (SAFE REMOVAL using taskId)
+            _queue.removeWhere((t) => (t['taskId'] ?? t['id']) == taskId);
+            
+            // 4. Cleanup Metadata (Course JSON)
+            final String? courseJson = prefs.getString(kPendingCourseKey);
+            if (courseJson != null) {
+               try {
+                  final Map<String, dynamic> courseData = jsonDecode(courseJson);
+                  final String? filePath = task['filePath'];
+                  if (filePath != null) {
+                     print("🧹 Cleaning up metadata for: $filePath");
+                     _removeFileFromMetadata(courseData, filePath);
+                     await prefs.setString(kPendingCourseKey, jsonEncode(courseData));
+                  }
+               } catch (e) {
+                  print("❌ Metadata cleanup error: $e");
+               }
+            }
 
-        // 5. Cleanup Local Safe Copy
-        final String? localPath = task['filePath'];
-        if (localPath != null && localPath.contains('pending_uploads')) {
-           try {
-              final f = File(localPath);
-              if (await f.exists()) await f.delete();
-           } catch(_) {}
-        }
-        
-        if (_queue.isEmpty) {
-           await prefs.remove(kPendingCourseKey);
-        }
-        
-        await _saveQueue();
-        await _updateNotification(null, null);
-        service.invoke('update', {'queue': _queue, 'isPaused': _isPaused});
-        _triggerProcessing();
-     }
-  });
+            // 5. Cleanup Local Safe Copy
+            final String? localPath = task['filePath'];
+            if (localPath != null && localPath.contains('pending_uploads')) {
+               try {
+                  final f = File(localPath);
+                  if (await f.exists()) {
+                     await f.delete();
+                     print("🗑️ Deleted local safe copy: $localPath");
+                  }
+               } catch(e) {
+                  print("❌ Local file delete error: $e");
+               }
+            }
+            
+            if (_queue.isEmpty) {
+               print("💡 Queue empty after delete. Clearing pending course key.");
+               await prefs.remove(kPendingCourseKey);
+            }
+            
+            await _saveQueue();
+            await _updateNotification(null, null);
+            service.invoke('update', {'queue': _queue, 'isPaused': _isPaused});
+            _triggerProcessing();
+         } else {
+            print("⚠️ Task not found in queue for deletion: $taskId");
+         }
+      });
 
   service.on('stop').listen((event) => service.stopSelf());
 
@@ -942,11 +972,15 @@ Future<void> _finalizeCourseIfPending() async {
      courseData['isPublished'] = true;
      courseData['status'] = 'active';
 
-     // 5. Create in Firestore (Idempotent using 'id')
-     // Ensure timestamps are preserved
-     if (!courseData.containsKey('createdAt')) {
-        courseData['createdAt'] = Timestamp.now(); 
-     } 
+     // 5. Create in Firestore with proper Timestamp
+     if (courseData.containsKey('createdAt')) {
+        final rawDate = courseData['createdAt'];
+        if (rawDate is String) {
+           courseData['createdAt'] = Timestamp.fromDate(DateTime.parse(rawDate));
+        }
+     } else {
+        courseData['createdAt'] = Timestamp.now();
+     }
      
      final String? courseId = courseData['id'];
      
@@ -1021,34 +1055,49 @@ void _updateContentPaths(List<dynamic> contents, Map<String, String> urlMap) {
      }
   }
 }
+
 void _removeFileFromMetadata(Map<String, dynamic> data, String filePath) {
-  // Normalize path for comparison (handling potential slashes differences)
+  // 1. Direct fields
   if (data['thumbnailUrl'] == filePath) data['thumbnailUrl'] = '';
+  if (data['certificateUrl'] == filePath) data['certificateUrl'] = '';
+  if (data['demoVideoUrl'] == filePath) data['demoVideoUrl'] = '';
+  
+  // Handling for specific course fields (if they exist in your structure)
   if (data['certificateUrl1'] == filePath) data['certificateUrl1'] = '';
   if (data['certificateUrl2'] == filePath) data['certificateUrl2'] = '';
 
-  if (data['demoVideos'] != null) {
-     final List<dynamic> demos = data['demoVideos'];
-     demos.removeWhere((d) => d['path'] == filePath);
+  // 2. Demo Videos array
+  if (data['demoVideos'] != null && data['demoVideos'] is List) {
+     (data['demoVideos'] as List).removeWhere((d) => d['path'] == filePath);
   }
 
-  if (data['contents'] != null) {
-     _removeFileFromContentsRecursive(data['contents'] as List<dynamic>, filePath);
+  // 3. Contents list recursively
+  if (data['contents'] != null && data['contents'] is List) {
+    _removeFileFromContentsRecursive(data['contents'], filePath);
   }
 }
 
 void _removeFileFromContentsRecursive(List<dynamic> contents, String filePath) {
   for (int i = contents.length - 1; i >= 0; i--) {
      final item = contents[i];
-     if (item['type'] == 'folder' && item['contents'] != null) {
-        _removeFileFromContentsRecursive(item['contents'] as List<dynamic>, filePath);
-     } else {
-        // Check if path or thumbnail matches
-        if (item['path'] == filePath) {
-           contents.removeAt(i);
-        } else if (item['thumbnail'] == filePath) {
-           item['thumbnail'] = null; // Just clear thumbnail, don't delete item
-        }
+     if (item is! Map) continue;
+
+     // If it's the exact file being deleted, remove it
+     if (item['path'] == filePath || item['contentPath'] == filePath) {
+        print("🧹 Metadata Cleanup: Removing $filePath from contents list");
+        contents.removeAt(i);
+        continue;
+     }
+
+     // If it's a thumbnail reference in an item, just clear it
+     if (item['thumbnail'] == filePath) {
+        print("🧹 Metadata Cleanup: Clearing thumbnail reference for $filePath");
+        item['thumbnail'] = null;
+     }
+
+     // If it's a folder, recurse
+     if (item['type'] == 'folder' && item['contents'] != null && item['contents'] is List) {
+        _removeFileFromContentsRecursive(item['contents'], filePath);
      }
   }
 }
