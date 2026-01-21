@@ -669,16 +669,30 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       courseMap['createdAt'] = DateTime.now().toIso8601String(); // Service will convert back to Timestamp
 
       final service = FlutterBackgroundService();
+      
+      // Ensure it's running BEFORE sending
       if (!await service.isRunning()) {
+         print("🚀 Service not running, starting now...");
          await service.startService();
-         // CRITICAL: Wait for service isolate to fully initialize before sending events
-         await Future.delayed(const Duration(seconds: 2));
+         await Future.delayed(const Duration(seconds: 4)); // Give it time to boot
       }
 
+      print("📤 Sending 'submit_course' to background service...");
       service.invoke('submit_course', {
         'course': courseMap,
         'files': fileTasks,
       });
+      
+      // REDUNDANCY: In case the background isolate was busy/starting, send again after a short delay
+      Future.delayed(const Duration(milliseconds: 1500), () {
+         service.invoke('submit_course', {
+            'course': courseMap,
+            'files': fileTasks,
+         });
+         service.invoke('get_status'); 
+      });
+
+      service.invoke('get_status'); 
 
       // 5. Success UI
       // We don't wait for upload. We tell user it started.

@@ -47,6 +47,7 @@ class BunnyCDNService {
           apiUrl,
           data: stream, 
           options: Options(
+            validateStatus: (status) => status! < 500,
             headers: {
               'AccessKey': apiKey,
               'Content-Type': _getContentType(fileName),
@@ -57,12 +58,12 @@ class BunnyCDNService {
           cancelToken: cancelToken, // ENABLE CANCELLATION
         );
 
-        if (response.statusCode == 201 || response.statusCode == 200) {
-          final publicUrl = '$cdnUrl/$remotePath';
-          return Uri.encodeFull(publicUrl);
-        } else {
-          throw Exception('Upload failed with status: ${response.statusCode}');
+        if (response.statusCode != 201 && response.statusCode != 200) {
+           throw Exception('Upload failed (${response.statusCode}): ${response.data}');
         }
+
+        final publicUrl = '$cdnUrl/$remotePath';
+        return Uri.encodeFull(publicUrl);
       } catch (e) {
         // If it was cancelled, don't retry!
         if (e is DioException && e.type == DioExceptionType.cancel) {

@@ -42,37 +42,16 @@ class _CoursesTabState extends State<CoursesTab> {
           ),
         ),
         actions: [
-          // Upload Monitor Button
-          StreamBuilder<Map<String, dynamic>?>(
-            stream: FlutterBackgroundService().on('update'),
-            builder: (context, snapshot) {
-              bool hasActiveUploads = false;
-              if (snapshot.hasData && snapshot.data != null) {
-                 final List queue = snapshot.data!['queue'] ?? [];
-                 // Show badge if any uploads are pending, uploading, OR paused
-                 hasActiveUploads = queue.any((t) => 
-                    t['status'] == 'uploading' || 
-                    t['status'] == 'pending' ||
-                    t['paused'] == true
-                 );
-              }
-              
-              if (!hasActiveUploads) return const SizedBox.shrink();
-
-              return Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: IconButton(
-                  onPressed: () {
-                     Navigator.push(context, MaterialPageRoute(builder: (_) => const UploadProgressScreen()));
-                  },
-                  icon: Badge(
-                    label: const Text('!'),
-                    child: Icon(Icons.cloud_sync, color: AppTheme.primaryColor),
-                  ),
-                  tooltip: 'View Uploads',
-                ),
-              );
-            }
+          // Upload Monitor Button - ALWAYS VISIBLE (For UI Access)
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: IconButton(
+              onPressed: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const UploadProgressScreen()));
+              },
+              icon: Icon(Icons.cloud_upload_outlined, color: AppTheme.primaryColor),
+              tooltip: 'Upload Manager',
+            ),
           ),
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
