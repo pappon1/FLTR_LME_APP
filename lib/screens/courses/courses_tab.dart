@@ -8,6 +8,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import '../uploads/upload_progress_screen.dart';
 import '../../widgets/shimmer_loading.dart';
+import '../../widgets/course_card_skeleton.dart';
 import '../../widgets/course_card.dart';
 import 'add_course_screen.dart';
 
@@ -135,6 +136,12 @@ class _CoursesTabState extends State<CoursesTab> {
   }
 
   Widget _buildShimmerGrid() {
-    return SimpleShimmerList(itemCount: 4, itemHeight: 120.0);
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: 4, // Show 4 skeleton items
+      itemBuilder: (context, index) {
+        return const CourseCardSkeleton(); // Use the custom square skeleton
+      },
+    );
   }
 }
