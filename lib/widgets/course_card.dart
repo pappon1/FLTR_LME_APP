@@ -4,6 +4,7 @@ import 'package:shimmer/shimmer.dart';
 import '../models/course_model.dart';
 import '../services/bunny_cdn_service.dart';
 import '../screens/courses/course_detail_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class CourseCard extends StatelessWidget {
   final CourseModel course;
@@ -96,7 +97,14 @@ class CourseCard extends StatelessWidget {
                         if (isNew) ...[
                           const Icon(Icons.auto_awesome, size: 14, color: Color(0xFFFFA000)),
                           const SizedBox(width: 4),
-                          const Text('New', style: TextStyle(color: Color(0xFFFFA000), fontSize: 13, fontWeight: FontWeight.bold)),
+                          Text(
+                            'New',
+                            style: GoogleFonts.inter(
+                              color: const Color(0xFFFFA000),
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           const SizedBox(width: 14),
                         ],
 
@@ -105,25 +113,37 @@ class CourseCard extends StatelessWidget {
                         const SizedBox(width: 4),
                         Text(
                           '${course.totalVideos} Course Videos',
-                          style: const TextStyle(color: Color(0xFF536DFE), fontSize: 13, fontWeight: FontWeight.bold),
+                          style: GoogleFonts.inter(
+                            color: const Color(0xFF536DFE),
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(width: 14),
 
                         // ▶️ Demo (Standard Play Arrow)
                         const Icon(Icons.play_arrow, size: 16, color: Color(0xFF00E676)),
                         const SizedBox(width: 4),
-                        const Text(
+                        Text(
                           'Demo Videos',
-                          style: TextStyle(color: Color(0xFF00E676), fontSize: 13, fontWeight: FontWeight.bold),
+                          style: GoogleFonts.inter(
+                            color: const Color(0xFF00E676),
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(width: 14),
 
                         // 🎗️ Cert (Standard Medal)
                         const Icon(Icons.workspace_premium, size: 15, color: Color(0xFFFF5252)),
                         const SizedBox(width: 4),
-                        const Text(
+                        Text(
                           'Certificate',
-                          style: TextStyle(color: Color(0xFFFF5252), fontSize: 13, fontWeight: FontWeight.bold),
+                          style: GoogleFonts.inter(
+                            color: const Color(0xFFFF5252),
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
@@ -134,7 +154,7 @@ class CourseCard extends StatelessWidget {
                   // 🏷️ Title
                   Text(
                     course.title,
-                    style: TextStyle(
+                    style: GoogleFonts.inter(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                       color: isDark ? Colors.white : Colors.black,
@@ -169,7 +189,7 @@ class CourseCard extends StatelessWidget {
                               // Bold Price
                               Text(
                                 '₹${course.price}',
-                                style: TextStyle(
+                                style: GoogleFonts.inter(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
                                   color: isDark ? Colors.white : Colors.black,
@@ -179,20 +199,20 @@ class CourseCard extends StatelessWidget {
                               // Red Strikethrough
                               Text(
                                 '₹${originalPrice.toInt()}',
-                                style: const TextStyle(
+                                style: GoogleFonts.inter(
                                   fontSize: 15,
-                                  color: Color(0xFFFF5252),
+                                  color: const Color(0xFFFF5252),
                                   decoration: TextDecoration.lineThrough,
-                                  decorationColor: Color(0xFFFF5252),
+                                  decorationColor: const Color(0xFFFF5252),
                                 ),
                               ),
                               const SizedBox(width: 12),
                               // Neon Green Discount
                               Text(
                                 '$discountPercent % Off',
-                                style: const TextStyle(
+                                style: GoogleFonts.inter(
                                   fontSize: 15,
-                                  color: Color(0xFF00E676),
+                                  color: const Color(0xFF00E676),
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
