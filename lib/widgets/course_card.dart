@@ -34,10 +34,10 @@ class CourseCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       color: isDark ? const Color(0xFF000000) : Colors.white, // Deep Black
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.zero, // Square corners
         side: BorderSide(
-          color: isDark ? Colors.white10 : Colors.black12,
-          width: 0.5,
+          color: isDark ? Colors.white.withOpacity(0.2) : Colors.black.withOpacity(0.1),
+          width: 1,
         ),
       ),
       child: InkWell(
