@@ -45,31 +45,31 @@ class CourseUploadTask {
   CourseUploadTask({required this.label, this.progress = 0.0});
 }
 
-class _AddCourseScreenState extends State<AddCourseScreen> {
+class _AddCourseScreenState extends State<AddCourseScreen>
+    with WidgetsBindingObserver {
   final _formKey = GlobalKey<FormState>();
   final _bunnyService = BunnyCDNService();
   final _pageController = PageController();
   final _scrollController = ScrollController();
   int _currentStep = 0;
-  
+
   // Controllers
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
-  
+
   // Pricing Controllers
   final _mrpController = TextEditingController(); // Original Price
   final _discountAmountController = TextEditingController(); // Amount to deduct
-  final _finalPriceController = TextEditingController(); // Selling Price (Read Only)
-  
+  final _finalPriceController =
+      TextEditingController(); // Selling Price (Read Only)
+
   final _durationController = TextEditingController();
   // Content Management
   final List<Map<String, dynamic>> _courseContents = [];
-  
+
   // Selection Mode
   bool _isSelectionMode = false;
   final Set<int> _selectedIndices = {};
-  
-
 
   // State Variables
   String? _selectedCategory;
@@ -77,7 +77,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   bool _isLoading = false;
   bool _isPublished = false;
   bool _isInitialLoading = true;
-  int _newBatchDurationDays = 90;
+  int? _newBatchDurationDays; // null by default as per user request
   int? _courseValidityDays; // null by default, 0 for Lifetime
   bool _hasCertificate = false;
   File? _certificate1Image;
@@ -85,12 +85,17 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   int _selectedCertSlot = 1; // 1 or 2
   bool _isOfflineDownloadEnabled = true;
   bool _isSavingDraft = false;
+  bool _isRestoringDraft = false; // Flag to stop auto-save during initial load
   Timer? _saveDebounce;
   final List<Map<String, dynamic>> _demoVideos = [];
   final _customValidityController = TextEditingController(); // For custom days
-  String _difficulty = 'Beginner'; // Acts as Course Type
-  
-  final List<String> _difficultyLevels = ['Beginner', 'Intermediate', 'Advanced'];
+  String? _difficulty; // null by default as per user request
+
+  final List<String> _difficultyLevels = [
+    'Beginner',
+    'Intermediate',
+    'Advanced',
+  ];
   final List<String> _categories = ['Hardware', 'Software'];
 
   // Parallel Upload Progress State
@@ -99,6 +104,12 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   double _totalProgress = 0.0;
   String _uploadStatus = '';
 
+  // Design State
+  double _globalRadius = 14.0; // Restored to a more balanced default, user can adjust
+  double _inputVerticalPadding = 16.0;
+  double _borderOpacity = 0.12;
+  double _fillOpacity = 0.05;
+
   // Highlights & FAQs Controllers
   final List<TextEditingController> _highlightControllers = [];
   final List<Map<String, TextEditingController>> _faqControllers = [];
@@ -106,138 +117,182 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     debugPrint("AddCourseScreen Init - Design Fixed");
     _mrpController.addListener(_calculateFinalPrice);
     _discountAmountController.addListener(_calculateFinalPrice);
-    
+
     // Auto-save listeners for basic info
-    _titleController.addListener(_saveCourseDraft);
-    _descController.addListener(_saveCourseDraft);
-    _mrpController.addListener(_saveCourseDraft);
-    _discountAmountController.addListener(_saveCourseDraft);
-    
+    _titleController.addListener(() => _saveCourseDraft());
+    _descController.addListener(() => _saveCourseDraft());
+    _mrpController.addListener(() => _saveCourseDraft());
+    _discountAmountController.addListener(() => _saveCourseDraft());
+
     // Load Draft
     _loadCourseDraft().then((_) {
       if (mounted) setState(() => _isInitialLoading = false);
     });
   }
 
-  // --- Persistence Logic ---
-  Future<void> _loadCourseDraft() async {
-    try {
-       setState(() => _isSavingDraft = true);
-      final prefs = await SharedPreferences.getInstance();
-      final String? jsonString = prefs.getString('course_creation_draft');
-      if (jsonString != null) {
-         final Map<String, dynamic> draft = jsonDecode(jsonString);
-         
-         setState(() {
-            _titleController.text = draft['title'] ?? '';
-            _descController.text = draft['desc'] ?? '';
-            _mrpController.text = draft['mrp'] ?? '';
-            _discountAmountController.text = draft['discount'] ?? '';
-            _selectedCategory = draft['category'];
-            _difficulty = draft['difficulty'] ?? 'Beginner';
-            
-             if (draft['contents'] != null) {
-                _courseContents.clear();
-                _courseContents.addAll(List<Map<String, dynamic>>.from(draft['contents']));
-             }
-             if (draft['demoVideos'] != null) {
-                _demoVideos.clear();
-                _demoVideos.addAll(List<Map<String, dynamic>>.from(draft['demoVideos']));
-             }
-                // _courseValidityDays = draft['validity']; // IGNORED: Force null by default as per user request
-                // _courseValidityDays = draft['validity']; // IGNORED: Force null by default as per user request
-                _courseValidityDays = null; 
-                _hasCertificate = draft['certificate'] ?? false;
-                _selectedCertSlot = draft['certSlot'] ?? 1;
-                _isOfflineDownloadEnabled = draft['offlineDownload'] ?? true;
-                _isPublished = draft['isPublished'] ?? false;
-                if (draft['customDays'] != null) {
-                  _customValidityController.text = draft['customDays'].toString();
-                }
-
-                // Restore Highlights
-                if (draft['highlights'] != null) {
-                  _highlightControllers.clear();
-                  for (var h in draft['highlights']) {
-                    _highlightControllers.add(TextEditingController(text: h));
-                  }
-                }
-
-                // Restore FAQs
-                if (draft['faqs'] != null) {
-                  _faqControllers.clear();
-                  for (var f in draft['faqs']) {
-                    _faqControllers.add({
-                      'q': TextEditingController(text: f['question']),
-                      'a': TextEditingController(text: f['answer']),
-                    });
-                  }
-                }
-          });
-         
-         // Silent restoration, no SnackBar
-      }
-    } catch (e) {
-       // debugPrint("Error loading draft: $e");
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.inactive) {
+      // Force save when app goes to background
+      _saveCourseDraft(immediate: true);
     }
   }
 
-    Future<void> _saveCourseDraft() async {
+  // --- Persistence Logic ---
+  Future<void> _loadCourseDraft() async {
+    try {
+      _isRestoringDraft = true; // Block auto-save listeners
+      final prefs = await SharedPreferences.getInstance();
+      final String? jsonString = prefs.getString('course_creation_draft');
+      if (jsonString != null) {
+        final Map<String, dynamic> draft = jsonDecode(jsonString);
+
+        setState(() {
+          _titleController.text = draft['title'] ?? '';
+          _descController.text = draft['desc'] ?? '';
+          _mrpController.text = draft['mrp'] ?? '';
+          _discountAmountController.text = draft['discount'] ?? '';
+          _selectedCategory = draft['category'];
+          _difficulty = draft['difficulty'];
+
+          if (draft['contents'] != null) {
+            _courseContents.clear();
+            _courseContents.addAll(
+              List<Map<String, dynamic>>.from(draft['contents']),
+            );
+          }
+          if (draft['demoVideos'] != null) {
+            _demoVideos.clear();
+            _demoVideos.addAll(
+              List<Map<String, dynamic>>.from(draft['demoVideos']),
+            );
+          }
+          // _courseValidityDays = draft['validity']; // IGNORED: Force null by default as per user request
+          // _courseValidityDays = draft['validity']; // IGNORED: Force null by default as per user request
+          _courseValidityDays = null;
+          _hasCertificate = draft['certificate'] ?? false;
+          _selectedCertSlot = draft['certSlot'] ?? 1;
+          _isOfflineDownloadEnabled = draft['offlineDownload'] ?? true;
+          _isPublished = draft['isPublished'] ?? false;
+          _newBatchDurationDays = draft['newBatchDuration'];
+
+          if (draft['customDays'] != null) {
+            _customValidityController.text = draft['customDays'].toString();
+          }
+
+          // Restore Image Paths (if files still exist)
+          if (draft['thumbnailPath'] != null) {
+            final file = File(draft['thumbnailPath']);
+            if (file.existsSync()) _thumbnailImage = file;
+          }
+          if (draft['cert1Path'] != null) {
+            final file = File(draft['cert1Path']);
+            if (file.existsSync()) _certificate1Image = file;
+          }
+          if (draft['cert2Path'] != null) {
+            final file = File(draft['cert2Path']);
+            if (file.existsSync()) _certificate2Image = file;
+          }
+
+          // Restore Highlights
+          if (draft['highlights'] != null) {
+            _highlightControllers.clear();
+            for (var h in draft['highlights']) {
+              _highlightControllers.add(TextEditingController(text: h));
+            }
+          }
+
+          // Restore FAQs
+          if (draft['faqs'] != null) {
+            _faqControllers.clear();
+            for (var f in draft['faqs']) {
+              _faqControllers.add({
+                'q': TextEditingController(text: f['question']),
+                'a': TextEditingController(text: f['answer']),
+              });
+            }
+          }
+        });
+
+        // Silent restoration, no SnackBar
+      }
+    } catch (e) {
+      // debugPrint("Error loading draft: $e");
+    } finally {
+      _isRestoringDraft = false;
+    }
+  }
+
+  Future<void> _saveCourseDraft({bool immediate = false}) async {
+    if (_isRestoringDraft) return; // Don't save while we are loading from Disk!
     // Debounce: Cancel previous timer if active
     if (_saveDebounce?.isActive ?? false) _saveDebounce!.cancel();
 
-    _saveDebounce = Timer(const Duration(milliseconds: 1500), () async {
-      if (!mounted) return;
-      try {
-        setState(() => _isSavingDraft = true);
-        final prefs = await SharedPreferences.getInstance();
-        final Map<String, dynamic> draft = {
-           'title': _titleController.text,
-           'desc': _descController.text,
-           'mrp': _mrpController.text,
-           'discount': _discountAmountController.text,
-           'category': _selectedCategory,
-            'difficulty': _difficulty,
-            // Only save shallow copy of contents for draft to avoid huge JSON if lots of local files? 
-            // Actually contents are maps, so okay.
-            'contents': _courseContents,
-            'validity': _courseValidityDays,
-            'certificate': _hasCertificate,
-            'certSlot': _selectedCertSlot,
-            'offlineDownload': _isOfflineDownloadEnabled,
-            'isPublished': _isPublished,
-            'demoVideos': _demoVideos,
-            'customDays': int.tryParse(_customValidityController.text),
-            'highlights': _highlightControllers.map((c) => c.text).toList(),
-            'faqs': _faqControllers.map((f) => {
-              'question': f['q']!.text,
-              'answer': f['a']!.text,
-            }).toList(),
-         };
-        
-         await prefs.setString('course_creation_draft', jsonEncode(draft));
-         
-         if (mounted) {
-           Future.delayed(const Duration(seconds: 2), () {
-             if (mounted) setState(() => _isSavingDraft = false);
-           });
-         }
-      } catch (e) {
-         // debugPrint("Error saving draft: $e");
-         if (mounted) setState(() => _isSavingDraft = false);
-      }
+    if (immediate) {
+      await _executeDraftSave();
+      return;
+    }
+
+    _saveDebounce = Timer(const Duration(milliseconds: 500), () async {
+      await _executeDraftSave();
     });
   }
 
+  Future<void> _executeDraftSave() async {
+    if (!mounted) return;
+    try {
+      setState(() => _isSavingDraft = true);
+      final prefs = await SharedPreferences.getInstance();
+      final Map<String, dynamic> draft = {
+        'title': _titleController.text,
+        'desc': _descController.text,
+        'mrp': _mrpController.text,
+        'discount': _discountAmountController.text,
+        'category': _selectedCategory,
+        'difficulty': _difficulty,
+        // Only save shallow copy of contents for draft to avoid huge JSON if lots of local files?
+        // Actually contents are maps, so okay.
+        'contents': _courseContents,
+        'validity': _courseValidityDays,
+        'certificate': _hasCertificate,
+        'certSlot': _selectedCertSlot,
+        'offlineDownload': _isOfflineDownloadEnabled,
+        'isPublished': _isPublished,
+        'demoVideos': _demoVideos,
+        'customDays': int.tryParse(_customValidityController.text),
+        'thumbnailPath': _thumbnailImage?.path,
+        'newBatchDuration': _newBatchDurationDays,
+        'cert1Path': _certificate1Image?.path,
+        'cert2Path': _certificate2Image?.path,
+        'highlights': _highlightControllers.map((c) => c.text).toList(),
+        'faqs': _faqControllers
+            .map((f) => {'question': f['q']!.text, 'answer': f['a']!.text})
+            .toList(),
+      };
 
+      await prefs.setString('course_creation_draft', jsonEncode(draft));
+
+      if (mounted) {
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted) setState(() => _isSavingDraft = false);
+        });
+      }
+    } catch (e) {
+      // debugPrint("Error saving draft: $e");
+      if (mounted) setState(() => _isSavingDraft = false);
+    }
+  }
 
   void _calculateFinalPrice() {
     final double mrp = double.tryParse(_mrpController.text) ?? 0;
-    final double discountAmt = double.tryParse(_discountAmountController.text) ?? 0;
-    
+    final double discountAmt =
+        double.tryParse(_discountAmountController.text) ?? 0;
+
     if (mrp > 0) {
       double finalPrice = mrp - discountAmt;
       if (finalPrice < 0) finalPrice = 0;
@@ -249,6 +304,8 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _saveDebounce?.cancel(); // Fix memory leak - dispose timer
     _titleController.dispose();
     _descController.dispose();
     _mrpController.dispose();
@@ -257,33 +314,32 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     _durationController.dispose();
     _pageController.dispose();
     _scrollController.dispose();
-    _scrollController.dispose();
     _customValidityController.dispose();
     for (var c in _highlightControllers) c.dispose();
     for (var f in _faqControllers) {
-      f['q']!.dispose();
-      f['a']!.dispose();
+      f['q']?.dispose(); // Safe null check
+      f['a']?.dispose(); // Safe null check
     }
 
     // Storage Optimization: Clear temporary files from picker cache
     unawaited(FilePicker.platform.clearTemporaryFiles());
-    
+
     super.dispose();
   }
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
-    
+
     if (pickedFile != null) {
       final File file = File(pickedFile.path);
       final decodedImage = await decodeImageFromList(file.readAsBytesSync());
-      
+
       // Validation: Check for 16:9 Ratio (approx 1.77) with tolerance
       final double ratio = decodedImage.width / decodedImage.height;
       if (ratio < 1.7 || ratio > 1.85) {
         if (mounted) {
-           ScaffoldMessenger.of(context).showSnackBar(
+          ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Error: Image must be YouTube Size (16:9 Ratio).'),
               backgroundColor: Colors.red,
@@ -298,7 +354,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       unawaited(_saveCourseDraft());
     }
   }
-  
+
   void _showSuccessCelebration() {
     HapticFeedback.heavyImpact();
     showDialog(
@@ -315,33 +371,59 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
               decoration: BoxDecoration(
                 color: Theme.of(context).cardColor,
                 borderRadius: BorderRadius.circular(24),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20, spreadRadius: 5)],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 20,
+                    spreadRadius: 5,
+                  ),
+                ],
               ),
               child: Column(
                 children: [
                   Lottie.network(
                     'https://assets10.lottiefiles.com/packages/lf20_pqnfmone.json', // Confetti Lottie
-                    width: 200, height: 200,
+                    width: 200,
+                    height: 200,
                     animate: true,
                     repeat: false,
-                    errorBuilder: (c, e, s) => const Icon(Icons.check_circle, color: Colors.green, size: 100),
+                    errorBuilder: (c, e, s) => const Icon(
+                      Icons.check_circle,
+                      color: Colors.green,
+                      size: 100,
+                    ),
                   ),
-                  const Text('Congratulations! 🎉', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Congratulations! 🎉',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
                   const SizedBox(height: 8),
-                  const Text('Your course has been created successfully.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+                  const Text(
+                    'Your course has been created successfully.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey),
+                  ),
                   const SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: () {
-                       Navigator.pop(context); // Close Dialog
-                       Navigator.pop(context, true); // Close Screen and Return Success
+                      Navigator.pop(context); // Close Dialog
+                      Navigator.pop(
+                        context,
+                        true,
+                      ); // Close Screen and Return Success
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                       foregroundColor: Colors.white,
                       minimumSize: const Size(double.infinity, 50),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                    child: const Text('DONE', style: TextStyle(fontWeight: FontWeight.bold)),
+                    child: const Text(
+                      'DONE',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ],
               ),
@@ -352,8 +434,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     );
   }
 
-
-   bool _validateAllFields() {
+  bool _validateAllFields() {
     // 1. Basic Info Check
     if (_thumbnailImage == null) {
       _jumpToStep(0);
@@ -370,9 +451,19 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       _showWarning('Please select a category (Step 1)');
       return false;
     }
+    if (_difficulty == null) {
+      _jumpToStep(0);
+      _showWarning('Please select a Course Type (Step 1)');
+      return false;
+    }
     if (_mrpController.text.isEmpty) {
       _jumpToStep(0);
       _showWarning('Please enter selling price (Step 1)');
+      return false;
+    }
+    if (_newBatchDurationDays == null) {
+      _jumpToStep(0);
+      _showWarning('Please select New Badge Duration (Step 1)');
       return false;
     }
 
@@ -381,16 +472,16 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       _showWarning('Please select Course Validity duration (Step 3)');
       return false;
     }
-    
+
     // 3. Certificate Check (If enabled)
     if (_hasCertificate) {
-       if (_certificate1Image == null && _certificate2Image == null) {
-         _showWarning('Please upload at least one certificate design (Step 3)');
-         return false;
-       }
+      if (_certificate1Image == null && _certificate2Image == null) {
+        _showWarning('Please upload at least one certificate design (Step 3)');
+        return false;
+      }
     }
-    
-    return true; 
+
+    return true;
   }
 
   void _jumpToStep(int step) {
@@ -411,6 +502,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       ),
     );
   }
+
   Widget _buildCourseReviewCard() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -424,19 +516,61 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.rate_review_outlined, color: AppTheme.primaryColor, size: 20),
+              Icon(
+                Icons.rate_review_outlined,
+                color: AppTheme.primaryColor,
+                size: 20,
+              ),
               const SizedBox(width: 8),
-              const Text('Quick Course Review', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+              const Text(
+                'Quick Course Review',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
             ],
           ),
           const Divider(height: 24),
-          _buildReviewItem(Icons.title, 'Title', _titleController.text.isEmpty ? 'Not Set' : _titleController.text, () => _jumpToStep(0)),
-          _buildReviewItem(Icons.category_outlined, 'Category', _selectedCategory ?? 'Not Selected', () => _jumpToStep(0)),
-          _buildReviewItem(Icons.payments_outlined, 'Price', '₹${_finalPriceController.text}', () => _jumpToStep(0)),
-          _buildReviewItem(Icons.video_collection_outlined, 'Content', '${_getAllVideosFromContents(_courseContents).length} Videos', () => _jumpToStep(1)),
-          _buildReviewItem(Icons.history_toggle_off, 'Validity', _getValidityText(_courseValidityDays), null),
-          _buildReviewItem(Icons.workspace_premium_outlined, 'Certificate', _hasCertificate ? 'Enabled' : 'Disabled', null),
-          _buildReviewItem(Icons.public, 'Status', _isPublished ? 'Public' : 'Hidden', null),
+          _buildReviewItem(
+            Icons.title,
+            'Title',
+            _titleController.text.isEmpty ? 'Not Set' : _titleController.text,
+            () => _jumpToStep(0),
+          ),
+          _buildReviewItem(
+            Icons.category_outlined,
+            'Category',
+            _selectedCategory ?? 'Not Selected',
+            () => _jumpToStep(0),
+          ),
+          _buildReviewItem(
+            Icons.payments_outlined,
+            'Price',
+            '₹${_finalPriceController.text}',
+            () => _jumpToStep(0),
+          ),
+          _buildReviewItem(
+            Icons.video_collection_outlined,
+            'Content',
+            '${_getAllVideosFromContents(_courseContents).length} Videos',
+            () => _jumpToStep(1),
+          ),
+          _buildReviewItem(
+            Icons.history_toggle_off,
+            'Validity',
+            _getValidityText(_courseValidityDays),
+            null,
+          ),
+          _buildReviewItem(
+            Icons.workspace_premium_outlined,
+            'Certificate',
+            _hasCertificate ? 'Enabled' : 'Disabled',
+            null,
+          ),
+          _buildReviewItem(
+            Icons.public,
+            'Status',
+            _isPublished ? 'Public' : 'Hidden',
+            null,
+          ),
         ],
       ),
     );
@@ -452,7 +586,12 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     return '$days Days';
   }
 
-  Widget _buildReviewItem(IconData icon, String label, String value, VoidCallback? onEdit) {
+  Widget _buildReviewItem(
+    IconData icon,
+    String label,
+    String value,
+    VoidCallback? onEdit,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: InkWell(
@@ -464,50 +603,111 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
             children: [
               Icon(icon, size: 14, color: Colors.grey),
               const SizedBox(width: 8),
-              Text('$label: ', style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              Expanded(child: Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold), overflow: TextOverflow.ellipsis)),
-              if (onEdit != null) Icon(Icons.edit_note_rounded, size: 16, color: AppTheme.primaryColor),
+              Text(
+                '$label: ',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+              Expanded(
+                child: Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (onEdit != null)
+                Icon(
+                  Icons.edit_note_rounded,
+                  size: 16,
+                  color: AppTheme.primaryColor,
+                ),
             ],
           ),
         ),
       ),
     );
   }
-   void _nextStep() async {
+
+  void _nextStep() async {
+    // Auto-Cleanup FAQs & Highlights: Step 1 contains both
+    if (_currentStep == 0) {
+      bool cleaned = false;
+      setState(() {
+        // Cleanup FAQs
+        for (int i = _faqControllers.length - 1; i >= 0; i--) {
+          final q = _faqControllers[i]['q']?.text.trim() ?? '';
+          final a = _faqControllers[i]['a']?.text.trim() ?? '';
+          if (q.isEmpty && a.isEmpty) {
+            _faqControllers[i]['q']?.dispose();
+            _faqControllers[i]['a']?.dispose();
+            _faqControllers.removeAt(i);
+            cleaned = true;
+          }
+        }
+
+        // Cleanup Highlights
+        for (int i = _highlightControllers.length - 1; i >= 0; i--) {
+          if (_highlightControllers[i].text.trim().isEmpty) {
+            _highlightControllers[i].dispose();
+            _highlightControllers.removeAt(i);
+            cleaned = true;
+          }
+        }
+      });
+      if (cleaned) {
+        await _saveCourseDraft();
+      }
+    }
+
     if (_currentStep < 2) {
       FocusScope.of(context).unfocus();
       await Future.delayed(const Duration(milliseconds: 50));
       await _pageController.nextPage(duration: 250.ms, curve: Curves.easeInOut);
     }
   }
+
   void _prevStep() async {
     if (_currentStep > 0) {
       FocusScope.of(context).unfocus();
       await Future.delayed(const Duration(milliseconds: 50));
-      await _pageController.previousPage(duration: 250.ms, curve: Curves.easeInOut);
+      await _pageController.previousPage(
+        duration: 250.ms,
+        curve: Curves.easeInOut,
+      );
     }
   }
 
-   Future<void> _submitCourse() async {
-    if (!_validateAllFields()) return; 
+  Future<void> _submitCourse() async {
+    if (!_validateAllFields()) return;
     if (_courseContents.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please add some content to the course')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please add some content to the course')),
+      );
       return;
-    } 
+    }
 
     // SAFETY LOCK: Check if another course is already uploading
     final prefs = await SharedPreferences.getInstance();
     if (prefs.containsKey('pending_course_v1')) {
-       showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text("Upload in Progress ⚠️"),
-            content: const Text("Another course is currently being uploaded in the background.\n\nTo ensure data safety, please wait for it to complete before creating a new one."),
-            actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("OK"))],
+      showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text("Upload in Progress ⚠️"),
+          content: const Text(
+            "Another course is currently being uploaded in the background.\n\nTo ensure data safety, please wait for it to complete before creating a new one.",
           ),
-       );
-       return;
-    } 
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("OK"),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
 
     setState(() {
       _isLoading = true;
@@ -519,110 +719,124 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       await WakelockPlus.enable(); // Keep screen on during upload
 
       final String finalDesc = _descController.text.trim();
-      final int finalValidity = _courseValidityDays == -1 
-          ? (int.tryParse(_customValidityController.text) ?? 0) 
+      final int finalValidity = _courseValidityDays == -1
+          ? (int.tryParse(_customValidityController.text) ?? 0)
           : _courseValidityDays!;
-          
+
       // SAFE COPY: Deduplication and Persistence
       final appDir = await getApplicationDocumentsDirectory();
       final safeDir = Directory('${appDir.path}/pending_uploads');
       if (!safeDir.existsSync()) safeDir.createSync(recursive: true);
-      
+
       final Map<String, String> copiedPathMap = {};
 
       Future<String> copyToSafe(String rawPath) async {
-         if (copiedPathMap.containsKey(rawPath)) return copiedPathMap[rawPath]!;
-         
-         final f = File(rawPath);
-         if (!f.existsSync()) return rawPath;
+        if (copiedPathMap.containsKey(rawPath)) return copiedPathMap[rawPath]!;
 
-         final filename = '${DateTime.now().millisecondsSinceEpoch}_${path.basename(rawPath)}';
-         final newPath = '${safeDir.path}/$filename';
-         await f.copy(newPath);
-         copiedPathMap[rawPath] = newPath;
-         return newPath;
+        final f = File(rawPath);
+        if (!f.existsSync()) return rawPath;
+
+        final filename =
+            '${DateTime.now().millisecondsSinceEpoch}_${path.basename(rawPath)}';
+        final newPath = '${safeDir.path}/$filename';
+        await f.copy(newPath);
+        copiedPathMap[rawPath] = newPath;
+        return newPath;
       }
-      
+
       if (_thumbnailImage != null) {
-          final newPath = await copyToSafe(_thumbnailImage!.path);
-          _thumbnailImage = File(newPath);
+        final newPath = await copyToSafe(_thumbnailImage!.path);
+        _thumbnailImage = File(newPath);
       }
       if (_certificate1Image != null) {
-          final newPath = await copyToSafe(_certificate1Image!.path);
-          _certificate1Image = File(newPath);
+        final newPath = await copyToSafe(_certificate1Image!.path);
+        _certificate1Image = File(newPath);
       }
       if (_certificate2Image != null) {
-          final newPath = await copyToSafe(_certificate2Image!.path);
-          _certificate2Image = File(newPath);
+        final newPath = await copyToSafe(_certificate2Image!.path);
+        _certificate2Image = File(newPath);
       }
 
       // Recursive Safe Copy for ALL Content
       Future<void> safeCopyAllContent(List<dynamic> items) async {
         for (var item in items) {
-           final String type = item['type'];
-           
-           if ((type == 'video' || type == 'pdf' || type == 'image') && item['isLocal'] == true) {
-              final String fPath = item['path'];
-              if (fPath.isNotEmpty) {
-                 item['path'] = await copyToSafe(fPath);
-              }
-           }
+          final String type = item['type'];
 
-           if (item['thumbnail'] != null && item['thumbnail'] is String) {
-              final String tPath = item['thumbnail'];
-              if (tPath.isNotEmpty && !tPath.startsWith('http')) {
-                 item['thumbnail'] = await copyToSafe(tPath);
-              }
-           }
-           
-           if (type == 'folder' && item['contents'] != null) {
-              await safeCopyAllContent(item['contents']);
-           }
+          if ((type == 'video' || type == 'pdf' || type == 'image') &&
+              item['isLocal'] == true) {
+            final String fPath = item['path'];
+            if (fPath.isNotEmpty) {
+              item['path'] = await copyToSafe(fPath);
+            }
+          }
+
+          if (item['thumbnail'] != null && item['thumbnail'] is String) {
+            final String tPath = item['thumbnail'];
+            if (tPath.isNotEmpty && !tPath.startsWith('http')) {
+              item['thumbnail'] = await copyToSafe(tPath);
+            }
+          }
+
+          if (type == 'folder' && item['contents'] != null) {
+            await safeCopyAllContent(item['contents']);
+          }
         }
       }
+
       await safeCopyAllContent(_courseContents);
 
       // Safe Copy for Demo Videos
       for (var i = 0; i < _demoVideos.length; i++) {
-         final String dPath = _demoVideos[i]['path'];
-         if (dPath.isNotEmpty && !dPath.startsWith('http')) {
-             _demoVideos[i]['path'] = await copyToSafe(dPath);
-         }
+        final String dPath = _demoVideos[i]['path'];
+        if (dPath.isNotEmpty && !dPath.startsWith('http')) {
+          _demoVideos[i]['path'] = await copyToSafe(dPath);
+        }
       }
 
       // 0. Generate ID Upfront
-      final newDocId = FirebaseFirestore.instance.collection('courses').doc().id;
+      final newDocId = FirebaseFirestore.instance
+          .collection('courses')
+          .doc()
+          .id;
 
       // Create "Draft" Course Model
       final draftCourse = CourseModel(
-        id: newDocId, 
+        id: newDocId,
         title: _titleController.text.trim(),
-        category: _selectedCategory!, 
+        category: _selectedCategory!,
         price: int.parse(_finalPriceController.text),
         discountPrice: int.parse(_mrpController.text),
         description: finalDesc,
-        thumbnailUrl: _thumbnailImage?.path ?? '', 
-        duration: '', 
-        difficulty: _difficulty,
+        thumbnailUrl: _thumbnailImage?.path ?? '',
+        duration: '',
+        difficulty: _difficulty!,
         enrolledStudents: 0,
         rating: 0.0,
         totalVideos: _getAllVideosFromContents(_courseContents).length,
         isPublished: _isPublished,
         createdAt: DateTime.now(),
-        newBatchDays: _newBatchDurationDays,
+        newBatchDays: _newBatchDurationDays!,
         courseValidityDays: finalValidity,
         hasCertificate: _hasCertificate,
-        certificateUrl1: _certificate1Image?.path, 
-        certificateUrl2: _certificate2Image?.path, 
+        certificateUrl1: _certificate1Image?.path,
+        certificateUrl2: _certificate2Image?.path,
         selectedCertificateSlot: _selectedCertSlot,
         demoVideos: _demoVideos,
         isOfflineDownloadEnabled: _isOfflineDownloadEnabled,
         contents: _courseContents,
-        highlights: _highlightControllers.map((c) => c.text.trim()).where((t) => t.isNotEmpty).toList(),
-        faqs: _faqControllers.map((f) => {
-          'question': f['q']!.text.trim(),
-          'answer': f['a']!.text.trim(),
-        }).where((f) => f['question']!.isNotEmpty && f['answer']!.isNotEmpty).toList(),
+        highlights: _highlightControllers
+            .map((c) => c.text.trim())
+            .where((t) => t.isNotEmpty)
+            .toList(),
+        faqs: _faqControllers
+            .map(
+              (f) => {
+                'question': f['q']!.text.trim(),
+                'answer': f['a']!.text.trim(),
+              },
+            )
+            .where((f) => f['question']!.isNotEmpty && f['answer']!.isNotEmpty)
+            .toList(),
       );
 
       // Generate Session ID
@@ -631,39 +845,39 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       final Set<String> processedFilePaths = {};
 
       void addTask(String filePath, String remotePath, String id) {
-          if (processedFilePaths.contains(filePath)) return;
-          processedFilePaths.add(filePath);
-          fileTasks.add({
-            'filePath': filePath,
-            'remotePath': remotePath,
-            'id': id,
-          });
+        if (processedFilePaths.contains(filePath)) return;
+        processedFilePaths.add(filePath);
+        fileTasks.add({
+          'filePath': filePath,
+          'remotePath': remotePath,
+          'id': id,
+        });
       }
 
       // 1. Add Thumbnail Task
       if (_thumbnailImage != null) {
         addTask(
-           _thumbnailImage!.path, 
-           'courses/$sessionId/thumbnails/thumb_${path.basename(_thumbnailImage!.path)}',
-           'thumb'
+          _thumbnailImage!.path,
+          'courses/$sessionId/thumbnails/thumb_${path.basename(_thumbnailImage!.path)}',
+          'thumb',
         );
       }
 
       // 2. Add Certificate Tasks
       if (_hasCertificate) {
         if (_certificate1Image != null) {
-           addTask(
-              _certificate1Image!.path,
-              'courses/$sessionId/certificates/cert1_${path.basename(_certificate1Image!.path)}',
-              'cert1'
-           );
+          addTask(
+            _certificate1Image!.path,
+            'courses/$sessionId/certificates/cert1_${path.basename(_certificate1Image!.path)}',
+            'cert1',
+          );
         }
         if (_certificate2Image != null) {
-           addTask(
-              _certificate2Image!.path,
-              'courses/$sessionId/certificates/cert2_${path.basename(_certificate2Image!.path)}',
-              'cert2'
-           );
+          addTask(
+            _certificate2Image!.path,
+            'courses/$sessionId/certificates/cert2_${path.basename(_certificate2Image!.path)}',
+            'cert2',
+          );
         }
       }
 
@@ -672,67 +886,78 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         final demo = _demoVideos[i];
         final String pathStr = demo['path'];
         if (pathStr.isNotEmpty && !pathStr.startsWith('http')) {
-           addTask(
-              pathStr,
-              'courses/$sessionId/demo_videos/demo_${i}_${path.basename(pathStr)}',
-              pathStr
-           );
+          addTask(
+            pathStr,
+            'courses/$sessionId/demo_videos/demo_${i}_${path.basename(pathStr)}',
+            pathStr,
+          );
         }
       }
 
       // 4. Recursively Collect ALL Files & Thumbnails
       int globalCounter = 0;
       void processItemRecursive(dynamic item) {
-          final int currentIndex = globalCounter++;
-          final String type = item['type'];
-          
-          if ((type == 'video' || type == 'pdf' || type == 'image') && item['isLocal'] == true) {
-             final filePath = item['path'];
-             if (filePath != null && filePath is String) {
-                String folder = 'others';
-                if (type == 'video') folder = 'videos';
-                else if (type == 'pdf') folder = 'pdfs';
-                else if (type == 'image') folder = 'images';
-                
-                final uniqueName = '${currentIndex}_${item['name']}';
-                addTask(filePath, 'courses/$sessionId/$folder/$uniqueName', filePath);
-             }
-          }
+        final int currentIndex = globalCounter++;
+        final String type = item['type'];
 
-          if (item['thumbnail'] != null && item['thumbnail'] is String) {
-            final String thumbPath = item['thumbnail'];
-            if (thumbPath.isNotEmpty && !thumbPath.startsWith('http')) {
-               addTask(
-                  thumbPath, 
-                  'courses/$sessionId/thumbnails/thumb_${currentIndex}_${path.basename(thumbPath)}',
-                  thumbPath
-               );
-            }
-          }
+        if ((type == 'video' || type == 'pdf' || type == 'image') &&
+            item['isLocal'] == true) {
+          final filePath = item['path'];
+          if (filePath != null && filePath is String) {
+            String folder = 'others';
+            if (type == 'video')
+              folder = 'videos';
+            else if (type == 'pdf')
+              folder = 'pdfs';
+            else if (type == 'image')
+              folder = 'images';
 
-          if (type == 'folder' && item['contents'] != null) {
-              for (var sub in item['contents']) {
-                 processItemRecursive(sub); 
-              }
+            final uniqueName = '${currentIndex}_${item['name']}';
+            addTask(
+              filePath,
+              'courses/$sessionId/$folder/$uniqueName',
+              filePath,
+            );
           }
+        }
+
+        if (item['thumbnail'] != null && item['thumbnail'] is String) {
+          final String thumbPath = item['thumbnail'];
+          if (thumbPath.isNotEmpty && !thumbPath.startsWith('http')) {
+            addTask(
+              thumbPath,
+              'courses/$sessionId/thumbnails/thumb_${currentIndex}_${path.basename(thumbPath)}',
+              thumbPath,
+            );
+          }
+        }
+
+        if (type == 'folder' && item['contents'] != null) {
+          for (var sub in item['contents']) {
+            processItemRecursive(sub);
+          }
+        }
       }
 
       for (var item in _courseContents) {
-         processItemRecursive(item);
+        processItemRecursive(item);
       }
 
       // 4. Send to Service (Fire and Forget)
       // Note: We strip Timestamp/Dates to simple Iso8601 strings for JSON safety
       final courseMap = draftCourse.toMap();
-      courseMap['createdAt'] = DateTime.now().toIso8601String(); // Service will convert back to Timestamp
+      courseMap['createdAt'] = DateTime.now()
+          .toIso8601String(); // Service will convert back to Timestamp
 
       final service = FlutterBackgroundService();
-      
+
       // Ensure it's running BEFORE sending
       if (!await service.isRunning()) {
-         print("🚀 Service not running, starting now...");
-         await service.startService();
-         await Future.delayed(const Duration(seconds: 4)); // Give it time to boot
+        print("🚀 Service not running, starting now...");
+        await service.startService();
+        await Future.delayed(
+          const Duration(seconds: 4),
+        ); // Give it time to boot
       }
 
       print("📤 Sending 'submit_course' to background service...");
@@ -740,25 +965,24 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         'course': courseMap,
         'files': fileTasks,
       });
-      
+
       // REDUNDANCY: In case the background isolate was busy/starting, send again after a short delay
       Future.delayed(const Duration(milliseconds: 1500), () {
-         service.invoke('submit_course', {
-            'course': courseMap,
-            'files': fileTasks,
-         });
-         service.invoke('get_status'); 
+        service.invoke('submit_course', {
+          'course': courseMap,
+          'files': fileTasks,
+        });
+        service.invoke('get_status');
       });
 
-      service.invoke('get_status'); 
+      service.invoke('get_status');
 
       // 5. Success UI
       // We don't wait for upload. We tell user it started.
-      
-      
+
       if (mounted) {
         setState(() {
-          _isUploading = true; 
+          _isUploading = true;
         });
 
         // Clear Local Draft
@@ -766,32 +990,33 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         await prefs.remove('course_creation_draft');
 
         if (mounted) {
-           ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Upload Started in Background 🚀'),
-                backgroundColor: Colors.green,
-                behavior: SnackBarBehavior.floating,
-              )
-           );
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Upload Started in Background 🚀'),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
 
-           // IMMEDIATE NAVIGATION: No delay, direct push
-           Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const UploadProgressScreen()),
-           );
+          // IMMEDIATE NAVIGATION: No delay, direct push
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const UploadProgressScreen()),
+          );
         }
       }
-
     } catch (e) {
       if (mounted) {
         setState(() {
           _isLoading = false;
           _isUploading = false;
         });
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
       }
     } finally {
       // Wakelock might be managed by service now, but we can disable ours
-      await WakelockPlus.disable(); 
+      await WakelockPlus.disable();
     }
   }
 
@@ -804,15 +1029,20 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     _totalProgress = total / _uploadTasks.length;
   }
 
-
   // Helper to get ALL local files for upload
-  List<Map<String, dynamic>> _getAllLocalFilesFromContents(List<dynamic> items) {
+  List<Map<String, dynamic>> _getAllLocalFilesFromContents(
+    List<dynamic> items,
+  ) {
     List<Map<String, dynamic>> files = [];
     for (var item in items) {
-      if ((item['type'] == 'video' || item['type'] == 'pdf' || item['type'] == 'zip' || item['type'] == 'image') && item['isLocal'] == true) {
-         files.add(item); // PASS BY REFERENCE
+      if ((item['type'] == 'video' ||
+              item['type'] == 'pdf' ||
+              item['type'] == 'zip' ||
+              item['type'] == 'image') &&
+          item['isLocal'] == true) {
+        files.add(item); // PASS BY REFERENCE
       } else if (item['type'] == 'folder' && item['contents'] != null) {
-         files.addAll(_getAllLocalFilesFromContents(item['contents']));
+        files.addAll(_getAllLocalFilesFromContents(item['contents']));
       }
     }
     return files;
@@ -844,11 +1074,13 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   }
 
   void _removeHighlight(int index) {
-    setState(() {
-      _highlightControllers[index].dispose();
-      _highlightControllers.removeAt(index);
-    });
-    _saveCourseDraft();
+    if (index >= 0 && index < _highlightControllers.length) {
+      setState(() {
+        _highlightControllers[index].dispose();
+        _highlightControllers.removeAt(index);
+      });
+      _saveCourseDraft();
+    }
   }
 
   // --- FAQs Management ---
@@ -862,246 +1094,440 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   }
 
   void _removeFAQ(int index) {
-    setState(() {
-      _faqControllers[index]['q']!.dispose();
-      _faqControllers[index]['a']!.dispose();
-      _faqControllers.removeAt(index);
-    });
-    _saveCourseDraft();
+    if (index >= 0 && index < _faqControllers.length) {
+      setState(() {
+        _faqControllers[index]['q']?.dispose();
+        _faqControllers[index]['a']?.dispose();
+        _faqControllers.removeAt(index);
+      });
+      _saveCourseDraft();
+    }
+  }
+
+  void _clearBasicDraft() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear Basic Info?'),
+        content: const Text(
+          'This will reset everything on this screen (Step 1). Content and Settings in Step 2 & 3 will remain safe.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _titleController.clear();
+                _descController.clear();
+                _mrpController.clear();
+                _discountAmountController.clear();
+                _finalPriceController.clear();
+                _selectedCategory = null;
+                _difficulty = null;
+                _newBatchDurationDays = null;
+                _thumbnailImage = null;
+
+                for (var c in _highlightControllers) {
+                  c.dispose();
+                }
+                _highlightControllers.clear();
+
+                for (var f in _faqControllers) {
+                  f['q']?.dispose();
+                  f['a']?.dispose();
+                }
+                _faqControllers.clear();
+              });
+              _saveCourseDraft();
+              Navigator.pop(context);
+            },
+            child: const Text('Clear', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
-   Widget build(BuildContext context) {
-     return Scaffold(
-       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-       appBar: _buildAppBar(),
-       body: Form(
-         key: _formKey,
-         child: Stack(
-           children: [
-             PageView(
-               controller: _pageController,
-               physics: const NeverScrollableScrollPhysics(), // Force button usage
-               onPageChanged: (idx) {
-                 setState(() => _currentStep = idx);
-               },
-               children: [
-                 KeepAliveWrapper(child: _buildStep1Basic()),
-                 KeepAliveWrapper(child: _buildStep2Content()),
-                 KeepAliveWrapper(child: _buildStep3Advance()),
-               ],
-             ),
-             if (_isUploading) _buildUploadingOverlay(),
-             if (_isLoading && !_isUploading) const Center(child: CircularProgressIndicator()),
-           ],
-         ),
-       ),
-     );
-   }
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: _buildAppBar(),
+      body: Form(
+        key: _formKey,
+        child: Stack(
+          children: [
+            PageView(
+              controller: _pageController,
+              physics:
+                  const NeverScrollableScrollPhysics(), // Force button usage
+              onPageChanged: (idx) {
+                setState(() => _currentStep = idx);
+              },
+              children: [
+                KeepAliveWrapper(child: _buildStep1Basic()),
+                KeepAliveWrapper(child: _buildStep2Content()),
+                KeepAliveWrapper(child: _buildStep3Advance()),
+              ],
+            ),
+            if (_isUploading) _buildUploadingOverlay(),
+            if (_isLoading && !_isUploading)
+              const Center(child: CircularProgressIndicator()),
+          ],
+        ),
+      ),
+    );
+  }
 
-   Widget _buildUploadingOverlay() {
-     return Container(
-       color: Colors.black.withOpacity(0.85),
-       width: double.infinity,
-       height: double.infinity,
-       child: BackdropFilter(
-         filter: ui.ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-         child: SafeArea(
-           child: Column(
-             children: [
-               const SizedBox(height: 40),
-               Lottie.network(
-                 'https://assets9.lottiefiles.com/packages/lf20_yzn8uNCX7t.json', // Uploading animation
-                 width: 150, height: 150,
-                 animate: true,
-                 repeat: true,
-                 errorBuilder: (c, e, s) => const Icon(Icons.cloud_upload_outlined, size: 80, color: Colors.white),
-               ),
-               const Text('Uploading Course Materials', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
-               const SizedBox(height: 8),
-               Text('Upload will continue even if you switch apps', style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12)),
-               const SizedBox(height: 40),
-               
-               // Overall Progress
-               Padding(
-                 padding: const EdgeInsets.symmetric(horizontal: 40),
-                 child: Column(
-                   children: [
-                     Row(
-                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                       children: [
-                         const Text('Overall Progress', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                         Text('${(_totalProgress * 100).toInt()}%', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                       ],
-                     ),
-                     const SizedBox(height: 12),
-                     ClipRRect(
-                       borderRadius: BorderRadius.circular(10),
-                       child: LinearProgressIndicator(
-                         value: _totalProgress,
-                         minHeight: 12,
-                         backgroundColor: Colors.white.withOpacity(0.1),
-                         valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
-                       ),
-                     ),
-                   ],
-                 ),
-               ),
-               
-               const SizedBox(height: 40),
-               const Padding(
-                 padding: EdgeInsets.symmetric(horizontal: 24),
-                 child: Align(alignment: Alignment.centerLeft, child: Text('BATCH DETAILS', style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2))),
-               ),
-               const SizedBox(height: 16),
-               
-               // Individual Task List
-               Expanded(
-                 child: ListView.builder(
-                   padding: const EdgeInsets.symmetric(horizontal: 24),
-                   itemCount: _uploadTasks.length,
-                   itemBuilder: (context, index) {
-                     final task = _uploadTasks[index];
-                     return Container(
-                       margin: const EdgeInsets.only(bottom: 12),
-                       padding: const EdgeInsets.all(16),
-                       decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(12)),
-                       child: Column(
-                         crossAxisAlignment: CrossAxisAlignment.start,
-                         children: [
-                           Row(
-                             children: [
-                               Icon(task.progress == 1.0 ? Icons.check_circle : Icons.upload_file, color: task.progress == 1.0 ? Colors.green : Colors.blue, size: 20),
-                               const SizedBox(width: 12),
-                               Expanded(child: Text(task.label, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500))),
-                               Text('${(task.progress * 100).toInt()}%', style: TextStyle(color: task.progress == 1.0 ? Colors.green : Colors.grey, fontSize: 11)),
-                             ],
-                           ),
-                           if (task.progress < 1.0) ...[
-                             const SizedBox(height: 10),
-                             LinearProgressIndicator(value: task.progress, minHeight: 4, backgroundColor: Colors.white12, valueColor: AlwaysStoppedAnimation<Color>(task.progress == 1.0 ? Colors.green : Colors.blue)),
-                           ],
-                         ],
-                       ),
-                     );
-                   },
-                 ),
-               ),
-               
-               // Warning Footer
-               Container(
-                 padding: const EdgeInsets.all(16),
-                 decoration: BoxDecoration(color: Colors.red.withOpacity(0.1)),
-                 child: const Row(
-                   children: [
-                     Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
-                     const SizedBox(width: 12),
-                     Expanded(child: Text('Please do not close or kill the app until the upload is complete.', style: TextStyle(color: Colors.orange, fontSize: 11, fontWeight: FontWeight.bold))),
-                   ],
-                 ),
-               ),
-             ],
-           ),
-         ),
-       ),
-     );
-   }
+  Widget _buildUploadingOverlay() {
+    return Container(
+      color: Colors.black.withOpacity(0.85),
+      width: double.infinity,
+      height: double.infinity,
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+        child: SafeArea(
+          child: Column(
+            children: [
+              const SizedBox(height: 40),
+              Lottie.network(
+                'https://assets9.lottiefiles.com/packages/lf20_yzn8uNCX7t.json', // Uploading animation
+                width: 150,
+                height: 150,
+                animate: true,
+                repeat: true,
+                errorBuilder: (c, e, s) => const Icon(
+                  Icons.cloud_upload_outlined,
+                  size: 80,
+                  color: Colors.white,
+                ),
+              ),
+              const Text(
+                'Uploading Course Materials',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Upload will continue even if you switch apps',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.6),
+                  fontSize: 12,
+                ),
+              ),
+              const SizedBox(height: 40),
+
+              // Overall Progress
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 40),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Overall Progress',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          '${(_totalProgress * 100).toInt()}%',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: LinearProgressIndicator(
+                        value: _totalProgress,
+                        minHeight: 12,
+                        backgroundColor: Colors.white.withOpacity(0.1),
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          AppTheme.primaryColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 40),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 24),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'BATCH DETAILS',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Individual Task List
+              Expanded(
+                child: ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  itemCount: _uploadTasks.length,
+                  itemBuilder: (context, index) {
+                    final task = _uploadTasks[index];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                task.progress == 1.0
+                                    ? Icons.check_circle
+                                    : Icons.upload_file,
+                                color: task.progress == 1.0
+                                    ? Colors.green
+                                    : Colors.blue,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  task.label,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                '${(task.progress * 100).toInt()}%',
+                                style: TextStyle(
+                                  color: task.progress == 1.0
+                                      ? Colors.green
+                                      : Colors.grey,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (task.progress < 1.0) ...[
+                            const SizedBox(height: 10),
+                            LinearProgressIndicator(
+                              value: task.progress,
+                              minHeight: 4,
+                              backgroundColor: Colors.white12,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                task.progress == 1.0
+                                    ? Colors.green
+                                    : Colors.blue,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              // Warning Footer
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(color: Colors.red.withOpacity(0.1)),
+                child: const Row(
+                  children: [
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.orange,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        'Please do not close or kill the app until the upload is complete.',
+                        style: TextStyle(
+                          color: Colors.orange,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   PreferredSizeWidget _buildAppBar() {
     if (_isDragModeActive) {
-       return AppBar(
-         backgroundColor: AppTheme.primaryColor,
-         iconTheme: const IconThemeData(color: Colors.white),
-         leading: IconButton(
-           icon: const Icon(Icons.close),
-           onPressed: () => setState(() => _isDragModeActive = false),
-         ),
-          title: const FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text('Drag and Drop Mode', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+      return AppBar(
+        backgroundColor: AppTheme.primaryColor,
+        iconTheme: const IconThemeData(color: Colors.white),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => setState(() => _isDragModeActive = false),
+        ),
+        title: const FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            'Drag and Drop Mode',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-          centerTitle: true,
-          elevation: 2,
-        );
+        ),
+        centerTitle: true,
+        elevation: 2,
+      );
     }
     if (_isSelectionMode) {
-       return AppBar(
-          backgroundColor: AppTheme.primaryColor,
-          iconTheme: const IconThemeData(color: Colors.white),
-          leading: IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () => setState(() {
-               _isSelectionMode = false;
-               _selectedIndices.clear();
-            }),
+      return AppBar(
+        backgroundColor: AppTheme.primaryColor,
+        iconTheme: const IconThemeData(color: Colors.white),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => setState(() {
+            _isSelectionMode = false;
+            _selectedIndices.clear();
+          }),
+        ),
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            '${_selectedIndices.length} Selected',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-          title: FittedBox(
+        ),
+        actions: [
+          FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text('${_selectedIndices.length} Selected', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))
-          ),
-          actions: [
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: TextButton(
-                  onPressed: () {
-                     setState(() {
-                        if (_selectedIndices.length == _courseContents.length) {
-                           _selectedIndices.clear();
-                        } else {
-                           _selectedIndices.clear();
-                           for(int i=0; i<_courseContents.length; i++) {
-                             _selectedIndices.add(i);
-                           }
-                        }
-                     });
-                  },
-                  child: Text(_selectedIndices.length == _courseContents.length ? 'Unselect' : 'All', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white))
+            child: TextButton(
+              onPressed: () {
+                setState(() {
+                  if (_selectedIndices.length == _courseContents.length) {
+                    _selectedIndices.clear();
+                  } else {
+                    _selectedIndices.clear();
+                    for (int i = 0; i < _courseContents.length; i++) {
+                      _selectedIndices.add(i);
+                    }
+                  }
+                });
+              },
+              child: Text(
+                _selectedIndices.length == _courseContents.length
+                    ? 'Unselect'
+                    : 'All',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
             ),
-            IconButton(icon: const Icon(Icons.copy), onPressed: () => _handleBulkCopyCut(false)),
-            IconButton(icon: const Icon(Icons.delete, color: Colors.redAccent), onPressed: _handleBulkDelete),
-          ],
-          elevation: 2,
-       );
+          ),
+          IconButton(
+            icon: const Icon(Icons.copy),
+            onPressed: () => _handleBulkCopyCut(false),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete, color: Colors.redAccent),
+            onPressed: _handleBulkDelete,
+          ),
+        ],
+        elevation: 2,
+      );
     }
     return AppBar(
-      title: const Text('Add Course', style: TextStyle(fontWeight: FontWeight.bold)),
+      title: const Text(
+        'Add Course',
+        style: TextStyle(fontWeight: FontWeight.bold),
+      ),
       centerTitle: true,
       elevation: 0,
     );
   }
 
-
-
-
-
-
-  
-
-
   Widget _buildNavButtons() {
     return Padding(
-      padding: EdgeInsets.only(top: 32, bottom: 12 + MediaQuery.of(context).padding.bottom),
+      padding: EdgeInsets.only(
+        top: 32,
+        bottom: 12 + MediaQuery.of(context).padding.bottom,
+      ),
       child: Row(
         children: [
           if (_currentStep > 0)
             Expanded(
               child: OutlinedButton(
                 onPressed: _prevStep,
-                style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
                 child: const Text('Back'),
               ),
             ),
           if (_currentStep > 0) const SizedBox(width: 16),
           Expanded(
             child: ElevatedButton(
-              onPressed: _currentStep == 2 ? (_isLoading ? null : _submitCourse) : _nextStep,
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-              child: _isLoading 
-                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) 
-                : FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(_currentStep == 2 ? 'Create Course' : 'Next Step', style: const TextStyle(color: Colors.white))
-                  ),
+              onPressed: _currentStep == 2
+                  ? (_isLoading ? null : _submitCourse)
+                  : _nextStep,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.primaryColor,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        _currentStep == 2 ? 'Create Course' : 'Next Step',
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                    ),
             ),
           ),
         ],
@@ -1128,32 +1554,89 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-
-                const Text('Create New Course', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                if (_isSavingDraft) 
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Create New Course',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: _clearBasicDraft,
+                      icon: const Icon(Icons.refresh, size: 16),
+                      label: const Text(
+                        'Clear Draft',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(0, 0),
+                      ),
+                    ),
+                  ],
+                ),
+                if (_isSavingDraft)
                   TweenAnimationBuilder<double>(
                     tween: Tween(begin: 0.0, end: 1.0),
-                    duration: const Duration(milliseconds: 300),
-                    builder: (context, value, child) => Opacity(
-                      opacity: value,
-                      child: Container(
-                        margin: const EdgeInsets.only(top: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(4)),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.cloud_done_outlined, size: 12, color: Colors.blue),
-                            const SizedBox(width: 4),
-                            Text('Draft Saved', style: TextStyle(fontSize: 10, color: Colors.blue.shade700, fontWeight: FontWeight.bold)),
-                          ],
+                    duration: const Duration(milliseconds: 400),
+                    builder: (context, value, child) => Transform.translate(
+                      offset: Offset(0, (1 - value) * -10),
+                      child: Opacity(
+                        opacity: value,
+                        child: Container(
+                          margin: const EdgeInsets.only(top: 8, bottom: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(30),
+                            border: Border.all(
+                              color: Colors.green.withValues(alpha: 0.2),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.green.withValues(alpha: 0.05),
+                                blurRadius: 10,
+                                spreadRadius: 0,
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.check_circle,
+                                size: 16,
+                                color: Colors.green,
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Safe & Synced',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.green,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
                   ),
                 const SizedBox(height: 24),
-                 // 1. Image
-                const Text('Course Cover (16:9 Size)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                // 1. Image
+                const Text(
+                  'Course Cover (16:9 Size)',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
                 const SizedBox(height: 10),
                 GestureDetector(
                   onTap: _pickImage,
@@ -1162,20 +1645,55 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                     child: Container(
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: Theme.of(context).scaffoldBackgroundColor,
-                        borderRadius: BorderRadius.circular(0),
-                        border: Border.all(color: _thumbnailImage == null ? Colors.grey.shade300 : AppTheme.primaryColor.withOpacity(0.5), width: _thumbnailImage == null ? 1 : 2),
+                        color: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.color?.withValues(alpha: 0.02),
+                        borderRadius: BorderRadius.circular(_globalRadius),
+                        border: Border.all(
+                          color: _thumbnailImage == null
+                              ? Theme.of(
+                                  context,
+                                ).dividerColor.withOpacity(_borderOpacity)
+                              : AppTheme.primaryColor.withOpacity(0.5),
+                          width: _thumbnailImage == null ? 1 : 2,
+                          style: _thumbnailImage == null
+                              ? BorderStyle.solid
+                              : BorderStyle.solid,
+                        ),
+                        boxShadow: _thumbnailImage == null
+                            ? [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.03),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ]
+                            : null,
                         image: _thumbnailImage != null
-                            ? DecorationImage(image: FileImage(_thumbnailImage!), fit: BoxFit.cover)
+                            ? DecorationImage(
+                                image: FileImage(_thumbnailImage!),
+                                fit: BoxFit.cover,
+                              )
                             : null,
                       ),
                       child: _thumbnailImage == null
                           ? Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.add_photo_alternate_rounded, size: 48, color: AppTheme.primaryColor.withOpacity(0.8)),
+                                Icon(
+                                  Icons.add_photo_alternate_rounded,
+                                  size: 48,
+                                  color: AppTheme.primaryColor.withOpacity(0.8),
+                                ),
                                 const SizedBox(height: 8),
-                                Text('Select 16:9 Image', style: TextStyle(fontSize: 12, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
+                                Text(
+                                  'Select 16:9 Image',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
                               ],
                             )
                           : null,
@@ -1186,29 +1704,56 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
 
                 // 2. Title
                 _buildTextField(
-                  controller: _titleController, 
-                  label: 'Course Title', 
-                  icon: Icons.title, 
-                  maxLength: 35
+                  controller: _titleController,
+                  label: 'Course Title',
+                  hint: 'Advanced Mobile Repairing',
+                  icon: Icons.title,
+                  maxLength: 35,
                 ),
 
                 // 3. Description
                 _buildTextField(
                   controller: _descController,
                   label: 'Description',
+                  hint: 'Explain what students will learn...',
                   maxLines: 5,
-                  alignTop: true, 
+                  alignTop: true,
                 ),
 
                 // 4. Pricing (Row of 3) - Removed icons for compact view on narrow screens
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                     Expanded(flex: 2, child: _buildTextField(controller: _mrpController, label: 'MRP', keyboardType: TextInputType.number)),
-                     const SizedBox(width: 8),
-                     Expanded(flex: 3, child: _buildTextField(controller: _discountAmountController, label: 'Discount ₹', keyboardType: TextInputType.number)),
-                     const SizedBox(width: 8),
-                     Expanded(flex: 2, child: _buildTextField(controller: _finalPriceController, label: 'Final', keyboardType: TextInputType.number, readOnly: true)),
+                    Expanded(
+                      flex: 2,
+                      child: _buildTextField(
+                        controller: _mrpController,
+                        label: 'MRP',
+                        hint: '5000',
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 3,
+                      child: _buildTextField(
+                        controller: _discountAmountController,
+                        label: 'Discount ₹',
+                        hint: '1000',
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 2,
+                      child: _buildTextField(
+                        controller: _finalPriceController,
+                        label: 'Final',
+                        hint: 'Automatic',
+                        keyboardType: TextInputType.number,
+                        readOnly: true,
+                      ),
+                    ),
                   ],
                 ),
 
@@ -1218,51 +1763,209 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         isExpanded: true,
-                        initialValue: _selectedCategory,
-                        decoration: InputDecoration(labelText: 'Category', floatingLabelBehavior: FloatingLabelBehavior.always, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), filled: true, fillColor: Theme.of(context).cardColor),
-                        items: _categories.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))).toList(),
-                        onChanged: (v) => setState(() => _selectedCategory = v),
+                        value: _selectedCategory,
+                        hint: Text(
+                          'Select Category',
+                          style: TextStyle(
+                            color: Theme.of(context).textTheme.bodyMedium?.color
+                                ?.withValues(alpha: 0.4),
+                            fontSize: 13,
+                            fontWeight: FontWeight.normal,
+                          ),
+                        ),
+                        decoration: InputDecoration(
+                          contentPadding: EdgeInsets.symmetric(
+                            vertical: _inputVerticalPadding,
+                            horizontal: 16,
+                          ),
+                          labelText: 'Category',
+                          floatingLabelBehavior: FloatingLabelBehavior.always,
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(_globalRadius),
+                            borderSide: BorderSide(
+                              color: Theme.of(
+                                context,
+                              ).dividerColor.withValues(alpha: _borderOpacity),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(_globalRadius),
+                            borderSide: BorderSide(
+                              color: AppTheme.primaryColor,
+                              width: 2,
+                            ),
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(_globalRadius),
+                          ),
+                          filled: true,
+                          fillColor: AppTheme.primaryColor.withValues(
+                            alpha: _fillOpacity,
+                          ),
+                        ),
+                        items: _categories
+                            .map(
+                              (c) => DropdownMenuItem(
+                                value: c,
+                                child: Text(c, overflow: TextOverflow.ellipsis),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (v) {
+                          setState(() => _selectedCategory = v);
+                          unawaited(_saveCourseDraft());
+                        },
                       ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         isExpanded: true,
-                        initialValue: _difficulty,
-                        decoration: InputDecoration(labelText: 'Course Type', floatingLabelBehavior: FloatingLabelBehavior.always, border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), filled: true, fillColor: Theme.of(context).cardColor),
-                        items: _difficultyLevels.map((l) => DropdownMenuItem(value: l, child: Text(l, overflow: TextOverflow.ellipsis))).toList(),
-                        onChanged: (v) => setState(() => _difficulty = v!),
+                        value: _difficulty,
+                        hint: Text(
+                          'Select Type',
+                          style: TextStyle(
+                            color: Theme.of(context).textTheme.bodyMedium?.color
+                                ?.withValues(alpha: 0.4),
+                            fontSize: 13,
+                            fontWeight: FontWeight.normal,
+                          ),
+                        ),
+                        decoration: InputDecoration(
+                          contentPadding: EdgeInsets.symmetric(
+                            vertical: _inputVerticalPadding,
+                            horizontal: 16,
+                          ),
+                          labelText: 'Course Type',
+                          floatingLabelBehavior: FloatingLabelBehavior.always,
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(_globalRadius),
+                            borderSide: BorderSide(
+                              color: Theme.of(
+                                context,
+                              ).dividerColor.withValues(alpha: _borderOpacity),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(_globalRadius),
+                            borderSide: BorderSide(
+                              color: AppTheme.primaryColor,
+                              width: 2,
+                            ),
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(_globalRadius),
+                          ),
+                          filled: true,
+                          fillColor: AppTheme.primaryColor.withValues(
+                            alpha: _fillOpacity,
+                          ),
+                        ),
+                        items: _difficultyLevels
+                            .map(
+                              (l) => DropdownMenuItem(
+                                value: l,
+                                child: Text(l, overflow: TextOverflow.ellipsis),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (v) {
+                          setState(() => _difficulty = v);
+                          unawaited(_saveCourseDraft());
+                        },
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                
+
                 DropdownButtonFormField<int>(
-                   initialValue: _newBatchDurationDays,
-                   decoration: InputDecoration(labelText: 'New Badge Duration', floatingLabelBehavior: FloatingLabelBehavior.always, prefixIcon: const Icon(Icons.timer_outlined), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), filled: true, fillColor: Theme.of(context).cardColor),
-                   items: const [DropdownMenuItem(value: 30, child: Text('1 Month')), DropdownMenuItem(value: 60, child: Text('2 Months')), DropdownMenuItem(value: 90, child: Text('3 Months'))],
-                   onChanged: (v) => setState(() => _newBatchDurationDays = v!),
+                  value: _newBatchDurationDays,
+                  hint: Text(
+                    'Select Duration',
+                    style: TextStyle(
+                      color: Theme.of(
+                        context,
+                      ).textTheme.bodyMedium?.color?.withValues(alpha: 0.4),
+                      fontSize: 13,
+                      fontWeight: FontWeight.normal,
+                    ),
+                  ),
+                  decoration: InputDecoration(
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: _inputVerticalPadding,
+                      horizontal: 16,
+                    ),
+                    labelText: 'New Badge Duration',
+                    floatingLabelBehavior: FloatingLabelBehavior.always,
+                    prefixIcon: const Icon(Icons.timer_outlined, size: 20),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(_globalRadius),
+                      borderSide: BorderSide(
+                        color: Theme.of(
+                          context,
+                        ).dividerColor.withValues(alpha: _borderOpacity),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(_globalRadius),
+                      borderSide: BorderSide(
+                        color: AppTheme.primaryColor,
+                        width: 2,
+                      ),
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(_globalRadius),
+                    ),
+                    filled: true,
+                    fillColor: AppTheme.primaryColor.withValues(
+                      alpha: _fillOpacity,
+                    ),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 30, child: Text('1 Month')),
+                    DropdownMenuItem(value: 60, child: Text('2 Months')),
+                    DropdownMenuItem(value: 90, child: Text('3 Months')),
+                  ],
+                  onChanged: (v) {
+                    setState(() => _newBatchDurationDays = v);
+                    unawaited(_saveCourseDraft());
+                  },
                 ),
-                
+
                 const SizedBox(height: 32),
-                
+
                 // 6. Highlights Section
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Highlights', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    const Text(
+                      'Highlights',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
                     TextButton.icon(
                       onPressed: _addHighlight,
                       icon: const Icon(Icons.add_circle_outline, size: 18),
                       label: const Text('Add'),
-                      style: TextButton.styleFrom(foregroundColor: AppTheme.primaryColor),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppTheme.primaryColor,
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
                 if (_highlightControllers.isEmpty)
-                  const Text('No highlights added.', style: TextStyle(color: Colors.grey, fontSize: 13, fontStyle: FontStyle.italic))
+                  const Text(
+                    'No highlights added.',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 13,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  )
                 else
                   ..._highlightControllers.asMap().entries.map((entry) {
                     final index = entry.key;
@@ -1271,94 +1974,136 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Row(
                         children: [
-                           const Icon(Icons.check_circle_outline, color: Colors.green, size: 20),
-                           const SizedBox(width: 8),
-                           Expanded(
-                             child: TextField(
-                               controller: controller,
-                               decoration: const InputDecoration(
-                                 hintText: 'e.g. Learn Chip Level Repair',
-                                 isDense: true,
-                                 border: OutlineInputBorder(),
-                               ),
-                               onChanged: (_) => _saveCourseDraft(),
-                             ),
-                           ),
-                           IconButton(
-                             icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
-                             onPressed: () => _removeHighlight(index),
-                           ),
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              top: 0,
+                            ), // Already centered by row
+                            child: const Icon(
+                              Icons.check_circle_outline,
+                              color: Colors.green,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildTextField(
+                              controller: controller,
+                              label: 'Highlight',
+                              hint: 'Practical Chip Level Training',
+                              onChanged: (_) => unawaited(_saveCourseDraft()),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Padding(
+                            padding: const EdgeInsets.only(
+                              bottom: 16,
+                            ), // Match _buildTextField's bottom padding
+                            child: IconButton(
+                              icon: const Icon(
+                                Icons.remove_circle_outline,
+                                color: Colors.red,
+                                size: 20,
+                              ),
+                              onPressed: () => _removeHighlight(index),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                          ),
                         ],
                       ),
                     );
                   }),
-                  
+
                 const SizedBox(height: 32),
 
                 // 7. FAQs Section
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('FAQs', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    const Text(
+                      'FAQs',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
                     TextButton.icon(
                       onPressed: _addFAQ,
                       icon: const Icon(Icons.add_circle_outline, size: 18),
                       label: const Text('Add'),
-                      style: TextButton.styleFrom(foregroundColor: AppTheme.primaryColor),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppTheme.primaryColor,
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 8),
                 if (_faqControllers.isEmpty)
-                   const Text('No FAQs added.', style: TextStyle(color: Colors.grey, fontSize: 13, fontStyle: FontStyle.italic))
+                  const Text(
+                    'No FAQs added.',
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 13,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  )
                 else
-                   ..._faqControllers.asMap().entries.map((entry) {
+                  ..._faqControllers.asMap().entries.map((entry) {
                     final index = entry.key;
                     final faq = entry.value;
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        border: Border.all(color: Colors.grey.withOpacity(0.2)),
-                        borderRadius: BorderRadius.circular(12),
+                        color: AppTheme.primaryColor.withValues(alpha: 0.02),
+                        border: Border.all(
+                          color: Theme.of(
+                            context,
+                          ).dividerColor.withValues(alpha: _borderOpacity),
+                        ),
+                        borderRadius: BorderRadius.circular(_globalRadius),
                       ),
                       child: Column(
                         children: [
                           Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Expanded(
-                                child: TextField(
-                                  controller: faq['q'],
-                                  decoration: const InputDecoration(
-                                    labelText: 'Question',
-                                    isDense: true,
-                                    prefixIcon: Icon(Icons.help_outline, size: 18),
-                                  ),
-                                  onChanged: (_) => _saveCourseDraft(),
+                                child: _buildTextField(
+                                  controller: faq['q'] as TextEditingController,
+                                  label: 'Question',
+                                  hint: 'e.g. Who can join this course?',
+                                  onChanged: (_) =>
+                                      unawaited(_saveCourseDraft()),
                                 ),
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline, color: Colors.red),
-                                onPressed: () => _removeFAQ(index),
+                              const SizedBox(width: 8),
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: IconButton(
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.red,
+                                    size: 20,
+                                  ),
+                                  onPressed: () => _removeFAQ(index),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
-                          TextField(
-                            controller: faq['a'],
-                            maxLines: 2,
-                            decoration: const InputDecoration(
-                               labelText: 'Answer',
-                               isDense: true,
-                               alignLabelWithHint: true,
-                            ),
-                            onChanged: (_) => _saveCourseDraft(),
+                          const SizedBox(height: 12),
+                          _buildTextField(
+                            controller: faq['a'] as TextEditingController,
+                            label: 'Answer',
+                            hint: 'Anyone with basic mobile knowledge...',
+                            onChanged: (_) => unawaited(_saveCourseDraft()),
                           ),
                         ],
                       ),
                     );
-                   }),
+                  }),
               ],
             ),
           ),
@@ -1378,7 +2123,10 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   }
 
   Future<void> _pickDemoVideo() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.video, allowMultiple: true);
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.video,
+      allowMultiple: true,
+    );
     if (result != null && result.paths.isNotEmpty) {
       setState(() {
         for (var path in result.paths) {
@@ -1400,9 +2148,10 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     List<Map<String, dynamic>> videos = [];
     for (var item in items) {
       if (item['type'] == 'video') {
-         videos.add(Map<String, dynamic>.from(item));
-      } else if (item['type'] == 'folder' && item['contents'] != null) { // Changed 'children' to 'contents' based on existing code
-         videos.addAll(_getAllVideosFromContents(item['contents']));
+        videos.add(Map<String, dynamic>.from(item));
+      } else if (item['type'] == 'folder' && item['contents'] != null) {
+        // Changed 'children' to 'contents' based on existing code
+        videos.addAll(_getAllVideosFromContents(item['contents']));
       }
     }
     return videos;
@@ -1412,17 +2161,19 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   void _syncDemoVideos() {
     final allAvailable = _getAllVideosFromContents(_courseContents);
     final availableNames = allAvailable.map((v) => v['name']).toSet();
-    
+
     setState(() {
-       _demoVideos.removeWhere((demo) => !availableNames.contains(demo['name']));
+      _demoVideos.removeWhere((demo) => !availableNames.contains(demo['name']));
     });
   }
 
   Future<void> _showDemoSelectionDialog() async {
     final allVideos = _getAllVideosFromContents(_courseContents);
-    
+
     if (allVideos.isEmpty) {
-      _showWarning('No videos found in Contents. Please add videos in Step 2 first.');
+      _showWarning(
+        'No videos found in Contents. Please add videos in Step 2 first.',
+      );
       return;
     }
 
@@ -1432,7 +2183,10 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: const Text('Select Demo Videos', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              title: const Text(
+                'Select Demo Videos',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               content: SizedBox(
                 width: double.maxFinite,
                 child: ListView.separated(
@@ -1441,145 +2195,180 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                   separatorBuilder: (c, i) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final video = allVideos[index];
-                    final isAlreadyDemo = _demoVideos.any((v) => v['name'] == video['name']);
-                    
+                    final isAlreadyDemo = _demoVideos.any(
+                      (v) => v['name'] == video['name'],
+                    );
+
                     return CheckboxListTile(
                       value: isAlreadyDemo,
-                      title: Text(video['name'], style: const TextStyle(fontSize: 14)),
+                      title: Text(
+                        video['name'],
+                        style: const TextStyle(fontSize: 14),
+                      ),
                       activeColor: AppTheme.primaryColor,
                       onChanged: (val) {
-                         setState(() {
-                            if (val == true) {
-                               _demoVideos.add(video);
-                            } else {
-                               _demoVideos.removeWhere((v) => v['name'] == video['name']);
-                            }
-                         });
-                         // Update Dialog UI
-                         setDialogState(() {});
-                         unawaited(_saveCourseDraft());
+                        setState(() {
+                          if (val == true) {
+                            _demoVideos.add(video);
+                          } else {
+                            _demoVideos.removeWhere(
+                              (v) => v['name'] == video['name'],
+                            );
+                          }
+                        });
+                        // Update Dialog UI
+                        setDialogState(() {});
+                        unawaited(_saveCourseDraft());
                       },
                     );
                   },
                 ),
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text('DONE', style: TextStyle(fontWeight: FontWeight.bold, color: AppTheme.primaryColor))),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    'DONE',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.primaryColor,
+                    ),
+                  ),
+                ),
               ],
             );
-          }
+          },
         );
-      }
+      },
     );
   }
+
   // MARK: - Bulk Selection Helpers
   void _enterSelectionMode(int index) {
-      HapticFeedback.heavyImpact();
-      setState(() {
-        _isSelectionMode = true;
-        _selectedIndices.clear();
-        _selectedIndices.add(index);
-      });
+    HapticFeedback.heavyImpact();
+    setState(() {
+      _isSelectionMode = true;
+      _selectedIndices.clear();
+      _selectedIndices.add(index);
+    });
   }
 
   void _toggleSelection(int index) {
-      if (!_isSelectionMode) return;
-      HapticFeedback.heavyImpact();
-      setState(() {
-         if (_selectedIndices.contains(index)) {
-            _selectedIndices.remove(index);
-            // Removed auto-close logic: if (_selectedIndices.isEmpty) _isSelectionMode = false;
-         } else {
-            _selectedIndices.add(index);
-         }
-      });
+    if (!_isSelectionMode) return;
+    HapticFeedback.heavyImpact();
+    setState(() {
+      if (_selectedIndices.contains(index)) {
+        _selectedIndices.remove(index);
+        // Removed auto-close logic: if (_selectedIndices.isEmpty) _isSelectionMode = false;
+      } else {
+        _selectedIndices.add(index);
+      }
+    });
   }
 
-
-
   void _handleBulkDelete() {
-     if (_selectedIndices.isEmpty) return;
-     showDialog(
-       context: context,
-       builder: (context) => AlertDialog(
-         title: const Text('Delete Items?'),
-         content: Text('Are you sure you want to delete ${_selectedIndices.length} items?'),
-         actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-            TextButton(
-              onPressed: () {
-                 final List<int> indices = _selectedIndices.toList()..sort((a, b) => b.compareTo(a));
-                 setState(() {
-                    for (int i in indices) {
-                       if (i < _courseContents.length) {
-                          final item = _courseContents[i];
-                          final path = item['path'];
-                          if (path != null && path.contains('/cache/')) {
-                            try {
-                              final file = File(path);
-                              if (file.existsSync()) file.deleteSync();
-                            } catch (_) {}
-                          }
-                          _courseContents.removeAt(i);
-                       }
+    if (_selectedIndices.isEmpty) return;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Items?'),
+        content: Text(
+          'Are you sure you want to delete ${_selectedIndices.length} items?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              final List<int> indices = _selectedIndices.toList()
+                ..sort((a, b) => b.compareTo(a));
+              setState(() {
+                for (int i in indices) {
+                  if (i < _courseContents.length) {
+                    final item = _courseContents[i];
+                    final path = item['path'];
+                    if (path != null && path.contains('/cache/')) {
+                      try {
+                        final file = File(path);
+                        if (file.existsSync()) file.deleteSync();
+                      } catch (_) {}
                     }
-                    _isSelectionMode = false;
-                    _selectedIndices.clear();
-                 });
-                 _saveCourseDraft();
-                 Navigator.pop(context);
-              },
-              child: const Text('Delete', style: TextStyle(color: Colors.red)),
-            )
-         ],
-       )
-     );
+                    _courseContents.removeAt(i);
+                  }
+                }
+                _isSelectionMode = false;
+                _selectedIndices.clear();
+              });
+              _saveCourseDraft();
+              Navigator.pop(context);
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _handleBulkCopyCut(bool isCut) {
-      if (_selectedIndices.isEmpty) return;
-      
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(isCut ? 'Cut Items?' : 'Copy Items?'),
-          content: Text('${isCut ? 'Cut' : 'Copy'} ${_selectedIndices.length} items to clipboard?'),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-            TextButton(onPressed: () {
-                _performCopyCut(isCut);
-                Navigator.pop(context);
-            }, child: Text(isCut ? 'Cut' : 'Copy'))
-          ]
-        )
-      );
+    if (_selectedIndices.isEmpty) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isCut ? 'Cut Items?' : 'Copy Items?'),
+        content: Text(
+          '${isCut ? 'Cut' : 'Copy'} ${_selectedIndices.length} items to clipboard?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              _performCopyCut(isCut);
+              Navigator.pop(context);
+            },
+            child: Text(isCut ? 'Cut' : 'Copy'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _performCopyCut(bool isCut) {
-      final List<int> indices = _selectedIndices.toList()..sort((a, b) => a.compareTo(b));
-      final List<Map<String, dynamic>> itemsToCopy = [];
-      for (int i in indices) {
-         if (i < _courseContents.length) itemsToCopy.add(_courseContents[i]);
-      }
-      
-      setState(() {
-         if (isCut) {
-            ContentClipboard.cut(itemsToCopy);
-            final List<int> revIndices = indices.reversed.toList();
-            for (int i in revIndices) {
-               _courseContents.removeAt(i);
-            }
-            _isSelectionMode = false;
-            _selectedIndices.clear();
-         } else {
-            ContentClipboard.copy(itemsToCopy);
-            _isSelectionMode = false;
-            _selectedIndices.clear();
-         }
-      });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${itemsToCopy.length} items ${isCut ? 'Cut' : 'Copied'}')));
-  }
+    final List<int> indices = _selectedIndices.toList()
+      ..sort((a, b) => a.compareTo(b));
+    final List<Map<String, dynamic>> itemsToCopy = [];
+    for (int i in indices) {
+      if (i < _courseContents.length) itemsToCopy.add(_courseContents[i]);
+    }
 
+    setState(() {
+      if (isCut) {
+        ContentClipboard.cut(itemsToCopy);
+        final List<int> revIndices = indices.reversed.toList();
+        for (int i in revIndices) {
+          _courseContents.removeAt(i);
+        }
+        _isSelectionMode = false;
+        _selectedIndices.clear();
+      } else {
+        ContentClipboard.copy(itemsToCopy);
+        _isSelectionMode = false;
+        _selectedIndices.clear();
+      }
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '${itemsToCopy.length} items ${isCut ? 'Cut' : 'Copied'}',
+        ),
+      ),
+    );
+  }
 
   void _onReorder(int oldIndex, int newIndex) {
     setState(() {
@@ -1591,59 +2380,74 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     });
   }
 
-
-
   Widget _buildStep2Content() {
     return Stack(
       children: [
         CustomScrollView(
           key: const ValueKey('step2_scroll_view'),
           slivers: [
-             SliverPersistentHeader(
-               key: const ValueKey('step2_header'),
-               delegate: CollapsingStepIndicator(
-                 currentStep: 1,
-                 isSelectionMode: _isSelectionMode,
-                 isDragMode: _isDragModeActive
-               ),
-               pinned: true,
-             ),
-             
-             // Dynamic helper to ensure FAB scrolls with content and doesn't block header
-             SliverToBoxAdapter(
-               child: (!_isSelectionMode && !_isDragModeActive)
-                 ? Align(
-                    alignment: Alignment.centerRight,
-                    child: Padding(
-                      padding: const EdgeInsets.only(top: 12, right: 24, bottom: 0),
-                      child: InkWell(
-                         onTap: _showAddContentMenu,
-                         borderRadius: BorderRadius.circular(30),
-                         child: Container(
-                           height: 50,
-                           width: 50,
-                           decoration: BoxDecoration(
-                             color: AppTheme.primaryColor,
-                             shape: BoxShape.circle,
-                             boxShadow: [
-                               BoxShadow(color: AppTheme.primaryColor.withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 4))
-                             ],
-                           ),
-                           child: const Icon(Icons.add, color: Colors.white, size: 28),
-                         ),
-                       ),
-                    ),
-                  )
-                 : const SizedBox.shrink(),
-             ),
+            SliverPersistentHeader(
+              key: const ValueKey('step2_header'),
+              delegate: CollapsingStepIndicator(
+                currentStep: 1,
+                isSelectionMode: _isSelectionMode,
+                isDragMode: _isDragModeActive,
+              ),
+              pinned: true,
+            ),
 
-             SliverPadding(
-               key: const ValueKey('step2_content_padding'),
-               padding: EdgeInsets.fromLTRB(24, (_isSelectionMode || _isDragModeActive) ? 20 : 12, 24, 24),
-                sliver: _isInitialLoading 
-                   ? SliverToBoxAdapter(child: _buildShimmerList())
-                   : _courseContents.isEmpty 
-                   ? SliverToBoxAdapter(
+            // Dynamic helper to ensure FAB scrolls with content and doesn't block header
+            SliverToBoxAdapter(
+              child: (!_isSelectionMode && !_isDragModeActive)
+                  ? Align(
+                      alignment: Alignment.centerRight,
+                      child: Padding(
+                        padding: const EdgeInsets.only(
+                          top: 12,
+                          right: 24,
+                          bottom: 0,
+                        ),
+                        child: InkWell(
+                          onTap: _showAddContentMenu,
+                          borderRadius: BorderRadius.circular(30),
+                          child: Container(
+                            height: 50,
+                            width: 50,
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryColor,
+                              shape: BoxShape.circle,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppTheme.primaryColor.withOpacity(0.4),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.add,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+
+            SliverPadding(
+              key: const ValueKey('step2_content_padding'),
+              padding: EdgeInsets.fromLTRB(
+                24,
+                (_isSelectionMode || _isDragModeActive) ? 20 : 12,
+                24,
+                24,
+              ),
+              sliver: _isInitialLoading
+                  ? SliverToBoxAdapter(child: _buildShimmerList())
+                  : _courseContents.isEmpty
+                  ? SliverToBoxAdapter(
                       key: const ValueKey('add_course_empty_state'),
                       child: Container(
                         height: 300,
@@ -1651,138 +2455,170 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.folder_open, size: 64, color: Colors.grey.shade300),
+                            Icon(
+                              Icons.folder_open,
+                              size: 64,
+                              color: Colors.grey.shade300,
+                            ),
                             const SizedBox(height: 16),
-                            Text('No content added yet', style: TextStyle(color: Colors.grey.shade400)),
+                            Text(
+                              'No content added yet',
+                              style: TextStyle(color: Colors.grey.shade400),
+                            ),
                           ],
                         ),
                       ),
                     )
                   : SliverReorderableList(
-                       key: const ValueKey('course_content_reorderable_list'),
+                      key: const ValueKey('course_content_reorderable_list'),
                       itemCount: _courseContents.length,
                       onReorder: _onReorder,
                       itemBuilder: (context, index) {
                         final item = _courseContents[index];
                         final isSelected = _selectedIndices.contains(index);
-                        
+
                         return CourseContentListItem(
-                           key: ObjectKey(item),
-                           item: item,
-                           index: index,
-                           isSelected: isSelected,
-                           isSelectionMode: _isSelectionMode,
-                           isDragMode: _isDragModeActive,
-                           onTap: () => _handleContentTap(item, index),
-                           onToggleSelection: () => _toggleSelection(index),
-                           onEnterSelectionMode: () => _enterSelectionMode(index),
-                           onStartHold: _startHoldTimer,
-                           onCancelHold: _cancelHoldTimer,
-                           onRename: () => _renameContent(index),
-                           onRemove: () => _confirmRemoveContent(index),
-                           onAddThumbnail: () => _showThumbnailManagerDialog(index),
+                          key: ObjectKey(item),
+                          item: item,
+                          index: index,
+                          isSelected: isSelected,
+                          isSelectionMode: _isSelectionMode,
+                          isDragMode: _isDragModeActive,
+                          onTap: () => _handleContentTap(item, index),
+                          onToggleSelection: () => _toggleSelection(index),
+                          onEnterSelectionMode: () =>
+                              _enterSelectionMode(index),
+                          onStartHold: _startHoldTimer,
+                          onCancelHold: _cancelHoldTimer,
+                          onRename: () => _renameContent(index),
+                          onRemove: () => _confirmRemoveContent(index),
+                          onAddThumbnail: () =>
+                              _showThumbnailManagerDialog(index),
                         );
                       },
                     ),
             ),
 
             SliverFillRemaining(
-               hasScrollBody: false,
-               child: Align(
-                 alignment: Alignment.bottomCenter,
-                 child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: _buildNavButtons(),
-                 ),
-               ),
+              hasScrollBody: false,
+              child: Align(
+                alignment: Alignment.bottomCenter,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: _buildNavButtons(),
+                ),
+              ),
             ),
           ],
         ),
-
-
       ],
     );
   }
 
   void _handleContentTap(Map<String, dynamic> item, int index) async {
-      if (_isSelectionMode) {
-          _toggleSelection(index);
-          return;
-      }
-      
-      final String path = item['path'] ?? '';
-      final String type = item['type'];
+    if (_isSelectionMode) {
+      _toggleSelection(index);
+      return;
+    }
 
-      if (type == 'folder') {
-          // Pass data back from subfolder to update main draft
-          final result = await Navigator.push(
-            context, 
-            MaterialPageRoute(
-              builder: (_) => FolderDetailScreen(
-                folderName: item['name'],
-                contentList: (item['contents'] as List?)?.cast<Map<String, dynamic>>() ?? [],
-              )
-            )
-          );
-          
-          if (result != null && result is List<Map<String, dynamic>>) {
-             setState(() {
-                _courseContents[index]['contents'] = result;
-             });
-             unawaited(_saveCourseDraft());
-          }
-      } else if (type == 'image') {
-          unawaited(Navigator.push(context, MaterialPageRoute(builder: (_) => ImageViewerScreen(
-            filePath: path,
-            title: item['name'],
-          ))));
-      } else if (type == 'video') {
-          final videoList = _courseContents.where((element) => element['type'] == 'video').toList();
-          final initialIndex = videoList.indexOf(item);
-          unawaited(Navigator.push(context, MaterialPageRoute(builder: (_) => VideoPlayerScreen(
-            playlist: videoList, 
-            initialIndex: initialIndex >= 0 ? initialIndex : 0,
-          ))));
-      } else if (type == 'pdf') {
-          unawaited(Navigator.push(context, MaterialPageRoute(builder: (_) => PDFViewerScreen(
-            filePath: path,
-            title: item['name'],
-          ))));
+    final String path = item['path'] ?? '';
+    final String type = item['type'];
+
+    if (type == 'folder') {
+      // Pass data back from subfolder to update main draft
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => FolderDetailScreen(
+            folderName: item['name'],
+            contentList:
+                (item['contents'] as List?)?.cast<Map<String, dynamic>>() ?? [],
+          ),
+        ),
+      );
+
+      if (result != null && result is List<Map<String, dynamic>>) {
+        setState(() {
+          _courseContents[index]['contents'] = result;
+        });
+        unawaited(_saveCourseDraft());
       }
+    } else if (type == 'image') {
+      unawaited(
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                ImageViewerScreen(filePath: path, title: item['name']),
+          ),
+        ),
+      );
+    } else if (type == 'video') {
+      final videoList = _courseContents
+          .where((element) => element['type'] == 'video')
+          .toList();
+      final initialIndex = videoList.indexOf(item);
+      unawaited(
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => VideoPlayerScreen(
+              playlist: videoList,
+              initialIndex: initialIndex >= 0 ? initialIndex : 0,
+            ),
+          ),
+        ),
+      );
+    } else if (type == 'pdf') {
+      unawaited(
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) =>
+                PDFViewerScreen(filePath: path, title: item['name']),
+          ),
+        ),
+      );
+    }
   }
 
   void _renameContent(int index) {
-      final TextEditingController renameController = TextEditingController(text: _courseContents[index]['name']);
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Rename Content'),
-          content: TextField(
-            controller: renameController,
-            autofocus: true,
-            decoration: const InputDecoration(hintText: 'Enter new name', border: OutlineInputBorder()),
+    final TextEditingController renameController = TextEditingController(
+      text: _courseContents[index]['name'],
+    );
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Rename Content'),
+        content: TextField(
+          controller: renameController,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'Enter new name',
+            border: OutlineInputBorder(),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (renameController.text.trim().isNotEmpty) {
-                  setState(() {
-                    _courseContents[index]['name'] = renameController.text.trim();
-                  });
-                  _syncDemoVideos();
-                  _saveCourseDraft();
-                  Navigator.pop(context);
-                }
-              },
-              child: const Text('Rename'),
-            ),
-          ],
         ),
-      );
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (renameController.text.trim().isNotEmpty) {
+                setState(() {
+                  _courseContents[index]['name'] = renameController.text.trim();
+                });
+                _syncDemoVideos();
+                _saveCourseDraft();
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Rename'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _confirmRemoveContent(int index) {
@@ -1790,7 +2626,9 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Remove Content'),
-        content: Text('Are you sure you want to remove "${_courseContents[index]['name']}"?'),
+        content: Text(
+          'Are you sure you want to remove "${_courseContents[index]['name']}"?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -1807,7 +2645,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                   if (file.existsSync()) file.deleteSync();
                 } catch (_) {}
               }
-              
+
               setState(() {
                 _courseContents.removeAt(index);
                 _syncDemoVideos();
@@ -1839,44 +2677,49 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
             Future<void> pickAndValidate() async {
               // ZERO CACHE: Use custom explorer
               final result = await Navigator.push(
-                context, 
-                MaterialPageRoute(builder: (_) => SimpleFileExplorer(
-                  allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
-                ))
+                context,
+                MaterialPageRoute(
+                  builder: (_) => SimpleFileExplorer(
+                    allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+                  ),
+                ),
               );
-              
-              if (result != null && result is List && result.isNotEmpty) {
-                  setDialogState(() => isProcessing = true);
-                  final String filePath = result.first as String;
-                  
-                  try {
-                    final File file = File(filePath);
-                    final decodedImage = await decodeImageFromList(file.readAsBytesSync());
-                    
-                    final double ratio = decodedImage.width / decodedImage.height;
-                    // 16:9 is approx 1.77. Allow 1.7 to 1.85
-                    if (ratio < 1.7 || ratio > 1.85) {
-                      setDialogState(() {
-                         errorMessage = "Invalid Ratio: ${ratio.toStringAsFixed(2)}\n\n"
-                                        "Required: 16:9 (YouTube Standard)\n"
-                                        "Please crop your image to 1920x1080.";
-                         isProcessing = false;
-                      });
-                      return;
-                    }
 
-                    // Valid - Update LOCAL Dialog State only
+              if (result != null && result is List && result.isNotEmpty) {
+                setDialogState(() => isProcessing = true);
+                final String filePath = result.first as String;
+
+                try {
+                  final File file = File(filePath);
+                  final decodedImage = await decodeImageFromList(
+                    file.readAsBytesSync(),
+                  );
+
+                  final double ratio = decodedImage.width / decodedImage.height;
+                  // 16:9 is approx 1.77. Allow 1.7 to 1.85
+                  if (ratio < 1.7 || ratio > 1.85) {
                     setDialogState(() {
-                      currentThumbnail = filePath;
-                      errorMessage = null;
+                      errorMessage =
+                          "Invalid Ratio: ${ratio.toStringAsFixed(2)}\n\n"
+                          "Required: 16:9 (YouTube Standard)\n"
+                          "Please crop your image to 1920x1080.";
                       isProcessing = false;
                     });
-                  } catch (e) {
-                     setDialogState(() {
-                        errorMessage = "Error processing image: $e";
-                        isProcessing = false;
-                     });
+                    return;
                   }
+
+                  // Valid - Update LOCAL Dialog State only
+                  setDialogState(() {
+                    currentThumbnail = filePath;
+                    errorMessage = null;
+                    isProcessing = false;
+                  });
+                } catch (e) {
+                  setDialogState(() {
+                    errorMessage = "Error processing image: $e";
+                    isProcessing = false;
+                  });
+                }
               }
             }
 
@@ -1885,39 +2728,48 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                   if (errorMessage != null)
-                     Container(
-                       margin: const EdgeInsets.only(bottom: 16),
-                       padding: const EdgeInsets.all(12),
-                       decoration: BoxDecoration(
-                         color: Colors.red.withOpacity(0.1),
-                         borderRadius: BorderRadius.circular(8),
-                         border: Border.all(color: Colors.red.withOpacity(0.5))
-                       ),
-                       child: Row(
-                         children: [
-                           const Icon(Icons.error_outline, color: Colors.red),
-                           const SizedBox(width: 8),
-                           Expanded(child: Text(errorMessage!, style: const TextStyle(color: Colors.red, fontSize: 13))),
-                         ],
-                       ),
-                     ),
+                  if (errorMessage != null)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red.withOpacity(0.5)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline, color: Colors.red),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              errorMessage!,
+                              style: const TextStyle(
+                                color: Colors.red,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
 
                   if (hasThumbnail)
                     Column(
                       children: [
-                         ClipRRect(
-                           borderRadius: BorderRadius.circular(12),
-                           child: AspectRatio(
-                             aspectRatio: 16/9,
-                             child: Image.file(
-                               File(currentThumbnail!), 
-                               fit: BoxFit.cover,
-                               errorBuilder: (_,__,___) => const Center(child: Icon(Icons.broken_image)),
-                             )
-                           ),
-                         ),
-                         const SizedBox(height: 16),
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: AspectRatio(
+                            aspectRatio: 16 / 9,
+                            child: Image.file(
+                              File(currentThumbnail!),
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) =>
+                                  const Center(child: Icon(Icons.broken_image)),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                       ],
                     )
                   else
@@ -1927,41 +2779,60 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                       decoration: BoxDecoration(
                         color: Colors.grey.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.withOpacity(0.3), style: BorderStyle.solid)
+                        border: Border.all(
+                          color: Colors.grey.withOpacity(0.3),
+                          style: BorderStyle.solid,
+                        ),
                       ),
                       margin: const EdgeInsets.only(bottom: 16),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: const [
-                          Icon(Icons.image_not_supported_outlined, size: 40, color: Colors.grey),
+                          Icon(
+                            Icons.image_not_supported_outlined,
+                            size: 40,
+                            color: Colors.grey,
+                          ),
                           SizedBox(height: 8),
-                          Text('No Thumbnail', style: TextStyle(color: Colors.grey)),
+                          Text(
+                            'No Thumbnail',
+                            style: TextStyle(color: Colors.grey),
+                          ),
                         ],
                       ),
                     ),
-                  
+
                   if (isProcessing)
-                    const Padding(padding: EdgeInsets.all(16.0), child: CircularProgressIndicator())
+                    const Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: CircularProgressIndicator(),
+                    )
                   else
                     Row(
-                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                       children: [
-                         ElevatedButton.icon(
-                           onPressed: pickAndValidate,
-                           icon: const Icon(Icons.add_photo_alternate),
-                           label: Text(hasThumbnail ? 'Change' : 'Add Image'),
-                           style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, foregroundColor: Colors.white),
-                         ),
-                         if (hasThumbnail)
-                           TextButton.icon(
-                             onPressed: () {
-                                setDialogState(() => currentThumbnail = null);
-                             },
-                             icon: const Icon(Icons.delete, color: Colors.red),
-                             label: const Text('Remove', style: TextStyle(color: Colors.red)),
-                           )
-                       ],
-                    )
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: pickAndValidate,
+                          icon: const Icon(Icons.add_photo_alternate),
+                          label: Text(hasThumbnail ? 'Change' : 'Add Image'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryColor,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                        if (hasThumbnail)
+                          TextButton.icon(
+                            onPressed: () {
+                              setDialogState(() => currentThumbnail = null);
+                            },
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            label: const Text(
+                              'Remove',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ),
+                      ],
+                    ),
                 ],
               ),
               actions: [
@@ -1969,45 +2840,56 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                   onPressed: () {
                     // SAVE ACTION
                     setState(() {
-                       _courseContents[index]['thumbnail'] = currentThumbnail;
+                      _courseContents[index]['thumbnail'] = currentThumbnail;
                     });
                     _saveCourseDraft();
                     Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Thumbnail Saved!')));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Thumbnail Saved!')),
+                    );
                   },
-                  child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: const Text(
+                    'Save',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
                 TextButton(
-                  onPressed: () => Navigator.pop(context), 
-                  child: const Text('Close')
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Close'),
                 ),
               ],
             );
-          }
+          },
         );
-      }
+      },
     );
   }
 
-
-
   void _pasteContent() {
     if (ContentClipboard.isEmpty) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Clipboard is empty')));
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Clipboard is empty')));
       return;
     }
 
     setState(() {
       for (var item in ContentClipboard.items!) {
-         final newItem = Map<String, dynamic>.from(jsonDecode(jsonEncode(item)));
-         newItem['name'] = '${newItem['name']} (Copy)';
-         newItem['isLocal'] = true; // Essential for persistence
-         _courseContents.insert(0, newItem);
+        final newItem = Map<String, dynamic>.from(jsonDecode(jsonEncode(item)));
+        newItem['name'] = '${newItem['name']} (Copy)';
+        newItem['isLocal'] = true; // Essential for persistence
+        _courseContents.insert(0, newItem);
       }
     });
     _saveCourseDraft();
-    
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${ContentClipboard.items!.length} items pasted')));
+
+    if (mounted)
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${ContentClipboard.items!.length} items pasted'),
+        ),
+      );
   }
 
   void _showAddContentMenu() {
@@ -2024,19 +2906,57 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Add to Course', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                'Add to Course',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 24),
               Wrap(
                 spacing: 24,
                 runSpacing: 24,
                 alignment: WrapAlignment.center,
                 children: [
-                  _buildOptionItem(Icons.create_new_folder, 'Folder', Colors.orange, () => _showCreateFolderDialog()),
-                  _buildOptionItem(Icons.video_library, 'Video', Colors.red, () => _pickContentFile('video', ['mp4', 'mkv', 'avi'])),
-                  _buildOptionItem(Icons.picture_as_pdf, 'PDF', Colors.redAccent, () => _pickContentFile('pdf', ['pdf'])),
-                  _buildOptionItem(Icons.image, 'Image', Colors.purple, () => _pickContentFile('image', ['jpg', 'jpeg', 'png', 'webp'])),
-                  _buildOptionItem(Icons.folder_zip, 'Zip', Colors.blueGrey, () => _pickContentFile('zip', ['zip', 'rar'])),
-                  _buildOptionItem(Icons.content_paste, 'Paste', Colors.grey, _pasteContent),
+                  _buildOptionItem(
+                    Icons.create_new_folder,
+                    'Folder',
+                    Colors.orange,
+                    () => _showCreateFolderDialog(),
+                  ),
+                  _buildOptionItem(
+                    Icons.video_library,
+                    'Video',
+                    Colors.red,
+                    () => _pickContentFile('video', ['mp4', 'mkv', 'avi']),
+                  ),
+                  _buildOptionItem(
+                    Icons.picture_as_pdf,
+                    'PDF',
+                    Colors.redAccent,
+                    () => _pickContentFile('pdf', ['pdf']),
+                  ),
+                  _buildOptionItem(
+                    Icons.image,
+                    'Image',
+                    Colors.purple,
+                    () => _pickContentFile('image', [
+                      'jpg',
+                      'jpeg',
+                      'png',
+                      'webp',
+                    ]),
+                  ),
+                  _buildOptionItem(
+                    Icons.folder_zip,
+                    'Zip',
+                    Colors.blueGrey,
+                    () => _pickContentFile('zip', ['zip', 'rar']),
+                  ),
+                  _buildOptionItem(
+                    Icons.content_paste,
+                    'Paste',
+                    Colors.grey,
+                    _pasteContent,
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
@@ -2047,19 +2967,33 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     );
   }
 
-  Widget _buildOptionItem(IconData icon, String label, Color color, VoidCallback onTap) {
+  Widget _buildOptionItem(
+    IconData icon,
+    String label,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return InkWell(
-      onTap: () { Navigator.pop(context); onTap(); },
+      onTap: () {
+        Navigator.pop(context);
+        onTap();
+      },
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: color.withOpacity(0.1), shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
             child: Icon(icon, color: color, size: 28),
           ),
           const SizedBox(height: 8),
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+          ),
         ],
       ),
     );
@@ -2076,19 +3010,22 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
           controller: folderNameController,
           autofocus: true,
           decoration: InputDecoration(
-            labelText: 'Folder Name', 
+            labelText: 'Folder Name',
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             filled: true,
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel', style: TextStyle(color: Colors.grey))),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
           ElevatedButton(
             onPressed: () {
               if (folderNameController.text.trim().isNotEmpty) {
                 setState(() {
                   _courseContents.insert(0, {
-                    'type': 'folder', 
+                    'type': 'folder',
                     'name': folderNameController.text.trim(),
                     'contents': <Map<String, dynamic>>[],
                     'isLocal': true,
@@ -2098,7 +3035,12 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                 Navigator.pop(context);
               }
             },
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.primaryColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
             child: const Text('Create', style: TextStyle(color: Colors.white)),
           ),
         ],
@@ -2106,44 +3048,48 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     );
   }
 
-  Future<void> _pickContentFile(String type, [List<String>? allowedExtensions]) async {
-      // ZERO CACHE: Use custom explorer for ALL types
-      final result = await Navigator.push(
-        context, 
-        MaterialPageRoute(builder: (_) => SimpleFileExplorer(
-          allowedExtensions: allowedExtensions ?? [],
-        ))
-      );
-      
-      if (result != null && result is List) {
-         final List<String> paths = result.cast<String>();
-         if (paths.isEmpty) return;
-         
-         final List<Map<String, dynamic>> newItems = [];
-         for (var path in paths) {
-            newItems.add({
-               'type': type,
-               'name': path.split('/').last,
-               'path': path,
-               'isLocal': true,
-               'thumbnail': null,
-            });
-         }
-         
-         setState(() {
-           _courseContents.insertAll(0, newItems);
-         });
-         
-         // Only process video if needed (currently disabled)
-         if (type == 'video') {
-            unawaited(_processVideos(newItems));
-         } else {
-            unawaited(_saveCourseDraft());
-         }
+  Future<void> _pickContentFile(
+    String type, [
+    List<String>? allowedExtensions,
+  ]) async {
+    // ZERO CACHE: Use custom explorer for ALL types
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            SimpleFileExplorer(allowedExtensions: allowedExtensions ?? []),
+      ),
+    );
+
+    if (result != null && result is List) {
+      final List<String> paths = result.cast<String>();
+      if (paths.isEmpty) return;
+
+      final List<Map<String, dynamic>> newItems = [];
+      for (var path in paths) {
+        newItems.add({
+          'type': type,
+          'name': path.split('/').last,
+          'path': path,
+          'isLocal': true,
+          'thumbnail': null,
+        });
       }
+
+      setState(() {
+        _courseContents.insertAll(0, newItems);
+      });
+
+      // Only process video if needed (currently disabled)
+      if (type == 'video') {
+        unawaited(_processVideos(newItems));
+      } else {
+        unawaited(_saveCourseDraft());
+      }
+    }
   }
 
-   Future<void> _processVideos(List<Map<String, dynamic>> items) async {
+  Future<void> _processVideos(List<Map<String, dynamic>> items) async {
     // DISABLED: Thumbnail Generation to prevent cache bloat
     unawaited(_saveCourseDraft());
   }
@@ -2155,7 +3101,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
           delegate: CollapsingStepIndicator(
             currentStep: 2,
             isSelectionMode: false,
-            isDragMode: false
+            isDragMode: false,
           ),
           pinned: true,
         ),
@@ -2165,69 +3111,122 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Course Validity', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const Text(
+                  'Course Validity',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int>(
-                   isExpanded: true,
-                    value: _courseValidityDays,
-                    hint: const Text('Select Validity'),
-                    decoration: InputDecoration(
-                       labelText: 'Course Validity', 
-                       floatingLabelBehavior: FloatingLabelBehavior.always, 
-                       prefixIcon: const Icon(Icons.history_toggle_off), 
-                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), 
-                       filled: true, 
-                       fillColor: Theme.of(context).cardColor
+                  isExpanded: true,
+                  value: _courseValidityDays,
+                  hint: const Text('Select Validity'),
+                  decoration: InputDecoration(
+                    labelText: 'Course Validity',
+                    floatingLabelBehavior: FloatingLabelBehavior.always,
+                    prefixIcon: const Icon(Icons.history_toggle_off),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    items: const [
-                      DropdownMenuItem(value: 0, child: Text('Lifetime Access')), 
-                      DropdownMenuItem(value: 184, child: Text('6 Months')),
-                      DropdownMenuItem(value: 365, child: Text('1 Year')),
-                      DropdownMenuItem(value: 730, child: Text('2 Years')),
-                      DropdownMenuItem(value: 1095, child: Text('3 Years')),
-                    ],
-                    onChanged: (v) => setState(() => _courseValidityDays = v),
-                 ),
+                    filled: true,
+                    fillColor: Theme.of(context).cardColor,
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 0, child: Text('Lifetime Access')),
+                    DropdownMenuItem(value: 184, child: Text('6 Months')),
+                    DropdownMenuItem(value: 365, child: Text('1 Year')),
+                    DropdownMenuItem(value: 730, child: Text('2 Years')),
+                    DropdownMenuItem(value: 1095, child: Text('3 Years')),
+                  ],
+                  onChanged: (v) => setState(() => _courseValidityDays = v),
+                ),
                 const SizedBox(height: 32),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Certification Management', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    const Text(
+                      'Certification Management',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
-                        color: _hasCertificate ? Colors.green.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
+                        color: _hasCertificate
+                            ? Colors.green.withOpacity(0.1)
+                            : Colors.grey.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         _hasCertificate ? 'ENABLED' : 'DISABLED',
-                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: _hasCertificate ? Colors.green : Colors.grey),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: _hasCertificate ? Colors.green : Colors.grey,
+                        ),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile(
-                  title: const Text('Enable Certificate', style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(_hasCertificate ? 'Certificate will be issued on completion' : 'No certificate for this course'),
+                  title: const Text(
+                    'Enable Certificate',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    _hasCertificate
+                        ? 'Certificate will be issued on completion'
+                        : 'No certificate for this course',
+                  ),
                   value: _hasCertificate,
                   onChanged: (v) => setState(() => _hasCertificate = v),
                   activeColor: AppTheme.primaryColor,
                   tileColor: Theme.of(context).cardColor,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: _hasCertificate ? AppTheme.primaryColor.withOpacity(0.3) : Colors.grey.shade200)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: _hasCertificate
+                          ? AppTheme.primaryColor.withOpacity(0.3)
+                          : Colors.grey.shade200,
+                    ),
+                  ),
                 ),
                 if (_hasCertificate) ...[
                   const SizedBox(height: 24),
-                  const Text('Upoad Two Certificate Designs', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                  const Text(
+                    'Upoad Two Certificate Designs',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
                   const SizedBox(height: 4),
-                  const Text('Strictly 3508 x 2480 Pixels (A4 Landscape)', style: TextStyle(fontSize: 11, color: Colors.orange, fontWeight: FontWeight.bold)),
+                  const Text(
+                    'Strictly 3508 x 2480 Pixels (A4 Landscape)',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.orange,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   Row(
                     children: [
                       Expanded(
                         child: Column(
                           children: [
-                            Text('Design A', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _selectedCertSlot == 1 ? AppTheme.primaryColor : Colors.grey)),
+                            Text(
+                              'Design A',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: _selectedCertSlot == 1
+                                    ? AppTheme.primaryColor
+                                    : Colors.grey,
+                              ),
+                            ),
                             const SizedBox(height: 8),
                             Stack(
                               children: [
@@ -2238,17 +3237,43 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                                   icon: Icons.upload_file,
                                   aspectRatio: 1.414,
                                 ),
-                                if (_selectedCertSlot == 1) Positioned(top: 8, right: 8, child: Icon(Icons.check_circle, color: AppTheme.primaryColor, size: 24)),
-                                Positioned(
-                                  bottom: 8, left: 8, 
-                                  child: ElevatedButton(
-                                    onPressed: () => setState(() => _selectedCertSlot = 1),
-                                    style: ElevatedButton.styleFrom(
-                                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      minimumSize: Size(0, 0),
-                                      backgroundColor: _selectedCertSlot == 1 ? AppTheme.primaryColor : Theme.of(context).cardColor,
+                                if (_selectedCertSlot == 1)
+                                  Positioned(
+                                    top: 8,
+                                    right: 8,
+                                    child: Icon(
+                                      Icons.check_circle,
+                                      color: AppTheme.primaryColor,
+                                      size: 24,
                                     ),
-                                    child: Text('Select', style: TextStyle(fontSize: 10, color: _selectedCertSlot == 1 ? Colors.white : Theme.of(context).textTheme.bodyMedium?.color)),
+                                  ),
+                                Positioned(
+                                  bottom: 8,
+                                  left: 8,
+                                  child: ElevatedButton(
+                                    onPressed: () =>
+                                        setState(() => _selectedCertSlot = 1),
+                                    style: ElevatedButton.styleFrom(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      minimumSize: Size(0, 0),
+                                      backgroundColor: _selectedCertSlot == 1
+                                          ? AppTheme.primaryColor
+                                          : Theme.of(context).cardColor,
+                                    ),
+                                    child: Text(
+                                      'Select',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: _selectedCertSlot == 1
+                                            ? Colors.white
+                                            : Theme.of(
+                                                context,
+                                              ).textTheme.bodyMedium?.color,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ],
@@ -2260,7 +3285,16 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                       Expanded(
                         child: Column(
                           children: [
-                            Text('Design B', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: _selectedCertSlot == 2 ? AppTheme.primaryColor : Colors.grey)),
+                            Text(
+                              'Design B',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: _selectedCertSlot == 2
+                                    ? AppTheme.primaryColor
+                                    : Colors.grey,
+                              ),
+                            ),
                             const SizedBox(height: 8),
                             Stack(
                               children: [
@@ -2271,17 +3305,43 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                                   icon: Icons.upload_file,
                                   aspectRatio: 1.414,
                                 ),
-                                if (_selectedCertSlot == 2) Positioned(top: 8, right: 8, child: Icon(Icons.check_circle, color: AppTheme.primaryColor, size: 24)),
-                                Positioned(
-                                  bottom: 8, left: 8, 
-                                  child: ElevatedButton(
-                                    onPressed: () => setState(() => _selectedCertSlot = 2),
-                                    style: ElevatedButton.styleFrom(
-                                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      minimumSize: Size(0, 0),
-                                      backgroundColor: _selectedCertSlot == 2 ? AppTheme.primaryColor : Theme.of(context).cardColor,
+                                if (_selectedCertSlot == 2)
+                                  Positioned(
+                                    top: 8,
+                                    right: 8,
+                                    child: Icon(
+                                      Icons.check_circle,
+                                      color: AppTheme.primaryColor,
+                                      size: 24,
                                     ),
-                                    child: Text('Select', style: TextStyle(fontSize: 10, color: _selectedCertSlot == 2 ? Colors.white : Theme.of(context).textTheme.bodyMedium?.color)),
+                                  ),
+                                Positioned(
+                                  bottom: 8,
+                                  left: 8,
+                                  child: ElevatedButton(
+                                    onPressed: () =>
+                                        setState(() => _selectedCertSlot = 2),
+                                    style: ElevatedButton.styleFrom(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      minimumSize: Size(0, 0),
+                                      backgroundColor: _selectedCertSlot == 2
+                                          ? AppTheme.primaryColor
+                                          : Theme.of(context).cardColor,
+                                    ),
+                                    child: Text(
+                                      'Select',
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: _selectedCertSlot == 2
+                                            ? Colors.white
+                                            : Theme.of(
+                                                context,
+                                              ).textTheme.bodyMedium?.color,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ],
@@ -2293,18 +3353,30 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                   ),
                 ],
                 const SizedBox(height: 32),
-                
+
                 // 3. Offline Download Function
-                const Text('Offline Features', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const Text(
+                  'Offline Features',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
                 const SizedBox(height: 12),
                 SwitchListTile(
-                  title: const Text('Allow Offline Download', style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: const Text('Students can download videos for offline viewing'),
+                  title: const Text(
+                    'Allow Offline Download',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: const Text(
+                    'Students can download videos for offline viewing',
+                  ),
                   value: _isOfflineDownloadEnabled,
-                  onChanged: (v) => setState(() => _isOfflineDownloadEnabled = v),
+                  onChanged: (v) =>
+                      setState(() => _isOfflineDownloadEnabled = v),
                   activeColor: AppTheme.primaryColor,
                   tileColor: Theme.of(context).cardColor,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: Colors.grey.shade200)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: Colors.grey.shade200),
+                  ),
                 ),
                 const SizedBox(height: 32),
 
@@ -2312,33 +3384,65 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Demo Videos', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    const Text(
+                      'Demo Videos',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
                     TextButton.icon(
-                      onPressed: _courseContents.isEmpty ? null : () => _showDemoSelectionDialog(),
+                      onPressed: _courseContents.isEmpty
+                          ? null
+                          : () => _showDemoSelectionDialog(),
                       icon: const Icon(Icons.playlist_add_check, size: 20),
                       label: const Text('Select from Contents'),
-                      style: TextButton.styleFrom(foregroundColor: AppTheme.primaryColor),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppTheme.primaryColor,
+                      ),
                     ),
                   ],
                 ),
-                const Text('Free videos shown to all users as previews', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                const Text(
+                  'Free videos shown to all users as previews',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
                 const SizedBox(height: 12),
                 if (_demoVideos.isEmpty)
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200, style: BorderStyle.none)),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.grey.shade200,
+                        style: BorderStyle.none,
+                      ),
+                    ),
                     child: Column(
                       children: [
-                        Icon(Icons.video_library_outlined, color: Colors.grey.shade400, size: 32),
+                        Icon(
+                          Icons.video_library_outlined,
+                          color: Colors.grey.shade400,
+                          size: 32,
+                        ),
                         const SizedBox(height: 8),
-                        Text('No demo videos added yet', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+                        Text(
+                          'No demo videos added yet',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 13,
+                          ),
+                        ),
                       ],
                     ),
                   )
                 else
                   Theme(
-                    data: Theme.of(context).copyWith(canvasColor: Colors.transparent),
+                    data: Theme.of(
+                      context,
+                    ).copyWith(canvasColor: Colors.transparent),
                     child: ReorderableListView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -2357,15 +3461,53 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                           key: ValueKey(video['name'] + index.toString()),
                           margin: const EdgeInsets.only(bottom: 8),
                           padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).cardColor,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
                           child: Row(
                             children: [
-                              const Icon(Icons.drag_indicator, color: Colors.grey, size: 20),
+                              const Icon(
+                                Icons.drag_indicator,
+                                color: Colors.grey,
+                                size: 20,
+                              ),
                               const SizedBox(width: 8),
-                              Container(width: 60, height: 40, decoration: BoxDecoration(color: Colors.black, borderRadius: BorderRadius.circular(6)), child: const Icon(Icons.play_circle_filled, color: Colors.white, size: 20)),
+                              Container(
+                                width: 60,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: Colors.black,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Icon(
+                                  Icons.play_circle_filled,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
                               const SizedBox(width: 12),
-                              Expanded(child: Text(video['name'], style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis)),
-                              IconButton(icon: const Icon(Icons.remove_circle_outline, color: Colors.red, size: 20), onPressed: () => setState(() => _demoVideos.removeAt(index))),
+                              Expanded(
+                                child: Text(
+                                  video['name'],
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(
+                                  Icons.remove_circle_outline,
+                                  color: Colors.red,
+                                  size: 20,
+                                ),
+                                onPressed: () =>
+                                    setState(() => _demoVideos.removeAt(index)),
+                              ),
                             ],
                           ),
                         );
@@ -2375,18 +3517,40 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                 const SizedBox(height: 32),
 
                 // 5. Publish Toggle
-                const Text('Publish Status', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                const Text(
+                  'Publish Status',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
                 const SizedBox(height: 12),
                 SwitchListTile(
-                  title: Text(_isPublished ? 'Course is Public' : 'Course is Hidden (Draft)', style: const TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(_isPublished ? 'Visible to all students on the app' : 'Only visible to admins'),
+                  title: Text(
+                    _isPublished
+                        ? 'Course is Public'
+                        : 'Course is Hidden (Draft)',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(
+                    _isPublished
+                        ? 'Visible to all students on the app'
+                        : 'Only visible to admins',
+                  ),
                   value: _isPublished,
-                  onChanged: (v) => setState(() => _isPublished = v),
+                  onChanged: (v) {
+                    setState(() => _isPublished = v);
+                    unawaited(_saveCourseDraft());
+                  },
                   activeColor: Colors.green,
                   tileColor: Theme.of(context).cardColor,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: _isPublished ? Colors.green.withOpacity(0.3) : Colors.grey.shade200)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(_globalRadius),
+                    side: BorderSide(
+                      color: _isPublished
+                          ? Colors.green.withOpacity(0.3)
+                          : Colors.grey.withOpacity(_borderOpacity),
+                    ),
+                  ),
                 ),
-                
+
                 const SizedBox(height: 24),
                 _buildCourseReviewCard(),
                 const SizedBox(height: 24),
@@ -2408,7 +3572,13 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     );
   }
 
-  Widget _buildImageUploader({File? image, required VoidCallback onTap, required String label, required IconData icon, double aspectRatio = 16/9}) {
+  Widget _buildImageUploader({
+    File? image,
+    required VoidCallback onTap,
+    required String label,
+    required IconData icon,
+    double aspectRatio = 16 / 9,
+  }) {
     return GestureDetector(
       onTap: onTap,
       child: AspectRatio(
@@ -2416,18 +3586,28 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         child: Container(
           decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Theme.of(context).dividerColor, style: BorderStyle.solid),
-            image: image != null ? DecorationImage(image: FileImage(image), fit: BoxFit.contain) : null,
+            borderRadius: BorderRadius.circular(_globalRadius),
+            border: Border.all(
+              color: Theme.of(context).dividerColor.withOpacity(_borderOpacity),
+              style: BorderStyle.solid,
+            ),
+            image: image != null
+                ? DecorationImage(image: FileImage(image), fit: BoxFit.contain)
+                : null,
           ),
-          child: image == null ? Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, color: Colors.grey, size: 30),
-              const SizedBox(height: 4),
-              Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-            ],
-          ) : null,
+          child: image == null
+              ? Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(icon, color: Colors.grey, size: 30),
+                    const SizedBox(height: 4),
+                    Text(
+                      label,
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    ),
+                  ],
+                )
+              : null,
         ),
       ),
     );
@@ -2442,16 +3622,18 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       // Validation for Custom Certificate Size
       final decodedImage = await decodeImageFromList(file.readAsBytesSync());
       if (decodedImage.width != 3508 || decodedImage.height != 2480) {
-         if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Error: Image must be 3508x2480 px. Current: ${decodedImage.width}x${decodedImage.height}'),
-                backgroundColor: Colors.red,
-                behavior: SnackBarBehavior.floating,
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Error: Image must be 3508x2480 px. Current: ${decodedImage.width}x${decodedImage.height}',
               ),
-            );
-         }
-         return;
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
       }
 
       setState(() {
@@ -2463,22 +3645,22 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
           _selectedCertSlot = 2; // Auto select if uploaded
         }
       });
+      unawaited(_saveCourseDraft());
     }
   }
-
-
-
 
   // Helper
   Widget _buildTextField({
     required TextEditingController controller,
     required String label,
+    String? hint,
     IconData? icon, // Optional now
     TextInputType keyboardType = TextInputType.text,
     int? maxLines = 1,
     int? maxLength,
     bool readOnly = false,
     bool alignTop = false,
+    void Function(String)? onChanged,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -2488,32 +3670,68 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         maxLines: maxLines,
         maxLength: maxLength,
         readOnly: readOnly,
-        textAlignVertical: alignTop ? TextAlignVertical.top : TextAlignVertical.center,
+        onChanged: onChanged,
+        textAlignVertical: alignTop
+            ? TextAlignVertical.top
+            : TextAlignVertical.center,
         style: TextStyle(
-          color: readOnly ? Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.8) : Theme.of(context).textTheme.bodyMedium?.color,
+          color: readOnly
+              ? Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.color?.withValues(alpha: 0.8)
+              : Theme.of(context).textTheme.bodyMedium?.color,
           fontWeight: readOnly ? FontWeight.bold : FontWeight.normal,
         ),
         decoration: InputDecoration(
           labelText: label,
-          floatingLabelBehavior: FloatingLabelBehavior.always, 
+          hintText: hint,
+          hintStyle: TextStyle(
+            color: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.color?.withValues(alpha: 0.4),
+            fontSize: 13,
+            fontWeight: FontWeight.normal,
+          ),
+          floatingLabelBehavior: FloatingLabelBehavior.always,
           alignLabelWithHint: alignTop,
-          prefixIcon: icon != null ? (alignTop 
-              ? Column(
-                  mainAxisAlignment: MainAxisAlignment.start, 
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      child: Icon(icon, color: Colors.grey),
-                    ),
-                  ],
-                )
-              : Icon(icon, color: Colors.grey)) : null,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          prefixIcon: icon != null
+              ? (alignTop
+                    ? Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 12,
+                            ),
+                            child: Icon(icon, color: Colors.grey),
+                          ),
+                        ],
+                      )
+                    : Icon(icon, color: Colors.grey))
+              : null,
+          contentPadding: EdgeInsets.symmetric(
+            vertical: _inputVerticalPadding,
+            horizontal: 12,
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(_globalRadius),
+            borderSide: BorderSide(
+              color: Theme.of(
+                context,
+              ).dividerColor.withValues(alpha: _borderOpacity),
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(_globalRadius),
+            borderSide: BorderSide(color: AppTheme.primaryColor, width: 2),
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(_globalRadius),
+          ),
           filled: true,
-          fillColor: readOnly 
-              ? (Theme.of(context).brightness == Brightness.dark ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100)
-              : Theme.of(context).cardColor,
+          fillColor: AppTheme.primaryColor.withValues(alpha: _fillOpacity),
           counterText: maxLength != null ? null : '',
         ),
       ),
@@ -2524,10 +3742,15 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
-        children: List.generate(5, (index) => 
-          Shimmer.fromColors(
-            baseColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey[800]! : Colors.grey[300]!,
-            highlightColor: Theme.of(context).brightness == Brightness.dark ? Colors.grey[700]! : Colors.grey[100]!,
+        children: List.generate(
+          5,
+          (index) => Shimmer.fromColors(
+            baseColor: Theme.of(context).brightness == Brightness.dark
+                ? Colors.grey[800]!
+                : Colors.grey[300]!,
+            highlightColor: Theme.of(context).brightness == Brightness.dark
+                ? Colors.grey[700]!
+                : Colors.grey[100]!,
             child: Container(
               height: 70,
               margin: const EdgeInsets.only(bottom: 12),
@@ -2543,10 +3766,13 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   }
 
   // Concurrency Limited Queue Processor
-  Future<void> _processQueue(List<Future<void> Function()> tasks, {int concurrent = 2}) async {
+  Future<void> _processQueue(
+    List<Future<void> Function()> tasks, {
+    int concurrent = 2,
+  }) async {
     final queue = List.of(tasks);
     final active = <Future<void>>[];
-    
+
     while (queue.isNotEmpty || active.isNotEmpty) {
       while (active.length < concurrent && queue.isNotEmpty) {
         final task = queue.removeAt(0);
@@ -2558,19 +3784,17 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       await Future.any(active); // Wait for at least one to finish
     }
   }
-
-
 }
 
 class KeepAliveWrapper extends StatefulWidget {
   final Widget child;
   const KeepAliveWrapper({super.key, required this.child});
-
   @override
   State<KeepAliveWrapper> createState() => _KeepAliveWrapperState();
 }
 
-class _KeepAliveWrapperState extends State<KeepAliveWrapper> with AutomaticKeepAliveClientMixin {
+class _KeepAliveWrapperState extends State<KeepAliveWrapper>
+    with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
 
@@ -2580,5 +3804,3 @@ class _KeepAliveWrapperState extends State<KeepAliveWrapper> with AutomaticKeepA
     return widget.child;
   }
 }
-
-
