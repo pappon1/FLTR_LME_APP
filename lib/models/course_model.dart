@@ -22,6 +22,8 @@ class CourseModel {
   final String? certificateUrl2;
   final int selectedCertificateSlot; // 1 or 2
   final List<dynamic> demoVideos; // List of demo video objects
+  final List<String> highlights;
+  final List<Map<String, String>> faqs;
   final bool isOfflineDownloadEnabled;
   final List<dynamic> contents; // Nested content structure (Folders, Videos, PDFs)
 
@@ -47,6 +49,8 @@ class CourseModel {
     this.certificateUrl2,
     this.selectedCertificateSlot = 1,
     this.demoVideos = const [],
+    this.highlights = const [],
+    this.faqs = const [],
     this.isOfflineDownloadEnabled = true,
     this.contents = const [],
   }) : createdAt = createdAt ?? DateTime.now();
@@ -74,6 +78,8 @@ class CourseModel {
       'certificateUrl2': certificateUrl2,
       'selectedCertificateSlot': selectedCertificateSlot,
       'demoVideos': demoVideos,
+      'highlights': highlights,
+      'faqs': faqs,
       'isOfflineDownloadEnabled': isOfflineDownloadEnabled,
       'contents': contents,
     };
@@ -104,6 +110,8 @@ class CourseModel {
       certificateUrl2: data['certificateUrl2']?.toString(),
       selectedCertificateSlot: _toInt(data['selectedCertificateSlot'], 1),
       demoVideos: data['demoVideos'] ?? [],
+      highlights: List<String>.from(data['highlights'] ?? []),
+      faqs: (data['faqs'] as List<dynamic>?)?.map((e) => Map<String, String>.from(e)).toList() ?? [],
       isOfflineDownloadEnabled: data['isOfflineDownloadEnabled'] ?? true,
       contents: data['contents'] ?? [],
     );
@@ -143,6 +151,8 @@ class CourseModel {
       certificateUrl2: map['certificateUrl2'],
       selectedCertificateSlot: map['selectedCertificateSlot'] ?? 1,
       demoVideos: map['demoVideos'] ?? [],
+      highlights: List<String>.from(map['highlights'] ?? []),
+      faqs: (map['faqs'] as List<dynamic>?)?.map((e) => Map<String, String>.from(e)).toList() ?? [],
       isOfflineDownloadEnabled: map['isOfflineDownloadEnabled'] ?? true,
       contents: map['contents'] ?? [],
     );
@@ -170,6 +180,8 @@ class CourseModel {
     String? certificateUrl2,
     int? selectedCertificateSlot,
     List<dynamic>? demoVideos,
+    List<String>? highlights,
+    List<Map<String, String>>? faqs,
     bool? isOfflineDownloadEnabled,
     List<dynamic>? contents,
   }) {
@@ -195,6 +207,8 @@ class CourseModel {
       certificateUrl2: certificateUrl2 ?? this.certificateUrl2,
       selectedCertificateSlot: selectedCertificateSlot ?? this.selectedCertificateSlot,
       demoVideos: demoVideos ?? this.demoVideos,
+      highlights: highlights ?? this.highlights,
+      faqs: faqs ?? this.faqs,
       isOfflineDownloadEnabled: isOfflineDownloadEnabled ?? this.isOfflineDownloadEnabled,
       contents: contents ?? this.contents,
     );

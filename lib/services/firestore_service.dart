@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/course_model.dart';
 import '../models/student_model.dart';
-import '../models/video_model.dart'; // Ensure this model is imported
+import '../models/video_model.dart';
 
 class FirestoreService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -33,6 +33,16 @@ class FirestoreService {
         });
   }
 
+  /// Get single course stream
+  Stream<CourseModel> getCourseStream(String courseId) {
+    return _firestore.collection('courses').doc(courseId).snapshots().map((doc) {
+      if (!doc.exists) {
+        throw Exception("Course not found");
+      }
+      return CourseModel.fromFirestore(doc);
+    });
+  }
+
   /// Add new course
   Future<String> addCourse(CourseModel course) async {
     final docRef = await _firestore.collection('courses').add(course.toMap());
@@ -56,7 +66,6 @@ class FirestoreService {
     return _firestore
         .collection('videos')
         .where('courseId', isEqualTo: courseId)
-        .orderBy('orderIndex')
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => VideoModel.fromFirestore(doc))

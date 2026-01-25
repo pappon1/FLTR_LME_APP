@@ -14,7 +14,9 @@ import '../../widgets/custom_video_player.dart';
 import 'add_video_screen.dart';
 import '../content_viewers/video_player_screen.dart';
 import '../content_viewers/pdf_viewer_screen.dart';
+import '../content_viewers/pdf_viewer_screen.dart';
 import 'folder_detail_screen.dart';
+import 'tabs/course_content_tab.dart'; // New Clean Import
 
 class CourseDetailScreen extends StatefulWidget {
   final CourseModel course;
@@ -270,9 +272,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
               ),
               clipBehavior: Clip.antiAlias,
               child: CachedNetworkImage(
-                imageUrl: _getAuthenticatedUrl(widget.course.thumbnailUrl),
-                httpHeaders: widget.course.thumbnailUrl.contains('b-cdn.net') 
-                    ? {'AccessKey': BunnyCDNService.apiKey ?? ''} 
+                imageUrl: BunnyCDNService.signUrl(widget.course.thumbnailUrl),
+                httpHeaders: BunnyCDNService.signUrl(widget.course.thumbnailUrl).contains('storage.bunnycdn.com') 
+                    ? {'AccessKey': BunnyCDNService.apiKey} 
                     : null,
                 fit: BoxFit.cover,
                 placeholder: (context, url) => Center(child: CircularProgressIndicator(color: _primaryPurple)),
@@ -338,22 +340,30 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
           const SizedBox(height: _fOvGapSeeMoreHigh),
 
           // Highlights Section
-          _buildSectionHeader("Course Highlights", showEdit: true),
-          const SizedBox(height: 16),
-          
-          _buildHighlightItem("IC Reballing and Micro Soldering techniques", isDark, isFirst: true),
-          _buildHighlightItem("iPhone Face ID and Battery Health repair", isDark),
-          _buildHighlightItem("Dead boot and Software flashing masterclass", isDark),
-          _buildHighlightItem("Advanced display lamination process", isDark, isLast: true),
-
-          const SizedBox(height: _fOvGapHighFaq),
+          if (widget.course.highlights.isNotEmpty) ...[
+            _buildSectionHeader("Course Highlights", showEdit: false),
+            const SizedBox(height: 16),
+            ...widget.course.highlights.asMap().entries.map((entry) {
+              return _buildHighlightItem(
+                entry.value, 
+                isDark, 
+                isFirst: entry.key == 0,
+                isLast: entry.key == widget.course.highlights.length - 1
+              );
+            }),
+            const SizedBox(height: _fOvGapHighFaq),
+          ],
 
           // FAQs
-          _buildSectionHeader("FAQs", showEdit: true),
-          const SizedBox(height: 16),
-          _buildFAQItem("Will I receive a certificate after the course?", "Yes, you will be awarded a digital certificate upon successful completion of the course.", isDark),
-          _buildFAQItem("Is the support available for lifetime?", "You will receive dedicated expert group support for a period of 3 years.", isDark),
-          _buildFAQItem("Do I need to purchase mobile tools separately?", "We provide a comprehensive list of recommended tools and train you on how to use them effectively.", isDark),
+          if (widget.course.faqs.isNotEmpty) ...[
+            _buildSectionHeader("FAQs", showEdit: false),
+            const SizedBox(height: 16),
+            ...widget.course.faqs.map((faq) => _buildFAQItem(
+              faq['question'] ?? '', 
+              faq['answer'] ?? '', 
+              isDark
+            )),
+          ],
           
           const SizedBox(height: 24),
           
@@ -695,123 +705,13 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
 
   // --- CONTENT SECTION (Videos/PDFs) ---
   Widget _buildContentTab() {
-    if (widget.course.contents.isNotEmpty) {
-      return _buildNestedContentList(widget.course.contents.cast<Map<String, dynamic>>());
-    }
-    return StreamBuilder<List<VideoModel>>(
-      stream: _firestoreService.getVideosForCourse(widget.course.id),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) return const Center(child: CircularProgressIndicator());
-        if (!snapshot.hasData || snapshot.data!.isEmpty) {
-          return Center(child: Text('No videos yet', style: GoogleFonts.manrope(color: Colors.grey)));
-        }
-        final videos = snapshot.data!;
-        return ListView.builder(
-          padding: const EdgeInsets.all(16),
-          itemCount: videos.length,
-          itemBuilder: (context, index) {
-            final video = videos[index];
-            return Card(
-              margin: const EdgeInsets.only(bottom: 12),
-                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  side: BorderSide(color: Colors.grey.withOpacity(0.2)),
-                ),
-                elevation: 0,
-              child: ListTile(
-                onTap: () {
-                   if (video.videoUrl.isNotEmpty) {
-                     Navigator.push(context, MaterialPageRoute(builder: (_) => 
-                       Scaffold(
-                         backgroundColor: Colors.black,
-                         appBar: AppBar(backgroundColor: Colors.transparent, iconTheme: const IconThemeData(color: Colors.white)),
-                         body: Center(child: CustomVideoPlayer(videoUrl: video.videoUrl, autoPlay: true)),
-                       )
-                     ));
-                   }
-                },
-                leading: Container(
-                  width: 50, height: 50,
-                  decoration: BoxDecoration(color: _bgPurpleLight, borderRadius: BorderRadius.circular(8)),
-                  child: Center(child: Icon(Icons.play_circle_fill, color: _primaryPurple)),
-                ),
-                title: Text(video.title, style: GoogleFonts.manrope(fontWeight: FontWeight.w600, fontSize: 15)),
-                subtitle: Text("Video • ${video.duration ?? '10 min'}", style: GoogleFonts.manrope(fontSize: 13, color: Colors.grey)),
-                trailing: const Icon(Icons.lock_open, color: Colors.green, size: 20),
-              ),
-            );
-          },
-        );
-      },
+    return CourseContentTab(
+      course: widget.course,
+      firestoreService: _firestoreService,
     );
   }
   
-  // Recursively build folders/files
-  Widget _buildNestedContentList(List<Map<String, dynamic>> items) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: items.length,
-      itemBuilder: (context, index) {
-        final item = items[index];
-        bool isFolder = item.containsKey('type') && item['type'] == 'folder';
-        
-        return Card(
-           margin: const EdgeInsets.only(bottom: 12),
-            shape: RoundedRectangleBorder(
-             borderRadius: BorderRadius.circular(12),
-             side: BorderSide(color: Colors.grey.withOpacity(0.1)),
-           ),
-           elevation: 0,
-           color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF161618) : Colors.white,
-           child: ListTile(
-             leading: Container(
-               width: 44, height: 44,
-               decoration: BoxDecoration(
-                 color: _bgPurpleLight.withOpacity(0.1),
-                 borderRadius: BorderRadius.circular(8)
-               ),
-               child: Icon(
-                 isFolder ? Icons.folder_open_rounded : Icons.play_circle_outline,
-                 color: _primaryPurple,
-               ),
-             ),
-             title: Text(
-               item['title'] ?? 'Untitled',
-               style: GoogleFonts.manrope(fontWeight: FontWeight.w600, fontSize: 15),
-             ),
-             subtitle: Text(
-               isFolder ? "${(item['children'] as List).length} items" : "Video",
-               style: GoogleFonts.manrope(fontSize: 13, color: Colors.grey),
-             ),
-             trailing: const Icon(Icons.chevron_right, size: 20),
-             onTap: () {
-               if (isFolder) {
-                  // Navigate to Folder Detail
-                  Navigator.push(context, MaterialPageRoute(
-                    builder: (_) => FolderDetailScreen(
-                      folderName: item['title'].toString(),
-                      contentList: (item['children'] as List).cast<Map<String, dynamic>>(),
-                    )
-                  ));
-               } else {
-                  // Play Video
-                  // ...
-               }
-             },
-           ),
-        );
-      },
-    );
-  }
-
   Widget _buildStudentsTab() {
     return Center(child: Text("Coming Soon", style: GoogleFonts.manrope(color: Colors.grey)));
-  }
-
-  String _getAuthenticatedUrl(String url) {
-    if (url.contains('b-cdn.net')) {
-      return url.replaceFirst('lme-media-storage.b-cdn.net', 'sg.storage.bunnycdn.com/lme-media-storage');
-    }
-    return url;
   }
 }

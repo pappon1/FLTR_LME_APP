@@ -5,11 +5,15 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
   final int currentStep;
   final bool isSelectionMode;
   final bool isDragMode;
+  final double cardPaddingH;
+  final double lineMargin;
 
   CollapsingStepIndicator({
     required this.currentStep,
     required this.isSelectionMode,
     required this.isDragMode,
+    this.cardPaddingH = 12.0,
+    this.lineMargin = 0.0,
   });
 
   @override
@@ -21,7 +25,7 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
     
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor, 
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 2), // Reduced vertical padding to 2
+      padding: EdgeInsets.symmetric(horizontal: cardPaddingH, vertical: 2), // Dynamic Padding
       child: Center(
         child: Container(
           decoration: BoxDecoration(
@@ -42,7 +46,7 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
           child: FittedBox(
             fit: BoxFit.scaleDown,
             child: SizedBox(
-              width: MediaQuery.of(context).size.width - 80, // Allow some padding
+              width: MediaQuery.of(context).size.width - (cardPaddingH * 2) - 32, // Dynamic Width Calc
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -115,7 +119,7 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
       child: Container(
         height: 2,
         color: currentStep > step ? AppTheme.primaryColor : Colors.grey.withValues(alpha: 0.2),
-        margin: const EdgeInsets.symmetric(horizontal: 4),
+        margin: EdgeInsets.symmetric(horizontal: lineMargin), // Dynamic Margin
       ),
     );
   }
@@ -130,6 +134,8 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
   bool shouldRebuild(covariant CollapsingStepIndicator oldDelegate) {
     return oldDelegate.currentStep != currentStep || 
            oldDelegate.isSelectionMode != isSelectionMode ||
-           oldDelegate.isDragMode != isDragMode;
+           oldDelegate.isDragMode != isDragMode ||
+           oldDelegate.cardPaddingH != cardPaddingH || // New Check
+           oldDelegate.lineMargin != lineMargin;       // New Check
   }
 }

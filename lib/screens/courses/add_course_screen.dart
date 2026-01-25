@@ -85,6 +85,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   int _selectedCertSlot = 1; // 1 or 2
   bool _isOfflineDownloadEnabled = true;
   bool _isSavingDraft = false;
+  Timer? _saveDebounce;
   final List<Map<String, dynamic>> _demoVideos = [];
   final _customValidityController = TextEditingController(); // For custom days
   String _difficulty = 'Beginner'; // Acts as Course Type
@@ -97,9 +98,15 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
   bool _isUploading = false;
   double _totalProgress = 0.0;
   String _uploadStatus = '';
+
+  // Highlights & FAQs Controllers
+  final List<TextEditingController> _highlightControllers = [];
+  final List<Map<String, TextEditingController>> _faqControllers = [];
+
   @override
   void initState() {
     super.initState();
+    debugPrint("AddCourseScreen Init - Design Fixed");
     _mrpController.addListener(_calculateFinalPrice);
     _discountAmountController.addListener(_calculateFinalPrice);
     
@@ -150,6 +157,25 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                 if (draft['customDays'] != null) {
                   _customValidityController.text = draft['customDays'].toString();
                 }
+
+                // Restore Highlights
+                if (draft['highlights'] != null) {
+                  _highlightControllers.clear();
+                  for (var h in draft['highlights']) {
+                    _highlightControllers.add(TextEditingController(text: h));
+                  }
+                }
+
+                // Restore FAQs
+                if (draft['faqs'] != null) {
+                  _faqControllers.clear();
+                  for (var f in draft['faqs']) {
+                    _faqControllers.add({
+                      'q': TextEditingController(text: f['question']),
+                      'a': TextEditingController(text: f['answer']),
+                    });
+                  }
+                }
           });
          
          // Silent restoration, no SnackBar
@@ -159,37 +185,51 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     }
   }
 
-  Future<void> _saveCourseDraft() async {
-    try {
-      setState(() => _isSavingDraft = true);
-      final prefs = await SharedPreferences.getInstance();
-      final Map<String, dynamic> draft = {
-         'title': _titleController.text,
-         'desc': _descController.text,
-         'mrp': _mrpController.text,
-         'discount': _discountAmountController.text,
-         'category': _selectedCategory,
-          'difficulty': _difficulty,
-          'contents': _courseContents,
-          'validity': _courseValidityDays,
-          'certificate': _hasCertificate,
-          'certSlot': _selectedCertSlot,
-          'offlineDownload': _isOfflineDownloadEnabled,
-          'isPublished': _isPublished,
-          'demoVideos': _demoVideos,
-          'customDays': int.tryParse(_customValidityController.text),
-       };
-      
-       await prefs.setString('course_creation_draft', jsonEncode(draft));
-       
-       if (mounted) {
-         Future.delayed(const Duration(seconds: 1), () {
-           if (mounted) setState(() => _isSavingDraft = false);
-         });
-       }
-    } catch (e) {
-       // debugPrint("Error saving draft: $e");
-    }
+    Future<void> _saveCourseDraft() async {
+    // Debounce: Cancel previous timer if active
+    if (_saveDebounce?.isActive ?? false) _saveDebounce!.cancel();
+
+    _saveDebounce = Timer(const Duration(milliseconds: 1500), () async {
+      if (!mounted) return;
+      try {
+        setState(() => _isSavingDraft = true);
+        final prefs = await SharedPreferences.getInstance();
+        final Map<String, dynamic> draft = {
+           'title': _titleController.text,
+           'desc': _descController.text,
+           'mrp': _mrpController.text,
+           'discount': _discountAmountController.text,
+           'category': _selectedCategory,
+            'difficulty': _difficulty,
+            // Only save shallow copy of contents for draft to avoid huge JSON if lots of local files? 
+            // Actually contents are maps, so okay.
+            'contents': _courseContents,
+            'validity': _courseValidityDays,
+            'certificate': _hasCertificate,
+            'certSlot': _selectedCertSlot,
+            'offlineDownload': _isOfflineDownloadEnabled,
+            'isPublished': _isPublished,
+            'demoVideos': _demoVideos,
+            'customDays': int.tryParse(_customValidityController.text),
+            'highlights': _highlightControllers.map((c) => c.text).toList(),
+            'faqs': _faqControllers.map((f) => {
+              'question': f['q']!.text,
+              'answer': f['a']!.text,
+            }).toList(),
+         };
+        
+         await prefs.setString('course_creation_draft', jsonEncode(draft));
+         
+         if (mounted) {
+           Future.delayed(const Duration(seconds: 2), () {
+             if (mounted) setState(() => _isSavingDraft = false);
+           });
+         }
+      } catch (e) {
+         // debugPrint("Error saving draft: $e");
+         if (mounted) setState(() => _isSavingDraft = false);
+      }
+    });
   }
 
 
@@ -217,7 +257,13 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     _durationController.dispose();
     _pageController.dispose();
     _scrollController.dispose();
+    _scrollController.dispose();
     _customValidityController.dispose();
+    for (var c in _highlightControllers) c.dispose();
+    for (var f in _faqControllers) {
+      f['q']!.dispose();
+      f['a']!.dispose();
+    }
 
     // Storage Optimization: Clear temporary files from picker cache
     unawaited(FilePicker.platform.clearTemporaryFiles());
@@ -572,6 +618,11 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
         demoVideos: _demoVideos,
         isOfflineDownloadEnabled: _isOfflineDownloadEnabled,
         contents: _courseContents,
+        highlights: _highlightControllers.map((c) => c.text.trim()).where((t) => t.isNotEmpty).toList(),
+        faqs: _faqControllers.map((f) => {
+          'question': f['q']!.text.trim(),
+          'answer': f['a']!.text.trim(),
+        }).where((f) => f['question']!.isNotEmpty && f['answer']!.isNotEmpty).toList(),
       );
 
       // Generate Session ID
@@ -785,6 +836,40 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
     _holdTimer?.cancel();
   }
 
+  // --- Highlights Management ---
+  void _addHighlight() {
+    setState(() {
+      _highlightControllers.add(TextEditingController());
+    });
+  }
+
+  void _removeHighlight(int index) {
+    setState(() {
+      _highlightControllers[index].dispose();
+      _highlightControllers.removeAt(index);
+    });
+    _saveCourseDraft();
+  }
+
+  // --- FAQs Management ---
+  void _addFAQ() {
+    setState(() {
+      _faqControllers.add({
+        'q': TextEditingController(),
+        'a': TextEditingController(),
+      });
+    });
+  }
+
+  void _removeFAQ(int index) {
+    setState(() {
+      _faqControllers[index]['q']!.dispose();
+      _faqControllers[index]['a']!.dispose();
+      _faqControllers.removeAt(index);
+    });
+    _saveCourseDraft();
+  }
+
   @override
    Widget build(BuildContext context) {
      return Scaffold(
@@ -979,7 +1064,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
        );
     }
     return AppBar(
-      title: const Text('Add New Course', style: TextStyle(fontWeight: FontWeight.bold)),
+      title: const Text('Add Course', style: TextStyle(fontWeight: FontWeight.bold)),
       centerTitle: true,
       elevation: 0,
     );
@@ -1033,7 +1118,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
           delegate: CollapsingStepIndicator(
             currentStep: 0,
             isSelectionMode: false,
-            isDragMode: false
+            isDragMode: false,
           ),
           pinned: true,
         ),
@@ -1043,6 +1128,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+
                 const Text('Create New Course', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                 if (_isSavingDraft) 
                   TweenAnimationBuilder<double>(
@@ -1077,7 +1163,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                       width: double.infinity,
                       decoration: BoxDecoration(
                         color: Theme.of(context).scaffoldBackgroundColor,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(0),
                         border: Border.all(color: _thumbnailImage == null ? Colors.grey.shade300 : AppTheme.primaryColor.withOpacity(0.5), width: _thumbnailImage == null ? 1 : 2),
                         image: _thumbnailImage != null
                             ? DecorationImage(image: FileImage(_thumbnailImage!), fit: BoxFit.cover)
@@ -1158,6 +1244,121 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
                    items: const [DropdownMenuItem(value: 30, child: Text('1 Month')), DropdownMenuItem(value: 60, child: Text('2 Months')), DropdownMenuItem(value: 90, child: Text('3 Months'))],
                    onChanged: (v) => setState(() => _newBatchDurationDays = v!),
                 ),
+                
+                const SizedBox(height: 32),
+                
+                // 6. Highlights Section
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Highlights', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    TextButton.icon(
+                      onPressed: _addHighlight,
+                      icon: const Icon(Icons.add_circle_outline, size: 18),
+                      label: const Text('Add'),
+                      style: TextButton.styleFrom(foregroundColor: AppTheme.primaryColor),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (_highlightControllers.isEmpty)
+                  const Text('No highlights added.', style: TextStyle(color: Colors.grey, fontSize: 13, fontStyle: FontStyle.italic))
+                else
+                  ..._highlightControllers.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final controller = entry.value;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                           const Icon(Icons.check_circle_outline, color: Colors.green, size: 20),
+                           const SizedBox(width: 8),
+                           Expanded(
+                             child: TextField(
+                               controller: controller,
+                               decoration: const InputDecoration(
+                                 hintText: 'e.g. Learn Chip Level Repair',
+                                 isDense: true,
+                                 border: OutlineInputBorder(),
+                               ),
+                               onChanged: (_) => _saveCourseDraft(),
+                             ),
+                           ),
+                           IconButton(
+                             icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
+                             onPressed: () => _removeHighlight(index),
+                           ),
+                        ],
+                      ),
+                    );
+                  }),
+                  
+                const SizedBox(height: 32),
+
+                // 7. FAQs Section
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('FAQs', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    TextButton.icon(
+                      onPressed: _addFAQ,
+                      icon: const Icon(Icons.add_circle_outline, size: 18),
+                      label: const Text('Add'),
+                      style: TextButton.styleFrom(foregroundColor: AppTheme.primaryColor),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                if (_faqControllers.isEmpty)
+                   const Text('No FAQs added.', style: TextStyle(color: Colors.grey, fontSize: 13, fontStyle: FontStyle.italic))
+                else
+                   ..._faqControllers.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final faq = entry.value;
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).cardColor,
+                        border: Border.all(color: Colors.grey.withOpacity(0.2)),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextField(
+                                  controller: faq['q'],
+                                  decoration: const InputDecoration(
+                                    labelText: 'Question',
+                                    isDense: true,
+                                    prefixIcon: Icon(Icons.help_outline, size: 18),
+                                  ),
+                                  onChanged: (_) => _saveCourseDraft(),
+                                ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, color: Colors.red),
+                                onPressed: () => _removeFAQ(index),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: faq['a'],
+                            maxLines: 2,
+                            decoration: const InputDecoration(
+                               labelText: 'Answer',
+                               isDense: true,
+                               alignLabelWithHint: true,
+                            ),
+                            onChanged: (_) => _saveCourseDraft(),
+                          ),
+                        ],
+                      ),
+                    );
+                   }),
               ],
             ),
           ),
@@ -2357,6 +2558,8 @@ class _AddCourseScreenState extends State<AddCourseScreen> {
       await Future.any(active); // Wait for at least one to finish
     }
   }
+
+
 }
 
 class KeepAliveWrapper extends StatefulWidget {

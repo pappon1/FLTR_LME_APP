@@ -136,7 +136,7 @@ void onStart(ServiceInstance service) async {
   final bunnyService = BunnyCDNService();
   // TUS Uploader with Real Credentials
   final tusUploader = TusUploader(
-    apiKey: '0db49ca1-ac4b-40ae-9aa5d710ef1d-00ec-4077', 
+    apiKey: 'eae59342-6952-4d56-bb2fb8745da1-adf7-402d', 
     libraryId: '583681',   
     videoId: '', // Will be generated per file or managed dynamically
   );
@@ -686,7 +686,7 @@ void onStart(ServiceInstance service) async {
             await bunnyService.deleteVideo(
               libraryId: '583681', 
               videoId: assetUrl, 
-              apiKey: '0db49ca1-ac4b-40ae-9aa5d710ef1d-00ec-4077'
+              apiKey: 'eae59342-6952-4d56-bb2fb8745da1-adf7-402d'
             );
          } else if (remotePath != null && remotePath.isNotEmpty) {
             // Storage file cleanup
@@ -817,7 +817,7 @@ void onStart(ServiceInstance service) async {
                   deletedFromServer = await bunnyService.deleteVideo(
                     libraryId: '583681', 
                     videoId: assetUrl, 
-                    apiKey: '0db49ca1-ac4b-40ae-9aa5d710ef1d-00ec-4077'
+                    apiKey: 'eae59342-6952-4d56-bb2fb8745da1-adf7-402d'
                   );
                } else if (remotePath != null && remotePath.isNotEmpty) {
                   print("📁 Status Independence: Deleting Storage Path $remotePath from Bunny...");
@@ -961,11 +961,23 @@ Future<void> _finalizeCourseIfPending() async {
      }
      courseData['demoVideos'] = demos;
 
-     // --- NEW VALIDATION ---
-     // Prevent publishing if user deleted EVERYTHING or if critical data is missing
-     if (contents.isEmpty && demos.isEmpty) {
-        print("⚠️ [BG SERVICE] Aborting publish: No content or demo videos left.");
-        return; 
+     // --- 3.5 NEW SAFETY CHECK: Ensure No Local Paths Remain ---
+     bool hasLocalPaths = false;
+     
+     // Check Top Level
+     if (courseData['thumbnailUrl'] != null && 
+         courseData['thumbnailUrl'].toString().startsWith('/')) {
+        hasLocalPaths = true;
+     }
+
+     // Check Contents
+     hasLocalPaths = _checkForLocalPaths(contents);
+     
+     if (hasLocalPaths) {
+       print("🛑 [BG SERVICE] SAFETY HALT: Course still contains local paths! Aborting publish.");
+       // Ideally, notify user or retry logic here.
+       // For now, we return to prevent corruption.
+       return; 
      }
 
      // 4. Mark as Published and Active
@@ -1100,4 +1112,28 @@ void _removeFileFromContentsRecursive(List<dynamic> contents, String filePath) {
         _removeFileFromContentsRecursive(item['contents'], filePath);
      }
   }
+}
+
+bool _checkForLocalPaths(List<dynamic> contents) {
+  for (var item in contents) {
+    if (item is! Map) continue;
+    
+    // Check main path
+    if (item['path'] != null && item['path'].toString().startsWith('/')) {
+        print("⚠️ Found local path in content: ${item['name']}");
+        return true;
+    }
+
+    // Check thumbnail if exists
+    if (item['thumbnail'] != null && item['thumbnail'].toString().startsWith('/')) {
+        print("⚠️ Found local thumbnail in content: ${item['name']}");
+        return true;
+    }
+
+    // Recurse for folders
+    if (item['type'] == 'folder' && item['contents'] != null) {
+       if (_checkForLocalPaths(item['contents'])) return true;
+    }
+  }
+  return false;
 }

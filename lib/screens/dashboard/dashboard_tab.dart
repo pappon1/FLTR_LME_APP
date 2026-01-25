@@ -276,7 +276,7 @@ class _DashboardTabState extends State<DashboardTab> {
                               child: AspectRatio(
                                 aspectRatio: 16/9,
                                 child: CachedNetworkImage(
-                                  imageUrl: BunnyCDNService().getAuthenticatedUrl(imageUrl),
+                                  imageUrl: (imageUrl != null) ? BunnyCDNService.signUrl(imageUrl) : "",
                                   httpHeaders: const {'AccessKey': BunnyCDNService.apiKey},
                                   fit: BoxFit.cover,
                                   width: double.infinity,

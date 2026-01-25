@@ -60,11 +60,9 @@ class CourseCard extends StatelessWidget {
                 color: isDark ? Colors.grey.shade900 : Colors.grey.shade200,
               ),
               child: CachedNetworkImage(
-                imageUrl: course.thumbnailUrl.contains('b-cdn.net') 
-                    ? course.thumbnailUrl.replaceFirst('lme-media-storage.b-cdn.net', 'sg.storage.bunnycdn.com/lme-media-storage')
-                    : course.thumbnailUrl,
-                httpHeaders: course.thumbnailUrl.contains('b-cdn.net') 
-                    ? {'AccessKey': BunnyCDNService.apiKey} 
+                imageUrl: BunnyCDNService.signUrl(course.thumbnailUrl),
+                httpHeaders: BunnyCDNService.signUrl(course.thumbnailUrl).contains('storage.bunnycdn.com') 
+                    ? const {'AccessKey': BunnyCDNService.apiKey} 
                     : null,
                 fit: BoxFit.cover,
                 placeholder: (context, url) => Shimmer.fromColors(
