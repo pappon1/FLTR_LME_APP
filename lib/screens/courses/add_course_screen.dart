@@ -114,6 +114,14 @@ class _AddCourseScreenState extends State<AddCourseScreen>
   final List<TextEditingController> _highlightControllers = [];
   final List<Map<String, TextEditingController>> _faqControllers = [];
 
+  // Validation & Focus
+  bool _thumbnailError = false;
+  final _titleFocus = FocusNode();
+  final _descFocus = FocusNode();
+  final _mrpFocus = FocusNode();
+  final _discountFocus = FocusNode();
+
+
   @override
   void initState() {
     super.initState();
@@ -315,6 +323,13 @@ class _AddCourseScreenState extends State<AddCourseScreen>
     _pageController.dispose();
     _scrollController.dispose();
     _customValidityController.dispose();
+
+    // Dispose FocusNodes
+    _titleFocus.dispose();
+    _descFocus.dispose();
+    _mrpFocus.dispose();
+    _discountFocus.dispose();
+
     for (var c in _highlightControllers) c.dispose();
     for (var f in _faqControllers) {
       f['q']?.dispose(); // Safe null check
@@ -631,8 +646,11 @@ class _AddCourseScreenState extends State<AddCourseScreen>
   }
 
   void _nextStep() async {
-    // Auto-Cleanup FAQs & Highlights: Step 1 contains both
+    // 1. Validation for Step 0 (Basic Info)
     if (_currentStep == 0) {
+      if (!_validateStep0()) return;
+
+      // Auto-Cleanup FAQs & Highlights: Step 1 contains both
       bool cleaned = false;
       setState(() {
         // Cleanup FAQs
@@ -667,6 +685,45 @@ class _AddCourseScreenState extends State<AddCourseScreen>
       await _pageController.nextPage(duration: 250.ms, curve: Curves.easeInOut);
     }
   }
+
+  bool _validateStep0() {
+    setState(() => _thumbnailError = false);
+
+    if (_thumbnailImage == null) {
+      setState(() => _thumbnailError = true);
+      _showWarning('Please select a course cover image');
+      return false;
+    }
+    if (_titleController.text.trim().isEmpty) {
+      _titleFocus.requestFocus();
+      _showWarning('Please enter a course title');
+      return false;
+    }
+    if (_descController.text.trim().isEmpty) {
+      _descFocus.requestFocus();
+      _showWarning('Please enter a course description');
+      return false;
+    }
+    if (_mrpController.text.trim().isEmpty) {
+      _mrpFocus.requestFocus();
+      _showWarning('Please enter MRP (Price)');
+      return false;
+    }
+    if (_selectedCategory == null) {
+      _showWarning('Please select a course category');
+      return false;
+    }
+    if (_difficulty == null) {
+      _showWarning('Please select a course type');
+      return false;
+    }
+    if (_newBatchDurationDays == null) {
+      _showWarning('Please select new badge duration');
+      return false;
+    }
+    return true;
+  }
+
 
   void _prevStep() async {
     if (_currentStep > 0) {
@@ -1182,6 +1239,8 @@ class _AddCourseScreenState extends State<AddCourseScreen>
     );
   }
 
+
+
   Widget _buildUploadingOverlay() {
     return Container(
       color: Colors.black.withOpacity(0.85),
@@ -1651,14 +1710,14 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                         borderRadius: BorderRadius.circular(_globalRadius),
                         border: Border.all(
                           color: _thumbnailImage == null
-                              ? Theme.of(
-                                  context,
-                                ).dividerColor.withOpacity(_borderOpacity)
+                              ? (_thumbnailError
+                                  ? Colors.red.withOpacity(0.8)
+                                  : Theme.of(
+                                      context,
+                                    ).dividerColor.withOpacity(_borderOpacity))
                               : AppTheme.primaryColor.withOpacity(0.5),
-                          width: _thumbnailImage == null ? 1 : 2,
-                          style: _thumbnailImage == null
-                              ? BorderStyle.solid
-                              : BorderStyle.solid,
+                          width: (_thumbnailImage == null && _thumbnailError) ? 2 : (_thumbnailImage == null ? 1 : 2),
+                          style: BorderStyle.solid,
                         ),
                         boxShadow: _thumbnailImage == null
                             ? [
@@ -1705,6 +1764,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                 // 2. Title
                 _buildTextField(
                   controller: _titleController,
+                  focusNode: _titleFocus,
                   label: 'Course Title',
                   hint: 'Advanced Mobile Repairing',
                   icon: Icons.title,
@@ -1714,6 +1774,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                 // 3. Description
                 _buildTextField(
                   controller: _descController,
+                  focusNode: _descFocus,
                   label: 'Description',
                   hint: 'Explain what students will learn...',
                   maxLines: 5,
@@ -1728,6 +1789,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                       flex: 2,
                       child: _buildTextField(
                         controller: _mrpController,
+                        focusNode: _mrpFocus,
                         label: 'MRP',
                         hint: '5000',
                         keyboardType: TextInputType.number,
@@ -1738,6 +1800,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                       flex: 3,
                       child: _buildTextField(
                         controller: _discountAmountController,
+                        focusNode: _discountFocus,
                         label: 'Discount ₹',
                         hint: '1000',
                         keyboardType: TextInputType.number,
@@ -3661,11 +3724,13 @@ class _AddCourseScreenState extends State<AddCourseScreen>
     bool readOnly = false,
     bool alignTop = false,
     void Function(String)? onChanged,
+    FocusNode? focusNode,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
         controller: controller,
+        focusNode: focusNode,
         keyboardType: keyboardType,
         maxLines: maxLines,
         maxLength: maxLength,

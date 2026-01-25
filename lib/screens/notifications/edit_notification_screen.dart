@@ -367,14 +367,11 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return GestureDetector(
-      onTap: () => FocusScope.of(context).unfocus(),
-      behavior: HitTestBehavior.opaque,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Edit Scheduled Notification'),
-          centerTitle: true,
-        ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Edit Scheduled Notification'),
+        centerTitle: true,
+      ),
       body: Column(
         children: [
           Expanded(
@@ -462,7 +459,6 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
                             prefixIcon: const Icon(Icons.title),
                           ),
                           onChanged: (v) => setState(() {}),
-                          onTapOutside: (event) => FocusManager.instance.primaryFocus?.unfocus(),
                           validator: (v) => v!.isEmpty ? 'Required' : null,
                         ),
                         const SizedBox(height: 16),
@@ -475,7 +471,6 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
                           ),
                           maxLines: 3,
                           onChanged: (v) => setState(() {}),
-                           onTapOutside: (event) => FocusManager.instance.primaryFocus?.unfocus(),
                            validator: (v) => v!.isEmpty ? 'Required' : null,
                         ),
                         const SizedBox(height: 16),
@@ -548,7 +543,6 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
                             Expanded(
                               child: OutlinedButton.icon(
                                 onPressed: () async {
-                                  FocusScope.of(context).unfocus();
                                   final d = await showDatePicker(
                                     context: context, 
                                     initialDate: _scheduledDate ?? DateTime.now(), 
@@ -566,7 +560,6 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
                             Expanded(
                               child: OutlinedButton.icon(
                                 onPressed: () async {
-                                  FocusScope.of(context).unfocus();
                                   final t = await showTimePicker(context: context, initialTime: _scheduledTime ?? TimeOfDay.now());
                                   if (t != null) setState(() => _scheduledTime = t);
                                 },
@@ -606,9 +599,9 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
           ),
         ],
       ),
-      ),
     );
   }
+
 
   Widget _buildSelectionCard(BuildContext context, IconData icon, Color color, String title, String value, VoidCallback onTap) {
     final isDark = Theme.of(context).brightness == Brightness.dark;

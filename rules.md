@@ -22,5 +22,8 @@ Aapko hamesha niche diye gaye rules follow karne hain taaki coding fast, bug-fre
 - **Smart Retries:** Network failures ke liye "Exponential Back-off" use karein (Wait time ko har failure ke baad badhate jayein).
 - **Hidden Resource Leak:** Unused streams, timers, aur listeners ko hamesha dispose/cancel karein. Memory leaks aur hidden CPU usage ko zero rakhein.
 
-### 6. Play Store Policy Compliance
-- SDK versions, sensitive permissions, aur data handling ko hamesha secure aur compliant rakhein.
+### 7. 🛠️ Admin Dashboard Focus (Mandatory Context)
+- **Project Identity:** Ye project hamesha **Admin Backend / Control Panel** rahega, User App nahi.
+- **Power Features First:** Design aur logic mein hamesha "Control" ko priority dein (Delete, Edit, Reorder, Visibility Toggles).
+- **Admin Mindset:** Har implementation mein ye sochein ki "Admin" ko system par full control mile. 
+- **Strict Implementation:** Developer (Bhai) ke kehne par ye "Admin Power" features hamesha priority par rakhein.

@@ -98,8 +98,17 @@ class MyApp extends StatelessWidget {
               theme: AppTheme.lightTheme,
               darkTheme: AppTheme.darkTheme,
               themeMode: themeProvider.themeMode,
+              builder: (context, child) {
+                return GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+                  child: child,
+                );
+              },
+
               home: const AuthWrapper(),
             ),
+
           );
         },
       ),

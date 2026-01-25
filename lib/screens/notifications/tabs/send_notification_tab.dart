@@ -193,7 +193,6 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
   }
 
   Future<void> _selectDate() async {
-    FocusScope.of(context).unfocus(); // Dismiss keyboard
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
@@ -231,7 +230,6 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
        return;
     }
 
-    FocusScope.of(context).unfocus();
     final TimeOfDay? picked = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.now(),
@@ -378,7 +376,6 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
   }
 
   void _showAudienceSelector() {
-    FocusScope.of(context).unfocus(); // Dismiss keyboard
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     // Internal state for the sheet
@@ -591,7 +588,6 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
 
 
   void _showActionSelector() {
-    FocusScope.of(context).unfocus(); // Dismiss keyboard
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     // Internal state
@@ -778,11 +774,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
-    return GestureDetector(
-      onTap: () {
-        FocusScope.of(context).unfocus();
-      },
-      child: SingleChildScrollView(
+    return SingleChildScrollView(
         child: Column(
           children: [
           Container(
@@ -1048,9 +1040,9 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
           ),
         ],
       ),
-      ),
     );
   }
+
 
   void _showClearConfirmation() {
     int secondsRemaining = 5;

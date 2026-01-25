@@ -154,16 +154,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
           _closeSearch();
         }
       },
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () {
-          // Hide keyboard when tapping anywhere outside text fields
-          final currentFocus = FocusScope.of(context);
-          if (!currentFocus.hasPrimaryFocus && currentFocus.focusedChild != null) {
-            FocusManager.instance.primaryFocus?.unfocus();
-          }
-        },
-        child: Scaffold(
+      child: Scaffold(
         backgroundColor: isDark ? Colors.black : const Color(0xFFF8FAFC),
         body: AnnotatedRegion<SystemUiOverlayStyle>(
           value: SystemUiOverlayStyle(
@@ -227,9 +218,9 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
             ),
           ),
         ),
-      ),
     );
   }
+
 
   Widget _buildLoader() {
     final isDark = Theme.of(context).brightness == Brightness.dark;

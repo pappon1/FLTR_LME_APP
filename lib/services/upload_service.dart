@@ -136,7 +136,7 @@ void onStart(ServiceInstance service) async {
   final bunnyService = BunnyCDNService();
   // TUS Uploader with Real Credentials
   final tusUploader = TusUploader(
-    apiKey: 'eae59342-6952-4d56-bb2fb8745da1-adf7-402d', 
+    apiKey: '0db49ca1-ac4b-40ae-9aa5d710ef1d-00ec-4077', 
     libraryId: '583681',   
     videoId: '', // Will be generated per file or managed dynamically
   );
@@ -686,7 +686,7 @@ void onStart(ServiceInstance service) async {
             await bunnyService.deleteVideo(
               libraryId: '583681', 
               videoId: assetUrl, 
-              apiKey: 'eae59342-6952-4d56-bb2fb8745da1-adf7-402d'
+              apiKey: '0db49ca1-ac4b-40ae-9aa5d710ef1d-00ec-4077'
             );
          } else if (remotePath != null && remotePath.isNotEmpty) {
             // Storage file cleanup
