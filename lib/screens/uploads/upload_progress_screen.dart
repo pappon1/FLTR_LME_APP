@@ -31,10 +31,27 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
   @override
   void initState() {
     super.initState();
-    _loadInitialState();
+    _isLoading = true;
+    _isManualRefreshing = true; // Block service updates from killing shimmer
+    _handleInitialLoad();
     _setupListener();
-    _refreshStatus();
   }
+
+  Future<void> _handleInitialLoad() async {
+    // 1. Load local fast
+    await _loadInitialState();
+    // 2. Ask service for newest data
+    _refreshStatus();
+    // 3. FORCE Shimmer visibility for at least 800ms
+    await Future.delayed(const Duration(milliseconds: 800));
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _isManualRefreshing = false;
+      });
+    }
+  }
+
 
   @override
   void dispose() {
@@ -56,11 +73,12 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
     // 1. Ask service for update
     _refreshStatus();
     
-    // 2. Also load from SharedPreferences for safety (if service is asleep)
+    // 2. Also load from SharedPreferences for safety
     await _loadInitialState();
     
-    // Shimmer will show up for at least 800ms for a premium feel
-    await Future.delayed(const Duration(milliseconds: 800));
+    // FORCE shimmer to stay for 1.2s for a premium feel
+    await Future.delayed(const Duration(milliseconds: 1200));
+    
     if (mounted) {
       setState(() {
         _isLoading = false;
@@ -69,20 +87,18 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
     }
   }
 
+
   Future<void> _loadInitialState() async {
     final prefs = await SharedPreferences.getInstance();
     final String? queueJson = prefs.getString('upload_queue_v1');
     if (queueJson != null && mounted) {
       setState(() {
         _queue = List<Map<String, dynamic>>.from(jsonDecode(queueJson));
-        _isLoading = false;
       });
-    } else {
-      // Small artificial delay to show shimmer if fast
-      await Future.delayed(const Duration(milliseconds: 300));
-      if (mounted) setState(() => _isLoading = false);
     }
   }
+
+
 
    void _setupListener() {
     _statusSubscription = FlutterBackgroundService().on('update').listen((event) {
@@ -344,11 +360,11 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
               tooltip: 'Delete Selected',
             )
           else ...[
-            if (_queue.isNotEmpty)
+            if (_queue.isNotEmpty || _isLoading)
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                 child: TextButton.icon(
-                  onPressed: _togglePause,
+                  onPressed: _isLoading ? null : _togglePause,
                   icon: Icon(_isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded, size: 18),
                   label: Text(_isPaused ? 'Resume' : 'Pause', style: const TextStyle(fontSize: 12)),
                   style: TextButton.styleFrom(
@@ -359,7 +375,7 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
                   ),
                 ),
               ),
-            if (_queue.isNotEmpty)
+            if (_queue.isNotEmpty && !_isLoading)
               IconButton(
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
@@ -369,7 +385,7 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
                 }),
                 tooltip: 'Selection Mode',
               ),
-            if (_queue.isNotEmpty)
+            if (_queue.isNotEmpty && !_isLoading)
               IconButton(
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
@@ -381,28 +397,30 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
           const SizedBox(width: 8),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: _onRefresh,
-        child: _isLoading 
-            ? SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                child: _buildShimmerState(),
-              )
-            : _queue.isEmpty 
-                ? SingleChildScrollView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    child: SizedBox(
-                      height: MediaQuery.of(context).size.height - 100, // Make it fill screen so pull works
-                      child: _buildEmptyState(),
-                    ),
-                  )
-                : Column(
-                    children: [
-                      _buildHeaderStats(uploading, pending, failed, overallProgress),
-                      Expanded(
-                        child: ListView.builder(
+      body: Column(
+        children: [
+          // Sticky Header (Always on top, even during loading)
+          _buildHeaderStats(uploading, pending, failed, overallProgress),
+          
+          Expanded(
+            child: RefreshIndicator(
+              onRefresh: _onRefresh,
+              displacement: 20,
+              child: _isLoading 
+                  ? _buildShimmerState()
+                  : _queue.isEmpty 
+                      ? LayoutBuilder(
+                          builder: (context, constraints) => SingleChildScrollView(
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                              child: _buildEmptyState(),
+                            ),
+                          ),
+                        )
+                      : ListView.builder(
                           physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.all(16),
+                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100), 
                           itemCount: _queue.length,
                           itemBuilder: (context, index) {
                             final task = _queue[index];
@@ -419,47 +437,27 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
                             );
                           },
                         ),
-                      ),
-                    ],
-                  ),
+            ),
+          ),
+        ],
       ),
+
     );
   }
 
+
   Widget _buildShimmerState() {
-    return Column(
-      children: [
-        // Fake Header Stat Shimmer
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-          height: 80, // Ultra slim shimmer
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
-          ),
-          child: const Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  ShimmerLoading.rectangular(height: 14, width: 40),
-                  ShimmerLoading.rectangular(height: 14, width: 40),
-                  ShimmerLoading.rectangular(height: 14, width: 40),
-                ],
-              ),
-              SizedBox(height: 12),
-              ShimmerLoading.rectangular(height: 6),
-            ],
-          ),
-        ),
-        const ShimmerList(
-          itemBuilder: UploadShimmerItem(),
-        ),
-      ],
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(16.0),
+      itemCount: 6,
+      itemBuilder: (context, index) => const UploadShimmerItem(),
     );
   }
+
+
+
+
 
   Widget _buildEmptyState() {
     return Center(

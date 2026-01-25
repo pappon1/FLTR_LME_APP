@@ -25,6 +25,7 @@ class ShimmerLoading extends StatelessWidget {
     return Shimmer.fromColors(
       baseColor: isDark ? const Color(0xFF2C2C2C) : Colors.grey[300]!,
       highlightColor: isDark ? const Color(0xFF3D3D3D) : Colors.grey[100]!,
+      period: const Duration(milliseconds: 1500),
       child: Container(
         width: width,
         height: height,
@@ -35,6 +36,7 @@ class ShimmerLoading extends StatelessWidget {
       ),
     );
   }
+
 }
 
 class NotificationShimmerItem extends StatelessWidget {
@@ -174,33 +176,51 @@ class UploadShimmerItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: Container(
-        height: 80,
+        height: 106, // Matches real card height better
         decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
         ),
         child: const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0),
-          child: Row(
+          padding: EdgeInsets.all(12.0),
+          child: Column(
             children: [
-              ShimmerLoading.circular(width: 40, height: 40),
-              SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ShimmerLoading.rectangular(height: 14, width: 200),
-                    SizedBox(height: 8),
-                    ShimmerLoading.rectangular(height: 10, width: 60),
-                  ],
-                ),
+              Row(
+                children: [
+                  // Leading Thumbnail placeholder
+                  ShimmerLoading.rectangular(width: 60, height: 34), 
+                  SizedBox(width: 12),
+                  // Content area
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        ShimmerLoading.rectangular(height: 14, width: 180),
+                        SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            ShimmerLoading.rectangular(height: 10, width: 50),
+                            ShimmerLoading.rectangular(height: 10, width: 80),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: 12),
+                  // Action button placeholder
+                  ShimmerLoading.circular(width: 24, height: 24),
+                ],
               ),
-              SizedBox(width: 16),
-              ShimmerLoading.circular(width: 24, height: 24),
+              Spacer(),
+              // Progress Bar placeholder
+              ShimmerLoading.rectangular(height: 4),
             ],
           ),
         ),
@@ -208,3 +228,4 @@ class UploadShimmerItem extends StatelessWidget {
     );
   }
 }
+
