@@ -105,10 +105,10 @@ class _AddCourseScreenState extends State<AddCourseScreen>
   String _uploadStatus = '';
 
   // Design State
-  double _globalRadius = 14.0; // Restored to a more balanced default, user can adjust
-  double _inputVerticalPadding = 16.0;
+  double _globalRadius = 3.0;
+  double _inputVerticalPadding = 10.0;
   double _borderOpacity = 0.12;
-  double _fillOpacity = 0.05;
+  double _fillOpacity = 0.0;
 
   // Highlights & FAQs Controllers
   final List<TextEditingController> _highlightControllers = [];
