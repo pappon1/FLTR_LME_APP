@@ -89,7 +89,7 @@ class _SentHistoryScreenState extends State<SentHistoryScreen> {
 
               return Card(
                 elevation: 2,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
                 child: ExpansionTile(
                   leading: CircleAvatar(
                     backgroundColor: AppTheme.primaryColor.withValues(alpha: 0.1),
@@ -123,7 +123,7 @@ class _SentHistoryScreenState extends State<SentHistoryScreen> {
                             Padding(
                               padding: const EdgeInsets.only(bottom: 12),
                               child: ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(3.0),
                                 child: CachedNetworkImage(
                                   imageUrl: BunnyCDNService().getAuthenticatedUrl(data['imageUrl'] as String),
                                   width: double.infinity,
@@ -159,3 +159,4 @@ class _SentHistoryScreenState extends State<SentHistoryScreen> {
     );
   }
 }
+

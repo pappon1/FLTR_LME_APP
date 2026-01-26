@@ -230,7 +230,7 @@ class CourseCard extends StatelessWidget {
                             backgroundColor: const Color(0xFF536DFE),
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(horizontal: 20),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
                             elevation: 0,
                           ),
                           child: const Text('See More', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
@@ -247,3 +247,4 @@ class CourseCard extends StatelessWidget {
     );
   }
 }
+

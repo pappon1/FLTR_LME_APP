@@ -148,7 +148,7 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
                   width: double.infinity,
                   decoration: BoxDecoration(
                     color: Colors.black12,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(3.0),
                     border: Border.all(color: Colors.grey),
                   ),
                   child: Column(
@@ -184,7 +184,7 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
                       width: 120,
                       decoration: BoxDecoration(
                         color: Colors.grey[200],
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(3.0),
                         image: _thumbnailFile != null
                             ? DecorationImage(
                                 image: FileImage(_thumbnailFile!),
@@ -276,3 +276,4 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
     );
   }
 }
+

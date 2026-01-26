@@ -71,7 +71,7 @@ class VideoGestureOverlay extends StatelessWidget {
       height: 160,
       decoration: BoxDecoration(
         color: bgColor,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(3.0),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4)],
       ),
       child: Column(
@@ -104,3 +104,4 @@ class VideoGestureOverlay extends StatelessWidget {
     );
   }
 }
+

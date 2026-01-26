@@ -30,7 +30,7 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
         child: Container(
           decoration: BoxDecoration(
             color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(3.0),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.05),
@@ -139,3 +139,4 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
            oldDelegate.lineMargin != lineMargin;       // New Check
   }
 }
+

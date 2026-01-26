@@ -460,7 +460,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                        padding: const EdgeInsets.all(12),
                        decoration: BoxDecoration(
                          color: Colors.red.withValues(alpha: 0.1),
-                         borderRadius: BorderRadius.circular(8),
+                         borderRadius: BorderRadius.circular(3.0),
                          border: Border.all(color: Colors.red.withValues(alpha: 0.5))
                        ),
                        child: Row(
@@ -476,7 +476,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                     Column(
                       children: [
                          ClipRRect(
-                           borderRadius: BorderRadius.circular(12),
+                           borderRadius: BorderRadius.circular(3.0),
                            child: AspectRatio(
                              aspectRatio: 16/9,
                              child: Image.file(
@@ -495,7 +495,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                       width: double.infinity,
                       decoration: BoxDecoration(
                         color: Colors.grey.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(3.0),
                         border: Border.all(color: Colors.grey.withValues(alpha: 0.3), style: BorderStyle.solid)
                       ),
                       margin: const EdgeInsets.only(bottom: 16),
@@ -561,7 +561,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 10),
-        decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: const BorderRadius.vertical(top: Radius.circular(20))),
+        decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: const BorderRadius.vertical(top: Radius.circular(3.0))),
         child: SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -805,7 +805,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                   padding: const EdgeInsets.only(top: 12, right: 24, bottom: 0),
                   child: InkWell(
                      onTap: _showAddContentMenu,
-                     borderRadius: BorderRadius.circular(30),
+                     borderRadius: BorderRadius.circular(3.0),
                      child: Container(
                        height: 50,
                        width: 50,
@@ -894,7 +894,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
               margin: const EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(3.0),
               ),
             ),
           ),
@@ -956,3 +956,4 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
     );
   }
 }
+

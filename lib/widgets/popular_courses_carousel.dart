@@ -129,7 +129,7 @@ class _PopularCoursesCarouselState extends State<PopularCoursesCarousel> {
             margin: const EdgeInsets.symmetric(horizontal: 8),
             decoration: BoxDecoration(
               color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(3.0),
               border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.3)),
             ),
             child: Column(
@@ -187,7 +187,7 @@ class _PopularCoursesCarouselState extends State<PopularCoursesCarousel> {
                   color: _currentPage == index
                       ? AppTheme.primaryColor
                       : Colors.grey.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(3.0),
                 ),
               );
             }),
@@ -218,7 +218,7 @@ class _PopularCoursesCarouselState extends State<PopularCoursesCarousel> {
         margin: const EdgeInsets.symmetric(horizontal: 8), // More spacing
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(3.0),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.05),
@@ -310,7 +310,7 @@ class _PopularCoursesCarouselState extends State<PopularCoursesCarousel> {
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
                               color: Colors.red.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(4),
+                              borderRadius: BorderRadius.circular(3.0),
                             ),
                             child: Text(
                               '$discountPercent% OFF',
@@ -334,3 +334,4 @@ class _PopularCoursesCarouselState extends State<PopularCoursesCarousel> {
     );
   }
 }
+

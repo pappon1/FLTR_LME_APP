@@ -185,7 +185,7 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.blue.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(3.0),
                 border: Border.all(color: Colors.blue.withValues(alpha: 0.3)),
               ),
               child: const Text(
@@ -205,7 +205,7 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
                 height: 180, // 16:9
                 decoration: BoxDecoration(
                   color: isDark ? Colors.grey[900] : Colors.white,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(3.0),
                   border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
                   boxShadow: [
                     BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))
@@ -225,12 +225,12 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
                           // Main Image Display (New or Existing)
                           if (_selectedImage != null)
                             ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(3.0),
                               child: Image.file(_selectedImage!, fit: BoxFit.cover, width: double.infinity, height: double.infinity),
                             )
                           else if (_existingImageUrl != null)
                             ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(3.0),
                               child: CachedNetworkImage(
                                 imageUrl: BunnyCDNService().getAuthenticatedUrl(_existingImageUrl!),
                                 httpHeaders: const {'AccessKey': BunnyCDNService.apiKey},
@@ -306,7 +306,7 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.all(12),
                 width: double.infinity,
-                decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(3.0)),
                 child: Text(_errorMessage!, style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
               ),
               
@@ -315,7 +315,7 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.all(12),
                 width: double.infinity,
-                decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(3.0)),
                 child: Text(_successMessage!, style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
               ),
 
@@ -330,7 +330,7 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
                   disabledBackgroundColor: Colors.grey[300],
                   disabledForegroundColor: Colors.grey[500],
                 ),
@@ -344,3 +344,4 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
     );
   }
 }
+

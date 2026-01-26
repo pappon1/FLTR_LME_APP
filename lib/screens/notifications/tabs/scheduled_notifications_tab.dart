@@ -173,7 +173,7 @@ class _ScheduledNotificationsTabState extends State<ScheduledNotificationsTab> {
           Container(
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(3.0),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.08),
@@ -327,4 +327,5 @@ class _ScheduledNotificationsTabState extends State<ScheduledNotificationsTab> {
     );
   }
 }
+
 

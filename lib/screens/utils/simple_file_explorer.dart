@@ -301,7 +301,7 @@ class _SimpleFileExplorerState extends State<SimpleFileExplorer> {
 
             return Material(
               color: Colors.grey.shade200,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(3.0),
               clipBehavior: Clip.antiAlias,
               child: InkWell(
                 onTap: () => _onFileTap(file.path),
@@ -333,7 +333,7 @@ class _SimpleFileExplorerState extends State<SimpleFileExplorer> {
                        top: 4, right: 4,
                        child: Container(
                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                         decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(4)),
+                         decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(3.0)),
                          child: Text(name.split('.').last.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 8)),
                        ),
                      ),
@@ -457,5 +457,6 @@ class _VideoThumbnailBoxState extends State<_VideoThumbnailBox> {
     );
   }
 }
+
 
 

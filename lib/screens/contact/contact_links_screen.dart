@@ -154,7 +154,7 @@ class _ContactLinksScreenState extends State<ContactLinksScreen> {
                        style: ElevatedButton.styleFrom(
                          backgroundColor: theme.primaryColor,
                          elevation: 2,
-                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
                        ),
                        child: _isSaving 
                          ? const CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
@@ -180,7 +180,7 @@ class _ContactLinksScreenState extends State<ContactLinksScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(3.0),
         border: Border.all(color: borderColor),
         boxShadow: [
           BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))
@@ -215,7 +215,7 @@ class _ContactLinksScreenState extends State<ContactLinksScreen> {
               hintStyle: GoogleFonts.inter(fontSize: 13, color: Colors.grey[400]),
               filled: true,
               fillColor: theme.scaffoldBackgroundColor,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(3.0), borderSide: BorderSide.none),
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               prefixIcon: Icon(Icons.link, size: 18, color: Colors.grey[400]),
             ),
@@ -225,3 +225,4 @@ class _ContactLinksScreenState extends State<ContactLinksScreen> {
     );
   }
 }
+

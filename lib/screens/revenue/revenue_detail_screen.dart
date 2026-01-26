@@ -158,7 +158,7 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
                     padding: const EdgeInsets.all(4),
                     decoration: BoxDecoration(
                       color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey[200],
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(3.0),
                     ),
                     child: ListView(
                       scrollDirection: Axis.horizontal,
@@ -175,7 +175,7 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
                             margin: const EdgeInsets.only(right: 0),
                             decoration: BoxDecoration(
                               color: isSelected ? cardColor : Colors.transparent,
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: BorderRadius.circular(3.0),
                               boxShadow: isSelected 
                                 ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))]
                                 : [],
@@ -204,7 +204,7 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
                       color: cardColor,
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(3.0),
                       boxShadow: [
                         BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 20, offset: const Offset(0, 10)),
                       ],
@@ -235,7 +235,7 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
                             color: successColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(3.0),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -263,7 +263,7 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
                     padding: const EdgeInsets.fromLTRB(10, 24, 24, 10),
                     decoration: BoxDecoration(
                       color: cardColor,
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(3.0),
                       boxShadow: [
                         BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 5)),
                       ],
@@ -397,7 +397,7 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
                              padding: const EdgeInsets.all(16),
                              decoration: BoxDecoration(
                                color: cardColor,
-                               borderRadius: BorderRadius.circular(16),
+                               borderRadius: BorderRadius.circular(3.0),
                                border: Border.all(color: theme.dividerColor.withValues(alpha: 0.5)),
                              ),
                              child: Row(
@@ -448,3 +448,4 @@ class _RevenueDetailScreenState extends State<RevenueDetailScreen> {
     );
   }
 }
+

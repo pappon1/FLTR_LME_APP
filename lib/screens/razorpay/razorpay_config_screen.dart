@@ -72,7 +72,7 @@ class _RazorpayConfigScreenState extends State<RazorpayConfigScreen> {
               controller: _keyIdController,
               decoration: InputDecoration(
                 labelText: "Key ID",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(3.0)),
                 prefixIcon: const Icon(Icons.vpn_key),
               ),
             ),
@@ -81,7 +81,7 @@ class _RazorpayConfigScreenState extends State<RazorpayConfigScreen> {
               controller: _keySecretController,
               decoration: InputDecoration(
                 labelText: "Key Secret",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(3.0)),
                 prefixIcon: const Icon(Icons.lock),
               ),
               obscureText: true,
@@ -94,7 +94,7 @@ class _RazorpayConfigScreenState extends State<RazorpayConfigScreen> {
                 onPressed: _isLoading ? null : _saveKeys,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
                 ),
                 child: _isLoading 
                   ? const CircularProgressIndicator(color: Colors.white)
@@ -107,3 +107,4 @@ class _RazorpayConfigScreenState extends State<RazorpayConfigScreen> {
     );
   }
 }
+

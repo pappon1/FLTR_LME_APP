@@ -90,7 +90,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(3.0),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.1),
@@ -171,7 +171,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                             minimumSize: const Size(double.infinity, 56),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
+                              borderRadius: BorderRadius.circular(3.0),
                             ),
                             elevation: 8,
                           ),
@@ -192,7 +192,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(3.0),
                       border: Border.all(
                         color: Colors.white.withValues(alpha: 0.2),
                         width: 1,
@@ -240,3 +240,4 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
+

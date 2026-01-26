@@ -86,12 +86,12 @@ class AdminCleanupUtility {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(3.0),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           border: Border.all(color: color.withOpacity(0.3)),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(3.0),
           color: color.withOpacity(0.05),
         ),
         child: Row(
@@ -167,7 +167,7 @@ class AdminCleanupUtility {
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.red.shade100,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(3.0),
                 border: Border.all(color: Colors.red.shade300),
               ),
               child: const Row(
@@ -435,3 +435,4 @@ class AdminCleanupUtility {
     );
   }
 }
+

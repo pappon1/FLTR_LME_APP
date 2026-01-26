@@ -79,7 +79,7 @@ class _TechManagementCardState extends State<TechManagementCard> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(3.0),
         border: Border.all(color: borderColor),
       ),
       child: Column(
@@ -140,7 +140,7 @@ class _TechManagementCardState extends State<TechManagementCard> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
                color: theme.scaffoldBackgroundColor,
-               borderRadius: BorderRadius.circular(12),
+               borderRadius: BorderRadius.circular(3.0),
                border: Border.all(color: borderColor),
             ),
             child: Column(
@@ -204,12 +204,12 @@ class _TechManagementCardState extends State<TechManagementCard> {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(3.0),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
         decoration: BoxDecoration(
           color: theme.scaffoldBackgroundColor,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(3.0),
           border: Border.all(color: color.withValues(alpha: 0.3)),
           boxShadow: [
             BoxShadow(color: color.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))
@@ -236,3 +236,4 @@ class _TechManagementCardState extends State<TechManagementCard> {
     );
   }
 }
+

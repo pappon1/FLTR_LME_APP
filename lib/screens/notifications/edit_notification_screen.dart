@@ -137,7 +137,7 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
               height: MediaQuery.of(context).size.height * 0.85,
               decoration: BoxDecoration(
                 color: Theme.of(context).scaffoldBackgroundColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(3.0)),
               ),
               child: Column(
                 children: [
@@ -246,7 +246,7 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
           builder: (context, setSheetState) {
             return Container(
               height: MediaQuery.of(context).size.height * 0.85,
-              decoration: BoxDecoration(color: Theme.of(context).scaffoldBackgroundColor, borderRadius: const BorderRadius.vertical(top: Radius.circular(24))),
+              decoration: BoxDecoration(color: Theme.of(context).scaffoldBackgroundColor, borderRadius: const BorderRadius.vertical(top: Radius.circular(3.0))),
               child: Column(
                 children: [
                    Container(padding: const EdgeInsets.all(20), child: const Center(child: Text('On Click Action', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)))),
@@ -391,7 +391,7 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF0F2F5),
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(3.0),
                             border: Border.all(color: isDark ? Colors.grey[800]! : Colors.grey[300]!),
                           ),
                           child: Column(
@@ -401,7 +401,7 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
                               Container(
                                 decoration: BoxDecoration(
                                   color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
+                                  borderRadius: BorderRadius.circular(3.0),
                                   boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))],
                                 ),
                                 child: Column(
@@ -424,12 +424,12 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
                                           ]),
                                       ),
                                       if (_newImageFile != null) 
-                                        AspectRatio(aspectRatio: 16/9, child: ClipRRect(borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)), child: Image.file(_newImageFile!, fit: BoxFit.cover)))
+                                        AspectRatio(aspectRatio: 16/9, child: ClipRRect(borderRadius: const BorderRadius.vertical(bottom: Radius.circular(3.0)), child: Image.file(_newImageFile!, fit: BoxFit.cover)))
                                       else if (_existingImageUrl != null && !_removeExistingImage)
                                         AspectRatio(
                                           aspectRatio: 16/9, 
                                           child: ClipRRect(
-                                            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)), 
+                                            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(3.0)), 
                                             child: CachedNetworkImage(
                                               imageUrl: BunnyCDNService().getAuthenticatedUrl(_existingImageUrl!),
                                               fit: BoxFit.cover,
@@ -455,7 +455,7 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
                           controller: _titleController,
                           decoration: InputDecoration(
                             labelText: 'Title',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(3.0)),
                             prefixIcon: const Icon(Icons.title),
                           ),
                           onChanged: (v) => setState(() {}),
@@ -466,7 +466,7 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
                           controller: _messageController,
                           decoration: InputDecoration(
                             labelText: 'Message',
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(3.0)),
                             prefixIcon: const Icon(Icons.short_text),
                           ),
                           maxLines: 3,
@@ -484,18 +484,18 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
                               width: double.infinity,
                               decoration: BoxDecoration(
                                 border: Border.all(color: Colors.grey.withValues(alpha: 0.5)),
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(3.0),
                                 color: isDark ? Colors.grey[900] : Colors.grey[100],
                               ),
                               child: _newImageFile != null 
                                   ? Stack(fit: StackFit.expand, children: [
-                                      ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.file(_newImageFile!, fit: BoxFit.cover)),
+                                      ClipRRect(borderRadius: BorderRadius.circular(3.0), child: Image.file(_newImageFile!, fit: BoxFit.cover)),
                                       const Positioned(right: 8, top: 8, child: CircleAvatar(backgroundColor: Colors.white, radius: 16, child: Icon(Icons.edit, size: 16, color: AppTheme.primaryColor)))
                                     ])
                                   : (_existingImageUrl != null && !_removeExistingImage
                                       ? Stack(fit: StackFit.expand, children: [
                                           ClipRRect(
-                                            borderRadius: BorderRadius.circular(12),
+                                            borderRadius: BorderRadius.circular(3.0),
                                             child: CachedNetworkImage(
                                               imageUrl: BunnyCDNService().getAuthenticatedUrl(_existingImageUrl!),
                                               fit: BoxFit.cover,
@@ -553,7 +553,7 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
                                 },
                                 icon: const Icon(Icons.calendar_today),
                                 label: Text(_scheduledDate == null ? 'Select Date' : DateFormat('dd MMM').format(_scheduledDate!)),
-                                style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                                style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0))),
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -565,7 +565,7 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
                                 },
                                 icon: const Icon(Icons.access_time),
                                 label: Text(_scheduledTime == null ? 'Select Time' : _scheduledTime!.format(context)),
-                                style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                                style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0))),
                               ),
                             ),
                           ],
@@ -591,7 +591,7 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
                 height: 50,
                 child: ElevatedButton(
                   onPressed: _isSaving ? null : _saveChanges,
-                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0))),
                   child: _isSaving ? const CircularProgressIndicator(color: Colors.white) : const Text('SAVE CHANGES', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                 ),
               ),
@@ -611,7 +611,7 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(3.0),
           border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.1)),
           boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4, offset: const Offset(0, 2))],
         ),
@@ -627,3 +627,4 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
     );
   }
 }
+

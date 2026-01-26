@@ -97,7 +97,7 @@ class _VideoPlaylistWidgetState extends State<VideoPlaylistWidget> {
                   height: 85,
                   decoration: BoxDecoration(
                     color: thumbnailBg,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(3.0),
                     border: isPlaying
                         ? Border.all(color: const Color(0xFF22C55E), width: 2)
                         : null,
@@ -202,3 +202,4 @@ class _VideoPlaylistWidgetState extends State<VideoPlaylistWidget> {
     );
   }
 }
+

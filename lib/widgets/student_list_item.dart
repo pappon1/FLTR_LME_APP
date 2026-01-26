@@ -116,7 +116,7 @@ class StudentListItem extends StatelessWidget {
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: Colors.red.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(3.0),
             ),
             child: const FaIcon(FontAwesomeIcons.trashCan, size: 16, color: Colors.red),
           ),
@@ -133,3 +133,4 @@ class StudentListItem extends StatelessWidget {
     );
   }
 }
+

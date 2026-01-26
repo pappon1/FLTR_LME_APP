@@ -81,7 +81,7 @@ class UserProfileScreen extends StatelessWidget {
                   _buildSectionTitle('User Details'),
                   Card(
                     elevation: 2,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
                     child: Column(
                       children: [
                         _buildInfoTile(Icons.phone, 'WhatsApp No', phone),
@@ -101,17 +101,17 @@ class UserProfileScreen extends StatelessWidget {
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(color: isDark ? Colors.grey[900] : Colors.grey[100], borderRadius: BorderRadius.circular(16)),
+                      decoration: BoxDecoration(color: isDark ? Colors.grey[900] : Colors.grey[100], borderRadius: BorderRadius.circular(3.0)),
                       child: Column(children: [FaIcon(FontAwesomeIcons.boxOpen, size: 40, color: Colors.grey[400]), const SizedBox(height: 10), const Text('No courses purchased yet')])
                     )
                   else
                     ...courses.map((course) => Card(
                       margin: const EdgeInsets.only(bottom: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
                       child: ListTile(
                         leading: Container(
                           padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                          decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(3.0)),
                           child: const FaIcon(FontAwesomeIcons.video, color: Colors.orange, size: 16),
                         ),
                         title: Text(course['title'] ?? 'Course Title'),
@@ -143,3 +143,4 @@ class UserProfileScreen extends StatelessWidget {
     );
   }
 }
+

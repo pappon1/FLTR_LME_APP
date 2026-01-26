@@ -42,7 +42,7 @@ class VideoTray extends StatelessWidget {
     final closeIcon = forceDark ? Colors.white : Colors.black87;
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(3.0),
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Listener(
@@ -52,7 +52,7 @@ class VideoTray extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 350),
             decoration: BoxDecoration(
               color: bgColor,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(3.0),
               border: Border.all(color: borderColor),
               boxShadow: isDark ? [] : [
                 BoxShadow(
@@ -136,7 +136,7 @@ class VideoTray extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: isSelected ? const Color(0xFF22C55E) : Colors.transparent,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(3.0),
                 border: Border.all(color: isSelected ? Colors.transparent : Colors.grey),
               ),
               child: Text(
@@ -159,7 +159,7 @@ class VideoTray extends StatelessWidget {
       initialValue: playbackSpeed,
       offset: const Offset(0, 40),
       tooltip: 'Playback Speed',
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
       color: isDark ? const Color(0xFF1E293B) : Colors.white,
       onSelected: onSpeedChanged,
       child: Padding(
@@ -195,3 +195,4 @@ class VideoTray extends StatelessWidget {
     );
   }
 }
+

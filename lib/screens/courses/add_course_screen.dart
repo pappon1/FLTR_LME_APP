@@ -385,7 +385,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(3.0),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.2),
@@ -432,7 +432,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                       foregroundColor: Colors.white,
                       minimumSize: const Size(double.infinity, 50),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(3.0),
                       ),
                     ),
                     child: const Text(
@@ -523,7 +523,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: AppTheme.primaryColor.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(3.0),
         border: Border.all(color: AppTheme.primaryColor.withOpacity(0.2)),
       ),
       child: Column(
@@ -611,7 +611,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
       padding: const EdgeInsets.only(bottom: 8),
       child: InkWell(
         onTap: onEdit,
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(3.0),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 2),
           child: Row(
@@ -1310,7 +1310,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                     ),
                     const SizedBox(height: 12),
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(3.0),
                       child: LinearProgressIndicator(
                         value: _totalProgress,
                         minHeight: 12,
@@ -1354,7 +1354,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(3.0),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1554,7 +1554,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(3.0),
                   ),
                 ),
                 child: const Text('Back'),
@@ -1570,7 +1570,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                 backgroundColor: AppTheme.primaryColor,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(3.0),
                 ),
               ),
               child: _isLoading
@@ -1656,7 +1656,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                           ),
                           decoration: BoxDecoration(
                             color: Colors.green.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(30),
+                            borderRadius: BorderRadius.circular(3.0),
                             border: Border.all(
                               color: Colors.green.withValues(alpha: 0.2),
                             ),
@@ -2474,7 +2474,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                         ),
                         child: InkWell(
                           onTap: _showAddContentMenu,
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(3.0),
                           child: Container(
                             height: 50,
                             width: 50,
@@ -2799,7 +2799,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Colors.red.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(3.0),
                         border: Border.all(color: Colors.red.withOpacity(0.5)),
                       ),
                       child: Row(
@@ -2823,7 +2823,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                     Column(
                       children: [
                         ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(3.0),
                           child: AspectRatio(
                             aspectRatio: 16 / 9,
                             child: Image.file(
@@ -2843,7 +2843,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                       width: double.infinity,
                       decoration: BoxDecoration(
                         color: Colors.grey.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(3.0),
                         border: Border.all(
                           color: Colors.grey.withOpacity(0.3),
                           style: BorderStyle.solid,
@@ -2965,7 +2965,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
         padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 10),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(3.0)),
         ),
         child: SafeArea(
           child: Column(
@@ -3069,14 +3069,14 @@ class _AddCourseScreenState extends State<AddCourseScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
         title: const Text('New Folder'),
         content: TextField(
           controller: folderNameController,
           autofocus: true,
           decoration: InputDecoration(
             labelText: 'Folder Name',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(3.0)),
             filled: true,
           ),
         ),
@@ -3103,7 +3103,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
             style: ElevatedButton.styleFrom(
               backgroundColor: AppTheme.primaryColor,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(3.0),
               ),
             ),
             child: const Text('Create', style: TextStyle(color: Colors.white)),
@@ -3190,7 +3190,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                     floatingLabelBehavior: FloatingLabelBehavior.always,
                     prefixIcon: const Icon(Icons.history_toggle_off),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(3.0),
                     ),
                     filled: true,
                     fillColor: Theme.of(context).cardColor,
@@ -3224,7 +3224,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                         color: _hasCertificate
                             ? Colors.green.withOpacity(0.1)
                             : Colors.grey.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(3.0),
                       ),
                       child: Text(
                         _hasCertificate ? 'ENABLED' : 'DISABLED',
@@ -3253,7 +3253,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                   activeColor: AppTheme.primaryColor,
                   tileColor: Theme.of(context).cardColor,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(3.0),
                     side: BorderSide(
                       color: _hasCertificate
                           ? AppTheme.primaryColor.withOpacity(0.3)
@@ -3439,7 +3439,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                   activeColor: AppTheme.primaryColor,
                   tileColor: Theme.of(context).cardColor,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(3.0),
                     side: BorderSide(color: Colors.grey.shade200),
                   ),
                 ),
@@ -3479,7 +3479,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
                       color: Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(3.0),
                       border: Border.all(
                         color: Colors.grey.shade200,
                         style: BorderStyle.none,
@@ -3528,7 +3528,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: Theme.of(context).cardColor,
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(3.0),
                             border: Border.all(color: Colors.grey.shade200),
                           ),
                           child: Row(
@@ -3544,7 +3544,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                                 height: 40,
                                 decoration: BoxDecoration(
                                   color: Colors.black,
-                                  borderRadius: BorderRadius.circular(6),
+                                  borderRadius: BorderRadius.circular(3.0),
                                 ),
                                 child: const Icon(
                                   Icons.play_circle_filled,
@@ -3823,7 +3823,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
               margin: const EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(
                 color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(3.0),
               ),
             ),
           ),
@@ -3871,3 +3871,4 @@ class _KeepAliveWrapperState extends State<KeepAliveWrapper>
     return widget.child;
   }
 }
+

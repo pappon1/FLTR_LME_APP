@@ -44,7 +44,7 @@ class VideoErrorOverlay extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF22C55E),
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
               ),
             ),
           ],
@@ -53,3 +53,4 @@ class VideoErrorOverlay extends StatelessWidget {
     );
   }
 }
+

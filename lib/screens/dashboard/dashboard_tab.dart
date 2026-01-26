@@ -205,7 +205,7 @@ class _DashboardTabState extends State<DashboardTab> {
                         children: [
                             Container(
                               padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+                              decoration: BoxDecoration(color: Colors.orange.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(3.0)),
                               child: const Text('📢', style: TextStyle(fontSize: 16)),
                             ),
                             const SizedBox(width: 12),
@@ -229,12 +229,12 @@ class _DashboardTabState extends State<DashboardTab> {
                          onTap: () {
                            Navigator.push(context, MaterialPageRoute(builder: (_) => const UploadAnnouncementScreen()));
                          },
-                         borderRadius: BorderRadius.circular(20),
+                         borderRadius: BorderRadius.circular(3.0),
                          child: Container(
                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                            decoration: BoxDecoration(
                              color: AppTheme.primaryColor.withValues(alpha: 0.1), 
-                             borderRadius: BorderRadius.circular(20),
+                             borderRadius: BorderRadius.circular(3.0),
                              border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.3))
                            ),
                            child: FittedBox(
@@ -265,14 +265,14 @@ class _DashboardTabState extends State<DashboardTab> {
                           child: Container(
                             margin: const EdgeInsets.only(bottom: 24),
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(3.0),
                               boxShadow: [
                                 BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.15), blurRadius: 20, offset: const Offset(0, 8))
                               ],
                               border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                             ),
                             child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(3.0),
                               child: AspectRatio(
                                 aspectRatio: 16/9,
                                 child: CachedNetworkImage(
@@ -300,7 +300,7 @@ class _DashboardTabState extends State<DashboardTab> {
                           margin: const EdgeInsets.only(bottom: 24),
                           decoration: BoxDecoration(
                             color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1F2937) : const Color(0xFFF3F4F6),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(3.0),
                             border: Border.all(color: Colors.grey.withValues(alpha: 0.3), style: BorderStyle.solid),
                           ),
                           child: Center(
@@ -437,13 +437,13 @@ class _DashboardTabState extends State<DashboardTab> {
               width: double.infinity,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(3.0),
               ),
             ),
             const SizedBox(height: 24),
             
             // Popular Courses Header Shimmer
-            Container(height: 20, width: 150, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4))),
+            Container(height: 20, width: 150, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(3.0))),
             const SizedBox(height: 16),
             
             // Popular Courses Carousel Shimmer
@@ -452,7 +452,7 @@ class _DashboardTabState extends State<DashboardTab> {
               width: double.infinity,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(3.0),
               ),
             ),
             const SizedBox(height: 24),
@@ -468,7 +468,7 @@ class _DashboardTabState extends State<DashboardTab> {
               children: List.generate(4, (index) => Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(3.0),
                 ),
               )),
             ),
@@ -480,7 +480,7 @@ class _DashboardTabState extends State<DashboardTab> {
               width: double.infinity,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(3.0),
               ),
             ),
           ],
@@ -489,3 +489,4 @@ class _DashboardTabState extends State<DashboardTab> {
     );
   }
 }
+

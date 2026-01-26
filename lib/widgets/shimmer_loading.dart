@@ -10,7 +10,7 @@ class ShimmerLoading extends StatelessWidget {
     super.key,
     this.width = double.infinity,
     required this.height,
-  }) : shapeBorder = const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(8)));
+  }) : shapeBorder = const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(3.0)));
 
   const ShimmerLoading.circular({
     super.key,
@@ -51,7 +51,7 @@ class NotificationShimmerItem extends StatelessWidget {
         width: double.infinity,
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(3.0),
         ),
         child: const Padding(
           padding: EdgeInsets.all(16.0),
@@ -92,7 +92,7 @@ class StudentShimmerItem extends StatelessWidget {
         width: double.infinity,
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(3.0),
         ),
         child: const Padding(
           padding: EdgeInsets.all(16.0),
@@ -184,7 +184,7 @@ class UploadShimmerItem extends StatelessWidget {
         height: 106, // Matches real card height better
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(3.0),
           border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
         ),
         child: const Padding(
@@ -228,4 +228,5 @@ class UploadShimmerItem extends StatelessWidget {
     );
   }
 }
+
 

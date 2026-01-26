@@ -73,7 +73,7 @@ class ErrorLogsScreen extends StatelessWidget {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: theme.cardTheme.color,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(3.0),
                   border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
                   boxShadow: [
                     BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5)
@@ -127,3 +127,4 @@ class ErrorLogsScreen extends StatelessWidget {
     );
   }
 }
+

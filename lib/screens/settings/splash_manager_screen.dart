@@ -104,7 +104,7 @@ class _SplashManagerScreenState extends State<SplashManagerScreen> {
               width: double.infinity,
               decoration: BoxDecoration(
                 color: Colors.black,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(3.0),
                 boxShadow: [const BoxShadow(color: Colors.black26, blurRadius: 20, offset: Offset(0, 10))],
                 image: _currentSplashUrl != null 
                   ? DecorationImage(image: NetworkImage(_currentSplashUrl!), fit: BoxFit.cover, opacity: _isActive ? 1.0 : 0.4)
@@ -161,7 +161,7 @@ class _SplashManagerScreenState extends State<SplashManagerScreen> {
                 label: Text(_isUploading ? "Uploading..." : "Upload New Image"),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blueAccent,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
                 ),
               ),
             ),
@@ -177,3 +177,4 @@ class _SplashManagerScreenState extends State<SplashManagerScreen> {
     );
   }
 }
+

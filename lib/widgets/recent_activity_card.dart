@@ -81,7 +81,7 @@ class RecentActivityCard extends StatelessWidget {
                       height: 44,
                       decoration: BoxDecoration(
                         gradient: activity['color'] as LinearGradient,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(3.0),
                       ),
                       child: Icon(
                         activity['icon'] as IconData,
@@ -120,3 +120,4 @@ class RecentActivityCard extends StatelessWidget {
     );
   }
 }
+

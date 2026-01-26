@@ -40,7 +40,7 @@ class SettingsTab extends StatelessWidget {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       gradient: AppTheme.primaryGradient,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(3.0),
                     ),
                     child: const FaIcon(
                       FontAwesomeIcons.user,
@@ -62,7 +62,7 @@ class SettingsTab extends StatelessWidget {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       gradient: AppTheme.infoGradient,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(3.0),
                     ),
                     child: const FaIcon(
                       FontAwesomeIcons.building,
@@ -101,7 +101,7 @@ class SettingsTab extends StatelessWidget {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       gradient: AppTheme.warningGradient,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(3.0),
                     ),
                     child: FaIcon(
                       themeProvider.isDarkMode
@@ -142,7 +142,7 @@ class SettingsTab extends StatelessWidget {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       gradient: AppTheme.successGradient,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(3.0),
                     ),
                     child: const FaIcon(
                       FontAwesomeIcons.bell,
@@ -162,7 +162,7 @@ class SettingsTab extends StatelessWidget {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       gradient: AppTheme.infoGradient,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(3.0),
                     ),
                     child: const FaIcon(
                       FontAwesomeIcons.envelope,
@@ -199,7 +199,7 @@ class SettingsTab extends StatelessWidget {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       gradient: AppTheme.primaryGradient,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(3.0),
                     ),
                     child: const FaIcon(
                       FontAwesomeIcons.circleInfo,
@@ -221,7 +221,7 @@ class SettingsTab extends StatelessWidget {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       gradient: AppTheme.warningGradient,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(3.0),
                     ),
                     child: const FaIcon(
                       FontAwesomeIcons.fileLines,
@@ -289,7 +289,7 @@ class SettingsTab extends StatelessWidget {
                       gradient: LinearGradient(
                         colors: [Colors.red.shade600, Colors.red.shade800],
                       ),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(3.0),
                     ),
                     child: const FaIcon(
                       FontAwesomeIcons.trash,
@@ -367,3 +367,4 @@ class SettingsTab extends StatelessWidget {
     );
   }
 }
+

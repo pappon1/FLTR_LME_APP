@@ -90,7 +90,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: cardColor,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(3.0),
                     boxShadow: [
                       BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))
                     ],
@@ -150,7 +150,7 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
                               color: successColor.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(4)
+                              borderRadius: BorderRadius.circular(3.0)
                             ),
                             child: Text("SUCCESS", style: GoogleFonts.inter(color: successColor, fontSize: 10, fontWeight: FontWeight.bold)),
                           )
@@ -165,3 +165,4 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
     );
   }
 }
+

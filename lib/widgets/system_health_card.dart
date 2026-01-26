@@ -94,7 +94,7 @@ class _SystemHealthCardState extends State<SystemHealthCard> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: techBg,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(3.0),
         border: Border.all(color: Colors.blueGrey.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 15, offset: const Offset(0, 5)),
@@ -129,7 +129,7 @@ class _SystemHealthCardState extends State<SystemHealthCard> {
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(3.0),
                     border: Border.all(color: Colors.white10),
                   ),
                   child: Row(
@@ -204,7 +204,7 @@ class _SystemHealthCardState extends State<SystemHealthCard> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(3.0),
         border: Border.all(color: status == 1 ? Colors.transparent : statusColor.withValues(alpha: 0.3)),
       ),
       child: Row(
@@ -213,7 +213,7 @@ class _SystemHealthCardState extends State<SystemHealthCard> {
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
               color: statusColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(3.0),
             ),
             child: FaIcon(icon, color: statusColor, size: 13),
           ),
@@ -259,3 +259,4 @@ class _SystemHealthCardState extends State<SystemHealthCard> {
     ).animate(target: status == 0 ? 0 : 1).shimmer(duration: 1.seconds, color: Colors.white10);
   }
 }
+

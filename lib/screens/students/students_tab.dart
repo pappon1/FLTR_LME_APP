@@ -181,7 +181,7 @@ class _StudentsTabState extends State<StudentsTab> {
                       margin: const EdgeInsets.symmetric(vertical: 8),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(3.0),
                       ),
                     ),
                   );
@@ -208,4 +208,5 @@ class _StudentsTabState extends State<StudentsTab> {
     );
   }
 }
+
 

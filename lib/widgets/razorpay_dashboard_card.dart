@@ -23,7 +23,7 @@ class RazorpayDashboardCard extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: isDark ? rzpDark : const Color(0xFF1E293B), // Dark Navy for Techy feel
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(3.0),
         boxShadow: [
           BoxShadow(
             color: rzpBlue.withValues(alpha: 0.25),
@@ -53,7 +53,7 @@ class RazorpayDashboardCard extends StatelessWidget {
                   children: [
                     Container(
                       padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(3.0)),
                       child: const FaIcon(FontAwesomeIcons.registered, color: Color(0xFF0C2444), size: 16), // Fake R logo
                     ),
                     const SizedBox(width: 12),
@@ -76,7 +76,7 @@ class RazorpayDashboardCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: Colors.green.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(3.0),
                   border: Border.all(color: Colors.green.withValues(alpha: 0.5))
                 ),
                 child: Row(
@@ -209,7 +209,7 @@ class RazorpayDashboardCard extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(3.0),
           border: Border.all(color: Colors.white10)
         ),
         child: Row(
@@ -223,3 +223,4 @@ class RazorpayDashboardCard extends StatelessWidget {
     );
   }
 }
+

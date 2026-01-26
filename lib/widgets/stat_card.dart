@@ -26,7 +26,7 @@ class StatCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         gradient: gradient,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(3.0),
         boxShadow: [
           BoxShadow(
             color: gradient.colors.first.withValues(alpha: 0.3),
@@ -40,7 +40,7 @@ class StatCard extends StatelessWidget {
         color: Colors.transparent,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(3.0),
         ),
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -54,7 +54,7 @@ class StatCard extends StatelessWidget {
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(3.0),
                     ),
                     child: FaIcon(
                       icon,
@@ -71,7 +71,7 @@ class StatCard extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(6),
+                        borderRadius: BorderRadius.circular(3.0),
                       ),
                       child: FittedBox(
                         fit: BoxFit.scaleDown,
@@ -150,3 +150,4 @@ class StatCard extends StatelessWidget {
     );
   }
 }
+

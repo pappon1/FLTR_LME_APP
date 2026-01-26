@@ -54,7 +54,7 @@ class _SplashScreenState extends State<SplashScreen> {
                 height: 120,
                 decoration: BoxDecoration(
                   gradient: AppTheme.primaryGradient,
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(3.0),
                   boxShadow: [
                     BoxShadow(
                       color: AppTheme.primaryColor.withValues(alpha: 0.5),
@@ -109,7 +109,7 @@ class _SplashScreenState extends State<SplashScreen> {
               SizedBox(
                 width: 200,
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(3.0),
                   child: const LinearProgressIndicator(
                     backgroundColor: Colors.white10,
                     valueColor: AlwaysStoppedAnimation<Color>(
@@ -143,3 +143,4 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 }
+

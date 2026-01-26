@@ -52,7 +52,7 @@ class StudentDeletionService {
               const SizedBox(height: 8),
               Container(
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(8)),
+                decoration: BoxDecoration(color: Colors.grey[100], borderRadius: BorderRadius.circular(3.0)),
                 child: student.enrolledCourses > 0 
                   ? Text('${student.enrolledCourses} Active Courses\n(Purchased via App/Admin)')
                   : const Text('No Active Courses'),
@@ -171,3 +171,4 @@ class _TimerDialogState extends State<_TimerDialog> {
     );
   }
 }
+

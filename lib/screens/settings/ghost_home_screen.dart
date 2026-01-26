@@ -105,7 +105,7 @@ class _GhostHomeScreenState extends State<GhostHomeScreen> {
                       width: double.infinity,
                       decoration: BoxDecoration(
                         color: Colors.blueAccent,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(3.0),
                         gradient: const LinearGradient(colors: [Colors.blue, Colors.purple])
                       ),
                       child: Center(
@@ -121,7 +121,7 @@ class _GhostHomeScreenState extends State<GhostHomeScreen> {
                       Container(
                         padding: const EdgeInsets.all(20),
                         width: double.infinity,
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(3.0)),
                         child: Column(
                           children: [
                             const Icon(Icons.sentiment_dissatisfied, color: Colors.grey, size: 40),
@@ -141,13 +141,13 @@ class _GhostHomeScreenState extends State<GhostHomeScreen> {
                             margin: const EdgeInsets.only(bottom: 16),
                             decoration: BoxDecoration(
                               color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(3.0),
                               boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)]
                             ),
                             child: ListTile(
                               contentPadding: const EdgeInsets.all(10),
                               leading: ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(3.0),
                                 child: Container(
                                   width: 60, height: 60,
                                   color: Colors.grey[200],
@@ -183,3 +183,4 @@ class _GhostHomeScreenState extends State<GhostHomeScreen> {
     );
   }
 }
+

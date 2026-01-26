@@ -53,7 +53,7 @@ class EnrollmentDetailScreen extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 decoration: BoxDecoration(
                   color: enrollment['isActive'] ? neonGreen.withValues(alpha: 0.1) : neonRed.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(3.0),
                   border: Border.all(color: enrollment['isActive'] ? neonGreen : neonRed, width: 1.5),
                   boxShadow: [
                     BoxShadow(color: (enrollment['isActive'] ? neonGreen : neonRed).withValues(alpha: 0.2), blurRadius: 15, spreadRadius: 1)
@@ -82,14 +82,14 @@ class EnrollmentDetailScreen extends StatelessWidget {
                 width: double.infinity,
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(3.0),
                   border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                   boxShadow: [
                     BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 10))
                   ],
                 ),
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(3.0),
                   child: BackdropFilter(
                     filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
                     child: Column(
@@ -229,7 +229,7 @@ class EnrollmentDetailScreen extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(8)),
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(3.0)),
             child: Icon(icon, color: Colors.white70, size: 18),
           ),
           const SizedBox(width: 16),
@@ -262,7 +262,7 @@ class EnrollmentDetailScreen extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.black26,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(3.0),
         border: Border.all(color: Colors.white10),
       ),
       child: Column(
@@ -285,3 +285,4 @@ class EnrollmentDetailScreen extends StatelessWidget {
     );
   }
 }
+

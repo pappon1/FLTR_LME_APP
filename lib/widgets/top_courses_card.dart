@@ -69,7 +69,7 @@ class TopCoursesCard extends StatelessWidget {
                                 : LinearGradient(
                                     colors: [Colors.brown.shade400, Colors.brown.shade300],
                                   ),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(3.0),
                       ),
                       child: Center(
                         child: Text(
@@ -86,7 +86,7 @@ class TopCoursesCard extends StatelessWidget {
                     
                     // Course Thumbnail
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(3.0),
                       child: CachedNetworkImage(
                         imageUrl: course.thumbnailUrl,
                         width: 50,
@@ -185,3 +185,4 @@ class TopCoursesCard extends StatelessWidget {
     );
   }
 }
+

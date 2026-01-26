@@ -33,7 +33,7 @@ class DeveloperToolsScreen extends StatelessWidget {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.blueAccent.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(3.0),
                 border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.3)),
               ),
               child: Row(
@@ -73,3 +73,4 @@ class DeveloperToolsScreen extends StatelessWidget {
     );
   }
 }
+

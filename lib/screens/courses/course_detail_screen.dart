@@ -47,7 +47,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
   static const double _fFaqASize = 12.5;
   static const double _fFaqPadding = 8.7;
   static const double _fFaqMarginB = 10.0;
-  static const double _fFaqRadius = 9.1;
+  static const double _fFaqRadius = 3.0;
   static const bool _fShowFaqDivider = true;
   static const double _fFaqDivSpace = 0.0;
   static const double _fHighTextSize = 13.5;
@@ -56,7 +56,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
 
   // Finalized WhatsApp CTA Constants
   static const double _fWaPadding = 5.4;
-  static const double _fWaRadius = 34.9;
+  static const double _fWaRadius = 3.0;
   static const double _fWaIconPadding = 8.5;
   static const double _fWaIconSize = 25.1;
   static const double _fWaGap = 13.8;
@@ -166,7 +166,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
                         color: _fHShowBadgeBg 
                             ? (isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF3E8FF))
                             : Colors.transparent,
-                        borderRadius: BorderRadius.circular(24),
+                        borderRadius: BorderRadius.circular(3.0),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -207,7 +207,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF3F4F6), 
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(3.0),
       ),
       child: Row(
         children: [
@@ -235,7 +235,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
                     end: Alignment.bottomRight,
                   ) 
                 : null,
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(3.0),
             boxShadow: isSelected ? [BoxShadow(color: const Color(0xFF6C5DD3).withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))] : null,
           ),
           child: Text(
@@ -267,7 +267,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
             child: Container(
               width: double.infinity,
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(3.0),
                 color: isDark ? Colors.grey[900] : Colors.grey[200],
               ),
               clipBehavior: Clip.antiAlias,
@@ -653,7 +653,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
             // BUY NOW Pill Button
             InkWell(
               onTap: () {},
-              borderRadius: BorderRadius.circular(30),
+              borderRadius: BorderRadius.circular(3.0),
               child: Container(
                 height: _fBtnHeight,
                 padding: const EdgeInsets.symmetric(horizontal: 18),
@@ -663,7 +663,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  borderRadius: BorderRadius.circular(30),
+                  borderRadius: BorderRadius.circular(3.0),
                   boxShadow: [
                     BoxShadow(
                       color: const Color(0xFF6C5DD3).withOpacity(0.3),
@@ -718,3 +718,4 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
     return Center(child: Text("Coming Soon", style: GoogleFonts.manrope(color: Colors.grey)));
   }
 }
+

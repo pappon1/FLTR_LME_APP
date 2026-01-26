@@ -230,11 +230,11 @@ class _ReceivedMessagesTabState extends State<ReceivedMessagesTab> {
       elevation: isRead ? 1 : 3, // Higher elevation for unread
       color: isRead ? readBg : unreadBg,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(3.0),
         side: isRead ? BorderSide.none : BorderSide(color: AppTheme.primaryColor.withValues(alpha: 0.3), width: 1),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(3.0),
         onTap: () {
           // 1. Mark as Read
           if (!isRead) {
@@ -298,7 +298,7 @@ class _ReceivedMessagesTabState extends State<ReceivedMessagesTab> {
                       const SizedBox(height: 4),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
+                        decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(3.0)),
                         child: FittedBox(fit: BoxFit.scaleDown, child: Text('Received ₹$amount', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 12))),
                       ),
                     ],
@@ -322,3 +322,4 @@ class _ReceivedMessagesTabState extends State<ReceivedMessagesTab> {
     );
   }
 }
+

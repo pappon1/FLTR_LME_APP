@@ -75,7 +75,7 @@ class _RazorpaySettlementsScreenState extends State<RazorpaySettlementsScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: status == 'processed' ? Colors.green : Colors.orange,
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(3.0),
                           ),
                           child: Text(status.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                         ),
@@ -86,3 +86,4 @@ class _RazorpaySettlementsScreenState extends State<RazorpaySettlementsScreen> {
     );
   }
 }
+

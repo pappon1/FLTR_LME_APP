@@ -88,7 +88,7 @@ class _UserXRayScreenState extends State<UserXRayScreen> {
                padding: const EdgeInsets.all(4),
                decoration: BoxDecoration(
                  color: theme.cardTheme.color,
-                 borderRadius: BorderRadius.circular(12),
+                 borderRadius: BorderRadius.circular(3.0),
                  boxShadow: [const BoxShadow(color: Colors.black12, blurRadius: 10)]
                ),
                child: TextField(
@@ -130,7 +130,7 @@ class _UserXRayScreenState extends State<UserXRayScreen> {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: theme.cardTheme.color,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(3.0),
         border: Border.all(color: Colors.blueAccent.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(color: Colors.blueAccent.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, 10))
@@ -169,7 +169,7 @@ class _UserXRayScreenState extends State<UserXRayScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: _userData!['isBlocked'] == true ? Colors.red : Colors.green,
-                  borderRadius: BorderRadius.circular(20)
+                  borderRadius: BorderRadius.circular(3.0)
                 ),
                 child: Text(
                   _userData!['isBlocked'] == true ? "BLOCKED" : "ACTIVE",
@@ -205,7 +205,7 @@ class _UserXRayScreenState extends State<UserXRayScreen> {
                 backgroundColor: Colors.deepPurple,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
               ),
             ),
           ),
@@ -230,7 +230,7 @@ class _UserXRayScreenState extends State<UserXRayScreen> {
                 backgroundColor: Colors.redAccent,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
               ),
             ),
           )
@@ -342,7 +342,7 @@ class _ScreenshotSpyDialogState extends State<ScreenshotSpyDialog> {
   @override
   Widget build(BuildContext context) {
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
       child: Container(
         padding: const EdgeInsets.all(24),
         child: SingleChildScrollView(
@@ -355,7 +355,7 @@ class _ScreenshotSpyDialogState extends State<ScreenshotSpyDialog> {
                      Text("Target Screen View", style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18)),
                      const SizedBox(height: 16),
                      ClipRRect(
-                       borderRadius: BorderRadius.circular(12),
+                       borderRadius: BorderRadius.circular(3.0),
                        child: Image.network(_imageUrl!, height: 400, fit: BoxFit.contain),
                      ),
                      const SizedBox(height: 16),
@@ -381,3 +381,4 @@ class _ScreenshotSpyDialogState extends State<ScreenshotSpyDialog> {
     );
   }
 }
+

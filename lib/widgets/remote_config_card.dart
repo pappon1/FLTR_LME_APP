@@ -18,7 +18,7 @@ class RemoteConfigCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: cardBg,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(3.0),
         border: Border.all(color: borderColor),
       ),
       child: Column(
@@ -74,8 +74,9 @@ class RemoteConfigCard extends StatelessWidget {
   Widget divIcon(IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(3.0)),
       child: Icon(icon, color: color, size: 18),
     );
   }
 }
+

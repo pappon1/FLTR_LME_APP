@@ -76,7 +76,7 @@ class CourseContentListItem extends StatelessWidget {
                   ? AppTheme.primaryColor.withValues(alpha: 0.1)
                   : Theme.of(context).cardColor,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(3.0),
                   side: BorderSide(
                       color: isSelected
                           ? AppTheme.primaryColor
@@ -89,7 +89,7 @@ class CourseContentListItem extends StatelessWidget {
                   height: 44,
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(3.0),
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: _buildLeadingPreview(icon, color),
@@ -122,7 +122,7 @@ class CourseContentListItem extends StatelessWidget {
                 icon: const Icon(Icons.more_vert),
                 padding: EdgeInsets.zero,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
+                    borderRadius: BorderRadius.circular(3.0)),
                 onSelected: (value) {
                   if (value == 'rename') onRename();
                   if (value == 'remove') onRemove();
@@ -234,3 +234,4 @@ class CourseContentListItem extends StatelessWidget {
     return Icon(defaultIcon, color: defaultColor, size: 20);
   }
 }
+

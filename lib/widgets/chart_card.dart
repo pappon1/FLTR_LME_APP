@@ -37,7 +37,7 @@ class ChartCard extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: AppTheme.primaryColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(3.0),
                   ),
                   child: const Text(
                     'Last 7 days',
@@ -165,3 +165,4 @@ class ChartCard extends StatelessWidget {
     );
   }
 }
+

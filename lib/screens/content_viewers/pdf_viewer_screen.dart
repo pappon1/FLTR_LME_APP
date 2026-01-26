@@ -236,7 +236,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
               height: 80,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(3.0),
               ),
             ),
           ),
@@ -249,7 +249,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
               height: 16,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(3.0),
               ),
             ),
           ),
@@ -280,7 +280,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: Theme.of(context).canvasColor.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(3.0),
           border: Border.all(color: AppTheme.primaryColor.withOpacity(0.1)),
         ),
         child: Row(
@@ -311,7 +311,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
                               margin: const EdgeInsets.only(right: 4),
                               decoration: BoxDecoration(
                                 color: AppTheme.primaryColor,
-                                borderRadius: BorderRadius.circular(6),
+                                borderRadius: BorderRadius.circular(3.0),
                               ),
                               child: Text(
                                 "${result.currentInstanceIndex}/${result.totalInstanceCount}",
@@ -387,7 +387,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppTheme.primaryColor,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(3.0),
                   ),
                   child: Text(
                     "${currentPage + 1} / $totalPages",
@@ -499,7 +499,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
         decoration: BoxDecoration(
           // Solid Theme Card look
           color: Theme.of(context).cardColor.withOpacity(onPressed == null ? 0.5 : 1.0),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(3.0),
           border: Border.all(
             color: Theme.of(context).dividerColor.withOpacity(0.1),
             width: 1.2,
@@ -528,14 +528,14 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
       second: _totalPagesNotifier,
       builder: (context, currentPage, totalPages, _) {
         return ClipRRect(
-          borderRadius: BorderRadius.circular(30),
+          borderRadius: BorderRadius.circular(3.0),
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
                 color: (isDark ? const Color(0xFF1E293B) : Colors.white).withOpacity(0.8),
-                borderRadius: BorderRadius.circular(30),
+                borderRadius: BorderRadius.circular(3.0),
                 border: Border.all(color: AppTheme.primaryColor.withOpacity(0.4), width: 1.5),
                 boxShadow: [
                   BoxShadow(
@@ -596,7 +596,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
         title: Text("Jump to Page", style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
         content: TextField(
           controller: controller,
@@ -608,7 +608,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
             hintText: "1 - $total",
             filled: true,
             fillColor: Colors.grey.withOpacity(0.1),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(3.0), borderSide: BorderSide.none),
           ),
         ),
         actions: [
@@ -654,3 +654,4 @@ class ValueListenableBuilder2<A, B> extends StatelessWidget {
         ),
       );
 }
+

@@ -18,7 +18,7 @@ class CourseCardSkeleton extends StatelessWidget {
           height: height,
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF2C2C2C) : Colors.grey[300]!,
-            borderRadius: BorderRadius.circular(4), // Slight radius for text lines
+            borderRadius: BorderRadius.circular(3.0), // Slight radius for text lines
           ),
         ),
       );
@@ -104,7 +104,7 @@ class CourseCardSkeleton extends StatelessWidget {
                         height: 32,
                         decoration: BoxDecoration(
                           color: const Color(0xFF536DFE),
-                          borderRadius: BorderRadius.circular(30),
+                          borderRadius: BorderRadius.circular(3.0),
                         ),
                       ),
                     ),
@@ -118,3 +118,4 @@ class CourseCardSkeleton extends StatelessWidget {
     );
   }
 }
+

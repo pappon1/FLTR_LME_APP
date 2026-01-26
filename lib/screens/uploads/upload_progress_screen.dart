@@ -377,7 +377,7 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
                     backgroundColor: (_isPaused ? Colors.green : Colors.orange).withOpacity(0.1),
                     foregroundColor: _isPaused ? Colors.green : Colors.orange,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
                   ),
                 ),
               ),
@@ -489,7 +489,7 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 12), // Minimum padding
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)), 
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(3.0)), 
         boxShadow: [
           BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2)),
         ],
@@ -500,9 +500,10 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildStat('Active', uploading.toString(), Colors.blue),
-              _buildStat('Pending', pending.toString(), Colors.orange),
-              _buildStat('Failed', failed.toString(), Colors.red),
+              Flexible(child: _buildStat('Active', uploading.toString(), Colors.blue)),
+              Flexible(child: _buildStat('Pending', pending.toString(), Colors.orange)),
+              Flexible(child: _buildStat('Failed', failed.toString(), Colors.red)),
+              const SizedBox(width: 8),
               Text(
                 '${(progress * 100).toInt()}%', 
                 style: TextStyle(
@@ -519,7 +520,7 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
             duration: const Duration(milliseconds: 500),
             curve: Curves.easeInOut,
             builder: (context, value, _) => ClipRRect(
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(3.0),
               child: LinearProgressIndicator(
                 value: value,
                 minHeight: 4, 
@@ -535,6 +536,7 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
 
   Widget _buildStat(String label, String value, Color color) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           width: 6,
@@ -542,13 +544,16 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
           decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 4),
-        Text(
-          '$value $label', 
-          style: TextStyle(
-            color: color.withOpacity(0.8), 
-            fontSize: 10, 
-            fontWeight: FontWeight.bold
-          )
+        Flexible(
+          child: Text(
+            '$value $label', 
+            style: TextStyle(
+              color: color.withOpacity(0.8), 
+              fontSize: 10, 
+              fontWeight: FontWeight.bold
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
         ),
       ],
     );
@@ -681,7 +686,7 @@ class UploadTaskCard extends StatelessWidget {
     required this.task,
     this.isSelected = false,
     this.isSelectionMode = false,
-    this.cornerRadius = 12.0,
+    this.cornerRadius = 3.0,
     this.verticalPadding = 8.0,
     required this.onToggleSelection,
     required this.onTogglePause,
@@ -751,20 +756,23 @@ class UploadTaskCard extends StatelessWidget {
                   ),
               ],
             ),
-            title: Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+            title: Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    (task['paused'] == true ? 'PAUSED' : status.toString().toUpperCase()), 
-                    style: TextStyle(
-                      fontSize: 10, 
-                      color: task['paused'] == true ? Colors.orange : statusColor, 
-                      fontWeight: FontWeight.bold
-                    )
+                  Flexible(
+                    child: Text(
+                      (task['paused'] == true ? 'PAUSED' : status.toString().toUpperCase()), 
+                      style: TextStyle(
+                        fontSize: 10, 
+                        color: task['paused'] == true ? Colors.orange : statusColor, 
+                        fontWeight: FontWeight.bold
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                   if (task['totalBytes'] != null)
                     Text(
@@ -776,6 +784,7 @@ class UploadTaskCard extends StatelessWidget {
                         color: Colors.grey[600],
                         fontWeight: FontWeight.w500
                       ),
+                      textAlign: TextAlign.end,
                     ),
                 ],
               ),
@@ -790,7 +799,7 @@ class UploadTaskCard extends StatelessWidget {
                     duration: const Duration(milliseconds: 400),
                     curve: Curves.easeOutCubic,
                     builder: (context, value, _) => ClipRRect(
-                      borderRadius: BorderRadius.circular(2),
+                      borderRadius: BorderRadius.circular(3.0),
                       child: LinearProgressIndicator(
                         value: value,
                         backgroundColor: statusColor.withOpacity(0.1),
@@ -867,7 +876,7 @@ class UploadTaskCard extends StatelessWidget {
         height: 40,
         decoration: BoxDecoration(
           color: Colors.black,
-          borderRadius: BorderRadius.circular(3),
+          borderRadius: BorderRadius.circular(3.0),
           image: hasLocalThumb
               ? DecorationImage(image: FileImage(File(thumbnail)), fit: BoxFit.cover)
               : (isTaskCompleted && videoId != null)
@@ -879,30 +888,14 @@ class UploadTaskCard extends StatelessWidget {
         ),
         child: !hasLocalThumb && (!isTaskCompleted || videoId == null)
             ? ClipRRect(
-                borderRadius: BorderRadius.circular(3),
-                child: Stack(
-                  children: [
-                    VideoThumbnailWidget(
-                      videoPath: task['filePath'] ?? task['localPath'] ?? '',
-                      width: 72,
-                      height: 40,
-                    ),
-                    Container(color: Colors.black26), 
-                    const Center(child: Icon(Icons.play_circle_outline, color: Colors.white70, size: 20)),
-                  ],
+                borderRadius: BorderRadius.circular(3.0),
+                child: VideoThumbnailWidget(
+                  videoPath: task['filePath'] ?? task['localPath'] ?? '',
+                  width: 72,
+                  height: 40,
                 ),
               )
-            : Center(
-                child: Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    color: Colors.black45,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white24, width: 0.5),
-                  ),
-                  child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 14),
-                ),
-              ),
+            : null,
       );
     }
 
@@ -915,7 +908,7 @@ class UploadTaskCard extends StatelessWidget {
         height: 40,
         decoration: BoxDecoration(
           color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(3),
+          borderRadius: BorderRadius.circular(3.0),
           image: exists
               ? DecorationImage(image: FileImage(File(localImgPath)), fit: BoxFit.cover)
               : null,
@@ -945,9 +938,10 @@ class UploadTaskCard extends StatelessWidget {
       height: 40,
       decoration: BoxDecoration(
         color: docColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(3),
+        borderRadius: BorderRadius.circular(3.0),
       ),
       child: Icon(docIcon, color: docColor, size: 22),
     );
   }
 }
+

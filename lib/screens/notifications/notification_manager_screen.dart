@@ -45,7 +45,7 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
               indicatorSize: TabBarIndicatorSize.label,
               indicator: const UnderlineTabIndicator(
                 borderSide: BorderSide(width: 3, color: AppTheme.primaryColor),
-                borderRadius: BorderRadius.only(topLeft: Radius.circular(3), topRight: Radius.circular(3)),
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(3.0), topRight: Radius.circular(3.0)),
               ),
               labelStyle: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 14),
               unselectedLabelStyle: GoogleFonts.outfit(fontWeight: FontWeight.w500, fontSize: 14),
@@ -61,3 +61,4 @@ class _NotificationManagerScreenState extends State<NotificationManagerScreen> {
     );
   }
 }
+

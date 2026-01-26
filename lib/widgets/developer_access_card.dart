@@ -17,7 +17,7 @@ class DeveloperAccessCard extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 20), // 2CM approx visual margin from edge
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(3.0),
           gradient: const LinearGradient(
             colors: [Color(0xFF2C3E50), Color(0xFF000000)], // Dark Professional Gradient
             begin: Alignment.topLeft,
@@ -80,3 +80,4 @@ class DeveloperAccessCard extends StatelessWidget {
     );
   }
 }
+

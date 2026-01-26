@@ -260,7 +260,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
         barrierDismissible: false,
         builder: (ctx) => AlertDialog(
           backgroundColor: _techDark,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: _neonGreen)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0), side: BorderSide(color: _neonGreen)),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -322,14 +322,14 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
                  padding: const EdgeInsets.all(4),
                  decoration: BoxDecoration(
                    color: Colors.white.withValues(alpha: 0.1),
-                   borderRadius: BorderRadius.circular(30),
+                   borderRadius: BorderRadius.circular(3.0),
                    border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                  ),
                  child: TabBar(
                    controller: _tabController,
                    indicator: BoxDecoration(
                      color: _neonBlue,
-                     borderRadius: BorderRadius.circular(25),
+                     borderRadius: BorderRadius.circular(3.0),
                      boxShadow: [BoxShadow(color: _neonBlue.withValues(alpha: 0.4), blurRadius: 10)],
                    ),
                    dividerColor: Colors.transparent, // REMOVED WHITE DIVIDER LINE
@@ -396,7 +396,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: _neonGreen.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(15),
+                      borderRadius: BorderRadius.circular(3.0),
                       border: Border.all(color: _neonGreen.withValues(alpha: 0.5)),
                     ),
                     child: Row(
@@ -446,7 +446,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
                       margin: const EdgeInsets.only(bottom: 8),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(3.0),
                       ),
                       child: ListTile(
                         leading: const CircleAvatar(backgroundColor: Colors.white10, child: Icon(Icons.person, color: Colors.white)),
@@ -479,7 +479,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(15),
+                      borderRadius: BorderRadius.circular(3.0),
                       border: Border.all(color: Colors.white.withValues(alpha: 0.1), style: BorderStyle.solid),
                     ),
                     child: Column(
@@ -556,7 +556,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(3.0),
         border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Column(
@@ -661,9 +661,9 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
       filled: true,
       fillColor: Colors.black12,
       labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: _neonBlue, width: 1.5)),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(3.0), borderSide: BorderSide.none),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(3.0), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(3.0), borderSide: BorderSide(color: _neonBlue, width: 1.5)),
     );
   }
   
@@ -681,7 +681,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
       width: double.infinity,
       height: 55,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(3.0),
         gradient: LinearGradient(colors: [_neonBlue, const Color(0xFF0072FF)]),
         boxShadow: [BoxShadow(color: _neonBlue.withValues(alpha: 0.4), blurRadius: 20, offset: const Offset(0, 5))],
       ),
@@ -689,7 +689,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
         ),
         onPressed: _isLoading ? null : onTap,
         child: _isLoading 
@@ -729,3 +729,4 @@ class _NoSpaceFormatter extends TextInputFormatter {
     return newValue;
   }
 }
+

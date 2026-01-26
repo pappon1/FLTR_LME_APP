@@ -406,7 +406,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
               height: MediaQuery.of(context).size.height * 0.85,
               decoration: BoxDecoration(
                 color: Theme.of(context).scaffoldBackgroundColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(3.0)),
               ),
               child: Column(
                 children: [
@@ -524,7 +524,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                                height: 50,
                                child: OutlinedButton(
                                  style: OutlinedButton.styleFrom(
-                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
                                    side: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!)
                                  ),
                                  onPressed: () => Navigator.pop(context),
@@ -540,7 +540,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                                  style: ElevatedButton.styleFrom(
                                    backgroundColor: Colors.red, 
                                    foregroundColor: Colors.white, 
-                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))
+                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0))
                                  ),
                                  onPressed: () {
                                    if (tempSegment == null && tempCourseIds.isEmpty) {
@@ -611,7 +611,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
               height: MediaQuery.of(context).size.height * 0.85,
               decoration: BoxDecoration(
                 color: Theme.of(context).scaffoldBackgroundColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(3.0)),
               ),
               child: Column(
                 children: [
@@ -656,7 +656,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                                    Container(
                                      height: 200,
                                      margin: const EdgeInsets.only(left: 16, bottom: 16),
-                                     decoration: BoxDecoration(border: Border.all(color: Theme.of(context).dividerColor), borderRadius: BorderRadius.circular(8)),
+                                     decoration: BoxDecoration(border: Border.all(color: Theme.of(context).dividerColor), borderRadius: BorderRadius.circular(3.0)),
                                      child: StreamBuilder<QuerySnapshot>(
                                        stream: FirebaseFirestore.instance.collection('courses').snapshots(),
                                        builder: (context, snapshot) {
@@ -705,7 +705,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                                decoration: InputDecoration(
                                  hintText: 'https://...',
                                  labelText: 'Enter URL',
-                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(3.0)),
                                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                                ),
                              ),
@@ -727,7 +727,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                                height: 50,
                                child: OutlinedButton(
                                  style: OutlinedButton.styleFrom(
-                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
                                    side: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!)
                                  ),
                                  onPressed: () => Navigator.pop(context),
@@ -743,7 +743,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                                  style: ElevatedButton.styleFrom(
                                    backgroundColor: Colors.orange, 
                                    foregroundColor: Colors.white, 
-                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8))
+                                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0))
                                  ),
                                  onPressed: () {
                                    setState(() {
@@ -781,7 +781,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
             margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             decoration: BoxDecoration(
               color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(3.0),
               border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.1)),
               boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
             ),
@@ -791,7 +791,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
               title: const Text('View Sent History', style: TextStyle(fontWeight: FontWeight.bold)),
               subtitle: const Text('Check previously sent notifications'),
               trailing: Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey[400]),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
             ),
           ),
           
@@ -807,7 +807,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF0F2F5),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(3.0),
                       border: Border.all(color: isDark ? Colors.grey[800]! : Colors.grey[300]!),
                     ),
                     child: Column(
@@ -822,7 +822,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                             // Preview Button
                             InkWell(
                               onTap: _showPreview,
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(3.0),
                               child: const Padding(
                                 padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                                 child: Row(
@@ -840,7 +840,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                         Container(
                           decoration: BoxDecoration(
                             color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(3.0),
                             boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4))],
                           ),
                           child: Column(
@@ -868,7 +868,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                                  AspectRatio(
                                    aspectRatio: 16/9,
                                    child: ClipRRect(
-                                     borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+                                     borderRadius: const BorderRadius.vertical(bottom: Radius.circular(3.0)),
                                      child: Image.file(_selectedImage!, fit: BoxFit.contain), 
                                    ),
                                  ),
@@ -898,9 +898,9 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                     decoration: InputDecoration(
                        labelText: 'Title',
                        labelStyle: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[700]),
-                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!)),
-                       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!)),
-                       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
+                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(3.0), borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!)),
+                       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(3.0), borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!)),
+                       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(3.0), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
                        filled: true,
                        fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey[100],
                        prefixIcon: Icon(Icons.title, color: isDark ? Colors.grey[500] : Colors.grey[600]),
@@ -919,9 +919,9 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                     decoration: InputDecoration(
                       labelText: 'Description',
                       labelStyle: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[700]),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!)),
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!)),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(3.0), borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!)),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(3.0), borderSide: BorderSide(color: isDark ? Colors.grey[700]! : Colors.grey[300]!)),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(3.0), borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2)),
                       filled: true,
                       fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey[100],
                       prefixIcon: Icon(Icons.short_text, color: isDark ? Colors.grey[500] : Colors.grey[600]),
@@ -948,12 +948,12 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                       child: Container(
                         decoration: BoxDecoration(
                           color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(3.0),
                           border: Border.all(color: isDark ? Colors.grey[800]! : Colors.grey[300]!, style: BorderStyle.solid),
                         ),
                         child: _selectedImage != null
                             ? Stack(fit: StackFit.expand, children: [
-                                ClipRRect(borderRadius: BorderRadius.circular(12), child: Image.file(_selectedImage!, fit: BoxFit.contain)), 
+                                ClipRRect(borderRadius: BorderRadius.circular(3.0), child: Image.file(_selectedImage!, fit: BoxFit.contain)), 
                                 const Positioned(top: 8, right: 8, child: CircleAvatar(backgroundColor: Colors.white, radius: 14, child: Icon(Icons.edit, size: 16, color: AppTheme.primaryColor))),
                               ])
                             : Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.add_photo_alternate_rounded, size:48, color: isDark ? Colors.grey[400] : Colors.grey[500]), const SizedBox(height: 8), Text('Attach 1280x720 Image\nHold 0.8s to Remove', textAlign: TextAlign.center, style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[500]))]),
@@ -966,7 +966,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                   Container(
                     decoration: BoxDecoration(
                       color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey[50], 
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(3.0),
                       border: Border.all(color: _isScheduled ? AppTheme.primaryColor.withValues(alpha: 0.5) : Colors.transparent),
                     ),
                     child: SwitchListTile(
@@ -998,7 +998,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: AppTheme.primaryColor, 
                               foregroundColor: Colors.white, 
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0))
                             ), 
                             child: _isSending 
                               ? const CircularProgressIndicator(color: Colors.white) 
@@ -1021,7 +1021,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                           width: 50,
                           decoration: BoxDecoration(
                             color: Colors.red.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(3.0),
                             border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                           ),
                           child: IconButton(
@@ -1071,7 +1071,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
             });
 
             return AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
               title: const Row(
                 children: [
                    Icon(Icons.warning_amber_rounded, color: Colors.red),
@@ -1181,7 +1181,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
-        decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(16), border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.1)), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4, offset: const Offset(0, 2))]),
+        decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: BorderRadius.circular(3.0), border: Border.all(color: Theme.of(context).dividerColor.withValues(alpha: 0.1)), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4, offset: const Offset(0, 2))]),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [FaIcon(icon, size: 14, color: iconColor), const SizedBox(width: 8), Text(label, style: TextStyle(color: Colors.grey[500], fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5))]),
           const SizedBox(height: 6),
@@ -1203,7 +1203,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                padding: const EdgeInsets.all(12),
                decoration: BoxDecoration(
                  color: const Color(0xFF202124), // Approx Android Dark Notif Color
-                 borderRadius: BorderRadius.circular(16),
+                 borderRadius: BorderRadius.circular(3.0),
                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 20)],
                ),
                child: Column(
@@ -1240,7 +1240,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                              Padding(
                                padding: const EdgeInsets.only(left: 12),
                                child: ClipRRect(
-                                 borderRadius: BorderRadius.circular(4),
+                                 borderRadius: BorderRadius.circular(3.0),
                                  child: Image.file(_selectedImage!, width: 48, height: 48, fit: BoxFit.cover),
                                ),
                              ),
@@ -1251,7 +1251,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
                       Padding(
                         padding: const EdgeInsets.only(top: 12),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(3.0),
                           child: Image.file(_selectedImage!, width: double.infinity, fit: BoxFit.fitWidth),
                         ),
                       ),
@@ -1272,3 +1272,4 @@ extension StringExtension on String {
     return "${this[0].toUpperCase()}${substring(1).toLowerCase()}";
   }
 }
+

@@ -88,7 +88,7 @@ class _RazorpayReportsScreenState extends State<RazorpayReportsScreen> {
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: status == 'captured' ? Colors.green : Colors.redAccent,
-                            borderRadius: BorderRadius.circular(4),
+                            borderRadius: BorderRadius.circular(3.0),
                           ),
                           child: Text(status.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
                         ),
@@ -99,3 +99,4 @@ class _RazorpayReportsScreenState extends State<RazorpayReportsScreen> {
     );
   }
 }
+
