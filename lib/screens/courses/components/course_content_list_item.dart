@@ -17,6 +17,7 @@ class CourseContentListItem extends StatelessWidget {
   final VoidCallback onRename;
   final VoidCallback onRemove;
   final VoidCallback? onAddThumbnail;
+  final bool isReadOnly;
 
   const CourseContentListItem({
     super.key,
@@ -33,6 +34,7 @@ class CourseContentListItem extends StatelessWidget {
     required this.onRename,
     required this.onRemove,
     this.onAddThumbnail,
+    this.isReadOnly = false, // Default to false
   });
 
   @override
@@ -72,6 +74,12 @@ class CourseContentListItem extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: ListTile(
+              onTap: isReadOnly 
+                  ? () {
+                      print('🎯 [ListTile TAP] Read-only mode: ${item['name']}');
+                      onTap();
+                    }
+                  : null,
               tileColor: isSelected
                   ? AppTheme.primaryColor.withValues(alpha: 0.1)
                   : Colors.transparent,
@@ -83,7 +91,7 @@ class CourseContentListItem extends StatelessWidget {
                           : Theme.of(context).dividerColor.withValues(alpha: 0.12),
                       width: isSelected ? 2 : 1)),
               leading: Hero(
-                tag: (item['path'] ?? item['name']) + index.toString(),
+                tag: (item['path'] ?? item['name']) + index.toString() + (isReadOnly ? '_read' : ''),
                 child: Container(
                   width: item['type'] == 'video' ? 80 : 44,
                   height: 44,
@@ -93,21 +101,51 @@ class CourseContentListItem extends StatelessWidget {
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: _buildLeadingPreview(
-                    icon, 
-                    color, 
-                    item['type'] == 'video' ? 80 : 44, 
+                    icon,
+                    color,
+                    item['type'] == 'video' ? 80 : 44,
                     44
                   ),
                 ),
               ),
               title: Text(
                 item['name'],
+                maxLines: 2, // Allow wrapping up to 2 lines
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: isSelected ? AppTheme.primaryColor : null,
                   fontSize: 13,
                 ),
               ),
+              subtitle: item['type'] == 'video'
+                  ? Builder(
+                      builder: (context) {
+                        // Try multiple possible field names for duration
+                        final duration = item['duration'] 
+                            ?? item['videoDuration']
+                            ?? item['durationInSeconds']
+                            ?? item['length']
+                            ?? item['videoLength'];
+                        
+                        // Debug only if all fields are null
+                        if (duration == null) {
+                          print("🔍 [DEBUG] Video Item (no duration found): ${item.keys.toList()}");
+                        }
+                        
+                        if (duration != null) {
+                          return Text(
+                            _formatDuration(duration),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Colors.grey.shade600,
+                            ),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    )
+                  : null,
               trailing: isSelectionMode
                   ? GestureDetector(
                       onTap: onToggleSelection,
@@ -117,10 +155,11 @@ class CourseContentListItem extends StatelessWidget {
                           : const Icon(Icons.circle_outlined,
                               color: Colors.grey),
                     )
-                  : const SizedBox(width: 48),
+                  : (isReadOnly ? null : const SizedBox(width: 48)), // No arrow in read-only
             ),
           ),
-          if (!isSelectionMode && !isDragMode)
+          
+          if (!isReadOnly && !isSelectionMode && !isDragMode)
             Positioned(
               right: 0,
               top: 0,
@@ -162,47 +201,49 @@ class CourseContentListItem extends StatelessWidget {
                 ],
               ),
             ),
-          Positioned.fill(
-            bottom: 12,
-            child: isDragMode
-                ? Row(
-                    children: [
-                      const SizedBox(width: 60), // Left Scroll Zone
-                      Expanded(
-                        child: ReorderableDragStartListener(
-                          index: index,
-                          child: Container(color: Colors.transparent),
+            
+          if (!isReadOnly)
+            Positioned.fill(
+              bottom: 12,
+              child: isDragMode
+                  ? Row(
+                      children: [
+                        const SizedBox(width: 60), // Left Scroll Zone
+                        Expanded(
+                          child: ReorderableDragStartListener(
+                            index: index,
+                            child: Container(color: Colors.transparent),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 60), // Right Scroll Zone
-                    ],
-                  )
-                : Row(
-                    children: [
-                      // Left Zone: Tap & Hold for Drag
-                      Expanded(
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.translucent,
-                          onTapDown: (_) => onStartHold(),
-                          onTapUp: (_) => onCancelHold(),
-                          onTapCancel: () => onCancelHold(),
-                          onTap: onTap,
-                          child: Container(color: Colors.transparent),
+                        const SizedBox(width: 60), // Right Scroll Zone
+                      ],
+                    )
+                  : Row(
+                      children: [
+                        // Left Zone: Tap & Hold for Drag
+                        Expanded(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            onTapDown: (_) => onStartHold(),
+                            onTapUp: (_) => onCancelHold(),
+                            onTapCancel: () => onCancelHold(),
+                            onTap: onTap,
+                            child: Container(color: Colors.transparent),
+                          ),
                         ),
-                      ),
-                      // Right Zone: Long Press for Selection
-                      Expanded(
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.translucent,
-                          onLongPress: onEnterSelectionMode,
-                          onTap: onTap,
-                          child: Container(color: Colors.transparent),
+                        // Right Zone: Long Press for Selection
+                        Expanded(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            onLongPress: onEnterSelectionMode,
+                            onTap: onTap,
+                            child: Container(color: Colors.transparent),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 48), // Spacing for menu button
-                    ],
-                  ),
-          ),
+                        const SizedBox(width: 48), // Spacing for menu button
+                      ],
+                    ),
+            ),
         ],
       ),
     );
@@ -247,7 +288,59 @@ class CourseContentListItem extends StatelessWidget {
        }
     }
 
+
     return Icon(defaultIcon, color: defaultColor, size: 20);
+  }
+
+  String _formatDuration(dynamic duration) {
+    try {
+      int totalSeconds;
+      
+      // Handle different duration formats
+      if (duration is int) {
+        totalSeconds = duration;
+      } else if (duration is double) {
+        totalSeconds = duration.toInt();
+      } else if (duration is String) {
+        // Check if it's already formatted (e.g., "05:30" or "1:05:30")
+        if (duration.contains(':')) {
+          final parts = duration.split(':');
+          if (parts.length == 2) {
+            // MM:SS format
+            final minutes = int.tryParse(parts[0]) ?? 0;
+            final seconds = int.tryParse(parts[1]) ?? 0;
+            totalSeconds = (minutes * 60) + seconds;
+          } else if (parts.length == 3) {
+            // HH:MM:SS format
+            final hours = int.tryParse(parts[0]) ?? 0;
+            final minutes = int.tryParse(parts[1]) ?? 0;
+            final seconds = int.tryParse(parts[2]) ?? 0;
+            totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
+          } else {
+            return duration; // Return as-is if unknown format
+          }
+        } else {
+          // Try parsing as raw seconds string
+          totalSeconds = int.tryParse(duration) ?? 0;
+        }
+      } else {
+        return '';
+      }
+
+      if (totalSeconds <= 0) return '';
+
+      final hours = totalSeconds ~/ 3600;
+      final minutes = (totalSeconds % 3600) ~/ 60;
+      final seconds = totalSeconds % 60;
+
+      if (hours > 0) {
+        return '${hours}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+      } else {
+        return '${minutes}:${seconds.toString().padLeft(2, '0')}';
+      }
+    } catch (e) {
+      return '';
+    }
   }
 }
 

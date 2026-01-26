@@ -383,8 +383,21 @@ void onStart(ServiceInstance service) async {
             final bool allCompleted = _queue.every((t) => t['status'] == 'completed');
             if (allCompleted) {
                 print("✅ [BG SERVICE] Every single task completed. Finalizing...");
+                bool isTargetPublished = false;
+                try {
+                  final String? cJson = prefs.getString(kPendingCourseKey);
+                  if (cJson != null) {
+                    final data = jsonDecode(cJson);
+                    isTargetPublished = data['isPublished'] ?? false;
+                  }
+                } catch(_) {}
+
                 await _finalizeCourseIfPending(service, _queue, _isPaused);
-                await _updateNotification("Course Published Successfully! ✅", 100);
+                
+                final msg = isTargetPublished 
+                    ? "Course Published Successfully! ✅" 
+                    : "Course Uploaded Successfully (Admin Side)! ✅";
+                await _updateNotification(msg, 100);
             } else {
                 print("⏸️ [BG SERVICE] Remaining tasks are PAUSED. Waiting 10s before sleep...");
                 await _updateNotification("Uploads Paused ⏸️", null);
@@ -991,9 +1004,10 @@ Future<void> _finalizeCourseIfPending(ServiceInstance service, List<Map<String, 
        return; 
      }
 
-     // 4. Mark as Published and Active
-     courseData['isPublished'] = true;
-     courseData['status'] = 'active';
+     // 4. Respect UI Publish Intent
+     final bool isTargetPublished = courseData['isPublished'] ?? false;
+     courseData['isPublished'] = isTargetPublished;
+     courseData['status'] = isTargetPublished ? 'active' : 'draft';
 
      // 5. Create in Firestore with proper Timestamp
      if (courseData.containsKey('createdAt')) {
@@ -1042,10 +1056,15 @@ Future<void> _finalizeCourseIfPending(ServiceInstance service, List<Map<String, 
      
      // Notify
      final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+     final String alertTitle = isTargetPublished ? 'Course Published! 🚀' : 'Upload Successful! ✅';
+     final String alertBody = isTargetPublished 
+         ? 'Your course "${courseData['title']}" is now live.'
+         : 'Course "${courseData['title']}" uploaded successfully (Admin Side).';
+
      await flutterLocalNotificationsPlugin.show(
         kServiceNotificationId + 1, // Alert ID
-        'Course Published! 🚀',
-        'Your course "${courseData['title']}" is now live.',
+        alertTitle,
+        alertBody,
         const NotificationDetails(
           android: AndroidNotificationDetails(
             kAlertNotificationChannelId,

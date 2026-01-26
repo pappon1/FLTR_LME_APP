@@ -124,40 +124,7 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final authService = FirebaseAuthService();
-
-    return StreamBuilder(
-      stream: authService.authStateChanges,
-      builder: (context, snapshot) {
-        // Show splash while checking auth state
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const SplashScreen(autoNavigate: false);
-        }
-
-        // User is signed in
-        if (snapshot.hasData && snapshot.data != null) {
-          return FutureBuilder<bool>(
-            future: authService.isAdmin(),
-            builder: (context, adminSnapshot) {
-              if (adminSnapshot.connectionState == ConnectionState.waiting) {
-                return const SplashScreen(autoNavigate: false);
-              }
-
-              // Check if user is admin
-              if (adminSnapshot.data == true) {
-                return const HomeScreen();
-              } else {
-                // Not an admin, sign out and show login
-                authService.signOut();
-                return const LoginScreen();
-              }
-            },
-          );
-        }
-
-        // User is not signed in
-        return const LoginScreen();
-      },
-    );
+    // BYPASS: Directly show HomeScreen without authentication
+    return const HomeScreen();
   }
 }

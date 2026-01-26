@@ -6,6 +6,7 @@ import '../../utils/app_theme.dart';
 import '../../services/firebase_auth_service.dart';
 import '../../utils/quick_cleanup.dart';
 import '../login_screen.dart';
+import '../admin/course_migration_screen.dart';
 import 'dart:async';
 
 class SettingsTab extends StatelessWidget {
@@ -282,6 +283,44 @@ class SettingsTab extends StatelessWidget {
                     ],
                   ),
                 ),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.blue.shade600, Colors.blue.shade800],
+                      ),
+                      borderRadius: BorderRadius.circular(3.0),
+                    ),
+                    child: const FaIcon(
+                      FontAwesomeIcons.database,
+                      size: 20,
+                      color: Colors.white,
+                    ),
+                  ),
+                  title: const Text(
+                    'Course Migration Tool',
+                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+                  ),
+                  subtitle: const Text(
+                    'Fix duration format in old courses',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  trailing: const FaIcon(
+                    FontAwesomeIcons.chevronRight,
+                    size: 14,
+                    color: Colors.blue,
+                  ),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const CourseMigrationScreen(),
+                      ),
+                    );
+                  },
+                ),
+                const Divider(height: 1),
                 ListTile(
                   leading: Container(
                     padding: const EdgeInsets.all(8),

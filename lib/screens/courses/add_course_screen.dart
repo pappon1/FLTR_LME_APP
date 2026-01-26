@@ -1536,6 +1536,38 @@ class _AddCourseScreenState extends State<AddCourseScreen>
       ),
       centerTitle: true,
       elevation: 0,
+      actions: [
+        if (_currentStep == 1) // Content Step
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Center(
+              child: InkWell(
+                onTap: _showAddContentMenu,
+                borderRadius: BorderRadius.circular(25),
+                child: Container(
+                  height: 40,
+                  width: 40,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primaryColor.withOpacity(0.4),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.add,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -2444,70 +2476,24 @@ class _AddCourseScreenState extends State<AddCourseScreen>
   }
 
   Widget _buildStep2Content() {
-    return Stack(
-      children: [
-        CustomScrollView(
-          key: const ValueKey('step2_scroll_view'),
-          slivers: [
-            SliverPersistentHeader(
-              key: const ValueKey('step2_header'),
-              delegate: CollapsingStepIndicator(
-                currentStep: 1,
-                isSelectionMode: _isSelectionMode,
-                isDragMode: _isDragModeActive,
-              ),
-              pinned: true,
-            ),
+    return CustomScrollView(
+      slivers: [
+        SliverPersistentHeader(
+          delegate: CollapsingStepIndicator(
+            currentStep: 1,
+            isSelectionMode: _isSelectionMode,
+            isDragMode: _isDragModeActive,
+          ),
+          pinned: true,
+        ),
 
-            // Dynamic helper to ensure FAB scrolls with content and doesn't block header
-            SliverToBoxAdapter(
-              child: (!_isSelectionMode && !_isDragModeActive)
-                  ? Align(
-                      alignment: Alignment.centerRight,
-                      child: Padding(
-                        padding: const EdgeInsets.only(
-                          top: 12,
-                          right: 24,
-                          bottom: 0,
-                        ),
-                        child: InkWell(
-                          onTap: _showAddContentMenu,
-                          borderRadius: BorderRadius.circular(3.0),
-                          child: Container(
-                            height: 50,
-                            width: 50,
-                            decoration: BoxDecoration(
-                              color: AppTheme.primaryColor,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: AppTheme.primaryColor.withOpacity(0.4),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 4),
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.add,
-                              color: Colors.white,
-                              size: 28,
-                            ),
-                          ),
-                        ),
-                      ),
-                    )
-                  : const SizedBox.shrink(),
-            ),
+        // Dynamic helper to ensure FAB scrolls with content and doesn't block header
+        // Removed plus button from body
 
-            SliverPadding(
-              key: const ValueKey('step2_content_padding'),
-              padding: EdgeInsets.fromLTRB(
-                24,
-                (_isSelectionMode || _isDragModeActive) ? 20 : 12,
-                24,
-                24,
-              ),
-              sliver: _isInitialLoading
+        SliverPadding(
+          key: const ValueKey('step2_content_padding'),
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          sliver: _isInitialLoading
                   ? SliverToBoxAdapter(child: _buildShimmerList())
                   : _courseContents.isEmpty
                   ? SliverToBoxAdapter(
@@ -2572,8 +2558,6 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                 ),
               ),
             ),
-          ],
-        ),
       ],
     );
   }
@@ -2937,14 +2921,49 @@ class _AddCourseScreenState extends State<AddCourseScreen>
       return;
     }
 
+    final List<Map<String, dynamic>> itemsToPaste = [];
+    final List<String> skippedNames = [];
+    final Set<String> existingNames = _courseContents.map((e) => e['name'].toString()).toSet();
+
+    for (var item in ContentClipboard.items!) {
+      if (existingNames.contains(item['name'])) {
+        skippedNames.add(item['name']);
+      } else {
+        itemsToPaste.add(Map<String, dynamic>.from(jsonDecode(jsonEncode(item))));
+      }
+    }
+
+    if (itemsToPaste.isEmpty && skippedNames.isNotEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Conflict: "${skippedNames.join(', ')}" already exists in this root.'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+      return;
+    }
+
     setState(() {
-      for (var item in ContentClipboard.items!) {
-        final newItem = Map<String, dynamic>.from(jsonDecode(jsonEncode(item)));
-        newItem['name'] = '${newItem['name']} (Copy)';
-        newItem['isLocal'] = true; // Essential for persistence
+      for (var newItem in itemsToPaste) {
+        newItem['isLocal'] = true;
         _courseContents.insert(0, newItem);
       }
+      
+      if (ContentClipboard.action == 'cut') {
+        ContentClipboard.clear();
+      }
     });
+
+    if (skippedNames.isNotEmpty && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Pasted ${itemsToPaste.length} items. Skipped ${skippedNames.length} duplicates.'),
+          backgroundColor: Colors.orange.shade800,
+        ),
+      );
+    }
     _saveCourseDraft();
 
     if (mounted)

@@ -24,8 +24,14 @@ import 'components/course_content_list_item.dart';
 class FolderDetailScreen extends StatefulWidget {
   final String folderName;
   final List<Map<String, dynamic>> contentList;
+  final bool isReadOnly; // New Parameter
 
-  const FolderDetailScreen({super.key, required this.folderName, required this.contentList});
+  const FolderDetailScreen({
+    super.key,
+    required this.folderName,
+    required this.contentList,
+    this.isReadOnly = false, // Default false (Editable)
+  });
 
   @override
   State<FolderDetailScreen> createState() => _FolderDetailScreenState();
@@ -321,14 +327,71 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       return;
     }
 
+    final List<Map<String, dynamic>> itemsToPaste = [];
+    final List<String> skippedNames = [];
+    final List<String> selfPasteNames = [];
+    final Set<String> existingNames = _contents.map((e) => e['name'].toString()).toSet();
+
+    for (var item in ContentClipboard.items!) {
+      // 1. Circular Reference Check (Direct self-nesting)
+      if (item['type'] == 'folder' && item['name'] == widget.folderName) {
+        selfPasteNames.add(item['name']);
+        continue;
+      }
+
+      // 2. Duplicate Name Check
+      if (existingNames.contains(item['name'])) {
+        skippedNames.add(item['name']);
+      } else {
+        itemsToPaste.add(Map<String, dynamic>.from(jsonDecode(jsonEncode(item))));
+      }
+    }
+
+    // Individual Feedback for Circular Paste
+    if (selfPasteNames.isNotEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Action Blocked: Cannot paste folder "${selfPasteNames.join(', ')}" into itself!'),
+            backgroundColor: Colors.red.shade900,
+          ),
+        );
+      }
+      if (itemsToPaste.isEmpty) return;
+    }
+
+    // Feedback for Duplicates
+    if (itemsToPaste.isEmpty && skippedNames.isNotEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Conflict: "${skippedNames.join(', ')}" is already present in this location.'),
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+      return;
+    }
+
     setState(() {
-      for (var item in ContentClipboard.items!) {
-         final newItem = Map<String, dynamic>.from(jsonDecode(jsonEncode(item)));
-         newItem['name'] = '${newItem['name']} (Copy)';
-         newItem['isLocal'] = true; // Essential for persistence
+      for (var newItem in itemsToPaste) {
+         newItem['isLocal'] = true;
          _contents.insert(0, newItem);
       }
+
+      if (ContentClipboard.action == 'cut') {
+        ContentClipboard.clear();
+      }
     });
+
+    if (skippedNames.isNotEmpty && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Pasted ${itemsToPaste.length} items. Skipped ${skippedNames.length} duplicates.'),
+          backgroundColor: Colors.orange.shade800,
+        ),
+      );
+    }
     _savePersistentContent();
     
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${ContentClipboard.items!.length} items pasted')));
@@ -650,7 +713,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
              'type': type, 
              'name': path.split('/').last, 
              'path': path, 
-             'duration': type == 'video' ? "..." : null, 
+             'duration': null, // Will be filled by _fixMissingData
              'thumbnail': null,
              'isLocal': true
            });
@@ -679,7 +742,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
     return null; // System Removed
   }
 
-  Future<String> _getVideoDuration(String path) async {
+  Future<int> _getVideoDuration(String path) async {
     final player = Player();
     try {
       final completer = Completer<void>();
@@ -700,10 +763,10 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       await sub.cancel();
       await player.dispose();
       
-      return _formatDurationString(dur);
+      return dur.inSeconds; // Return as integer seconds
     } catch (e) {
       await player.dispose();
-      return "00:00";
+      return 0;
     }
   }
 
@@ -721,15 +784,14 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
   Future<void> _fixMissingData() async {
     bool hasChanges = false;
     for (int i = 0; i < _contents.length; i++) {
-      if (_contents[i]['type'] == 'video' && 
-         (_contents[i]['duration'] == "..." || _contents[i]['duration'] == null || _contents[i]['duration'] == "")) {
+      if (_contents[i]['type'] == 'video' && _contents[i]['duration'] == null) {
         
         final path = _contents[i]['path'];
         if (path != null && File(path).existsSync()) {
-          final duration = await _getVideoDuration(path);
-          if (mounted) {
+          final durationInSeconds = await _getVideoDuration(path);
+          if (mounted && durationInSeconds > 0) {
             setState(() {
-              _contents[i]['duration'] = duration;
+              _contents[i]['duration'] = durationInSeconds; // Store as integer seconds
             });
             hasChanges = true;
           }
@@ -750,12 +812,14 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
             MaterialPageRoute(
               builder: (_) => FolderDetailScreen(
                 folderName: item['name'], 
-                contentList: (item['contents'] as List?)?.cast<Map<String, dynamic>>() ?? []
+                // Recursion: Pass isReadOnly state
+                contentList: (item['contents'] as List?)?.cast<Map<String, dynamic>>() ?? [],
+                isReadOnly: widget.isReadOnly, 
               )
             )
           );
           
-          if (result != null && result is List<Map<String, dynamic>>) {
+          if (!widget.isReadOnly && result != null && result is List<Map<String, dynamic>>) {
              setState(() {
                 _contents[index]['contents'] = result;
              });
@@ -768,8 +832,28 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
           )));
       } else if (item['type'] == 'video' && path != null) {
           // CREATE PLAYLIST: Filter only video items
-          final videoList = _contents.where((element) => element['type'] == 'video' && element['path'] != null).toList();
-          final initialIndex = videoList.indexOf(item);
+          final videoList = _contents
+              .where((element) => element['type'] == 'video' && element['path'] != null)
+              .map((video) {
+                final converted = Map<String, dynamic>.from(video);
+                final videoPath = video['path'];
+                
+                // Convert iframe URL to actual video URL in read-only mode
+                if (widget.isReadOnly && videoPath != null && videoPath.toString().contains('iframe.mediadelivery.net')) {
+                  final videoId = videoPath.toString().split('/').last;
+                  converted['path'] = 'https://vz-583681.b-cdn.net/$videoId/playlist.m3u8';
+                  
+                  // Add thumbnail if missing
+                  if (converted['thumbnail'] == null) {
+                    converted['thumbnail'] = 'https://vz-583681.b-cdn.net/$videoId/thumbnail.jpg';
+                  }
+                }
+                
+                return converted;
+              })
+              .toList();
+          
+          final initialIndex = videoList.indexWhere((e) => e['name'] == item['name']);
           
           Navigator.push(context, MaterialPageRoute(builder: (_) => VideoPlayerScreen(
             playlist: videoList, 
@@ -789,7 +873,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
          if (didPop) return;
-         await _savePersistentContent();
+         if (!widget.isReadOnly) await _savePersistentContent();
          // Pass data back just in case parent supports it
          if (context.mounted) Navigator.pop(context, _contents);
       },
@@ -797,32 +881,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       appBar: _buildAppBar(),
       body: CustomScrollView(
         slivers: [
-          SliverToBoxAdapter(
-            child: (!_isSelectionMode && !_isDragModeActive)
-             ? Align(
-                alignment: Alignment.centerRight,
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 12, right: 24, bottom: 0),
-                  child: InkWell(
-                     onTap: _showAddContentMenu,
-                     borderRadius: BorderRadius.circular(3.0),
-                     child: Container(
-                       height: 50,
-                       width: 50,
-                       decoration: BoxDecoration(
-                         color: AppTheme.primaryColor,
-                         shape: BoxShape.circle,
-                         boxShadow: [
-                           BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 4))
-                         ],
-                       ),
-                       child: const Icon(Icons.add, color: Colors.white, size: 28),
-                     ),
-                   ),
-                ),
-              )
-             : const SizedBox.shrink(),
-          ),
+          // Removed plus button from body
 
           _isInitialLoading
              ? SliverToBoxAdapter(child: _buildShimmerList())
@@ -841,10 +900,11 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                     ),
                   )
                 : SliverPadding(
-                    padding: EdgeInsets.fromLTRB(24, (_isSelectionMode || _isDragModeActive) ? 20 : 12, 24, 24),
+                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
                     sliver: SliverReorderableList(
                       itemCount: _contents.length,
                       onReorder: (oldIndex, newIndex) {
+                        if (widget.isReadOnly) return; // Disable reorder in read-only
                         setState(() {
                           if (oldIndex < newIndex) newIndex -= 1;
                           final item = _contents.removeAt(oldIndex);
@@ -871,6 +931,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                            onRename: () => _renameContent(index),
                            onRemove: () => _confirmRemoveContent(index),
                            onAddThumbnail: () => _showThumbnailManagerDialog(index),
+                           isReadOnly: widget.isReadOnly, // Pass Read-Only state
                          );
                       },
                     ),
@@ -953,6 +1014,38 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       title: Text(widget.folderName, style: const TextStyle(fontWeight: FontWeight.bold)),
       centerTitle: true,
       elevation: 0,
+      actions: [
+        if (!widget.isReadOnly) // Hide Add Button if Read-Only
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: Center(
+              child: InkWell(
+                onTap: _showAddContentMenu,
+                borderRadius: BorderRadius.circular(25),
+              child: Container(
+                height: 40,
+                width: 40,
+                decoration: BoxDecoration(
+                  color: AppTheme.primaryColor,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.4),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.add,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
