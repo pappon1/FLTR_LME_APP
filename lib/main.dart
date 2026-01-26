@@ -16,6 +16,7 @@ import 'services/firebase_auth_service.dart';
 import 'utils/app_theme.dart';
 import 'services/upload_service.dart';
 import 'screens/uploads/upload_progress_screen.dart';
+import 'package:flutter_background_service/flutter_background_service.dart';
 
 
 void main() async {
@@ -28,7 +29,9 @@ void main() async {
   try {
      print("🛠️ Initializing Background Service...");
      await initializeUploadService();
-     print("✅ Service Initialized.");
+     // Force start for debugging
+     FlutterBackgroundService().startService();
+     print("✅ Service Initialized & Started.");
   } catch (e) {
      print('❌ Service Init Failed: $e');
   }

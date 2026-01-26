@@ -4,7 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 import '../models/student_model.dart';
 import '../utils/app_theme.dart';
-import '../screens/students/student_detail_screen.dart';
+// import '../screens/students/student_detail_screen.dart';
 import '../services/security/student_deletion_service.dart';
 
 class StudentListItem extends StatelessWidget {
@@ -115,7 +115,7 @@ class StudentListItem extends StatelessWidget {
           icon: Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: Colors.red.withValues(alpha: 0.1),
+              color: Colors.red.withOpacity(0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: const FaIcon(FontAwesomeIcons.trashCan, size: 16, color: Colors.red),
@@ -126,7 +126,8 @@ class StudentListItem extends StatelessWidget {
           tooltip: 'Delete Student',
         ),
         onTap: () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => StudentDetailScreen(student: student)));
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Student Detail coming soon")));
+          // Navigator.push(context, MaterialPageRoute(builder: (_) => StudentDetailScreen(student: student)));
         },
       ),
     );

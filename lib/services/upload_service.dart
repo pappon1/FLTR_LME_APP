@@ -14,6 +14,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'bunny_cdn_service.dart';
 import 'package:path_provider/path_provider.dart';
 import 'tus_uploader.dart';
+import 'dart:developer' as dev;
 
 // Key used for storage
 const String kQueueKey = 'upload_queue_v1';
@@ -410,7 +411,7 @@ void onStart(ServiceInstance service) async {
 
             service.invoke('all_completed');
             print("🛑 [BG SERVICE] Engine going to sleep (stopSelf).");
-            service.stopSelf();
+            // service.stopSelf(); // Disabled for debugging
             return; 
          }
 
@@ -446,7 +447,7 @@ void onStart(ServiceInstance service) async {
              service.invoke('update', {'queue': _queue, 'isPaused': _isPaused});
              _isProcessing = false;
              await Future.delayed(const Duration(milliseconds: 500)); // Brief pause for UI delivery
-             service.stopSelf();
+             // service.stopSelf(); // Disabled for debugging
              return;
          }
          continue;
@@ -884,8 +885,18 @@ void onStart(ServiceInstance service) async {
 
   // Heartbeat Timer removed per user request
 
-  // RESTORE QUEUE
+  // 🔥 RESTORE QUEUE IMMEDIATELY ON START (Before listeners)
   final String? queueJson = prefs.getString(kQueueKey);
+  
+  // Log Service Info for Debugging
+  final dev.ServiceProtocolInfo info = await dev.Service.getInfo();
+  print("🌐 [BG SERVICE] VM Service URI: ${info.serverUri}");
+  print("🆔 [BG SERVICE] OS Process ID: $pid");
+  
+  // Save ID/URI to help with "restart later" and "terminated tracking"
+  await prefs.setString('last_bg_service_uri', info.serverUri?.toString() ?? '');
+  await prefs.setInt('last_bg_service_pid', pid);
+
   if (queueJson != null) {
     try {
       _queue = List<Map<String, dynamic>>.from(jsonDecode(queueJson));

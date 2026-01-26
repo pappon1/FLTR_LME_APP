@@ -16,7 +16,7 @@ import '../content_viewers/video_player_screen.dart';
 import '../content_viewers/pdf_viewer_screen.dart';
 import '../content_viewers/pdf_viewer_screen.dart';
 import 'folder_detail_screen.dart';
-import 'tabs/course_content_tab.dart'; // New Clean Import
+// import 'tabs/course_content_tab.dart'; // File Missing
 
 class CourseDetailScreen extends StatefulWidget {
   final CourseModel course;
@@ -705,10 +705,13 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
 
   // --- CONTENT SECTION (Videos/PDFs) ---
   Widget _buildContentTab() {
+    return Center(child: Text("Content Tab (Under Maintenance)", style: GoogleFonts.manrope(color: Colors.grey)));
+    /*
     return CourseContentTab(
       course: widget.course,
       firestoreService: _firestoreService,
     );
+    */
   }
   
   Widget _buildStudentsTab() {
