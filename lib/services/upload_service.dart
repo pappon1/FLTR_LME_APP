@@ -383,7 +383,7 @@ void onStart(ServiceInstance service) async {
             final bool allCompleted = _queue.every((t) => t['status'] == 'completed');
             if (allCompleted) {
                 print("✅ [BG SERVICE] Every single task completed. Finalizing...");
-                await _finalizeCourseIfPending();
+                await _finalizeCourseIfPending(service, _queue, _isPaused);
                 await _updateNotification("Course Published Successfully! ✅", 100);
             } else {
                 print("⏸️ [BG SERVICE] Remaining tasks are PAUSED. Waiting 10s before sleep...");
@@ -914,7 +914,7 @@ void onStart(ServiceInstance service) async {
 }
 
 // --- HELPER: Finalize Course ---
-Future<void> _finalizeCourseIfPending() async {
+Future<void> _finalizeCourseIfPending(ServiceInstance service, List<Map<String, dynamic>> queue, bool isPaused) async {
   final prefs = await SharedPreferences.getInstance();
   final String? courseJson = prefs.getString(kPendingCourseKey);
   
@@ -922,10 +922,10 @@ Future<void> _finalizeCourseIfPending() async {
   
   final queueJson = prefs.getString(kQueueKey);
   if (queueJson == null) return;
-  final queue = List<Map<String, dynamic>>.from(jsonDecode(queueJson));
+  final List<Map<String, dynamic>> diskQueue = List<Map<String, dynamic>>.from(jsonDecode(queueJson));
 
   // Check if any failed
-  if (queue.any((t) => t['status'] == 'failed')) {
+  if (diskQueue.any((t) => t['status'] == 'failed')) {
     // Retry or Fail? For now, we notify user to open app
     // We expect user to retry from UI if failed.
     return;
@@ -933,7 +933,7 @@ Future<void> _finalizeCourseIfPending() async {
 
   // Map: LocalPath -> RemoteURL
   final urlMap = <String, String>{};
-  for (var task in queue) {
+  for (var task in diskQueue) {
     if (task['status'] == 'completed' && task['url'] != null && task['filePath'] != null) {
       urlMap[task['filePath']] = task['url'];
     }
@@ -1035,6 +1035,10 @@ Future<void> _finalizeCourseIfPending() async {
      // Clear Data
      await prefs.remove(kPendingCourseKey);
      await prefs.remove(kQueueKey); // Clear file queue too as job is done
+     
+      // Update memory and notify UI
+      queue.clear();
+      service.invoke('update', {'queue': queue, 'isPaused': isPaused});
      
      // Notify
      final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();

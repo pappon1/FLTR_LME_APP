@@ -901,13 +901,14 @@ class _AddCourseScreenState extends State<AddCourseScreen>
       final List<Map<String, dynamic>> fileTasks = [];
       final Set<String> processedFilePaths = {};
 
-      void addTask(String filePath, String remotePath, String id) {
+      void addTask(String filePath, String remotePath, String id, {String? thumbnail}) {
         if (processedFilePaths.contains(filePath)) return;
         processedFilePaths.add(filePath);
         fileTasks.add({
           'filePath': filePath,
           'remotePath': remotePath,
           'id': id,
+          if (thumbnail != null) 'thumbnail': thumbnail,
         });
       }
 
@@ -974,6 +975,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
               filePath,
               'courses/$sessionId/$folder/$uniqueName',
               filePath,
+              thumbnail: (type == 'video' && item['thumbnail'] != null) ? item['thumbnail'] : null,
             );
           }
         }

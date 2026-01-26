@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import '../../../../utils/app_theme.dart';
+import '../../../utils/app_theme.dart';
+import '../../../widgets/video_thumbnail_widget.dart';
 
 class CourseContentListItem extends StatelessWidget {
   final Map<String, dynamic> item;
@@ -90,7 +91,8 @@ class CourseContentListItem extends StatelessWidget {
                     color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(icon, color: color, size: 20),
+                  clipBehavior: Clip.antiAlias,
+                  child: _buildLeadingPreview(icon, color),
                 ),
               ),
               title: Text(item['name'],
@@ -197,5 +199,38 @@ class CourseContentListItem extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _buildLeadingPreview(IconData defaultIcon, Color defaultColor) {
+    final String? pathStr = item['path']?.toString();
+    final String? thumb = item['thumbnail']?.toString();
+
+    if (item['type'] == 'video' && pathStr != null) {
+      return Stack(
+        children: [
+          VideoThumbnailWidget(
+            videoPath: pathStr,
+            customThumbnailPath: thumb,
+            width: 44,
+            height: 44,
+          ),
+          Container(color: Colors.black12),
+          const Center(child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 16)),
+        ],
+      );
+    }
+
+    if (item['type'] == 'image' && pathStr != null) {
+       final bool isNetwork = pathStr.startsWith('http');
+       try {
+         return isNetwork 
+            ? Image.network(pathStr, fit: BoxFit.cover, errorBuilder: (_,__,___) => Icon(defaultIcon, color: defaultColor, size: 20))
+            : Image.file(File(pathStr), fit: BoxFit.cover, errorBuilder: (_,__,___) => Icon(defaultIcon, color: defaultColor, size: 20));
+       } catch (_) {
+         return Icon(defaultIcon, color: defaultColor, size: 20);
+       }
+    }
+
+    return Icon(defaultIcon, color: defaultColor, size: 20);
   }
 }

@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../widgets/shimmer_loading.dart';
+import '../../widgets/video_thumbnail_widget.dart';
 import 'dart:math' as math;
 
 class UploadProgressScreen extends StatefulWidget {
@@ -28,6 +29,11 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
   Timer? _holdTimer;
   StreamSubscription? _statusSubscription;
   final Map<String, DateTime> _lastManualUpdates = {};
+  
+  // UI State (Permanent Values)
+  final double _cardCornerRadius = 3.0;
+  final double _cardVerticalPadding = 2.0;
+
   @override
   void initState() {
     super.initState();
@@ -431,6 +437,8 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
                               task: task,
                               isSelected: isSelected,
                               isSelectionMode: _isSelectionMode,
+                              cornerRadius: _cardCornerRadius,
+                              verticalPadding: _cardVerticalPadding,
                               onToggleSelection: () => _toggleSelection(taskId),
                               onTogglePause: () => _toggleTaskPause(task),
                               onDelete: () => _showDeleteTaskDialog(task),
@@ -634,6 +642,21 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
       }
     );
   }
+
+  Widget _buildUISettingsPanel() {
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildSliderRow({
+    required String label,
+    required IconData icon,
+    required double value,
+    required double min,
+    required double max,
+    required ValueChanged<double> onChanged,
+  }) {
+    return const SizedBox.shrink();
+  }
 }
 
 String _formatBytes(int? bytes, int decimals) {
@@ -647,6 +670,8 @@ class UploadTaskCard extends StatelessWidget {
   final Map<String, dynamic> task;
   final bool isSelected;
   final bool isSelectionMode;
+  final double cornerRadius;
+  final double verticalPadding;
   final VoidCallback onToggleSelection;
   final VoidCallback onTogglePause;
   final VoidCallback onDelete;
@@ -656,6 +681,8 @@ class UploadTaskCard extends StatelessWidget {
     required this.task,
     this.isSelected = false,
     this.isSelectionMode = false,
+    this.cornerRadius = 12.0,
+    this.verticalPadding = 8.0,
     required this.onToggleSelection,
     required this.onTogglePause,
     required this.onDelete,
@@ -686,7 +713,7 @@ class UploadTaskCard extends StatelessWidget {
       elevation: isSelected ? 4 : 1,
       shadowColor: isSelected ? AppTheme.primaryColor.withOpacity(0.4) : Colors.black12,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(cornerRadius),
         side: BorderSide(
           color: isSelected ? AppTheme.primaryColor : Colors.transparent,
           width: 2,
@@ -706,7 +733,7 @@ class UploadTaskCard extends StatelessWidget {
         child: Container(
           color: isSelected ? AppTheme.primaryColor.withOpacity(0.05) : null,
           child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: verticalPadding),
             leading: Stack(
               children: [
                 _buildLeading(task),
@@ -724,7 +751,7 @@ class UploadTaskCard extends StatelessWidget {
                   ),
               ],
             ),
-            title: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+            title: Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
           subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -819,60 +846,86 @@ class UploadTaskCard extends StatelessWidget {
 }
 
   Widget _buildLeading(Map<String, dynamic> task) {
-    final String path = (task['localPath'] ?? task['remotePath'] ?? '').toString().toLowerCase();
+    final String pathStr = (task['localPath'] ?? task['filePath'] ?? task['remotePath'] ?? '').toString().toLowerCase();
     final String thumbnail = task['thumbnail'] ?? '';
+    final String status = task['status'] ?? '';
+    final String? remoteUrl = task['url']; 
     
-    // File Type Detection
-    final bool isVideo = path.endsWith('.mp4') || path.endsWith('.mkv') || path.endsWith('.mov') || path.endsWith('.avi');
-    final bool isImage = path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.png') || path.endsWith('.webp');
-    final bool isPdf = path.endsWith('.pdf');
-    final bool isZip = path.endsWith('.zip') || path.endsWith('.rar') || path.endsWith('.7z');
+    final bool isVideo = pathStr.endsWith('.mp4') || pathStr.endsWith('.mkv') || pathStr.endsWith('.mov') || pathStr.endsWith('.avi') || pathStr.contains('video');
+    final bool isImage = pathStr.endsWith('.jpg') || pathStr.endsWith('.jpeg') || pathStr.endsWith('.png') || pathStr.endsWith('.webp') || pathStr.contains('image');
+    final bool isPdf = pathStr.endsWith('.pdf');
+    final bool isZip = pathStr.endsWith('.zip') || pathStr.endsWith('.rar') || pathStr.endsWith('.7z');
 
     if (isVideo) {
+      final bool hasLocalThumb = thumbnail.isNotEmpty && File(thumbnail).existsSync();
+      final bool isTaskCompleted = status == 'completed';
+      final String? videoId = (remoteUrl != null && !remoteUrl.startsWith('http')) ? remoteUrl : null;
+      const String libraryId = '583681';
+
       return Container(
-        width: 60,
-        height: 34,
+        width: 72, 
+        height: 40,
         decoration: BoxDecoration(
-          color: Colors.black87,
-          borderRadius: BorderRadius.circular(6),
-          image: thumbnail.isNotEmpty && File(thumbnail).existsSync()
+          color: Colors.black,
+          borderRadius: BorderRadius.circular(3),
+          image: hasLocalThumb
               ? DecorationImage(image: FileImage(File(thumbnail)), fit: BoxFit.cover)
-              : null,
+              : (isTaskCompleted && videoId != null)
+                  ? DecorationImage(
+                      image: NetworkImage('https://video.bunnycdn.com/play/$libraryId/$videoId/thumbnail.jpg'), 
+                      fit: BoxFit.cover
+                    )
+                  : null,
         ),
-        child: thumbnail.isEmpty || !File(thumbnail).existsSync()
-            ? const Center(child: Icon(Icons.videocam_rounded, color: Colors.white54, size: 16))
+        child: !hasLocalThumb && (!isTaskCompleted || videoId == null)
+            ? ClipRRect(
+                borderRadius: BorderRadius.circular(3),
+                child: Stack(
+                  children: [
+                    VideoThumbnailWidget(
+                      videoPath: task['filePath'] ?? task['localPath'] ?? '',
+                      width: 72,
+                      height: 40,
+                    ),
+                    Container(color: Colors.black26), 
+                    const Center(child: Icon(Icons.play_circle_outline, color: Colors.white70, size: 20)),
+                  ],
+                ),
+              )
             : Center(
                 child: Container(
                   padding: const EdgeInsets.all(2),
                   decoration: BoxDecoration(
-                    color: Colors.black38,
+                    color: Colors.black45,
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white24, width: 0.5),
                   ),
-                  child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 12),
+                  child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 14),
                 ),
               ),
       );
     }
 
     if (isImage) {
+      final String localImgPath = (task['localPath'] ?? task['filePath'] ?? '').toString();
+      final bool exists = localImgPath.isNotEmpty && File(localImgPath).existsSync();
+
       return Container(
-        width: 40,
+        width: 40, 
         height: 40,
         decoration: BoxDecoration(
           color: Colors.grey[200],
-          borderRadius: BorderRadius.circular(8),
-          image: File(task['localPath'] ?? '').existsSync()
-              ? DecorationImage(image: FileImage(File(task['localPath'])), fit: BoxFit.cover)
+          borderRadius: BorderRadius.circular(3),
+          image: exists
+              ? DecorationImage(image: FileImage(File(localImgPath)), fit: BoxFit.cover)
               : null,
         ),
-        child: !File(task['localPath'] ?? '').existsSync()
-            ? const Icon(Icons.image_rounded, color: Colors.grey, size: 20)
+        child: !exists 
+            ? const Icon(Icons.image_outlined, color: Colors.grey, size: 18) 
             : null,
       );
     }
 
-    // Document Icons with Premium Tinted Backgrounds
     Color docColor = Colors.grey;
     IconData docIcon = Icons.insert_drive_file_rounded;
 
@@ -882,7 +935,7 @@ class UploadTaskCard extends StatelessWidget {
     } else if (isZip) {
       docColor = Colors.amber[700]!;
       docIcon = Icons.folder_zip_rounded;
-    } else if (path.contains('folder')) {
+    } else if (pathStr.contains('folder')) {
       docColor = Colors.blue;
       docIcon = Icons.folder_rounded;
     }
@@ -892,7 +945,7 @@ class UploadTaskCard extends StatelessWidget {
       height: 40,
       decoration: BoxDecoration(
         color: docColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(3),
       ),
       child: Icon(docIcon, color: docColor, size: 22),
     );
