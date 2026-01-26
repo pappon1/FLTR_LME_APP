@@ -1706,9 +1706,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                     child: Container(
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: Theme.of(
-                          context,
-                        ).textTheme.bodyMedium?.color?.withValues(alpha: 0.02),
+                        color: Colors.transparent,
                         borderRadius: BorderRadius.circular(_globalRadius),
                         border: Border.all(
                           color: _thumbnailImage == null
@@ -2120,7 +2118,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: AppTheme.primaryColor.withValues(alpha: 0.02),
+                        color: Colors.transparent,
                         border: Border.all(
                           color: Theme.of(
                             context,
@@ -3189,11 +3187,25 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                     labelText: 'Course Validity',
                     floatingLabelBehavior: FloatingLabelBehavior.always,
                     prefixIcon: const Icon(Icons.history_toggle_off),
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: _inputVerticalPadding,
+                      horizontal: 16,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(_globalRadius),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).dividerColor.withValues(alpha: _borderOpacity),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(_globalRadius),
+                      borderSide: BorderSide(color: AppTheme.primaryColor, width: 2),
+                    ),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(3.0),
+                      borderRadius: BorderRadius.circular(_globalRadius),
                     ),
                     filled: true,
-                    fillColor: Theme.of(context).cardColor,
+                    fillColor: AppTheme.primaryColor.withValues(alpha: _fillOpacity),
                   ),
                   items: const [
                     DropdownMenuItem(value: 0, child: Text('Lifetime Access')),
@@ -3251,13 +3263,13 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                   value: _hasCertificate,
                   onChanged: (v) => setState(() => _hasCertificate = v),
                   activeColor: AppTheme.primaryColor,
-                  tileColor: Theme.of(context).cardColor,
+                  tileColor: Colors.transparent,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(3.0),
                     side: BorderSide(
                       color: _hasCertificate
                           ? AppTheme.primaryColor.withOpacity(0.3)
-                          : Colors.grey.shade200,
+                          : Theme.of(context).dividerColor.withValues(alpha: _borderOpacity),
                     ),
                   ),
                 ),
@@ -3437,10 +3449,12 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                   onChanged: (v) =>
                       setState(() => _isOfflineDownloadEnabled = v),
                   activeColor: AppTheme.primaryColor,
-                  tileColor: Theme.of(context).cardColor,
+                  tileColor: Colors.transparent,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(3.0),
-                    side: BorderSide(color: Colors.grey.shade200),
+                    side: BorderSide(
+                      color: Theme.of(context).dividerColor.withValues(alpha: _borderOpacity),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 32),
@@ -3478,11 +3492,10 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                     width: double.infinity,
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
+                      color: Colors.transparent,
                       borderRadius: BorderRadius.circular(3.0),
                       border: Border.all(
-                        color: Colors.grey.shade200,
-                        style: BorderStyle.none,
+                        color: Theme.of(context).dividerColor.withValues(alpha: _borderOpacity),
                       ),
                     ),
                     child: Column(
@@ -3527,9 +3540,11 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                           margin: const EdgeInsets.only(bottom: 8),
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).cardColor,
+                            color: Colors.transparent,
                             borderRadius: BorderRadius.circular(3.0),
-                            border: Border.all(color: Colors.grey.shade200),
+                            border: Border.all(
+                              color: Theme.of(context).dividerColor.withValues(alpha: _borderOpacity),
+                            ),
                           ),
                           child: Row(
                             children: [
@@ -3605,7 +3620,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                     unawaited(_saveCourseDraft());
                   },
                   activeColor: Colors.green,
-                  tileColor: Theme.of(context).cardColor,
+                  tileColor: Colors.transparent,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(_globalRadius),
                     side: BorderSide(
@@ -3616,8 +3631,6 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                   ),
                 ),
 
-                const SizedBox(height: 24),
-                _buildCourseReviewCard(),
                 const SizedBox(height: 24),
               ],
             ),
@@ -3650,7 +3663,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
         aspectRatio: aspectRatio,
         child: Container(
           decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
+            color: Colors.transparent,
             borderRadius: BorderRadius.circular(_globalRadius),
             border: Border.all(
               color: Theme.of(context).dividerColor.withOpacity(_borderOpacity),

@@ -74,33 +74,40 @@ class CourseContentListItem extends StatelessWidget {
             child: ListTile(
               tileColor: isSelected
                   ? AppTheme.primaryColor.withValues(alpha: 0.1)
-                  : Theme.of(context).cardColor,
+                  : Colors.transparent,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(3.0),
                   side: BorderSide(
                       color: isSelected
                           ? AppTheme.primaryColor
-                          : Colors.grey.shade200,
+                          : Theme.of(context).dividerColor.withValues(alpha: 0.12),
                       width: isSelected ? 2 : 1)),
               leading: Hero(
-                tag: item['path'] ?? item['name'] + index.toString(),
+                tag: (item['path'] ?? item['name']) + index.toString(),
                 child: Container(
-                  width: 44,
+                  width: item['type'] == 'video' ? 80 : 44,
                   height: 44,
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(3.0),
                   ),
                   clipBehavior: Clip.antiAlias,
-                  child: _buildLeadingPreview(icon, color),
+                  child: _buildLeadingPreview(
+                    icon, 
+                    color, 
+                    item['type'] == 'video' ? 80 : 44, 
+                    44
+                  ),
                 ),
               ),
-              title: Text(item['name'],
-                  style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: isSelected ? AppTheme.primaryColor : null),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis),
+              title: Text(
+                item['name'],
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: isSelected ? AppTheme.primaryColor : null,
+                  fontSize: 13,
+                ),
+              ),
               trailing: isSelectionMode
                   ? GestureDetector(
                       onTap: onToggleSelection,
@@ -201,7 +208,7 @@ class CourseContentListItem extends StatelessWidget {
     );
   }
 
-  Widget _buildLeadingPreview(IconData defaultIcon, Color defaultColor) {
+  Widget _buildLeadingPreview(IconData defaultIcon, Color defaultColor, double width, double height) {
     final String? pathStr = item['path']?.toString();
     final String? thumb = item['thumbnail']?.toString();
 
@@ -211,11 +218,20 @@ class CourseContentListItem extends StatelessWidget {
           VideoThumbnailWidget(
             videoPath: pathStr,
             customThumbnailPath: thumb,
-            width: 44,
-            height: 44,
+            width: width,
+            height: height,
           ),
           Container(color: Colors.black12),
-          const Center(child: Icon(Icons.play_arrow_rounded, color: Colors.white, size: 16)),
+          Center(
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.5),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 16),
+            ),
+          ),
         ],
       );
     }
@@ -224,8 +240,8 @@ class CourseContentListItem extends StatelessWidget {
        final bool isNetwork = pathStr.startsWith('http');
        try {
          return isNetwork 
-            ? Image.network(pathStr, fit: BoxFit.cover, errorBuilder: (_,__,___) => Icon(defaultIcon, color: defaultColor, size: 20))
-            : Image.file(File(pathStr), fit: BoxFit.cover, errorBuilder: (_,__,___) => Icon(defaultIcon, color: defaultColor, size: 20));
+            ? Image.network(pathStr, width: width, height: height, fit: BoxFit.cover, errorBuilder: (_,__,___) => Icon(defaultIcon, color: defaultColor, size: 20))
+            : Image.file(File(pathStr), width: width, height: height, fit: BoxFit.cover, errorBuilder: (_,__,___) => Icon(defaultIcon, color: defaultColor, size: 20));
        } catch (_) {
          return Icon(defaultIcon, color: defaultColor, size: 20);
        }

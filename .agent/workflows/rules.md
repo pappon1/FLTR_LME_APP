@@ -15,9 +15,12 @@ Aapko hamesha niche diye gaye "Smart & Strong" rules follow karne hain taaki cod
     3.  **Approval:** USER se "Go ahead" milne par hi complex changes shuru karein (simple fixes excluded).
 *   **Anti-Pattern:** Direct coding bina samjhe ya bina plan bataye strictly prohibit hai.
 
-### ⚡ 2. Live Background Session (Pulse Check)
-*   **Rule:** Kaam shuru karne se pehle hamesha check karein ki `flutter run` background mein chal raha hai ya nahi.
-*   **Action:** Agar session band hai, toh use start karein taaki hamesha live feedback milta rahe.
+### ⚡ 2. Autonomous Debugging Session (Pulse Check)
+*   **Rule:** Har task shuru karne se pehle Antigravity check karega ki `flutter run` debugging session chalu hai ya nahi. 
+*   **Action:** 
+    1.  Agar session band hai, toh **Autonomous** tarike se (bina puche) use start karein (DTD/VM functionality ke saath) taaki session long tasks mein bhi yaad rahe.
+    2.  Agar kisi wajah se session terminate ho jaye, toh use turant firse restart karein.
+*   **Goal:** Dev ko manually command nahi chalani padegi. App hamesha live rahegi.
 
 ### 🛡️ 3. Watchman Build Monitoring (Guardian Mode)
 *   **Rule:** Jab `gradle task assembleDebug` ya `flutter run` chale, tab "Watchman" mode active rakhein.
@@ -25,11 +28,11 @@ Aapko hamesha niche diye gaye "Smart & Strong" rules follow karne hain taaki cod
 *   **Auto-Fix:** Agar build fail ho, toh kisi ka wait na karein, turant log scan karke error fix karein aur build phir se chalaein jab tak **SUCCESS** na ho jaye.
 
 ### ⚡ 4. Incremental Coding & Fast Sync (Zero Wait)
-*   **Action (Antigravity Protocol):** Har code change ke baad, Antigravity **khud** niche diye gaye commands trigger karega (bina USER ke bole):
+*   **Action (Antigravity Protocol):** Har code change ke baad, Antigravity **khud** aur **turant** niche diye gaye commands trigger karega:
     *   **UI Tweaks / Colors / Text:** -> `r` (Hot Reload) [Fastest]
     *   **Logic / State / New Classes / Upload Service:** -> `R` (Hot Restart) [Reset State]
     *   **New Plugins / Native Changes:** -> `flutter run` (Sirf tabhi jab session band ho).
-*   **Goal:** USER (Bhai) ko sirf screen dekhni pade, command execute Antigravity karega. 0% Time Waste. Hamesha `r` ya `R` se kaam chalao.
+*   **Autonomy:** Dev (Bhai) ko batane ki zarurat nahi hai, code save hote hi update visible hona chahiye. 0% Time Waste.
 *   **Integrity:** Agar `R` chalane pe error aaye, toh `flutter analyze` ka use karke issues ko fix karein.
 
 ### 🧹 5. Build & Maintenance (Smart Hygiene)
@@ -95,3 +98,11 @@ Aapko hamesha niche diye gaye "Smart & Strong" rules follow karne hain taaki cod
     - Agar koi design pattern galat dikhe, toh use USER ko suggest karke theek karega.
     - Missing pieces, edge cases, aur future scalability ko pehle se soch kar code likhega.
     - **QC check:** Save karne se pehle syntax, brackets, aur logical flow ko double-check karega.
+
+### 📱 12. Mobile-Only Execution & Connectivity
+*   **Rule:** `flutter run` hamesha physical mobile device par hi chalega. PC (Windows/Chrome) par run karna strictly prohibited hai.
+*   **Action:** 
+    1.  Main hamesha check karunga ki physical mobile device connected hai ya nahi.
+    2.  Agar device connected nahi hai, toh main Dev (Bhai) ko inform karunga.
+    3.  Dev jab physical device connect karke bata dega, tabhi main session start karunga.
+*   **Goal:** Mobile specific UI/UX real device par test ho sake.

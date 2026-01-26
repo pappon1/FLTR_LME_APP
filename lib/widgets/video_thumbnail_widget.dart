@@ -84,6 +84,18 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
   Future<void> _loadCustomThumbnail() async {
     if (widget.customThumbnailPath == null) return;
     
+    final bool isNetwork = widget.customThumbnailPath!.startsWith('http');
+
+    if (isNetwork) {
+       if (mounted) {
+         setState(() {
+           _isLoading = false;
+           _hasError = false;
+         });
+       }
+       return;
+    }
+
     // Check if we already have it in memory (using path as key)
     if (VideoThumbnailWidget._memoryCache.containsKey(widget.customThumbnailPath!)) {
         setState(() {
@@ -95,7 +107,7 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
     }
 
     try {
-      final file = java_io.File(widget.customThumbnailPath!); // Use alias if needed or just File
+      final file = java_io.File(widget.customThumbnailPath!);
       if (await file.exists()) {
         final bytes = await file.readAsBytes();
         
@@ -169,6 +181,16 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
             child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white24),
           ),
         ),
+      );
+    }
+
+    if (widget.customThumbnailPath != null && widget.customThumbnailPath!.startsWith('http')) {
+      return Image.network(
+        widget.customThumbnailPath!,
+        width: widget.width,
+        height: widget.height,
+        fit: widget.fit,
+        errorBuilder: (_, __, ___) => Container(color: Colors.transparent),
       );
     }
 
