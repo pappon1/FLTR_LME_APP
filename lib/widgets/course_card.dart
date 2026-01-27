@@ -53,12 +53,13 @@ class CourseCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // 🖼️ Thumbnail
-            Container(
-              height: 200,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: isDark ? Colors.grey.shade900 : Colors.grey.shade200,
-              ),
+            AspectRatio(
+              aspectRatio: 16 / 9,
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.grey.shade900 : Colors.grey.shade200,
+                ),
               child: CachedNetworkImage(
                 imageUrl: BunnyCDNService.signUrl(course.thumbnailUrl),
                 httpHeaders: BunnyCDNService.signUrl(course.thumbnailUrl).contains('storage.bunnycdn.com') 
@@ -75,6 +76,7 @@ class CourseCard extends StatelessWidget {
                   alignment: Alignment.center,
                   child: const Icon(Icons.broken_image, color: Colors.grey, size: 48),
                 ),
+              ),
               ),
             ),
 

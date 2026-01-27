@@ -12,8 +12,8 @@ import '../../providers/dashboard_provider.dart';
 import '../../providers/admin_notification_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/stat_card.dart';
-import '../../widgets/popular_courses_carousel.dart';
-
+import '../../widgets/course_card.dart';
+import '../../models/course_model.dart';
 import '../notifications/notification_manager_screen.dart';
 import '../students/students_tab.dart';
 import '../../services/local_notification_service.dart';
@@ -36,6 +36,58 @@ class DashboardTab extends StatefulWidget {
 }
 
 class _DashboardTabState extends State<DashboardTab> {
+  final ValueNotifier<bool> _showNotificationIcon = ValueNotifier(false);
+
+  // Dummy Data for Popular Courses (Matches Courses Tab)
+  final List<CourseModel> _popularCourses = [
+    CourseModel(
+      id: '101',
+      title: 'Advanced Chip Level Repairing',
+      category: 'Hardware',
+      price: 25000,
+      discountPrice: 19999,
+      description: 'Master mobile hardware repairing from basics to advanced chip level.',
+      thumbnailUrl: 'https://picsum.photos/id/1/800/450',
+      duration: '3 Months',
+      difficulty: 'Advanced',
+      enrolledStudents: 1540,
+      rating: 4.8,
+      totalVideos: 120,
+      isPublished: true,
+      hasCertificate: true,
+    ),
+    CourseModel(
+      id: '102',
+      title: 'iPhone Schematic Diagrams Masterclass',
+      category: 'Schematics',
+      price: 8000,
+      discountPrice: 4999,
+      description: 'Learn to read and understand iPhone schematics layouts like a pro.',
+      thumbnailUrl: 'https://picsum.photos/id/2/800/450',
+      duration: '45 Days',
+      difficulty: 'Intermediate',
+      enrolledStudents: 850,
+      rating: 4.6,
+      totalVideos: 45,
+      isPublished: true,
+    ),
+    CourseModel(
+      id: '103',
+      title: 'Android Software Flashing & Unlocking',
+      category: 'Software',
+      price: 12000,
+      discountPrice: 6999,
+      description: 'Complete guide to software flashing, FRP bypass, and unlocking tools.',
+      thumbnailUrl: 'https://picsum.photos/id/3/800/450',
+      duration: '2 Months',
+      difficulty: 'Intermediate',
+      enrolledStudents: 2100,
+      rating: 4.7,
+      totalVideos: 80,
+      isPublished: true,
+    ),
+  ];
+
   bool _hasDraft = false;
 
   @override
@@ -257,6 +309,7 @@ class _DashboardTabState extends State<DashboardTab> {
                       if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
                         final data = snapshot.data!.docs.first.data() as Map<String, dynamic>;
                         final imageUrl = data['imageUrl'];
+                        final isDark = Theme.of(context).brightness == Brightness.dark;
                         
                         return GestureDetector(
                           onTap: () {
@@ -265,21 +318,20 @@ class _DashboardTabState extends State<DashboardTab> {
                           child: Container(
                             margin: const EdgeInsets.only(bottom: 24),
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(3.0),
-                              boxShadow: [
-                                BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.15), blurRadius: 20, offset: const Offset(0, 8))
-                              ],
-                              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                              color: isDark ? Colors.grey.shade900 : Colors.grey.shade200,
+                              border: Border.all(
+                                color: isDark ? Colors.white.withOpacity(0.2) : Colors.black.withOpacity(0.1),
+                                width: 1,
+                              ),
                             ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(3.0),
-                              child: AspectRatio(
-                                aspectRatio: 16/9,
+                            child: AspectRatio(
+                              aspectRatio: 16/9,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(3.0),
                                 child: CachedNetworkImage(
                                   imageUrl: (imageUrl != null) ? BunnyCDNService.signUrl(imageUrl) : "",
                                   httpHeaders: const {'AccessKey': BunnyCDNService.apiKey},
                                   fit: BoxFit.cover,
-                                  width: double.infinity,
                                   placeholder: (c, u) => Container(color: Colors.grey[900], child: const Center(child: CircularProgressIndicator())),
                                   errorWidget: (c, u, e) => Container(color: Colors.grey[900], child: const Icon(Icons.broken_image)),
                                 ),
@@ -289,28 +341,31 @@ class _DashboardTabState extends State<DashboardTab> {
                         );
                       }
                       
-                      // Empty State Techy
+                      // Empty State - YouTube 16:9 Size
                       return GestureDetector(
                         onTap: () {
                            Navigator.push(context, MaterialPageRoute(builder: (_) => const UploadAnnouncementScreen()));
                         },
                         child: Container(
-                          width: double.infinity,
-                          height: 120,
                           margin: const EdgeInsets.only(bottom: 24),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1F2937) : const Color(0xFFF3F4F6),
-                            borderRadius: BorderRadius.circular(3.0),
-                            border: Border.all(color: Colors.grey.withValues(alpha: 0.3), style: BorderStyle.solid),
+                             color: Theme.of(context).brightness == Brightness.dark ? Colors.grey.shade900 : Colors.grey.shade200,
+                             borderRadius: BorderRadius.circular(3.0),
+                             border: Border.all(
+                                color: Theme.of(context).brightness == Brightness.dark ? Colors.white.withOpacity(0.2) : Colors.black.withOpacity(0.1),
+                                width: 1,
+                             ),
                           ),
-                          child: Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.add_photo_alternate_outlined, color: Colors.grey, size: 30),
-                                const SizedBox(height: 8),
-                                Text("Upload Banner", style: GoogleFonts.inter(color: Colors.grey, fontWeight: FontWeight.bold)),
-                              ],
+                          child: AspectRatio(
+                            aspectRatio: 16 / 9,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(3.0),
+                              child: CachedNetworkImage(
+                                imageUrl: "https://picsum.photos/id/4/800/450", // Dummy Laptop/Tech Image
+                                fit: BoxFit.cover,
+                                placeholder: (c, u) => const Center(child: CircularProgressIndicator()),
+                                errorWidget: (c, u, e) => const Icon(Icons.error),
+                              ),
                             ),
                           ),
                         ),
@@ -318,10 +373,51 @@ class _DashboardTabState extends State<DashboardTab> {
                     },
                   ),
                   
-                   // Popular Courses Carousel
-                  PopularCoursesCarousel(courses: provider.courses),
+
                   
-                  const SizedBox(height: 20),
+                  // Popular Courses Section
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.1), 
+                          borderRadius: BorderRadius.circular(3.0)
+                        ),
+                        child: const Text('🔥', style: TextStyle(fontSize: 16)),
+                      ),
+                      const SizedBox(width: 12),
+                      Flexible(
+                        child: Text(
+                          'Popular Courses', 
+                          style: GoogleFonts.outfit(
+                            fontSize: 18, 
+                            fontWeight: FontWeight.bold, 
+                            color: Theme.of(context).textTheme.bodyLarge?.color
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Popular Courses Carousel (Swipeable)
+                  SizedBox(
+                    height: 385, // Height to fit the CourseCard
+                    child: PageView.builder(
+                      controller: PageController(viewportFraction: 0.95),
+                      padEnds: false,
+                      itemCount: _popularCourses.length,
+                      itemBuilder: (context, index) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 12.0), // Gap between items
+                          child: CourseCard(course: _popularCourses[index]),
+                        );
+                      },
+                    ),
+                  ),
+
+                  const SizedBox(height: 8),
 
                   // Stats Cards Grid
                   Row(
@@ -442,20 +538,7 @@ class _DashboardTabState extends State<DashboardTab> {
             ),
             const SizedBox(height: 24),
             
-            // Popular Courses Header Shimmer
-            Container(height: 20, width: 150, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(3.0))),
-            const SizedBox(height: 16),
-            
-            // Popular Courses Carousel Shimmer
-            Container(
-              height: 320,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(3.0),
-              ),
-            ),
-            const SizedBox(height: 24),
+
             
             // Grid Shimmer
             GridView.count(
