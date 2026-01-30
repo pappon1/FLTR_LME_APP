@@ -157,7 +157,7 @@ class _CourseContentTabState extends State<CourseContentTab> {
             onCancelHold: () {},
             onRename: () {},
             onRemove: () {},
-            isReadOnly: true, // Enable Read-Only Mode
+            isReadOnly: false,
           );
         },
       ),

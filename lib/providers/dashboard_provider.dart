@@ -23,6 +23,7 @@ class DashboardProvider extends ChangeNotifier {
   );
 
   final List<CourseModel> _courses = [];
+  List<CourseModel> _popularCourses = [];
   final List<StudentModel> _students = [];
   
   // Pagination State for Students
@@ -38,6 +39,7 @@ class DashboardProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   DashboardStats get stats => _stats;
   List<CourseModel> get courses => _courses;
+  List<CourseModel> get popularCourses => _popularCourses;
   List<StudentModel> get students => _students;
   bool get hasMoreStudents => _hasMoreStudents;
   bool get isLoadingMoreStudents => _isLoadingMoreStudents;
@@ -67,6 +69,7 @@ class DashboardProvider extends ChangeNotifier {
         _fetchStats(),
         _fetchCourses(),
         _fetchStudents(), // This will now fetch the first page
+        _fetchPopularCourses(),
       ]);
     } catch (e) {
       // print('Error refreshing dashboard data: $e');
@@ -94,6 +97,23 @@ class DashboardProvider extends ChangeNotifier {
       );
     } catch (e) {
       // print('Error fetching stats: $e');
+    }
+  }
+
+  Future<void> _fetchPopularCourses() async {
+    try {
+      // Fetch top 3 courses by enrolledStudents
+      final snapshot = await FirebaseFirestore.instance
+          .collection('courses')
+          .orderBy('enrolledStudents', descending: true)
+          .limit(3)
+          .get();
+
+      _popularCourses = snapshot.docs
+          .map((doc) => CourseModel.fromMap(doc.data(), doc.id))
+          .toList();
+    } catch (e) {
+      debugPrint('Error fetching popular courses: $e');
     }
   }
 

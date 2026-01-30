@@ -187,11 +187,18 @@ class _CoursesTabState extends State<CoursesTab> {
  
             return ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(vertical: 16),
               itemCount: displayCourses.length,
               itemBuilder: (context, index) {
                 final course = displayCourses[index];
-                return CourseCard(course: course)
+                return CourseCard(
+                  course: course,
+                  isEdgeToEdge: true,
+                  customHorizontalMargin: 6,
+                  bottomMargin: 14,
+                  cornerRadius: 3,
+                  showBorder: true,
+                )
                     .animate()
                     .fadeIn(duration: 400.ms, delay: (index * 100).ms)
                     .slideX(begin: -0.1, end: 0);
@@ -205,10 +212,15 @@ class _CoursesTabState extends State<CoursesTab> {
 
   Widget _buildShimmerGrid() {
     return ListView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       itemCount: 4, // Show 4 skeleton items
       itemBuilder: (context, index) {
-        return const CourseCardSkeleton(); // Use the custom square skeleton
+        return const CourseCardSkeleton(
+          isEdgeToEdge: true,
+          customHorizontalMargin: 6,
+          bottomMargin: 14,
+          cornerRadius: 3,
+        ); 
       },
     );
   }

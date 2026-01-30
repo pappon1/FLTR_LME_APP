@@ -17,7 +17,7 @@ import '../content_viewers/pdf_viewer_screen.dart';
 import '../content_viewers/pdf_viewer_screen.dart';
 import 'folder_detail_screen.dart';
 import 'tabs/course_content_tab.dart'; 
-
+import 'edit_course_info_screen.dart';
 class CourseDetailScreen extends StatefulWidget {
   final CourseModel course;
 
@@ -100,26 +100,34 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
     // Strict Dark Mode: Deep Black to match OLED/Reference
     final Color bgColor = isDark ? const Color(0xFF050505) : Colors.white; 
     
-    return Scaffold(
-      backgroundColor: bgColor,
-      appBar: _buildAppBar(isDark, bgColor),
-      body: Column(
-        children: [
-          _buildCustomTabBar(isDark),
-          Expanded(
-            child: _selectedTabIndex == 0 
-                ? _buildOverviewTab(isDark)
-                : _selectedTabIndex == 1 
-                    ? _buildContentTab()
-                    : _buildStudentsTab(),
+    return StreamBuilder<CourseModel>(
+      stream: _firestoreService.getCourseStream(widget.course.id),
+      initialData: widget.course,
+      builder: (context, snapshot) {
+        final course = snapshot.data ?? widget.course;
+        
+        return Scaffold(
+          backgroundColor: bgColor,
+          appBar: _buildAppBar(isDark, bgColor, course),
+          body: Column(
+            children: [
+              _buildCustomTabBar(isDark),
+              Expanded(
+                child: _selectedTabIndex == 0 
+                    ? _buildOverviewTab(isDark, course)
+                    : _selectedTabIndex == 1 
+                        ? _buildContentTab(course)
+                        : _buildStudentsTab(),
+              ),
+              if (_selectedTabIndex == 0) _buildBottomBar(isDark, course),
+            ],
           ),
-          if (_selectedTabIndex == 0) _buildBottomBar(isDark),
-        ],
-      ),
+        );
+      }
     );
   }
 
-  AppBar _buildAppBar(bool isDark, Color bgColor) {
+  AppBar _buildAppBar(bool isDark, Color bgColor, CourseModel course) {
     return AppBar(
       backgroundColor: bgColor,
       elevation: 0,
@@ -152,7 +160,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
                 constraints: const BoxConstraints(),
                 padding: const EdgeInsets.all(8),
                 icon: Icon(Icons.mode_edit_outlined, color: isDark ? Colors.white70 : _textDark, size: _fHActionIconSize),
-                onPressed: () {},
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => EditCourseInfoScreen(course: course)),
+                  );
+                },
               ),
               // Heart Badge - Precise Mirror of Reference
               if (_fHShowBadge)
@@ -253,7 +266,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
     );
   }
 
-  Widget _buildOverviewTab(bool isDark) {
+  Widget _buildOverviewTab(bool isDark, CourseModel course) {
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -272,8 +285,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
               ),
               clipBehavior: Clip.antiAlias,
               child: CachedNetworkImage(
-                imageUrl: BunnyCDNService.signUrl(widget.course.thumbnailUrl),
-                httpHeaders: BunnyCDNService.signUrl(widget.course.thumbnailUrl).contains('storage.bunnycdn.com') 
+                imageUrl: BunnyCDNService.signUrl(course.thumbnailUrl),
+                httpHeaders: BunnyCDNService.signUrl(course.thumbnailUrl).contains('storage.bunnycdn.com') 
                     ? {'AccessKey': BunnyCDNService.apiKey} 
                     : null,
                 fit: BoxFit.cover,
@@ -283,10 +296,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
             ),
           ),
           const SizedBox(height: _fOvGapThumbTitle),
-
+ 
           // Title
           Text(
-            widget.course.title.isNotEmpty ? widget.course.title : "Advance Mobile Repairing Trainings",
+            course.title.isNotEmpty ? course.title : "Advance Mobile Repairing Trainings",
             style: GoogleFonts.poppins(
               fontSize: _fOvTitleSize,
               fontWeight: FontWeight.w600,
@@ -295,13 +308,13 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
             ),
           ),
           const SizedBox(height: _fOvGapTitleDesc),
-
+ 
           // Description Section - Prompt: 2 line preview
           _buildSectionHeader("Description", showEdit: false),
           const SizedBox(height: 8),
           Text(
-            widget.course.description.isNotEmpty 
-                ? widget.course.description 
+            course.description.isNotEmpty 
+                ? course.description 
                 : "Iss advanced course mein aap seekhenge mobile hardware repair, chip-level soldering, IC reballing aur latest techniques...",
             maxLines: _isDescriptionExpanded ? null : 2, 
             overflow: _isDescriptionExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
@@ -336,29 +349,29 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
               ),
             ),
           ),
-
+ 
           const SizedBox(height: _fOvGapSeeMoreHigh),
-
+ 
           // Highlights Section
-          if (widget.course.highlights.isNotEmpty) ...[
+          if (course.highlights.isNotEmpty) ...[
             _buildSectionHeader("Course Highlights", showEdit: false),
             const SizedBox(height: 16),
-            ...widget.course.highlights.asMap().entries.map((entry) {
+            ...course.highlights.asMap().entries.map((entry) {
               return _buildHighlightItem(
                 entry.value, 
                 isDark, 
                 isFirst: entry.key == 0,
-                isLast: entry.key == widget.course.highlights.length - 1
+                isLast: entry.key == course.highlights.length - 1
               );
             }),
             const SizedBox(height: _fOvGapHighFaq),
           ],
-
+ 
           // FAQs
-          if (widget.course.faqs.isNotEmpty) ...[
+          if (course.faqs.isNotEmpty) ...[
             _buildSectionHeader("FAQs", showEdit: false),
             const SizedBox(height: 16),
-            ...widget.course.faqs.map((faq) => _buildFAQItem(
+            ...course.faqs.map((faq) => _buildFAQItem(
               faq['question'] ?? '', 
               faq['answer'] ?? '', 
               isDark
@@ -587,10 +600,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
     );
   }
 
-  Widget _buildBottomBar(bool isDark) {
-    final double sellingPrice = widget.course.price.toDouble();
-    final double originalPrice = (widget.course.discountPrice > widget.course.price) 
-        ? widget.course.discountPrice.toDouble() 
+  Widget _buildBottomBar(bool isDark, CourseModel course) {
+    final double sellingPrice = course.price.toDouble();
+    final double originalPrice = (course.discountPrice > course.price) 
+        ? course.discountPrice.toDouble() 
         : sellingPrice * 7; 
     final int discountPercent = originalPrice > 0 
         ? ((originalPrice - sellingPrice) / originalPrice * 100).round()
@@ -703,9 +716,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
     );
   }
 
-  Widget _buildContentTab() {
+  Widget _buildContentTab(CourseModel course) {
     return CourseContentTab(
-      course: widget.course,
+      course: course,
       firestoreService: _firestoreService,
     );
   }

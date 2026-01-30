@@ -2,7 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 
 class CourseCardSkeleton extends StatelessWidget {
-  const CourseCardSkeleton({super.key});
+  final bool isEdgeToEdge;
+  final double? customHorizontalMargin;
+  final double? bottomMargin;
+  final double? cornerRadius;
+
+  const CourseCardSkeleton({
+    super.key,
+    this.isEdgeToEdge = false,
+    this.customHorizontalMargin,
+    this.bottomMargin,
+    this.cornerRadius,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -25,10 +36,14 @@ class CourseCardSkeleton extends StatelessWidget {
     }
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 20),
+      margin: EdgeInsets.only(
+        left: isEdgeToEdge ? (customHorizontalMargin ?? 6) : 0,
+        right: isEdgeToEdge ? (customHorizontalMargin ?? 6) : 0,
+        bottom: bottomMargin ?? 16,
+      ),
       elevation: 0,
-       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.zero, // Square matching actual CourseCard
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(cornerRadius ?? (isEdgeToEdge ? 3.0 : 0.0)),
         side: BorderSide(
           color: isDark ? Colors.white.withOpacity(0.2) : Colors.black.withOpacity(0.1),
           width: 1,

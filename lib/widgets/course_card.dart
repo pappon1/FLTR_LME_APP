@@ -8,10 +8,22 @@ import 'package:google_fonts/google_fonts.dart';
 
 class CourseCard extends StatelessWidget {
   final CourseModel course;
+  final bool isEdgeToEdge;
+  final double? customHorizontalMargin;
+  final double? bottomMargin;
+  final double? cornerRadius;
+  final bool? showBorder;
+  final VoidCallback? onTap;
 
   const CourseCard({
     super.key,
     required this.course,
+    this.isEdgeToEdge = false,
+    this.customHorizontalMargin,
+    this.bottomMargin,
+    this.cornerRadius,
+    this.showBorder,
+    this.onTap,
   });
 
   @override
@@ -29,19 +41,21 @@ class CourseCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 20),
-      elevation: 0, 
+      margin: EdgeInsets.only(bottom: bottomMargin ?? 20, left: customHorizontalMargin ?? (isEdgeToEdge ? 0 : 16), right: customHorizontalMargin ?? (isEdgeToEdge ? 0 : 16)),
+      elevation: 0,  
       clipBehavior: Clip.antiAlias,
       color: isDark ? const Color(0xFF000000) : Colors.white, // Deep Black
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.zero, // Square corners
-        side: BorderSide(
-          color: isDark ? Colors.white.withOpacity(0.2) : Colors.black.withOpacity(0.1),
-          width: 1,
-        ),
+        borderRadius: BorderRadius.circular(cornerRadius ?? 0), 
+        side: (showBorder ?? !isEdgeToEdge) 
+          ? BorderSide(
+              color: isDark ? Colors.white.withOpacity(0.2) : Colors.black.withOpacity(0.1),
+              width: 1,
+            )
+          : BorderSide.none,
       ),
       child: InkWell(
-        onTap: () {
+        onTap: onTap ?? () {
           Navigator.push(
             context,
             MaterialPageRoute(
@@ -227,7 +241,7 @@ class CourseCard extends StatelessWidget {
                       SizedBox(
                         height: 36,
                         child: ElevatedButton(
-                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => CourseDetailScreen(course: course))),
+                          onPressed: onTap ?? () => Navigator.push(context, MaterialPageRoute(builder: (_) => CourseDetailScreen(course: course))),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF536DFE),
                             foregroundColor: Colors.white,
