@@ -19,6 +19,8 @@ import 'folder_detail_screen.dart';
 import 'tabs/course_content_tab.dart'; 
 import 'edit_course_info_screen.dart';
 import '../../data/dummy_course_data.dart'; // Import dummy data file
+import '../user_profile_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 class CourseDetailScreen extends StatefulWidget {
   final CourseModel course;
 
@@ -859,7 +861,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
                       
                       return Container(
                         margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
                           borderRadius: BorderRadius.circular(3.0),
@@ -875,74 +876,99 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
                             )
                           ],
                         ),
-                        child: Row(
-                          children: [
-                            // Profile Placeholder
-                            Container(
-                              width: 50,
-                              height: 50,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: isDark ? Colors.grey[800] : Colors.grey[200],
-                                image: hasImage ? DecorationImage(
-                                  image: NetworkImage(student['image']!),
-                                  fit: BoxFit.cover,
-                                ) : null,
-                              ),
-                              alignment: Alignment.center,
-                              child: !hasImage 
-                                  ? const Icon(Icons.person, color: Colors.grey, size: 24) 
-                                  : null, 
-                            ),
-                            const SizedBox(width: 16),
-                            
-                            // Info
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(3.0),
+                            onTap: () {
+                              // Navigate to UserProfileScreen with dummy data
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => UserProfileScreen(
+                                userData: {
+                                  'userName': student['name'],
+                                  'userEmail': student['email'],
+                                  'userPhone': student['phone'],
+                                  'userImage': student['image'] ?? '',
+                                  'deviceModel': 'Samsung S23 Ultra', // Dummy
+                                  'timestamp': Timestamp.now(),       // Dummy
+                                  'purchasedCourses': [               // Dummy
+                                    {'title': widget.course.title, 'price': '4999'}
+                                  ]
+                                },
+                              )));
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Row(
                                 children: [
-                                  Text(
-                                    student['name']!,
-                                    style: GoogleFonts.manrope(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w700,
-                                      color: isDark ? Colors.white : const Color(0xFF1F1F39),
+                                  // Profile Placeholder
+                                  Container(
+                                    width: 50,
+                                    height: 50,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: isDark ? Colors.grey[800] : Colors.grey[200],
+                                      image: hasImage ? DecorationImage(
+                                        image: NetworkImage(student['image']!),
+                                        fit: BoxFit.cover,
+                                      ) : null,
                                     ),
+                                    alignment: Alignment.center,
+                                    child: !hasImage 
+                                        ? const Icon(Icons.person, color: Colors.grey, size: 24) 
+                                        : null, 
                                   ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      Icon(Icons.email_outlined, size: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        student['email']!,
-                                        style: GoogleFonts.manrope(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                  const SizedBox(width: 16),
+                                  
+                                  // Info
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          student['name']!,
+                                          style: GoogleFonts.manrope(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w700,
+                                            color: isDark ? Colors.white : const Color(0xFF1F1F39),
+                                          ),
                                         ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    children: [
-                                      Icon(Icons.phone_outlined, size: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        student['phone']!,
-                                        style: GoogleFonts.manrope(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            Icon(Icons.email_outlined, size: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              student['email']!,
+                                              style: GoogleFonts.manrope(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500,
+                                                color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                      ),
-                                    ],
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            Icon(Icons.phone_outlined, size: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              student['phone']!,
+                                              style: GoogleFonts.manrope(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w500,
+                                                color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
-                          ],
+                          ),
                         ),
                       );
                     },
