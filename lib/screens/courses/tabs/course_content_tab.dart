@@ -1,4 +1,4 @@
-import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:local_mobile_engineer_official/models/course_model.dart';
@@ -8,6 +8,7 @@ import 'package:local_mobile_engineer_official/screens/courses/folder_detail_scr
 import 'package:local_mobile_engineer_official/screens/content_viewers/video_player_screen.dart';
 import 'package:local_mobile_engineer_official/screens/content_viewers/pdf_viewer_screen.dart';
 import 'package:local_mobile_engineer_official/screens/content_viewers/image_viewer_screen.dart';
+import '../../../utils/app_theme.dart';
 
 class CourseContentTab extends StatefulWidget {
   final CourseModel course;
@@ -138,55 +139,37 @@ class _CourseContentTabState extends State<CourseContentTab> {
       );
     }
 
-    return Scaffold(
-      body: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        itemCount: _contents.length,
-        itemBuilder: (context, index) {
-          final item = _contents[index];
-          return CourseContentListItem(
-            item: item,
-            index: index,
-            isSelected: false,
-            isSelectionMode: false,
-            isDragMode: false,
-            onTap: () => _handleContentTap(item, index),
-            onToggleSelection: () {},
-            onEnterSelectionMode: () {},
-            onStartHold: () {},
-            onCancelHold: () {},
-            onRename: () {},
-            onRemove: () {},
-            isReadOnly: false,
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        mini: true,
-        backgroundColor: Colors.red,
-        child: const Icon(Icons.bug_report, color: Colors.white),
-        onPressed: () {
-          showDialog(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: const Text('🔍 DEBUG: Raw Server Data'),
-              content: SingleChildScrollView(
-                child: SelectableText(
-                  'Total Items: ${_contents.length}\n\n'
-                  'Full JSON:\n${const JsonEncoder.withIndent('  ').convert(_contents)}',
-                  style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Close'),
-                ),
-              ],
+    return CustomScrollView(
+      key: const PageStorageKey('content_tab'),
+      slivers: [
+        // Using explicit padding instead of SliverOverlapInjector due to pinned header issue
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(16, 175, 16, 80), // Increased to 175 to clear AppBar+TabBar
+          sliver: SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final item = _contents[index];
+                return CourseContentListItem(
+                  item: item,
+                  index: index,
+                  isSelected: false,
+                  isSelectionMode: false,
+                  isDragMode: false,
+                  onTap: () => _handleContentTap(item, index),
+                  onToggleSelection: () {},
+                  onEnterSelectionMode: () {},
+                  onStartHold: () {},
+                  onCancelHold: () {},
+                  onRename: () {},
+                  onRemove: () {},
+                  isReadOnly: true,
+                );
+              },
+              childCount: _contents.length,
             ),
-          );
-        },
-      ),
+          ),
+        ),
+      ],
     );
   }
 }

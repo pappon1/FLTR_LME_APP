@@ -106,7 +106,7 @@ class DashboardProvider extends ChangeNotifier {
       final snapshot = await FirebaseFirestore.instance
           .collection('courses')
           .orderBy('enrolledStudents', descending: true)
-          .limit(3)
+          .limit(1)
           .get();
 
       _popularCourses = snapshot.docs

@@ -57,6 +57,16 @@ class _VideoPlaylistWidgetState extends State<VideoPlaylistWidget> {
     super.dispose();
   }
 
+  String _formatDuration(dynamic duration) {
+    if (duration == null) return "00:00";
+    if (duration is int) {
+      final int minutes = duration ~/ 60;
+      final int seconds = duration % 60;
+      return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    }
+    return duration.toString();
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
@@ -174,7 +184,7 @@ class _VideoPlaylistWidgetState extends State<VideoPlaylistWidget> {
                           size: 12, color: subTextColor),
                       const SizedBox(width: 4),
                       Text(
-                        item['duration'] ?? "00:00",
+                        _formatDuration(item['duration']),
                         style: TextStyle(
                             color: subTextColor, fontSize: 11),
                       ),

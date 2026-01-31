@@ -34,38 +34,12 @@ class CourseContentListItem extends StatelessWidget {
     required this.onRename,
     required this.onRemove,
     this.onAddThumbnail,
-    this.isReadOnly = false, // Default to false
+    this.isReadOnly = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    IconData icon;
-    Color color;
-    switch (item['type']) {
-      case 'folder':
-        icon = Icons.folder;
-        color = Colors.orange;
-        break;
-      case 'video':
-        icon = Icons.video_library;
-        color = Colors.red;
-        break;
-      case 'pdf':
-        icon = Icons.picture_as_pdf;
-        color = Colors.redAccent;
-        break;
-      case 'image':
-        icon = Icons.image;
-        color = Colors.purple;
-        break;
-      case 'zip':
-        icon = Icons.folder_zip;
-        color = Colors.blueGrey;
-        break;
-      default:
-        icon = Icons.insert_drive_file;
-        color = Colors.blue;
-    }
+    bool isMedia = item['type'] == 'video' || item['type'] == 'image';
 
     return Material(
       color: Colors.transparent,
@@ -73,135 +47,23 @@ class CourseContentListItem extends StatelessWidget {
         children: [
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: ListTile(
-              onTap: isReadOnly 
-                  ? () {
-                      print('🎯 [ListTile TAP] Read-only mode: ${item['name']}');
-                      onTap();
-                    }
-                  : null,
-              tileColor: isSelected
-                  ? AppTheme.primaryColor.withValues(alpha: 0.1)
-                  : Colors.transparent,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(3.0),
-                  side: BorderSide(
-                      color: isSelected
-                          ? AppTheme.primaryColor
-                          : Theme.of(context).dividerColor.withValues(alpha: 0.12),
-                      width: isSelected ? 2 : 1)),
-              leading: Hero(
-                tag: (item['path'] ?? item['name']) + index.toString() + (isReadOnly ? '_read' : ''),
-                child: Container(
-                  width: item['type'] == 'video' ? 80 : 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(3.0),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: _buildLeadingPreview(
-                    icon,
-                    color,
-                    item['type'] == 'video' ? 80 : 44,
-                    44
-                  ),
-                ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppTheme.primaryColor.withValues(alpha: 0.1)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(3.0),
+                border: Border.all(
+                    color: isSelected
+                        ? AppTheme.primaryColor
+                        : Theme.of(context).dividerColor.withValues(alpha: 0.12),
+                    width: isSelected ? 2 : 1),
               ),
-              title: Text(
-                item['name'],
-                maxLines: 2, // Allow wrapping up to 2 lines
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: isSelected ? AppTheme.primaryColor : null,
-                  fontSize: 13,
-                ),
-              ),
-              subtitle: item['type'] == 'video'
-                  ? Builder(
-                      builder: (context) {
-                        // Try multiple possible field names for duration
-                        final duration = item['duration'] 
-                            ?? item['videoDuration']
-                            ?? item['durationInSeconds']
-                            ?? item['length']
-                            ?? item['videoLength'];
-                        
-                        // Debug only if all fields are null
-                        if (duration == null) {
-                          print("🔍 [DEBUG] Video Item (no duration found): ${item.keys.toList()}");
-                        }
-                        
-                        if (duration != null) {
-                          return Text(
-                            _formatDuration(duration),
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: Colors.grey.shade600,
-                            ),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
-                    )
-                  : null,
-              trailing: isSelectionMode
-                  ? GestureDetector(
-                      onTap: onToggleSelection,
-                      child: isSelected
-                          ? const Icon(Icons.check_circle,
-                              color: AppTheme.primaryColor)
-                          : const Icon(Icons.circle_outlined,
-                              color: Colors.grey),
-                    )
-                  : (isReadOnly ? null : const SizedBox(width: 48)), // No arrow in read-only
+              child: isMedia ? _buildMediaLayout(context) : _buildStandardLayout(context),
             ),
           ),
-          
-          if (!isReadOnly && !isSelectionMode && !isDragMode)
-            Positioned(
-              right: 0,
-              top: 0,
-              bottom: 12,
-              child: PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert),
-                padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(3.0)),
-                onSelected: (value) {
-                  if (value == 'rename') onRename();
-                  if (value == 'remove') onRemove();
-                  if (value == 'manage_thumbnail') onAddThumbnail?.call();
-                },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                      value: 'rename',
-                      child: Row(children: [
-                        Icon(Icons.edit, size: 20),
-                        SizedBox(width: 12),
-                        Text('Rename')
-                      ])),
-                  const PopupMenuItem(
-                      value: 'remove',
-                      child: Row(children: [
-                        Icon(Icons.delete, color: Colors.red, size: 20),
-                        SizedBox(width: 12),
-                        Text('Remove', style: TextStyle(color: Colors.red))
-                      ])),
-                  if (item['type'] == 'video')
-                    const PopupMenuItem(
-                      value: 'manage_thumbnail',
-                      child: Row(children: [
-                        Icon(Icons.image, size: 20),
-                        SizedBox(width: 12),
-                        Text('Thumbnail')
-                      ]),
-                    ),
-                ],
-              ),
-            ),
-            
+
+
           if (!isReadOnly)
             Positioned.fill(
               bottom: 12,
@@ -240,56 +102,282 @@ class CourseContentListItem extends StatelessWidget {
                             child: Container(color: Colors.transparent),
                           ),
                         ),
-                        const SizedBox(width: 48), // Spacing for menu button
+                        const SizedBox(width: 8), // Minimal spacing
                       ],
                     ),
             ),
+            // Selection Checkcircle Overlay
+            if (isSelectionMode)
+              Positioned(
+                right: 12,
+                top: 12,
+                child: GestureDetector(
+                  onTap: onToggleSelection,
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white, // Background for visibility
+                    ),
+                    child: isSelected
+                        ? const Icon(Icons.check_circle, color: AppTheme.primaryColor)
+                        : const Icon(Icons.circle_outlined, color: Colors.grey),
+                  ),
+                ),
+              ),
         ],
       ),
     );
   }
 
+  Widget _buildStandardLayout(BuildContext context) {
+      IconData icon;
+      Color color;
+      switch (item['type']) {
+        case 'folder':
+          icon = Icons.folder;
+          color = Colors.orange;
+          break;
+        case 'pdf':
+          icon = Icons.picture_as_pdf;
+          color = Colors.redAccent;
+          break;
+        case 'zip':
+          icon = Icons.folder_zip;
+          color = Colors.blueGrey;
+          break;
+        default:
+          icon = Icons.insert_drive_file;
+          color = Colors.blue;
+      }
+
+      double size = 60.0; // Fixed size as per user request
+      double iconDisplaySize = size * 0.56; // Ratio 28/50 approx -> ~33.6
+
+      return ListTile(
+        onTap: isReadOnly
+            ? () {
+                print('🎯 [ListTile TAP] Read-only mode: ${item['name']}');
+                onTap();
+              }
+            : null,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), 
+        leading: Hero(
+          tag: (item['path'] ?? item['name']) + index.toString() + (isReadOnly ? '_read' : ''),
+          child: Container(
+            width: size, 
+            height: size, 
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(4.0), 
+            ),
+            child: Icon(icon, color: color, size: iconDisplaySize), 
+          ),
+        ),
+        title: Text(
+          item['name'],
+          style: TextStyle(
+            fontWeight: FontWeight.w600,
+            color: isSelected 
+                ? AppTheme.primaryColor 
+                : (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
+            fontSize: 14, 
+            height: 1.2, 
+          ),
+        ),
+      );
+  }
+
+  Widget _buildMediaLayout(BuildContext context) {
+    // YouTube Style List Layout: Left Thumbnail, Right Title
+    bool isImage = item['type'] == 'image';
+    
+    // Config: Image = 80x80 (1:1), Video = 120x68 (16:9)
+    double thumbWidth = isImage ? 80.0 : 120.0;
+    double thumbHeight = isImage ? 80.0 : 68.0;
+
+    return InkWell(
+      onTap: isReadOnly 
+        ? () {
+            print('🎯 [Media TAP] Read-only mode: ${item['name']}');
+            onTap();
+          } 
+        : null,
+      borderRadius: BorderRadius.circular(3.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 1. Left Thumbnail Section
+          Hero(
+            tag: (item['path'] ?? item['name']) + index.toString() + (isReadOnly ? '_read' : ''),
+            child: Container(
+              width: thumbWidth,
+              height: thumbHeight,
+              margin: const EdgeInsets.fromLTRB(12, 12, 0, 12), // Left margin
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                color: Colors.black12,
+                borderRadius: BorderRadius.circular(4.0),
+              ),
+              child: Stack(
+                children: [
+                  // Media Preview
+                  Positioned.fill(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        return _buildLeadingPreview(
+                          isImage ? Icons.image : Icons.video_library,
+                          Colors.grey,
+                          constraints.maxWidth,
+                          constraints.maxHeight
+                        );
+                      }
+                    ),
+                  ),
+
+                  // Duration Badge (Video Only)
+                  if (item['type'] == 'video')
+                    Positioned(
+                      bottom: 4,
+                      right: 4,
+                      child: Builder(
+                        builder: (context) {
+                          final duration = item['duration']
+                              ?? item['videoDuration']
+                              ?? item['durationInSeconds']
+                              ?? item['length']
+                              ?? item['videoLength'];
+                          
+                          if (duration != null) {
+                            return Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.8),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                _formatDuration(duration),
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            );
+                          }
+                          return const SizedBox.shrink();
+                        },
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          
+          // 2. Right Info Section
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 8, 0), // Tuned padding: Top aligned with image
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  Text(
+                    item['name'],
+                    style: TextStyle(
+                      fontWeight: FontWeight.w600, 
+                      color: isSelected 
+                          ? AppTheme.primaryColor 
+                          : (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
+                      fontSize: 14,
+                      height: 1.2, 
+                    ),
+                  ),
+                  const SizedBox(height: 8), // Gap before tag
+                  
+                  // Bottom-aligned Type Tag
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: isImage ? Colors.blue.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(3),
+                      border: Border.all(
+                        color: isImage ? Colors.blue.withOpacity(0.2) : Colors.red.withOpacity(0.2),
+                        width: 0.5
+                      )
+                    ),
+                    child: Text(
+                      isImage ? 'IMAGE' : 'VIDEO',
+                      style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
+                        color: isImage ? Colors.blue : Colors.red,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
   Widget _buildLeadingPreview(IconData defaultIcon, Color defaultColor, double width, double height) {
     final String? pathStr = item['path']?.toString();
     final String? thumb = item['thumbnail']?.toString();
 
-    if (item['type'] == 'video' && pathStr != null) {
-      return Stack(
-        children: [
-          VideoThumbnailWidget(
-            videoPath: pathStr,
-            customThumbnailPath: thumb,
-            width: width,
-            height: height,
-          ),
-          Container(color: Colors.black12),
-          Center(
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.5),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 16),
+    if (item['type'] == 'video') {
+      // Use VideoThumbnailWidget if pathStr is available, otherwise use a fallback
+      if (pathStr != null && pathStr.isNotEmpty) {
+        return Stack(
+          children: [
+            VideoThumbnailWidget(
+              videoPath: pathStr,
+              customThumbnailPath: thumb,
+              width: width,
+              height: height,
             ),
-          ),
-        ],
+            Container(color: Colors.black12), // Slight overlay
+          ],
+        );
+      } else if (thumb != null && thumb.isNotEmpty) {
+        // Fallback to custom thumbnail if pathStr is missing but thumb is present
+        final bool isNetwork = thumb.startsWith('http');
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            isNetwork
+                ? Image.network(thumb, fit: BoxFit.cover, errorBuilder: (_,__,___) => Container(color: Colors.black))
+                : Image.file(File(thumb), fit: BoxFit.cover, errorBuilder: (_,__,___) => Container(color: Colors.black)),
+
+          ],
+        );
+      }
+      // Default fallback for video if no path or thumbnail
+      return Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(color: Colors.black87),
+          const Icon(Icons.play_circle_outline, color: Colors.white, size: 48),
+        ]
       );
     }
 
-    if (item['type'] == 'image' && pathStr != null) {
+    if (item['type'] == 'image' && pathStr != null && pathStr.isNotEmpty) {
        final bool isNetwork = pathStr.startsWith('http');
        try {
-         return isNetwork 
-            ? Image.network(pathStr, width: width, height: height, fit: BoxFit.cover, errorBuilder: (_,__,___) => Icon(defaultIcon, color: defaultColor, size: 20))
-            : Image.file(File(pathStr), width: width, height: height, fit: BoxFit.cover, errorBuilder: (_,__,___) => Icon(defaultIcon, color: defaultColor, size: 20));
+         return isNetwork
+            ? Image.network(pathStr, fit: BoxFit.cover, errorBuilder: (_,__,___) => Center(child: Icon(defaultIcon, color: defaultColor, size: 48)))
+            : Image.file(File(pathStr), fit: BoxFit.cover, errorBuilder: (_,__,___) => Center(child: Icon(defaultIcon, color: defaultColor, size: 48)));
        } catch (_) {
-         return Icon(defaultIcon, color: defaultColor, size: 20);
+         return Center(child: Icon(defaultIcon, color: defaultColor, size: 48));
        }
     }
 
-
-    return Icon(defaultIcon, color: defaultColor, size: 20);
+    // Default icon for other types or if media path is invalid
+    return Center(child: Icon(defaultIcon, color: defaultColor, size: 48));
   }
 
   String _formatDuration(dynamic duration) {

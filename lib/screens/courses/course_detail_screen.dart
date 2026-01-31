@@ -18,6 +18,7 @@ import '../content_viewers/pdf_viewer_screen.dart';
 import 'folder_detail_screen.dart';
 import 'tabs/course_content_tab.dart'; 
 import 'edit_course_info_screen.dart';
+import '../../data/dummy_course_data.dart'; // Import dummy data file
 class CourseDetailScreen extends StatefulWidget {
   final CourseModel course;
 
@@ -31,6 +32,15 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
   final FirestoreService _firestoreService = FirestoreService();
   int _selectedTabIndex = 0; // 0: Overview, 1: Content, 2: Students
   bool _isDescriptionExpanded = false;
+  
+  final TextEditingController _studentSearchController = TextEditingController();
+  String _studentSearchQuery = '';
+
+  @override
+  void dispose() {
+    _studentSearchController.dispose();
+    super.dispose();
+  }
 
   // Finalized Design Constants
   static const double _fPriceSize = 21.2;
@@ -101,37 +111,42 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
     final Color bgColor = isDark ? const Color(0xFF050505) : Colors.white; 
     
     return StreamBuilder<CourseModel>(
-      stream: _firestoreService.getCourseStream(widget.course.id),
-      initialData: widget.course,
+      // 🔥 TO UI DESIGN: Switch back to _firestoreService.getCourseStream(widget.course.id) for real data
+      stream: DummyCourseData.fetchCourseDetails(), 
+      initialData: DummyCourseData.sampleCourse,
       builder: (context, snapshot) {
         final course = snapshot.data ?? widget.course;
         
         return Scaffold(
           backgroundColor: bgColor,
-          appBar: _buildAppBar(isDark, bgColor, course),
-          body: Column(
-            children: [
-              _buildCustomTabBar(isDark),
-              Expanded(
-                child: _selectedTabIndex == 0 
-                    ? _buildOverviewTab(isDark, course)
-                    : _selectedTabIndex == 1 
-                        ? _buildContentTab(course)
-                        : _buildStudentsTab(),
-              ),
-              if (_selectedTabIndex == 0) _buildBottomBar(isDark, course),
-            ],
+          body: NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) {
+              return [
+                SliverOverlapAbsorber(
+                  handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+                  sliver: _buildSliverAppBar(isDark, bgColor, course),
+                ),
+              ];
+            },
+            body: _selectedTabIndex == 0 
+                ? _buildOverviewTab(isDark, course)
+                : _selectedTabIndex == 1 
+                    ? _buildContentTab(course)
+                    : _buildStudentsTab(),
           ),
+          bottomNavigationBar: _selectedTabIndex == 0 ? _buildBottomBar(isDark, course) : null,
         );
       }
     );
   }
 
-  AppBar _buildAppBar(bool isDark, Color bgColor, CourseModel course) {
-    return AppBar(
+  SliverAppBar _buildSliverAppBar(bool isDark, Color bgColor, CourseModel course) {
+    return SliverAppBar(
       backgroundColor: bgColor,
       elevation: 0,
       centerTitle: true,
+      pinned: true,
+      floating: false, // Changed to false to prevent scrolling away completely
       leading: Transform.translate(
         offset: const Offset(_fHBackShiftX, 0),
         child: IconButton(
@@ -167,7 +182,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
                   );
                 },
               ),
-              // Heart Badge - Precise Mirror of Reference
               if (_fHShowBadge)
                 Transform.translate(
                   offset: const Offset(_fHBadgeShiftX, 0),
@@ -210,6 +224,13 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
           ),
         ),
       ],
+      bottom: PreferredSize(
+        preferredSize: const Size.fromHeight(64),
+        child: Container(
+          color: bgColor,
+          child: _buildCustomTabBar(isDark),
+        ),
+      ),
     );
   }
 
@@ -267,169 +288,177 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
   }
 
   Widget _buildOverviewTab(bool isDark, CourseModel course) {
-    return SingleChildScrollView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 12),
-          // Thumbnail
-          AspectRatio(
-            aspectRatio: 16 / 9, // Standard YouTube Aspect Ratio
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(3.0),
-                color: isDark ? Colors.grey[900] : Colors.grey[200],
-              ),
-              clipBehavior: Clip.antiAlias,
-              child: CachedNetworkImage(
-                imageUrl: BunnyCDNService.signUrl(course.thumbnailUrl),
-                httpHeaders: BunnyCDNService.signUrl(course.thumbnailUrl).contains('storage.bunnycdn.com') 
-                    ? {'AccessKey': BunnyCDNService.apiKey} 
-                    : null,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Center(child: CircularProgressIndicator(color: _primaryPurple)),
-                errorWidget: (context, url, error) => const Icon(Icons.broken_image, size: 50),
-              ),
+    return Builder(
+      builder: (context) {
+        return CustomScrollView(
+          key: const PageStorageKey('overview'),
+          slivers: [
+            SliverOverlapInjector(
+              handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
             ),
-          ),
-          const SizedBox(height: _fOvGapThumbTitle),
- 
-          // Title
-          Text(
-            course.title.isNotEmpty ? course.title : "Advance Mobile Repairing Trainings",
-            style: GoogleFonts.poppins(
-              fontSize: _fOvTitleSize,
-              fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white : _textDark,
-              height: 1.3,
-            ),
-          ),
-          const SizedBox(height: _fOvGapTitleDesc),
- 
-          // Description Section - Prompt: 2 line preview
-          _buildSectionHeader("Description", showEdit: false),
-          const SizedBox(height: 8),
-          Text(
-            course.description.isNotEmpty 
-                ? course.description 
-                : "Iss advanced course mein aap seekhenge mobile hardware repair, chip-level soldering, IC reballing aur latest techniques...",
-            maxLines: _isDescriptionExpanded ? null : 2, 
-            overflow: _isDescriptionExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
-            style: GoogleFonts.poppins(
-              fontSize: _fOvDescSize,
-              fontWeight: FontWeight.w500,
-              color: isDark ? Colors.white : const Color(0xFF6B7280),
-              height: 1.5,
-            ),
-          ),
-          GestureDetector(
-            onTap: () => setState(() => _isDescriptionExpanded = !_isDescriptionExpanded),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Row(
-                children: [
-                  Text(
-                    _isDescriptionExpanded ? 'See less' : 'See more',
-                    style: GoogleFonts.poppins(
-                      fontSize: _fOvSeeMoreSize,
-                      fontWeight: FontWeight.w500,
-                      color: _fOvSeeMoreColor,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Icon(
-                    _isDescriptionExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                    color: _fOvSeeMoreColor,
-                    size: _fOvSeeMoreSize + 3,
-                  )
-                ],
-              ),
-            ),
-          ),
- 
-          const SizedBox(height: _fOvGapSeeMoreHigh),
- 
-          // Highlights Section
-          if (course.highlights.isNotEmpty) ...[
-            _buildSectionHeader("Course Highlights", showEdit: false),
-            const SizedBox(height: 16),
-            ...course.highlights.asMap().entries.map((entry) {
-              return _buildHighlightItem(
-                entry.value, 
-                isDark, 
-                isFirst: entry.key == 0,
-                isLast: entry.key == course.highlights.length - 1
-              );
-            }),
-            const SizedBox(height: _fOvGapHighFaq),
-          ],
- 
-          // FAQs
-          if (course.faqs.isNotEmpty) ...[
-            _buildSectionHeader("FAQs", showEdit: false),
-            const SizedBox(height: 16),
-            ...course.faqs.map((faq) => _buildFAQItem(
-              faq['question'] ?? '', 
-              faq['answer'] ?? '', 
-              isDark
-            )),
-          ],
-          
-          const SizedBox(height: 24),
-          
-          // Chat Banner - One Line Fix
-          // Chat Banner - One Line Fix
-            Container(
-            padding: const EdgeInsets.all(_fWaPadding),
-            decoration: BoxDecoration(
-              color: const Color(0xFF2C254D), // Deep Reference Purple
-              borderRadius: BorderRadius.circular(_fWaRadius),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.08),
-                width: 1,
-              ),
-            ),
-            child: Row(
-              children: [
-                Transform.translate(
-                  offset: const Offset(_fWaIconShiftX, 0),
-                  child: Container(
-                    padding: const EdgeInsets.all(_fWaIconPadding),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF25D366),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.white, size: _fWaIconSize),
-                  ),
-                ),
-                const SizedBox(width: _fWaGap),
-                Expanded(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      'Chat With LME Sir For More Course Details.',
-                      style: GoogleFonts.poppins(
-                        fontSize: _fWaTextSize,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate(
+                  [
+                    const SizedBox(height: 12),
+                    // Thumbnail
+                    AspectRatio(
+                      aspectRatio: 16 / 9, // Standard YouTube Aspect Ratio
+                      child: Container(
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(3.0),
+                          color: isDark ? Colors.grey[900] : Colors.grey[200],
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: CachedNetworkImage(
+                          imageUrl: BunnyCDNService.signUrl(course.thumbnailUrl),
+                          httpHeaders: BunnyCDNService.signUrl(course.thumbnailUrl).contains('storage.bunnycdn.com') 
+                              ? {'AccessKey': BunnyCDNService.apiKey} 
+                              : null,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Center(child: CircularProgressIndicator(color: _primaryPurple)),
+                          errorWidget: (context, url, error) => const Icon(Icons.broken_image, size: 50),
+                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(height: _fOvGapThumbTitle),
+         
+                    // Title
+                    Text(
+                      course.title.isNotEmpty ? course.title : "Advance Mobile Repairing Trainings",
+                      style: GoogleFonts.poppins(
+                        fontSize: _fOvTitleSize,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white : _textDark,
+                        height: 1.3,
+                      ),
+                    ),
+                    const SizedBox(height: _fOvGapTitleDesc),
+         
+                    // Description Section - Prompt: 2 line preview
+                    _buildSectionHeader("Description", showEdit: false),
+                    const SizedBox(height: 8),
+                    Text(
+                      course.description.isNotEmpty 
+                          ? course.description 
+                          : "Iss advanced course mein aap seekhenge mobile hardware repair, chip-level soldering, IC reballing aur latest techniques...",
+                      maxLines: _isDescriptionExpanded ? null : 2, 
+                      overflow: _isDescriptionExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(
+                        fontSize: _fOvDescSize,
+                        fontWeight: FontWeight.w500,
+                        color: isDark ? Colors.white : const Color(0xFF6B7280),
+                        height: 1.5,
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => setState(() => _isDescriptionExpanded = !_isDescriptionExpanded),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            Text(
+                              _isDescriptionExpanded ? 'See less' : 'See more',
+                              style: GoogleFonts.poppins(
+                                fontSize: _fOvSeeMoreSize,
+                                fontWeight: FontWeight.w500,
+                                color: _fOvSeeMoreColor,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              _isDescriptionExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                              color: _fOvSeeMoreColor,
+                              size: _fOvSeeMoreSize + 3,
+                            )
+                          ],
+                        ),
+                      ),
+                    ),
+         
+                    const SizedBox(height: _fOvGapSeeMoreHigh),
+         
+                    // Highlights Section
+                    if (course.highlights.isNotEmpty) ...[
+                      _buildSectionHeader("Course Highlights", showEdit: false),
+                      const SizedBox(height: 16),
+                      ...course.highlights.asMap().entries.map((entry) {
+                        return _buildHighlightItem(
+                          entry.value, 
+                          isDark, 
+                          isFirst: entry.key == 0,
+                          isLast: entry.key == course.highlights.length - 1
+                        );
+                      }),
+                      const SizedBox(height: _fOvGapHighFaq),
+                    ],
+         
+                    // FAQs
+                    if (course.faqs.isNotEmpty) ...[
+                      _buildSectionHeader("FAQs", showEdit: false),
+                      const SizedBox(height: 16),
+                      ...course.faqs.map((faq) => _buildFAQItem(
+                        faq['question'] ?? '', 
+                        faq['answer'] ?? '', 
+                        isDark
+                      )),
+                    ],
+                    
+                    const SizedBox(height: 24),
+                    
+                    // Chat Banner - One Line Fix
+                    Container(
+                      padding: const EdgeInsets.all(_fWaPadding),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2C254D), // Deep Reference Purple
+                        borderRadius: BorderRadius.circular(_fWaRadius),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.08),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Transform.translate(
+                            offset: const Offset(_fWaIconShiftX, 0),
+                            child: Container(
+                              padding: const EdgeInsets.all(_fWaIconPadding),
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF25D366),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.white, size: _fWaIconSize),
+                            ),
+                          ),
+                          const SizedBox(width: _fWaGap),
+                          Expanded(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                'Chat With LME Sir For More Course Details.',
+                                style: GoogleFonts.poppins(
+                                  fontSize: _fWaTextSize,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 40),
+                    const SizedBox(height: 40), 
+                  ]
                 ),
-              ],
+              ),
             ),
-          ),
-          
-          
-          const SizedBox(height: 40),
-
-          const SizedBox(height: 40), 
-        ],
-      ),
+          ],
+        );
+      }
     );
   }
 
@@ -724,7 +753,209 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
   }
   
   Widget _buildStudentsTab() {
-    return Center(child: Text("Coming Soon", style: GoogleFonts.manrope(color: Colors.grey)));
+    return Builder(
+      builder: (context) {
+        final bool isDark = Theme.of(context).brightness == Brightness.dark;
+        
+        // Dummy data for students
+        final List<Map<String, String?>> allStudents = [
+          {
+            'name': 'Rahul Sharma',
+            'email': 'rahul.sharma@example.com',
+            'phone': '+91 98765 43210',
+            'image': 'https://i.pravatar.cc/150?u=rahul'
+          },
+          {
+            'name': 'Amit Verma',
+            'email': 'amit.verma@example.com',
+            'phone': '+91 98765 00000',
+            'image': null
+          },
+        ];
+
+        // Filter Logic
+        final filteredStudents = allStudents.where((student) {
+          final query = _studentSearchQuery.toLowerCase().trim();
+          if (query.isEmpty) return true;
+          
+          final name = (student['name'] ?? '').toLowerCase();
+          final email = (student['email'] ?? '').toLowerCase();
+          final phone = (student['phone'] ?? '').toLowerCase();
+          
+          return name.contains(query) || email.contains(query) || phone.contains(query);
+        }).toList();
+
+        return CustomScrollView(
+          key: const PageStorageKey('students'),
+          slivers: [
+            SliverOverlapInjector(
+              handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+            ),
+            
+            // Search Bar
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: TextField(
+                  controller: _studentSearchController,
+                  style: GoogleFonts.manrope(
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      _studentSearchQuery = value;
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Search by Name, Email or Phone...',
+                    hintStyle: GoogleFonts.manrope(
+                      color: isDark ? Colors.grey[600] : Colors.grey[400],
+                      fontSize: 14,
+                    ),
+                    prefixIcon: Icon(Icons.search, color: isDark ? Colors.grey[500] : Colors.grey[400]),
+                    filled: true,
+                    fillColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(3.0),
+                      borderSide: BorderSide(
+                        color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey.withOpacity(0.2),
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(3.0),
+                      borderSide: BorderSide(
+                        color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey.withOpacity(0.2),
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(3.0),
+                      borderSide: BorderSide(
+                        color: AppTheme.primaryColor,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
+            if (filteredStudents.isEmpty)
+              SliverFillRemaining(
+                child: Center(
+                  child: Text(
+                    "No students found", 
+                    style: GoogleFonts.manrope(color: Colors.grey)
+                  ),
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.all(16),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final student = filteredStudents[index];
+                      final hasImage = student['image'] != null && student['image']!.isNotEmpty;
+                      
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                          borderRadius: BorderRadius.circular(3.0),
+                          border: Border.all(
+                            color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey.withOpacity(0.15),
+                            width: 1
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            )
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            // Profile Placeholder
+                            Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: isDark ? Colors.grey[800] : Colors.grey[200],
+                                image: hasImage ? DecorationImage(
+                                  image: NetworkImage(student['image']!),
+                                  fit: BoxFit.cover,
+                                ) : null,
+                              ),
+                              alignment: Alignment.center,
+                              child: !hasImage 
+                                  ? const Icon(Icons.person, color: Colors.grey, size: 24) 
+                                  : null, 
+                            ),
+                            const SizedBox(width: 16),
+                            
+                            // Info
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    student['name']!,
+                                    style: GoogleFonts.manrope(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: isDark ? Colors.white : const Color(0xFF1F1F39),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.email_outlined, size: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        student['email']!,
+                                        style: GoogleFonts.manrope(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.phone_outlined, size: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        student['phone']!,
+                                        style: GoogleFonts.manrope(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                          color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    childCount: filteredStudents.length,
+                  ),
+                ),
+              ),
+          ],
+        );
+      }
+    );
   }
 }
+
+
 

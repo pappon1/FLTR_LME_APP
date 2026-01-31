@@ -1800,7 +1800,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                   label: 'Course Title',
                   hint: 'Advanced Mobile Repairing',
                   icon: Icons.title,
-                  maxLength: 35,
+                  maxLength: 40, // Updated to 40 characters
                 ),
 
                 // 3. Description
@@ -2640,8 +2640,10 @@ class _AddCourseScreenState extends State<AddCourseScreen>
         content: TextField(
           controller: renameController,
           autofocus: true,
+          maxLength: 40, // Limited to 40 characters
           decoration: const InputDecoration(
             hintText: 'Enter new name',
+            counterText: "", // Hide counter for cleaner UI
             border: OutlineInputBorder(),
           ),
         ),

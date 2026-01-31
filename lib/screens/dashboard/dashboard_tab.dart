@@ -499,7 +499,7 @@ class _DashboardTabState extends State<DashboardTab> with SingleTickerProviderSt
                              child: PageView.builder(
                                controller: _pageController,
                                padEnds: false,
-                               itemCount: null, // Infinite
+                               itemCount: provider.popularCourses.length,
                                onPageChanged: (index) {
                                  setState(() {
                                    _currentPage = index;

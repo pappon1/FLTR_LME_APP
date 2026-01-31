@@ -143,9 +143,9 @@ class _CoursesTabState extends State<CoursesTab> {
             return ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(vertical: 16),
-              itemCount: displayCourses.length,
+              itemCount: 1, // Forced to 1
               itemBuilder: (context, index) {
-                final course = displayCourses[index];
+                final course = _dummyCourses.first;
                 return CourseCard(
                   course: course,
                   isEdgeToEdge: true,
@@ -168,7 +168,7 @@ class _CoursesTabState extends State<CoursesTab> {
   Widget _buildShimmerGrid() {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(vertical: 16),
-      itemCount: 4, // Show 4 skeleton items
+      itemCount: 1, // Show 1 skeleton item
       itemBuilder: (context, index) {
         return const CourseCardSkeleton(
           isEdgeToEdge: true,

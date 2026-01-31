@@ -805,7 +805,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
 
   void _handleContentTap(Map<String, dynamic> item, int index) async {
       if (_isSelectionMode) { _toggleSelection(index); return; }
-      final String? path = item['path'];
+      final String? path = item['path'] ?? item['url'];
       if (item['type'] == 'folder') {
           final result = await Navigator.push(
             context, 
@@ -826,17 +826,20 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
              unawaited(_savePersistentContent());
           }
       } else if (item['type'] == 'image' && path != null) {
+          final bool isNetwork = path.startsWith('http');
           Navigator.push(context, MaterialPageRoute(builder: (_) => ImageViewerScreen(
             filePath: path,
             title: item['name'],
+            isNetwork: isNetwork,
           )));
       } else if (item['type'] == 'video' && path != null) {
           // CREATE PLAYLIST: Filter only video items
           final videoList = _contents
-              .where((element) => element['type'] == 'video' && element['path'] != null)
+              .where((element) => element['type'] == 'video' && (element['path'] != null || element['url'] != null))
               .map((video) {
                 final converted = Map<String, dynamic>.from(video);
-                final videoPath = video['path'];
+                final videoPath = video['path'] ?? video['url'];
+                converted['path'] = videoPath; // Normalize to path
                 
                 // Convert iframe URL to actual video URL in read-only mode
                 if (widget.isReadOnly && videoPath != null && videoPath.toString().contains('iframe.mediadelivery.net')) {
@@ -860,9 +863,11 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
             initialIndex: initialIndex >= 0 ? initialIndex : 0,
           )));
       } else if (item['type'] == 'pdf' && path != null) {
+          final bool isNetwork = path.startsWith('http');
           Navigator.push(context, MaterialPageRoute(builder: (_) => PDFViewerScreen(
             filePath: path,
             title: item['name'],
+            isNetwork: isNetwork,
           )));
       }
   }
@@ -1011,8 +1016,15 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
        );
     }
     return AppBar(
-      title: Text(widget.folderName, style: const TextStyle(fontWeight: FontWeight.bold)),
-      centerTitle: true,
+      titleSpacing: 10, // 10px gap from back icon
+      centerTitle: false, // Align left (start)
+      title: Text(
+        widget.folderName,
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        maxLines: 2,
+        textAlign: TextAlign.start, // Wrapping flows left-to-right
+        overflow: TextOverflow.ellipsis,
+      ),
       elevation: 0,
       actions: [
         if (!widget.isReadOnly) // Hide Add Button if Read-Only
