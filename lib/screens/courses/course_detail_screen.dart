@@ -19,8 +19,11 @@ import 'folder_detail_screen.dart';
 import 'tabs/course_content_tab.dart'; 
 import 'edit_course_info_screen.dart';
 import '../../data/dummy_course_data.dart'; // Import dummy data file
-import '../user_profile_screen.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../user_profile/user_profile_screen.dart';
+import '../../models/student_model.dart';
+
 class CourseDetailScreen extends StatefulWidget {
   final CourseModel course;
 
@@ -881,20 +884,20 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
                           child: InkWell(
                             borderRadius: BorderRadius.circular(3.0),
                             onTap: () {
-                              // Navigate to UserProfileScreen with dummy data
-                              Navigator.push(context, MaterialPageRoute(builder: (_) => UserProfileScreen(
-                                userData: {
-                                  'userName': student['name'],
-                                  'userEmail': student['email'],
-                                  'userPhone': student['phone'],
-                                  'userImage': student['image'] ?? '',
-                                  'deviceModel': 'Samsung S23 Ultra', // Dummy
-                                  'timestamp': Timestamp.now(),       // Dummy
-                                  'purchasedCourses': [               // Dummy
-                                    {'title': widget.course.title, 'price': '4999'}
-                                  ]
-                                },
-                              )));
+                              final dummyStudent = StudentModel(
+                                id: 'dummy_id_$index',
+                                name: student['name'] ?? 'Unknown',
+                                email: student['email'] ?? '',
+                                phone: student['phone'] ?? '',
+                                enrolledCourses: 1,
+                                joinedDate: DateTime.now().subtract(const Duration(days: 30)),
+                                isActive: true,
+                                avatarUrl: student['image'] ?? '',
+                              );
+                              Navigator.push(
+                                context, 
+                                MaterialPageRoute(builder: (_) => UserProfileScreen(student: dummyStudent))
+                              );
                             },
                             child: Padding(
                               padding: const EdgeInsets.all(12),

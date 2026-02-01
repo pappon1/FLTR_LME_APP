@@ -5,7 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../../../utils/app_theme.dart';
 import '../../../widgets/shimmer_loading.dart';
-import '../../user_profile_screen.dart';
+
 import '../../../providers/admin_notification_provider.dart';
 
 class ReceivedMessagesTab extends StatefulWidget {
@@ -242,7 +242,8 @@ class _ReceivedMessagesTabState extends State<ReceivedMessagesTab> {
           }
           
           // 2. Navigate
-          Navigator.push(context, MaterialPageRoute(builder: (_) => UserProfileScreen(userData: data)));
+          // Navigation to UserProfileScreen removed as per request
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Profile details unavailable")));
           
           // Or for chat, navigate to Chat
           // if (type == 'message') ...
