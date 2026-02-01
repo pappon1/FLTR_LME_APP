@@ -2,15 +2,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // Add this for FilteringTextInputFormatter
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'dart:math';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../../models/course_model.dart';
-import '../../../services/security/security_service.dart'; // Add this import
+import '../../../services/security/security_service.dart';
+import '../../../services/firestore_service.dart';
 
 class ManualEnrollmentScreen extends StatefulWidget {
   const ManualEnrollmentScreen({super.key});
@@ -25,6 +24,8 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
   
   // State
   bool _isLoading = false;
+  bool _isSearching = false;
+  bool _isLoadingCourses = true;
   Timer? _debounce; // Debounce timer
   String? _selectedCourseId;
   DateTime? _selectedExpiryDate;
@@ -39,15 +40,16 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
-  
   // Data
   List<CourseModel> _courses = [];
   String? _emailSuffix = '@gmail.com';
+  
+  final Color _primaryColor = const Color(0xFF6366F1); // Indigo Premium
+  final Color _surfaceColor = const Color(0xFF0F1218); // Deep Luxury Charcoal
+  final Color _borderColor = Colors.white.withValues(alpha: 0.08);
+  final Color _neonBlue = const Color(0xFF6366F1);
+  final Color _neonGreen = const Color(0xFF10B981);
 
-  final Color _techDark = const Color(0xFF1A1A2E);
-  final Color _techBlue = const Color(0xFF16213E);
-  final Color _neonGreen = const Color(0xFF4ECCA3);
-  final Color _neonBlue = const Color(0xFF00C9FF);
 
 
   @override
@@ -58,13 +60,19 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
   }
 
   Future<void> _fetchCourses() async {
-    final snapshot = await FirebaseFirestore.instance.collection('courses').get();
-    setState(() {
-      _courses = snapshot.docs.map((doc) => CourseModel.fromFirestore(doc)).toList();
-    });
+    try {
+      final snapshot = await FirebaseFirestore.instance.collection('courses').get();
+      setState(() {
+        _courses = snapshot.docs.map((doc) => CourseModel.fromFirestore(doc)).toList();
+        _isLoadingCourses = false;
+      });
+    } catch (e) {
+      debugPrint("Error fetching courses: $e");
+      setState(() => _isLoadingCourses = false);
+    }
   }
 
-  // --- Logic: Search User (Multi-field, Real-time) ---
+  // --- Logic: Search User (REAL) ---
   void _onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
     _debounce = Timer(const Duration(milliseconds: 500), () {
@@ -74,89 +82,60 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
 
   Future<void> _searchUser(String query) async {
     if (query.isEmpty) {
-      if (mounted) setState(() => _searchResults = []);
+      if (mounted) setState(() { _searchResults = []; _isSearching = false; });
       return;
     }
     
-    final lowerQuery = query.toLowerCase();
+    setState(() => _isSearching = true);
+    
+    // Perform parallel queries for Name, Email, Phone
+    // Note: Firestore text search is limited. This is a basic prefix match.
+    final usersRef = FirebaseFirestore.instance.collection('users').where('role', isEqualTo: 'user').limit(10);
     
     try {
-      // 1. Search by Email (Prefix)
-      final emailQuery = FirebaseFirestore.instance
-          .collection('users')
-          .where('email', isGreaterThanOrEqualTo: lowerQuery)
-          .where('email', isLessThan: '$lowerQuery\uf8ff')
-          .limit(10)
-          .get();
+      final results = await Future.wait([
+        usersRef.where('name', isGreaterThanOrEqualTo: query).where('name', isLessThan: '$query\uf8ff').get(),
+        usersRef.where('email', isGreaterThanOrEqualTo: query).where('email', isLessThan: '$query\uf8ff').get(),
+        usersRef.where('phone', isGreaterThanOrEqualTo: query).where('phone', isLessThan: '$query\uf8ff').get(),
+      ]);
 
-       // 2. Search by Phone (Prefix)
-      final phoneQuery = FirebaseFirestore.instance
-          .collection('users')
-          .where('phone', isGreaterThanOrEqualTo: query)
-          .where('phone', isLessThan: '$query\uf8ff')
-          .limit(10)
-          .get();
+      final allDocs = <DocumentSnapshot>[];
+      final seenIds = <String>{};
 
-      // 3. Search by Name (Case-sensitive prefix usually in Firestore)
-      // We try exact case or capitalized since Firestore lacks case-insensitive index without effort
-      final nameQuery = FirebaseFirestore.instance
-          .collection('users')
-          .orderBy('name')
-          .startAt([query])
-          .endAt(['$query\uf8ff'])
-          .limit(10)
-          .get();
-          
-      final results = await Future.wait([emailQuery, phoneQuery, nameQuery]);
-      
-      final Set<String> addedIds = {};
-      final List<DocumentSnapshot> mergedList = [];
-      
       for (var snap in results) {
         for (var doc in snap.docs) {
-          if (addedIds.add(doc.id)) {
-            mergedList.add(doc);
+          if (!seenIds.contains(doc.id)) {
+            allDocs.add(doc);
+            seenIds.add(doc.id);
           }
         }
       }
 
       if (mounted) {
         setState(() {
-          _searchResults = mergedList;
+          _searchResults = allDocs;
         });
       }
     } catch (e) {
-      // debugPrint("Search error: $e");
+      debugPrint("Error searching user: $e");
+    } finally {
+      if (mounted) setState(() => _isSearching = false);
     }
   }
 
-  // --- Logic: Create User (Secondary App) ---
-  Future<UserCredential?> _createNewUser(String email) async {
-    FirebaseApp? tempApp;
-    try {
-      tempApp = await Firebase.initializeApp(
-        name: 'tempAuthApp',
-        options: Firebase.app().options,
-      );
-      
-      // Generate a random specific password
-      final randomPass = 'User@${Random().nextInt(9000) + 1000}';
-      
-      final tempAuth = FirebaseAuth.instanceFor(app: tempApp);
-      final credential = await tempAuth.createUserWithEmailAndPassword(
-        email: email, 
-        password: randomPass
-      );
-      
-      return credential;
-    } on FirebaseAuthException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Auth Error: ${e.message}'), backgroundColor: Colors.red));
-      }
-      return null;
-    } finally {
-      await tempApp?.delete(); // Clean up
-    }
+  // --- Logic: Create User (REAL) ---
+  Future<String> _createNewUser(String email) async {
+    // Create a new user specific for manual enrollment
+    // Note: This user will need to claim this account or have a separate auth flow
+    final docRef = await FirebaseFirestore.instance.collection('users').add({
+      'name': _nameController.text.trim(),
+      'email': email,
+      'phone': _phoneController.text.trim(),
+      'role': 'user',
+      'createdAt': FieldValue.serverTimestamp(),
+      'createdBy': 'admin_manual_enrollment',
+    });
+    return docRef.id;
   }
 
   // --- Logic: Secure Submission ---
@@ -175,7 +154,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
       return;
     }
 
-    // Verify Admin PIN using existing SecurityService
+    // Verify Admin PIN (REAL)
     final isAuthenticated = await SecurityService.verifyPin(context);
     
     if (isAuthenticated) {
@@ -185,72 +164,29 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
 
   Future<void> _processEnrollment() async {
     setState(() => _isLoading = true);
-    String? studentId;
     String? studentName;
-    String? studentEmail;
+    String? studentId;
 
     try {
       if (_tabController.index == 0) {
-        // Tab 1: Existing User
+        // Existing User
+        studentName = (_selectedUser!.data() as Map)['name'];
         studentId = _selectedUser!.id;
-        final data = _selectedUser!.data() as Map<String, dynamic>;
-        studentName = data['name'] ?? 'Unknown';
-        studentEmail = data['email'];
       } else {
-        // Tab 2: New User
-        // 1. Create Auth User
+        // New User
         final emailInput = _emailController.text.trim();
         final fullEmail = emailInput.contains('@') ? emailInput : '$emailInput@gmail.com';
-        
-        final credential = await _createNewUser(fullEmail);
-        if (credential == null) {
-          setState(() => _isLoading = false);
-          return;
-        }
-        
-        studentId = credential.user!.uid;
         studentName = _nameController.text.trim();
-        studentEmail = fullEmail;
-        
-        // 2. Create Firestore User Doc
-        await FirebaseFirestore.instance.collection('users').doc(studentId).set({
-          'name': studentName,
-          'email': studentEmail,
-          'phone': _phoneController.text.trim(),
-          'role': 'user',
-          'createdAt': FieldValue.serverTimestamp(),
-          'enrolledCourses': 0,
-          'isActive': true,
-          'avatarUrl': 'https://ui-avatars.com/api/?name=$studentName&background=random',
-        });
+        studentId = await _createNewUser(fullEmail);
       }
 
-      // Calculate Expiry
-      DateTime? expiry;
-      if (_validityType == '1 Year') {
-        expiry = DateTime.now().add(const Duration(days: 365));
-      } else if (_validityType == 'Custom' && _selectedExpiryDate != null) {
-        expiry = _selectedExpiryDate;
-      } 
-      // 'Course Validity' and 'Lifetime' default to null (Lifetime access) 
-      // until CourseModel has a specific validity field.
-
-      // 3. Enroll Student
-      await FirebaseFirestore.instance.collection('enrollments').add({
-        'studentId': studentId,
-        'courseId': _selectedCourseId,
-        'enrolledAt': FieldValue.serverTimestamp(),
-        'expiryDate': expiry != null ? Timestamp.fromDate(expiry) : null,
-        'progress': 0,
-        'completedVideos': [],
-        'isActive': true,
-        'enrolledBy': 'admin',
-      });
-      
-      // 4. Update Student Course Count
-      await FirebaseFirestore.instance.collection('users').doc(studentId).update({
-        'enrolledCourses': FieldValue.increment(1),
-      });
+      if (_selectedCourseId != null) {
+        // Call Firestore Service
+        await FirestoreService().enrollStudent(studentId, _selectedCourseId!);
+        
+        // Also update the local user document with enrollment flag/count if needed
+        // For now, enrolling via FirestoreService is sufficient
+      }
 
       if (!mounted) return;
       
@@ -259,14 +195,17 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
         context: context,
         barrierDismissible: false,
         builder: (ctx) => AlertDialog(
-          backgroundColor: _techDark,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0), side: BorderSide(color: _neonGreen)),
+          backgroundColor: Colors.black,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(3.0),
+            side: BorderSide(color: _neonGreen.withValues(alpha: 0.5), width: 1),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.check_circle, color: _neonGreen, size: 60),
               const SizedBox(height: 20),
-              Text('ACTIVATION SUCCESSFUL', style: GoogleFonts.orbitron(color: Colors.white, fontWeight: FontWeight.bold)),
+              Text('Activation Successful', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 10),
               Text('$studentName has been enrolled successfully.', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
             ],
@@ -277,7 +216,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
                 Navigator.pop(ctx); 
                 Navigator.pop(context); 
               }, 
-              child: Text('DONE', style: TextStyle(color: _neonGreen, fontWeight: FontWeight.bold))
+              child: Text('Done', style: TextStyle(color: _neonGreen, fontWeight: FontWeight.bold))
             )
           ],
         ),
@@ -292,112 +231,145 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final bool isTablet = size.width > 600;
+    final double contentWidth = isTablet ? 600 : size.width;
+
+    // Dynamic Tab Pill Width Calculation
+    // Total container width = contentWidth - 40 (margin)
+    // Each tab area = (totalWidth - 8) / 2
+    final double maxTabWidth = (contentWidth - 48) / 2;
+    final double tab1PillWidth = maxTabWidth * 0.65; // 65% of tab area
+    final double tab2PillWidth = maxTabWidth * 0.85; // 85% of tab area
+
     return Scaffold(
+      backgroundColor: Colors.black,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text('MANUAL ENROLLMENT', style: GoogleFonts.orbitron(fontWeight: FontWeight.bold, letterSpacing: 1.5, color: Colors.white)),
+        title: Text('Manual Enrollment',
+            style: GoogleFonts.poppins(
+                fontWeight: FontWeight.bold,
+                fontSize: isTablet ? 20 : 18,
+                letterSpacing: 0.5,
+                color: Colors.white)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [_techDark, _techBlue],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-               const SizedBox(height: 10),
-               // Custom Tab Bar
-               Container(
-                 margin: const EdgeInsets.symmetric(horizontal: 20),
-                 padding: const EdgeInsets.all(4),
-                 decoration: BoxDecoration(
-                   color: Colors.white.withValues(alpha: 0.1),
-                   borderRadius: BorderRadius.circular(3.0),
-                   border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                 ),
-                 child: TabBar(
-                   controller: _tabController,
-                   indicator: BoxDecoration(
-                     color: _neonBlue,
-                     borderRadius: BorderRadius.circular(3.0),
-                     boxShadow: [BoxShadow(color: _neonBlue.withValues(alpha: 0.4), blurRadius: 10)],
-                   ),
-                   dividerColor: Colors.transparent, // REMOVED WHITE DIVIDER LINE
-                   labelColor: Colors.white,
-                   unselectedLabelColor: Colors.white70,
-                   labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 12),
-                   tabs: const [
-                     Tab(child: FittedBox(fit: BoxFit.scaleDown, child: Text('EXISTING USER'))),
-                     Tab(child: FittedBox(fit: BoxFit.scaleDown, child: Text('NEW USER (CREATE)'))),
-                   ],
-                 ),
-               ),
-               
-               const SizedBox(height: 20),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          final double horizontalPadding = isTablet ? 30 : 20;
+          
+          return Container(
+            color: Colors.black,
+            width: double.infinity,
+            height: double.infinity,
+            child: SafeArea(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: contentWidth),
+                  child: Column(
+                    children: [
+                      // Custom Tab Bar
+                      Container(
+                        margin: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: _surfaceColor,
+                          borderRadius: BorderRadius.circular(50.0),
+                          border: Border.all(color: _borderColor),
+                        ),
+                        child: TabBar(
+                          controller: _tabController,
+                          indicatorSize: TabBarIndicatorSize.tab,
+                          indicator: PillIndicator(
+                            color: _primaryColor,
+                            height: 32.0,
+                            widthTab1: tab1PillWidth,
+                            widthTab2: tab2PillWidth,
+                            controller: _tabController,
+                          ),
+                          dividerColor: Colors.transparent,
+                          labelColor: Colors.white,
+                          unselectedLabelColor: Colors.white70,
+                          labelStyle: GoogleFonts.poppins(
+                              fontWeight: FontWeight.bold, fontSize: isTablet ? 14 : 12),
+                          tabs: const [
+                            Tab(
+                                child: FittedBox(
+                                    fit: BoxFit.scaleDown, child: Text('Existing User'))),
+                            Tab(
+                                child: FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text('New User (Create)'))),
+                          ],
+                        ),
+                      ),
 
-               // Tab Content
-               Expanded(
-                 child: TabBarView(
-                   controller: _tabController,
-                   children: [
-                     _buildExistingUserTab(),
-                     _buildNewUserTab(),
-                   ],
-                 ),
-               ),
-            ],
-          ),
-        ),
+                      const SizedBox(height: 20),
+
+                      // Tab Content
+                      Expanded(
+                        child: TabBarView(
+                          controller: _tabController,
+                          children: [
+                            _buildExistingUserTab(horizontalPadding),
+                            _buildNewUserTab(horizontalPadding),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildExistingUserTab() {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-          child: _buildTechTextField(
-            controller: _searchController, 
-            label: 'SEARCH USER (NAME, EMAIL, OR PHONE)',
-            icon: Icons.search,
-            onChanged: _onSearchChanged,
-            keyboardType: TextInputType.text, 
-            suffix: _searchController.text.isNotEmpty 
-              ? IconButton(icon: const Icon(Icons.clear, color: Colors.white54), onPressed: () { 
-                  setState(() {
-                    _searchController.clear(); 
-                    _searchResults = [];
-                    _selectedUser = null;
-                  });
-                })
-              : null
+  Widget _buildExistingUserTab(double padding) {
+    return SingleChildScrollView(
+      physics: const BouncingScrollPhysics(),
+      child: Column(
+        children: [
+          Padding(
+            padding: EdgeInsets.fromLTRB(padding, 20, padding, 10),
+            child: _buildTechTextField(
+              controller: _searchController, 
+              label: 'Search User (Name, Email, or Phone)',
+              icon: Icons.search,
+              onChanged: _onSearchChanged,
+              keyboardType: TextInputType.text, 
+              suffix: _searchController.text.isNotEmpty 
+                ? IconButton(icon: const Icon(Icons.clear, color: Colors.white54), onPressed: () { 
+                    setState(() {
+                      _searchController.clear(); 
+                      _searchResults = [];
+                      _selectedUser = null;
+                    });
+                  })
+                : null
+            ),
           ),
-        ),
 
-        // 1. IF USER IS SELECTED -> SHOW FORM
-        if (_selectedUser != null)
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+          // 1. IF USER IS SELECTED -> SHOW FORM
+          if (_selectedUser != null)
+            Padding(
+              padding: EdgeInsets.all(padding),
               child: Column(
                 children: [
                    Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: _neonGreen.withValues(alpha: 0.1),
+                      color: _neonGreen.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(3.0),
-                      border: Border.all(color: _neonGreen.withValues(alpha: 0.5)),
+                      border: Border.all(color: _neonGreen.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       children: [
@@ -407,70 +379,63 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text((_selectedUser!.data() as Map)['name'] ?? 'User', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.white)),
-                              Text((_selectedUser!.data() as Map)['email'] ?? '', style: GoogleFonts.poppins(fontSize: 12, color: Colors.white70)),
+                                Text(
+                                _selectedUser != null 
+                                  ? (_selectedUser!.data() as Map)['name'] ?? 'User' 
+                                  : 'Unknown', 
+                                style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.white)
+                              ),
+                              Text(
+                                _selectedUser != null 
+                                  ? (_selectedUser!.data() as Map)['email'] ?? '' 
+                                  : 'No Email', 
+                                style: GoogleFonts.poppins(fontSize: 12, color: Colors.white70, fontWeight: FontWeight.w500)
+                              ),
                             ],
                           ),
                         ),
                         IconButton(
                           icon: const Icon(Icons.close, color: Colors.white70), 
-                          onPressed: () => setState(() => _selectedUser = null)
+                          onPressed: () => setState(() {
+                            _selectedUser = null;
+                          })
                         )
                       ],
                     ),
                   ).animate().fadeIn(),
 
                   const SizedBox(height: 30),
-                  _buildSectionHeader("ENROLLMENT DETAILS"),
+                  _buildSectionHeader("Enrollment Details"),
                   const SizedBox(height: 16),
                   _buildCourseSelector(),
                   
                   const SizedBox(height: 40),
-                  _buildActionBtn('ACTIVATE COURSE', _verifyAndSubmit),
+                  _buildActionBtn('Activate Course', _verifyAndSubmit),
                 ],
               ),
-            ),
-          )
-        
-        // 2. ELSE IF SEARCHING -> SHOW EXPANDED LIST
-        else if (_searchController.text.isNotEmpty)
-          Expanded(
-            child: _searchResults.isEmpty
-              ? Center(child: Text("No users found.", style: GoogleFonts.poppins(color: Colors.white54)))
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  itemCount: _searchResults.length,
-                  itemBuilder: (context, index) {
-                    final data = _searchResults[index].data() as Map<String, dynamic>;
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(3.0),
-                      ),
-                      child: ListTile(
-                        leading: const CircleAvatar(backgroundColor: Colors.white10, child: Icon(Icons.person, color: Colors.white)),
-                        title: Text(data['name'] ?? 'Unknown', style: const TextStyle(color: Colors.white)),
-                        subtitle: Text('${data['email']}\n${data['phone'] ?? ''}', style: const TextStyle(color: Colors.white54, fontSize: 11)),
-                        isThreeLine: true,
-                        trailing: ElevatedButton(
-                          style: ElevatedButton.styleFrom(backgroundColor: _neonBlue, foregroundColor: Colors.white),
-                          onPressed: () => setState(() {
-                            _selectedUser = _searchResults[index];
-                            // Don't clear search text, just show selection
-                            // _searchController.clear(); 
-                          }),
-                          child: const Text('SELECT'),
-                        ),
-                      ),
-                    ).animate().slideX(duration: 200.ms, begin: 0.1);
-                  },
-                ),
-          )
-        else
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+            )
+          
+          // 2. ELSE IF SEARCHING -> SHOW LIST OR SHIMMER
+          else if (_searchController.text.isNotEmpty || _isSearching)
+            _isSearching 
+              ? Column(
+                  children: List.generate(3, (index) => _buildShimmerTile()),
+                )
+              : (_searchResults.isEmpty)
+              ? Container(
+                  height: 200,
+                  alignment: Alignment.center,
+                  child: Text("No users found.", style: GoogleFonts.poppins(color: Colors.white54))
+                )
+              : Column(
+                  children: [
+                    // Firestore Results
+                    for (var doc in _searchResults) _buildUserListTile(doc.data() as Map, () => setState(() => _selectedUser = doc)),
+                  ],
+                )
+          else
+            Padding(
+              padding: EdgeInsets.all(padding),
               child: Column(
                 children: [
                    // Placeholder for User
@@ -478,48 +443,56 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.05),
+                      color: _surfaceColor,
                       borderRadius: BorderRadius.circular(3.0),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.1), style: BorderStyle.solid),
+                      border: Border.all(color: _borderColor),
                     ),
                     child: Column(
                       children: [
                         Icon(Icons.person_search, color: Colors.white.withValues(alpha: 0.3), size: 40),
                         const SizedBox(height: 10),
-                        Text("Search and Select a User above", style: GoogleFonts.poppins(color: Colors.white38)),
+                        Text(
+                          "Search and select a user above", 
+                          style: GoogleFonts.poppins(
+                            color: Colors.white38, 
+                            fontSize: 13.0, 
+                            fontWeight: FontWeight.w600
+                          )
+                        ),
                       ],
                     ),
                   ),
 
                   const SizedBox(height: 30),
-                  _buildSectionHeader("ENROLLMENT DETAILS"),
+                  _buildSectionHeader("Enrollment Details"),
                   const SizedBox(height: 16),
                   _buildCourseSelector(),
                   
                   const SizedBox(height: 40),
-                  _buildActionBtn('ACTIVATE COURSE', _verifyAndSubmit),
+                  _buildActionBtn('Activate Course', _verifyAndSubmit),
                 ],
               ),
-            ),
-          ), 
-      ],
+            ), 
+        ],
+      ),
     );
   }
 
-  Widget _buildNewUserTab() {
+  Widget _buildNewUserTab(double padding) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      physics: const BouncingScrollPhysics(),
+      padding: EdgeInsets.all(padding),
       child: Form(
         key: _formKey,
         child: Column(
           children: [
-            _buildSectionHeader("PERSONAL DETAILS"),
+            _buildSectionHeader("Personal Details"),
             const SizedBox(height: 16),
-            _buildTechTextField(controller: _nameController, label: 'FULL NAME', icon: Icons.person),
+            _buildTechTextField(controller: _nameController, label: 'Full Name', icon: Icons.person),
             const SizedBox(height: 12),
             _buildTechTextField(
               controller: _emailController, 
-              label: 'EMAIL ADDRESS', 
+              label: 'Email Address', 
               icon: Icons.email,
               keyboardType: TextInputType.emailAddress,
               suffixText: _emailSuffix,
@@ -529,7 +502,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
             const SizedBox(height: 12),
             _buildTechTextField(
               controller: _phoneController, 
-              label: 'WHATSAPP NO', 
+              label: 'WhatsApp No', 
               icon: FontAwesomeIcons.whatsapp,
               keyboardType: TextInputType.number,
               inputFormatters: [
@@ -539,12 +512,12 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
             ),
             
             const SizedBox(height: 30),
-            _buildSectionHeader("COURSE ACTIVATION"),
+            _buildSectionHeader("Course Activation"),
             const SizedBox(height: 16),
             _buildCourseSelector(),
             
             const SizedBox(height: 40),
-            _buildActionBtn('CREATE & ENROLL', _verifyAndSubmit),
+            _buildActionBtn('Create & Enroll', _verifyAndSubmit),
           ],
         ),
       ),
@@ -555,41 +528,63 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: _surfaceColor,
         borderRadius: BorderRadius.circular(3.0),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: _borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("SELECT COURSE", style: GoogleFonts.rubik(color: Colors.white70, fontSize: 10, letterSpacing: 1.5)),
+          Text("Select Course", style: GoogleFonts.rubik(
+            color: Colors.white70, 
+            fontSize: 10.6, 
+            letterSpacing: 1.5,
+            fontWeight: FontWeight.w600
+          )),
           const SizedBox(height: 8),
-           DropdownButtonFormField<String>(
-            dropdownColor: _techDark,
+           _isLoadingCourses 
+             ? _buildShimmerBox(height: 50)
+             : DropdownButtonFormField<String>(
+            dropdownColor: _surfaceColor,
             isExpanded: true,
             style: const TextStyle(color: Colors.white),
             decoration: _inputDecoration(null),
             initialValue: _selectedCourseId,
-            items: _courses.map((c) => DropdownMenuItem(value: c.id, child: Text(c.title, overflow: TextOverflow.ellipsis))).toList(),
+            items: _courses.isEmpty 
+              ? [const DropdownMenuItem(value: null, child: Text("No Courses Available"))]
+              : _courses.map((c) => DropdownMenuItem(value: c.id, child: Text(c.title, overflow: TextOverflow.ellipsis))).toList(),
             onChanged: (v) => setState(() => _selectedCourseId = v),
-            hint: const Text("Choose Course", style: TextStyle(color: Colors.white38), overflow: TextOverflow.ellipsis),
+            hint: const Text(
+              "Choose Course", 
+              style: TextStyle(
+                color: Colors.white38, 
+                fontSize: 13.0, 
+                fontWeight: FontWeight.w600
+              ), 
+              overflow: TextOverflow.ellipsis
+            ),
           ),
           
           const SizedBox(height: 20),
-          Text("VALIDITY / EXPIRY", style: GoogleFonts.rubik(color: Colors.white70, fontSize: 10, letterSpacing: 1.5)),
+          Text("Validity / Expiry", style: GoogleFonts.rubik(
+            color: Colors.white70, 
+            fontSize: 10.6, 
+            letterSpacing: 1.5,
+            fontWeight: FontWeight.w600
+          )),
           const SizedBox(height: 8),
           Row(
             children: [
                Expanded(
-                child: DropdownButtonFormField<String>(
-                  dropdownColor: _techDark,
-                  isExpanded: true,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: _inputDecoration(null),
-                  initialValue: _validityType,
-                  items: ['Course Validity', 'Lifetime', '1 Year', 'Custom'].map((v) => DropdownMenuItem(value: v, child: Text(v, overflow: TextOverflow.ellipsis))).toList(),
-                  onChanged: (v) => setState(() => _validityType = v!),
-                ),
+                  child: DropdownButtonFormField<String>(
+                    dropdownColor: _surfaceColor,
+                    isExpanded: true,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: _inputDecoration(null),
+                    initialValue: _validityType,
+                    items: ['Course Validity', 'Lifetime', '1 Year', 'Custom'].map((v) => DropdownMenuItem(value: v, child: Text(v, overflow: TextOverflow.ellipsis))).toList(),
+                    onChanged: (v) => setState(() => _validityType = v!),
+                  ),
               ),
               if (_validityType == 'Custom') ...[
                 const SizedBox(width: 12),
@@ -602,7 +597,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
                         lastDate: DateTime(2030),
                         builder: (context, child) {
                           return Theme(data: ThemeData.dark().copyWith(
-                              colorScheme: ColorScheme.dark(primary: _neonBlue, onPrimary: Colors.white, surface: _techBlue, onSurface: Colors.white),
+                              colorScheme: ColorScheme.dark(primary: _primaryColor, onPrimary: Colors.white, surface: _surfaceColor, onSurface: Colors.white),
                             ), child: child!);
                         }
                       );
@@ -623,6 +618,33 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
         ],
       ),
     );
+  }
+
+  Widget _buildUserListTile(Map data, VoidCallback onTap) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8, left: 20, right: 20),
+      decoration: BoxDecoration(
+        color: _surfaceColor,
+        borderRadius: BorderRadius.circular(3.0),
+        border: Border.all(color: _borderColor),
+      ),
+      child: ListTile(
+        leading: const CircleAvatar(
+            backgroundColor: Colors.white10,
+            child: Icon(Icons.person, color: Colors.white)),
+        title: Text(data['name'] ?? 'Unknown',
+            style: const TextStyle(color: Colors.white)),
+        subtitle: Text('${data['email']}\n${data['phone'] ?? ''}',
+            style: const TextStyle(color: Colors.white54, fontSize: 11)),
+        isThreeLine: true,
+        trailing: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+              backgroundColor: _neonBlue, foregroundColor: Colors.white),
+          onPressed: onTap,
+          child: const Text('Select'),
+        ),
+      ),
+    ).animate().slideX(duration: 200.ms, begin: 0.1);
   }
 
   Widget _buildTechTextField({
@@ -655,23 +677,48 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
 
   InputDecoration _inputDecoration(IconData? icon, {String? suffixText}) {
     return InputDecoration(
-      prefixIcon: icon != null ? Icon(icon, color: _neonBlue.withValues(alpha: 0.7), size: 18) : null,
+      prefixIcon: icon != null
+          ? Icon(icon, color: _primaryColor.withValues(alpha: 0.8), size: 18)
+          : null,
       suffixText: suffixText,
       suffixStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
       filled: true,
-      fillColor: Colors.black12,
-      labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(3.0), borderSide: BorderSide.none),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(3.0), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(3.0), borderSide: BorderSide(color: _neonBlue, width: 1.5)),
+      fillColor: _surfaceColor,
+      labelStyle: TextStyle(
+          color: Colors.white.withValues(alpha: 0.5),
+          fontSize: 13.0,
+          fontWeight: FontWeight.w600),
+      hintStyle: TextStyle(
+          color: Colors.white.withValues(alpha: 0.3),
+          fontSize: 13.0,
+          fontWeight: FontWeight.w600),
+      floatingLabelStyle:
+          TextStyle(color: _primaryColor, fontSize: 17.6, fontWeight: FontWeight.bold),
+      border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(3.0), borderSide: BorderSide.none),
+      enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(3.0),
+          borderSide: BorderSide(color: _borderColor)),
+      focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(3.0),
+          borderSide: BorderSide(color: _primaryColor, width: 1)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     );
   }
   
   Widget _buildSectionHeader(String title) {
     return Row(
       children: [
-        Container(width: 4, height: 16, color: _neonBlue, margin: const EdgeInsets.only(right: 8)),
-        Text(title, style: GoogleFonts.orbitron(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1)),
+        Container(
+          width: 3,
+          height: 18,
+          decoration: BoxDecoration(
+            color: _primaryColor,
+            borderRadius: BorderRadius.circular(3.0),
+          ),
+          margin: const EdgeInsets.only(right: 12),
+        ),
+        Text(title, style: GoogleFonts.poppins(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
       ],
     );
   }
@@ -682,8 +729,19 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
       height: 55,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(3.0),
-        gradient: LinearGradient(colors: [_neonBlue, const Color(0xFF0072FF)]),
-        boxShadow: [BoxShadow(color: _neonBlue.withValues(alpha: 0.4), blurRadius: 20, offset: const Offset(0, 5))],
+        gradient: LinearGradient(
+          colors: [_primaryColor, _primaryColor.withValues(alpha: 0.8)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryColor.withValues(alpha: 0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+            spreadRadius: -5,
+          )
+        ],
       ),
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
@@ -695,6 +753,34 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
         child: _isLoading 
             ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
             : Text(label, style: GoogleFonts.poppins(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1)),
+      ),
+    );
+  }
+  Widget _buildShimmerTile() {
+    return Shimmer.fromColors(
+      baseColor: Colors.white.withValues(alpha: 0.05),
+      highlightColor: Colors.white.withValues(alpha: 0.1),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8, left: 20, right: 20),
+        height: 70,
+        decoration: BoxDecoration(
+          color: Colors.black,
+          borderRadius: BorderRadius.circular(3.0),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildShimmerBox({required double height}) {
+    return Shimmer.fromColors(
+      baseColor: Colors.white.withValues(alpha: 0.05),
+      highlightColor: Colors.white.withValues(alpha: 0.1),
+      child: Container(
+        height: height,
+        decoration: BoxDecoration(
+          color: Colors.black,
+          borderRadius: BorderRadius.circular(3.0),
+        ),
       ),
     );
   }
@@ -727,6 +813,64 @@ class _NoSpaceFormatter extends TextInputFormatter {
       return oldValue; // Revert content
     }
     return newValue;
+  }
+}
+
+// --- CUSTOM PILL INDICATOR SYSTEM ---
+class PillIndicator extends Decoration {
+  final double height;
+  final double widthTab1;
+  final double widthTab2;
+  final Color color;
+  final TabController controller;
+
+  const PillIndicator({
+    required this.height,
+    required this.widthTab1,
+    required this.widthTab2,
+    required this.color,
+    required this.controller,
+  });
+
+  @override
+  BoxPainter createBoxPainter([VoidCallback? onChanged]) {
+    return _PillPainter(this, onChanged);
+  }
+}
+
+class _PillPainter extends BoxPainter {
+  final PillIndicator decoration;
+
+  _PillPainter(this.decoration, VoidCallback? onChanged) : super(onChanged);
+
+  @override
+  void paint(Canvas canvas, Offset offset, ImageConfiguration configuration) {
+    final double tabWidth = configuration.size!.width;
+    final double tabHeight = configuration.size!.height;
+    
+    // Interpolate width based on animation value
+    final double animValue = decoration.controller.animation!.value;
+    final double currentWidth = decoration.widthTab1 + (decoration.widthTab2 - decoration.widthTab1) * animValue;
+
+    // Calculate centered position
+    final double xPos = offset.dx + (tabWidth - currentWidth) / 2;
+    final double yPos = offset.dy + (tabHeight - decoration.height) / 2;
+
+    final Paint paint = Paint()
+      ..color = decoration.color
+      ..style = PaintingStyle.fill;
+
+    final Path path = Path()
+      ..addRRect(RRect.fromLTRBR(
+        xPos,
+        yPos,
+        xPos + currentWidth,
+        yPos + decoration.height,
+        Radius.circular(decoration.height / 2),
+      ));
+    
+    canvas.drawShadow(path, decoration.color.withValues(alpha: 0.5), 10, true);
+    canvas.drawPath(path, paint);
   }
 }
 
