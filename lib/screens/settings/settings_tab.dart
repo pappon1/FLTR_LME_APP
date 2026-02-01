@@ -8,6 +8,8 @@ import '../../utils/quick_cleanup.dart';
 import '../login_screen.dart';
 import '../admin/course_migration_screen.dart';
 import 'dart:async';
+import 'admin_profile_screen.dart';
+import 'app_control_screen.dart';
 
 class SettingsTab extends StatelessWidget {
   const SettingsTab({super.key});
@@ -55,7 +57,14 @@ class SettingsTab extends StatelessWidget {
                     FontAwesomeIcons.chevronRight,
                     size: 14,
                   ),
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AdminProfileScreen(),
+                      ),
+                    );
+                  },
                 ),
                 const Divider(height: 1),
                 ListTile(
@@ -66,18 +75,25 @@ class SettingsTab extends StatelessWidget {
                       borderRadius: BorderRadius.circular(3.0),
                     ),
                     child: const FaIcon(
-                      FontAwesomeIcons.building,
+                      FontAwesomeIcons.sliders,
                       size: 20,
                       color: Colors.white,
                     ),
                   ),
-                  title: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('App Settings', maxLines: 1, overflow: TextOverflow.ellipsis)),
-                  subtitle: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('Configure app preferences', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                  title: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('App Control Center', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                  subtitle: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('Version, Maintenance & Global Config', maxLines: 1, overflow: TextOverflow.ellipsis)),
                   trailing: const FaIcon(
                     FontAwesomeIcons.chevronRight,
                     size: 14,
                   ),
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AppControlScreen(),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -126,63 +142,6 @@ class SettingsTab extends StatelessWidget {
           
           const SizedBox(height: 24),
           
-          // Notifications Section
-          Text(
-            'NOTIFICATIONS',
-            style: AppTheme.bodySmall(context).copyWith(
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            child: Column(
-              children: [
-                SwitchListTile(
-                  secondary: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.successGradient,
-                      borderRadius: BorderRadius.circular(3.0),
-                    ),
-                    child: const FaIcon(
-                      FontAwesomeIcons.bell,
-                      size: 20,
-                      color: Colors.white,
-                    ),
-                  ),
-                  title: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('Push Notifications', maxLines: 1, overflow: TextOverflow.ellipsis)),
-                  subtitle: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('Receive notifications on your device', maxLines: 1, overflow: TextOverflow.ellipsis)),
-                  value: true,
-                  onChanged: (value) {},
-                  activeThumbColor: AppTheme.primaryColor,
-                ),
-                const Divider(height: 1),
-                SwitchListTile(
-                  secondary: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.infoGradient,
-                      borderRadius: BorderRadius.circular(3.0),
-                    ),
-                    child: const FaIcon(
-                      FontAwesomeIcons.envelope,
-                      size: 20,
-                      color: Colors.white,
-                    ),
-                  ),
-                  title: const Text('Email Notifications', maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle: const Text('Receive updates via email', maxLines: 1, overflow: TextOverflow.ellipsis),
-                  value: true,
-                  onChanged: (value) {},
-                  activeThumbColor: AppTheme.primaryColor,
-                ),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 24),
-          
           // About Section
           Text(
             'ABOUT',
@@ -210,33 +169,8 @@ class SettingsTab extends StatelessWidget {
                   ),
                   title: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('App Version', maxLines: 1, overflow: TextOverflow.ellipsis)),
                   subtitle: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('1.0.0', maxLines: 1, overflow: TextOverflow.ellipsis)),
-                  trailing: const FaIcon(
-                    FontAwesomeIcons.chevronRight,
-                    size: 14,
-                  ),
-                  onTap: () {},
-                ),
-                const Divider(height: 1),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.warningGradient,
-                      borderRadius: BorderRadius.circular(3.0),
-                    ),
-                    child: const FaIcon(
-                      FontAwesomeIcons.fileLines,
-                      size: 20,
-                      color: Colors.white,
-                    ),
-                  ),
-                  title: const Text('Terms & Privacy', maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle: const Text('Read our policies', maxLines: 1, overflow: TextOverflow.ellipsis),
-                  trailing: const FaIcon(
-                    FontAwesomeIcons.chevronRight,
-                    size: 14,
-                  ),
-                  onTap: () {},
+                  trailing: null,
+                  onTap: null,
                 ),
               ],
             ),

@@ -26,7 +26,7 @@ import '../announcements/upload_announcement_screen.dart';
 import '../revenue/revenue_detail_screen.dart';
 import '../contact/contact_links_screen.dart';
 import '../../widgets/razorpay_dashboard_card.dart';
-import '../../widgets/developer_access_card.dart';
+
 
 class DashboardTab extends StatefulWidget {
   const DashboardTab({super.key});
@@ -645,8 +645,7 @@ class _DashboardTabState extends State<DashboardTab> with SingleTickerProviderSt
 
                         const SizedBox(height: 30),
 
-                        // Developer Console Access
-                        DeveloperAccessCard().animate().fadeIn(duration: 500.ms, delay: 600.ms).slideY(begin: 0.1, end: 0),
+// Developer Console Removed
 
                         const SizedBox(height: 40),
                       ],
