@@ -82,8 +82,8 @@ class _DashboardTabState extends State<DashboardTab> with SingleTickerProviderSt
       if (_isPausedByUser || !mounted) return;
       if (!_pageController.hasClients) return;
       
-      int currentRealPage = (_pageController.page ?? 0).round();
-      int nextPage = currentRealPage + 1;
+      // Calculate next page correctly for infinite scroll
+      int nextPage = _currentPage + 1;
       
       _pageController.animateToPage(
         nextPage,
@@ -499,7 +499,7 @@ class _DashboardTabState extends State<DashboardTab> with SingleTickerProviderSt
                              child: PageView.builder(
                                controller: _pageController,
                                padEnds: false,
-                               itemCount: provider.popularCourses.length,
+                               itemCount: 1000000,
                                onPageChanged: (index) {
                                  setState(() {
                                    _currentPage = index;
