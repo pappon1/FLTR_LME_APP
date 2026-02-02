@@ -85,35 +85,114 @@ class StudentShimmerItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-      child: Container(
-        height: 80,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(3.0),
-        ),
-        child: const Padding(
-          padding: EdgeInsets.all(16.0),
-          child: Row(
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseColor = isDark ? const Color(0xFF3A3A3A) : Colors.grey[300]!;
+    final highlightColor = isDark ? const Color(0xFF5A5A5A) : Colors.grey[100]!;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Shimmer.fromColors(
+        baseColor: baseColor,
+        highlightColor: highlightColor,
+        period: const Duration(milliseconds: 1500),
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 8,
+          ),
+          leading: Container(
+            width: 56,
+            height: 56,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+            ),
+          ),
+          title: const Align(
+            alignment: Alignment.centerLeft,
+            child: _SkeletonBox(height: 16, width: 140),
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              ShimmerLoading.circular(width: 48, height: 48),
-              SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ShimmerLoading.rectangular(height: 14, width: 150),
-                    SizedBox(height: 8),
-                    ShimmerLoading.rectangular(height: 12, width: 100),
-                  ],
-                ),
+              const SizedBox(height: 8), // Gap between title and subtitle
+              // Email Row
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const _SkeletonBox(height: 11, width: 11, borderRadius: 3),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: _SkeletonBox(height: 12, width: double.infinity),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+               // WhatsApp Row
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                   const _SkeletonBox(height: 11, width: 11, borderRadius: 3),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: _SkeletonBox(height: 12, width: 100),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              // Details Row (Wrapped)
+              Wrap(
+                spacing: 16,
+                runSpacing: 4,
+                children: [
+                  // Courses Count
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const _SkeletonBox(height: 11, width: 11, borderRadius: 3),
+                      const SizedBox(width: 6),
+                      const _SkeletonBox(height: 10, width: 50),
+                    ],
+                  ),
+                  // Joined Date
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const _SkeletonBox(height: 11, width: 11, borderRadius: 3),
+                      const SizedBox(width: 6),
+                      const _SkeletonBox(height: 10, width: 70),
+                    ],
+                  ),
+                ],
               ),
             ],
           ),
+          trailing: const _SkeletonBox(height: 32, width: 32, borderRadius: 4),
         ),
+      ),
+    );
+  }
+}
+
+class _SkeletonBox extends StatelessWidget {
+  final double width;
+  final double height;
+  final double borderRadius;
+
+  const _SkeletonBox({
+    required this.height, 
+    required this.width, 
+    this.borderRadius = 4.0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(borderRadius),
       ),
     );
   }
@@ -171,6 +250,7 @@ class SimpleShimmerList extends StatelessWidget {
     );
   }
 }
+
 class UploadShimmerItem extends StatelessWidget {
   const UploadShimmerItem({super.key});
 
@@ -185,7 +265,7 @@ class UploadShimmerItem extends StatelessWidget {
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
           borderRadius: BorderRadius.circular(3.0),
-          border: Border.all(color: isDark ? Colors.white.withOpacity(0.05) : Colors.black.withOpacity(0.05)),
+          border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
         ),
         child: const Padding(
           padding: EdgeInsets.all(12.0),
@@ -228,5 +308,3 @@ class UploadShimmerItem extends StatelessWidget {
     );
   }
 }
-
-

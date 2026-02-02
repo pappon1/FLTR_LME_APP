@@ -101,46 +101,6 @@ class SettingsTab extends StatelessWidget {
           
           const SizedBox(height: 24),
           
-          // Appearance Section
-          Text(
-            'APPEARANCE',
-            style: AppTheme.bodySmall(context).copyWith(
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            child: Consumer<ThemeProvider>(
-              builder: (context, themeProvider, child) {
-                return SwitchListTile(
-                  secondary: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.warningGradient,
-                      borderRadius: BorderRadius.circular(3.0),
-                    ),
-                    child: FaIcon(
-                      themeProvider.isDarkMode
-                          ? FontAwesomeIcons.moon
-                          : FontAwesomeIcons.sun,
-                      size: 20,
-                      color: Colors.white,
-                    ),
-                  ),
-                  title: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('Dark Mode', maxLines: 1, overflow: TextOverflow.ellipsis)),
-                  subtitle: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('Switch between light and dark theme', maxLines: 1, overflow: TextOverflow.ellipsis)),
-                  value: themeProvider.isDarkMode,
-                  onChanged: (value) {
-                    themeProvider.toggleTheme();
-                  },
-                  activeThumbColor: AppTheme.primaryColor,
-                );
-              },
-            ),
-          ),
-          
-          const SizedBox(height: 24),
           
           // About Section
           Text(

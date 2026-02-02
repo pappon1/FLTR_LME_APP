@@ -77,7 +77,7 @@ class CourseContentListItem extends StatelessWidget {
                             child: Container(color: Colors.transparent),
                           ),
                         ),
-                        const SizedBox(width: 60), // Right Scroll Zone
+                        const SizedBox(width: 60), // Right Scroll Zone (increased for menu)
                       ],
                     )
                   : Row(
@@ -93,7 +93,7 @@ class CourseContentListItem extends StatelessWidget {
                             child: Container(color: Colors.transparent),
                           ),
                         ),
-                        // Right Zone: Long Press for Selection
+                        // Right Zone: Long Press for Selection (excluding 3-dot menu area)
                         Expanded(
                           child: GestureDetector(
                             behavior: HitTestBehavior.translucent,
@@ -102,7 +102,8 @@ class CourseContentListItem extends StatelessWidget {
                             child: Container(color: Colors.transparent),
                           ),
                         ),
-                        const SizedBox(width: 8), // Minimal spacing
+                        // Exclude 3-dot menu area from overlay (48px width for icon button)
+                        const SizedBox(width: 48),
                       ],
                     ),
             ),
@@ -184,6 +185,57 @@ class CourseContentListItem extends StatelessWidget {
             height: 1.2, 
           ),
         ),
+        trailing: !isReadOnly && !isSelectionMode
+            ? PopupMenuButton<String>(
+                icon: Icon(Icons.more_vert, color: Colors.grey.shade600),
+                onSelected: (value) {
+                  switch (value) {
+                    case 'rename':
+                      onRename();
+                      break;
+                    case 'thumbnail':
+                      onAddThumbnail?.call();
+                      break;
+                    case 'delete':
+                      onRemove();
+                      break;
+                  }
+                },
+                itemBuilder: (context) => [
+                  const PopupMenuItem(
+                    value: 'rename',
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit, size: 18),
+                        SizedBox(width: 8),
+                        Text('Rename'),
+                      ],
+                    ),
+                  ),
+                  if (onAddThumbnail != null && item['type'] == 'video')
+                    const PopupMenuItem(
+                      value: 'thumbnail',
+                      child: Row(
+                        children: [
+                          Icon(Icons.image, size: 18),
+                          SizedBox(width: 8),
+                          Text('Thumbnail'),
+                        ],
+                      ),
+                    ),
+                  const PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(Icons.delete, size: 18, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text('Delete', style: TextStyle(color: Colors.red)),
+                      ],
+                    ),
+                  ),
+                ],
+              )
+            : null,
       );
   }
 
@@ -319,6 +371,59 @@ class CourseContentListItem extends StatelessWidget {
               ),
             ),
           ),
+          
+          // 3. Right 3-dot Menu
+          if (!isReadOnly && !isSelectionMode)
+            PopupMenuButton<String>(
+              icon: Icon(Icons.more_vert, color: Colors.grey.shade600),
+              padding: const EdgeInsets.all(8),
+              onSelected: (value) {
+                switch (value) {
+                  case 'rename':
+                    onRename();
+                    break;
+                  case 'thumbnail':
+                    onAddThumbnail?.call();
+                    break;
+                  case 'delete':
+                    onRemove();
+                    break;
+                }
+              },
+              itemBuilder: (context) => [
+                const PopupMenuItem(
+                  value: 'rename',
+                  child: Row(
+                    children: [
+                      Icon(Icons.edit, size: 18),
+                      SizedBox(width: 8),
+                      Text('Rename'),
+                    ],
+                  ),
+                ),
+                if (onAddThumbnail != null && item['type'] == 'video')
+                  const PopupMenuItem(
+                    value: 'thumbnail',
+                    child: Row(
+                      children: [
+                        Icon(Icons.image, size: 18),
+                        SizedBox(width: 8),
+                        Text('Thumbnail'),
+                      ],
+                    ),
+                  ),
+                const PopupMenuItem(
+                  value: 'delete',
+                  child: Row(
+                    children: [
+                      Icon(Icons.delete, size: 18, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('Delete', style: TextStyle(color: Colors.red)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
     );

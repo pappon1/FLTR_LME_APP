@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/course_model.dart';
 import '../models/student_model.dart';
@@ -109,7 +110,7 @@ class FirestoreService {
     return _firestore
         .collection('users')
         .where('role', isEqualTo: 'user') 
-        .orderBy('createdAt', descending: true)
+        // .orderBy('createdAt', descending: true) // Index required
         .snapshots()
         .map((snapshot) => snapshot.docs
             .map((doc) => StudentModel.fromFirestore(doc))
@@ -118,12 +119,20 @@ class FirestoreService {
   }
 
   /// Get students with pagination support
-  Future<QuerySnapshot> getStudentsPaginated({int limit = 20, DocumentSnapshot? startAfter}) async {
+  Future<QuerySnapshot> getStudentsPaginated({
+    int limit = 20, 
+    DocumentSnapshot? startAfter,
+    bool onlyBuyers = false,
+  }) async {
     var query = _firestore
         .collection('users')
-        .where('role', isEqualTo: 'user')
-        .orderBy('createdAt', descending: true)
-        .limit(limit);
+        .where('role', isEqualTo: 'user');
+
+    if (onlyBuyers) {
+      query = query.where('enrolledCourses', isGreaterThan: 0);
+    }
+
+    query = query.limit(limit);
 
     if (startAfter != null) {
       query = query.startAfterDocument(startAfter);
@@ -141,24 +150,60 @@ class FirestoreService {
     return null;
   }
   
-  /// Delete user
+  /// Delete user and their enrollments (Atomic Cleanup)
   Future<void> deleteUser(String userId) async {
-    await _firestore.collection('users').doc(userId).delete();
-    // Optional: Delete related Data like enrollments
+    final batch = _firestore.batch();
+    
+    // 1. Delete user document
+    batch.delete(_firestore.collection('users').doc(userId));
+
+    // 2. Delete all user enrollments
+    final enrollRef = await _firestore
+        .collection('enrollments')
+        .where('studentId', isEqualTo: userId)
+        .get();
+
+    for (var doc in enrollRef.docs) {
+      batch.delete(doc.reference);
+      
+      // OPTIONAL: We could also decrement enrolledStudents on each course here
+      // But for a fast delete, this is the essential cleanup
+    }
+
+    await batch.commit();
   }
 
   // ==================== ENROLLMENTS ====================
   
-  /// Enroll student in course
-  Future<void> enrollStudent(String studentId, String courseId) async {
-    await _firestore.collection('enrollments').add({
+  /// Enroll student in course (Atomic Batch Update)
+  Future<void> enrollStudent(String studentId, String courseId, {DateTime? expiryDate}) async {
+    final batch = _firestore.batch();
+    
+    // 1. Create enrollment document
+    final enrollmentRef = _firestore.collection('enrollments').doc();
+    batch.set(enrollmentRef, {
       'studentId': studentId,
       'courseId': courseId,
       'enrolledAt': FieldValue.serverTimestamp(),
+      'expiryDate': expiryDate != null ? Timestamp.fromDate(expiryDate) : null,
       'progress': 0,
       'completedVideos': [],
       'isActive': true,
     });
+
+    // 2. Increment enrolledCourses count on user document
+    final userRef = _firestore.collection('users').doc(studentId);
+    batch.update(userRef, {
+      'enrolledCourses': FieldValue.increment(1),
+    });
+
+    // 3. Increment enrolledStudents count on course document
+    final courseRef = _firestore.collection('courses').doc(courseId);
+    batch.update(courseRef, {
+      'enrolledStudents': FieldValue.increment(1),
+    });
+
+    await batch.commit();
   }
 
   /// Get enrollments for a student
@@ -323,19 +368,32 @@ class FirestoreService {
   
   /// Get dashboard statistics
   Future<Map<String, dynamic>> getDashboardStats() async {
-    final coursesCount = await _firestore.collection('courses').count().get();
-    final videosCount = await _firestore.collection('videos').count().get();
-    final usersCount = await _firestore
-        .collection('users')
-        .where('role', isEqualTo: 'user')
-        .count()
-        .get();
-    
-    return {
-      'totalCourses': coursesCount.count ?? 0,
-      'totalVideos': videosCount.count ?? 0,
-      'totalStudents': usersCount.count ?? 0,
-      'totalRevenue': 0, // Calculate from payments collection
-    };
+    try {
+      final coursesCount = await _firestore.collection('courses').count().get(source: AggregateSource.server);
+      final videosCount = await _firestore.collection('videos').count().get(source: AggregateSource.server);
+      final usersCount = await _firestore
+          .collection('users')
+          .where('role', isEqualTo: 'user')
+          .count()
+          .get(source: AggregateSource.server);
+
+      final buyersCount = await _firestore
+          .collection('users')
+          .where('role', isEqualTo: 'user')
+          .where('enrolledCourses', isGreaterThan: 0)
+          .count()
+          .get(source: AggregateSource.server);
+      
+      return {
+        'totalCourses': coursesCount.count ?? 0,
+        'totalVideos': videosCount.count ?? 0,
+        'totalStudents': usersCount.count ?? 0,
+        'totalBuyers': buyersCount.count ?? 0,
+        'totalRevenue': 0, // Calculate from payments collection
+      };
+    } catch (e) {
+      debugPrint("❌ Error fetching dashboard stats: $e");
+      return {};
+    }
   }
 }

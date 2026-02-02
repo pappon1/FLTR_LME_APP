@@ -15,6 +15,7 @@ class DashboardProvider extends ChangeNotifier {
     totalCourses: 0,
     totalVideos: 0,
     totalStudents: 0,
+    totalBuyers: 0,
     totalRevenue: 0,
     coursesThisWeek: 0,
     videosThisWeek: 0,
@@ -25,11 +26,15 @@ class DashboardProvider extends ChangeNotifier {
   final List<CourseModel> _courses = [];
   List<CourseModel> _popularCourses = [];
   final List<StudentModel> _students = [];
+  final List<StudentModel> _buyers = [];
   
   // Pagination State for Students
   DocumentSnapshot? _lastStudentDoc;
+  DocumentSnapshot? _lastBuyerDoc;
   bool _hasMoreStudents = true;
+  bool _hasMoreBuyers = true;
   bool _isLoadingMoreStudents = false;
+  bool _isLoadingMoreBuyers = false;
   
   StreamSubscription? _coursesSubscription;
   StreamSubscription? _studentsSubscription;
@@ -41,8 +46,11 @@ class DashboardProvider extends ChangeNotifier {
   List<CourseModel> get courses => _courses;
   List<CourseModel> get popularCourses => _popularCourses;
   List<StudentModel> get students => _students;
+  List<StudentModel> get buyers => _buyers;
   bool get hasMoreStudents => _hasMoreStudents;
+  bool get hasMoreBuyers => _hasMoreBuyers;
   bool get isLoadingMoreStudents => _isLoadingMoreStudents;
+  bool get isLoadingMoreBuyers => _isLoadingMoreBuyers;
 
   DashboardProvider() {
     // Initial fetch
@@ -56,6 +64,8 @@ class DashboardProvider extends ChangeNotifier {
 
   /// Refresh all dashboard data
   Future<void> refreshData() async {
+    if (_isLoading) return; // Prevent multiple simultaneous refreshes
+    
     _isLoading = true;
     notifyListeners();
 
@@ -65,14 +75,18 @@ class DashboardProvider extends ChangeNotifier {
       _hasMoreStudents = true;
       _students.clear();
 
+      // Run parallel fetches for core data
       await Future.wait([
         _fetchStats(),
-        _fetchCourses(),
-        _fetchStudents(), // This will now fetch the first page
         _fetchPopularCourses(),
+        _fetchStudents(silent: true), // Silenced notification since we notify at end
       ]);
+      
+      // Stream subscription for real-time courses (handled separately)
+      await _fetchCourses(silent: true); 
+
     } catch (e) {
-      // print('Error refreshing dashboard data: $e');
+      debugPrint('❌ Error refreshing dashboard: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -92,8 +106,8 @@ class DashboardProvider extends ChangeNotifier {
       _stats = _stats.copyWith(
         totalCourses: statsMap['totalCourses'] ?? 0,
         totalVideos: statsMap['totalVideos'] ?? 0,
-        // totalStudents: statsMap['totalStudents'] ?? 0, // Reliance on visible list count instead
-        // Other stats would ideally come from backend logic or aggregation
+        totalStudents: statsMap['totalStudents'] ?? 0,
+        totalBuyers: statsMap['totalBuyers'] ?? 0,
       );
     } catch (e) {
       // print('Error fetching stats: $e');
@@ -102,88 +116,108 @@ class DashboardProvider extends ChangeNotifier {
 
   Future<void> _fetchPopularCourses() async {
     try {
-      // Fetch top 3 courses by enrolledStudents
+      // Fetch top courses by enrolledStudents
       final snapshot = await FirebaseFirestore.instance
           .collection('courses')
           .orderBy('enrolledStudents', descending: true)
-          .limit(1)
-          .get();
+          .limit(5)
+          .get(const GetOptions(source: Source.serverAndCache));
 
       _popularCourses = snapshot.docs
-          .map((doc) => CourseModel.fromMap(doc.data(), doc.id))
+          .map((doc) => CourseModel.fromFirestore(doc))
           .toList();
     } catch (e) {
       debugPrint('Error fetching popular courses: $e');
     }
   }
 
-    Future<void> _fetchCourses() async {
+    Future<void> _fetchCourses({bool silent = false}) async {
     try {
       await _coursesSubscription?.cancel();
       _coursesSubscription = _firestoreService.getCourses().listen((courseList) {
         _courses.clear();
         _courses.addAll(courseList);
-        notifyListeners();
+        if (!silent) notifyListeners();
       });
     } catch (e) {
-      // print('Error fetching courses: $e');
+      debugPrint('Error fetching courses: $e');
     }
   }
 
-    Future<void> _fetchStudents() async {
+  Future<void> _fetchStudents({bool silent = false}) async {
     try {
-      // Logic Fix: Switch to paginated fetch to prevent app hang with large user base
       final snapshot = await _firestoreService.getStudentsPaginated(limit: 50);
       
       if (snapshot.docs.isNotEmpty) {
         _lastStudentDoc = snapshot.docs.last;
         _students.clear();
-        
-        final newList = snapshot.docs
-            .map((doc) => StudentModel.fromFirestore(doc))
-            .where((s) => !s.email.toLowerCase().contains('admin'))
-            .toList();
-            
-        _students.addAll(newList);
+        _students.addAll(snapshot.docs.map((doc) => StudentModel.fromFirestore(doc)).toList());
         _hasMoreStudents = snapshot.docs.length == 50;
       } else {
         _hasMoreStudents = false;
       }
-      notifyListeners();
+
+      // Parallel fetch for buyers
+      final buyerSnap = await _firestoreService.getStudentsPaginated(limit: 50, onlyBuyers: true);
+      if (buyerSnap.docs.isNotEmpty) {
+        _lastBuyerDoc = buyerSnap.docs.last;
+        _buyers.clear();
+        _buyers.addAll(buyerSnap.docs.map((doc) => StudentModel.fromFirestore(doc)).toList());
+        _hasMoreBuyers = buyerSnap.docs.length == 50;
+      } else {
+        _hasMoreBuyers = false;
+      }
+
+      if (!silent) notifyListeners();
     } catch (e) {
-      // debugPrint('Error fetching students: $e');
+      debugPrint('Error fetching students: $e');
     }
   }
 
-  Future<void> loadMoreStudents() async {
-    if (_isLoadingMoreStudents || !_hasMoreStudents) return;
-
-    _isLoadingMoreStudents = true;
+  Future<void> loadMoreStudents({bool onlyBuyers = false}) async {
+    if (onlyBuyers) {
+      if (_isLoadingMoreBuyers || !_hasMoreBuyers) return;
+      _isLoadingMoreBuyers = true;
+    } else {
+      if (_isLoadingMoreStudents || !_hasMoreStudents) return;
+      _isLoadingMoreStudents = true;
+    }
+    
     notifyListeners();
 
     try {
       final snapshot = await _firestoreService.getStudentsPaginated(
         limit: 50, 
-        startAfter: _lastStudentDoc
+        startAfter: onlyBuyers ? _lastBuyerDoc : _lastStudentDoc,
+        onlyBuyers: onlyBuyers,
       );
 
       if (snapshot.docs.isNotEmpty) {
-        _lastStudentDoc = snapshot.docs.last;
-        
-        final newList = snapshot.docs
-            .map((doc) => StudentModel.fromFirestore(doc))
-            .where((s) => !s.email.toLowerCase().contains('admin'))
-            .toList();
-            
-        _students.addAll(newList);
-        _hasMoreStudents = snapshot.docs.length == 50;
+        final newList = snapshot.docs.map((doc) => StudentModel.fromFirestore(doc)).toList();
+        if (onlyBuyers) {
+          _lastBuyerDoc = snapshot.docs.last;
+          _buyers.addAll(newList);
+          _hasMoreBuyers = snapshot.docs.length == 50;
+        } else {
+          _lastStudentDoc = snapshot.docs.last;
+          _students.addAll(newList);
+          _hasMoreStudents = snapshot.docs.length == 50;
+        }
       } else {
-        _hasMoreStudents = false;
+        if (onlyBuyers) {
+          _hasMoreBuyers = false;
+        } else {
+          _hasMoreStudents = false;
+        }
       }
     } catch (e) {
-      // debugPrint('Error loading more students: $e');
+      debugPrint('Error loading more: $e');
     } finally {
-      _isLoadingMoreStudents = false;
+      if (onlyBuyers) {
+        _isLoadingMoreBuyers = false;
+      } else {
+        _isLoadingMoreStudents = false;
+      }
       notifyListeners();
     }
   }

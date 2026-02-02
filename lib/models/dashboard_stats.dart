@@ -2,6 +2,7 @@ class DashboardStats {
   final int totalCourses;
   final int totalVideos;
   final int totalStudents;
+  final int totalBuyers;
   final int totalRevenue;
   final int coursesThisWeek;
   final int videosThisWeek;
@@ -12,6 +13,7 @@ class DashboardStats {
     required this.totalCourses,
     required this.totalVideos,
     required this.totalStudents,
+    required this.totalBuyers,
     required this.totalRevenue,
     required this.coursesThisWeek,
     required this.videosThisWeek,
@@ -23,6 +25,7 @@ class DashboardStats {
     int? totalCourses,
     int? totalVideos,
     int? totalStudents,
+    int? totalBuyers,
     int? totalRevenue,
     int? coursesThisWeek,
     int? videosThisWeek,
@@ -33,6 +36,7 @@ class DashboardStats {
       totalCourses: totalCourses ?? this.totalCourses,
       totalVideos: totalVideos ?? this.totalVideos,
       totalStudents: totalStudents ?? this.totalStudents,
+      totalBuyers: totalBuyers ?? this.totalBuyers,
       totalRevenue: totalRevenue ?? this.totalRevenue,
       coursesThisWeek: coursesThisWeek ?? this.coursesThisWeek,
       videosThisWeek: videosThisWeek ?? this.videosThisWeek,

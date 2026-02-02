@@ -1,11 +1,9 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:ui';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:media_kit/media_kit.dart';
@@ -208,6 +206,8 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
 
   @override
   void dispose() {
+    // Cancel timer to prevent memory leaks
+    _holdTimer?.cancel();
     // Storage Optimization: Clear temporary files from picker cache
     // unawaited(FilePicker.platform.clearTemporaryFiles());
     super.dispose();

@@ -5,6 +5,7 @@ import 'package:media_kit/media_kit.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
@@ -39,6 +40,12 @@ void main() async {
   // Initialize Firebase
   await Firebase.initializeApp();
   
+  // 🔥 Optimization: Enable Offline Persistence (Caching)
+  FirebaseFirestore.instance.settings = const Settings(
+    persistenceEnabled: true,
+    cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+  );
+  
   // Pass all uncaught errors from the framework to Crashlytics.
   FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
 
@@ -48,16 +55,12 @@ void main() async {
     return true;
   };
   
-  // Initialize Google Sign In (Required for v7+)
-  // await GoogleSignIn().signInSilently(); // Optional: Check for existing session
-  
-  // Lock to portrait mode
+  // Configure System UI
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
 
-  // Force Disable Edge-to-Edge / Immersive Mode - Standard System UI
   await SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
   
   runApp(const MyApp());
@@ -100,7 +103,7 @@ class MyApp extends StatelessWidget {
               debugShowCheckedModeBanner: false,
               theme: AppTheme.lightTheme,
               darkTheme: AppTheme.darkTheme,
-              themeMode: themeProvider.themeMode,
+              themeMode: ThemeMode.system, // Force system theme
               builder: (context, child) {
                 return GestureDetector(
                   behavior: HitTestBehavior.opaque,

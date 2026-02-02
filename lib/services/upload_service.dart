@@ -22,6 +22,7 @@ const String kServiceNotificationChannelId = 'upload_service_channel';
 const String kAlertNotificationChannelId = 'upload_alert_channel';
 const int kServiceNotificationId = 888;
 const String kPendingCourseKey = 'pending_course_v1';
+const String kPendingUpdateCourseKey = 'pending_update_course_v1';
 const String kServiceStateKey = 'service_state_paused';
 
 /// Initialize the background service
@@ -393,6 +394,7 @@ void onStart(ServiceInstance service) async {
                 } catch(_) {}
 
                 await _finalizeCourseIfPending(service, _queue, _isPaused);
+                await _finalizeUpdateIfPending(service, _queue, _isPaused);
                 
                 final msg = isTargetPublished 
                     ? "Course Published Successfully! ✅" 
@@ -646,6 +648,51 @@ void onStart(ServiceInstance service) async {
     // 3. Start
     _triggerProcessing();
     _updateNotification("Course Creation Started", 0);
+  });
+
+  service.on('update_course').listen((event) async {
+    print("📥 [BG SERVICE] RECEIVED 'update_course' EVENT!");
+    if (event == null) return;
+    
+    // 1. Save Update Metadata
+    final updateData = event['updateData'];
+    final String courseId = event['courseId'];
+    updateData['id'] = courseId; // Ensure ID is present
+    
+    print("📁 [BG SERVICE] Saving update metadata for course: $courseId");
+    await prefs.setString(kPendingUpdateCourseKey, jsonEncode(updateData));
+    
+    // 2. Add Files to Queue
+    final List<dynamic> items = event['files'] ?? [];
+    print("⚡ [BG SERVICE] Adding ${items.length} files to queue (Update)");
+    
+    for (var item in items) {
+      final String filePath = item['filePath'];
+      final bool alreadyExists = _queue.any((t) => t['filePath'] == filePath);
+      
+      if (!alreadyExists) {
+        final task = Map<String, dynamic>.from(item);
+        task['status'] = 'pending';
+        task['progress'] = 0.0;
+        task['retries'] = 0;
+        
+        try {
+          final file = File(filePath);
+          if (file.existsSync()) {
+            final size = file.lengthSync();
+            task['totalBytes'] = size;
+            task['uploadedBytes'] = 0;
+          }
+        } catch (_) {}
+        
+        _queue.add(task);
+      }
+    }
+    await _saveQueue();
+    
+    // 3. Start
+    _triggerProcessing();
+    _updateNotification("Course Update Started", 0);
   });
 
   service.on('add_task').listen((event) async {
@@ -1170,4 +1217,97 @@ bool _checkForLocalPaths(List<dynamic> contents) {
     }
   }
   return false;
+}
+
+Future<void> _finalizeUpdateIfPending(ServiceInstance service, List<Map<String, dynamic>> queue, bool isPaused) async {
+  final prefs = await SharedPreferences.getInstance();
+  final String? updateJson = prefs.getString(kPendingUpdateCourseKey);
+  
+  if (updateJson == null) return; 
+  
+  final queueJson = prefs.getString(kQueueKey);
+  if (queueJson == null) return;
+  final List<Map<String, dynamic>> diskQueue = List<Map<String, dynamic>>.from(jsonDecode(queueJson));
+
+  if (diskQueue.any((t) => t['status'] == 'failed')) return;
+
+  final urlMap = <String, String>{};
+  for (var task in diskQueue) {
+    if (task['status'] == 'completed' && task['url'] != null && task['filePath'] != null) {
+      urlMap[task['filePath']] = task['url'];
+    }
+  }
+
+  try {
+     Map<String, dynamic> updateData = jsonDecode(updateJson);
+     final String courseId = updateData['id'];
+
+     if (urlMap.containsKey(updateData['thumbnailUrl'])) {
+       updateData['thumbnailUrl'] = urlMap[updateData['thumbnailUrl']];
+     }
+     if (urlMap.containsKey(updateData['certificateUrl1'])) {
+       updateData['certificateUrl1'] = urlMap[updateData['certificateUrl1']];
+     }
+     if (urlMap.containsKey(updateData['certificateUrl2'])) {
+       updateData['certificateUrl2'] = urlMap[updateData['certificateUrl2']];
+     }
+
+     if (updateData.containsKey('contents')) {
+        List<dynamic> contents = updateData['contents'] ?? [];
+        _updateContentPaths(contents, urlMap);
+        updateData['contents'] = contents;
+     }
+     
+     if (updateData.containsKey('demoVideos')) {
+        List<dynamic> demos = updateData['demoVideos'] ?? [];
+        for (var demo in demos) {
+           if (urlMap.containsKey(demo['path'])) {
+              demo['path'] = urlMap[demo['path']];
+              demo['isLocal'] = false;
+           }
+        }
+        updateData['demoVideos'] = demos;
+     }
+
+     updateData.remove('id'); 
+
+     print("📁 Updating Firestore (Edit): courses/$courseId");
+     await FirebaseFirestore.instance.collection('courses').doc(courseId).update(updateData);
+     print("✅ Firestore Update SUCCESS!");
+
+     // Cleanup
+     try {
+       for (var localPath in urlMap.keys) {
+          if (localPath.contains('pending_uploads')) {
+             final f = File(localPath);
+             if (await f.exists()) await f.delete();
+          }
+       }
+     } catch(e) {}
+
+     await prefs.remove(kPendingUpdateCourseKey);
+     await prefs.remove(kQueueKey);
+     
+     queue.clear();
+     service.invoke('update', {'queue': queue, 'isPaused': isPaused});
+     
+     final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+     await flutterLocalNotificationsPlugin.show(
+        kServiceNotificationId + 1,
+        'Update Complete! ✅',
+        'Course updated successfully.',
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            kAlertNotificationChannelId,
+            'Upload Alerts',
+            importance: Importance.max,
+            priority: Priority.high,
+            playSound: true,
+          ),
+        ),
+      );
+
+  } catch (e) {
+     print("Finalization (Update) Error: $e");
+  }
 }

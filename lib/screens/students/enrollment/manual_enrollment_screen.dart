@@ -10,6 +10,9 @@ import 'package:shimmer/shimmer.dart';
 import '../../../models/course_model.dart';
 import '../../../services/security/security_service.dart';
 import '../../../services/firestore_service.dart';
+import 'package:provider/provider.dart';
+import '../../../widgets/tech_text_field.dart';
+import '../../../providers/dashboard_provider.dart';
 
 class ManualEnrollmentScreen extends StatefulWidget {
   const ManualEnrollmentScreen({super.key});
@@ -44,11 +47,15 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
   List<CourseModel> _courses = [];
   String? _emailSuffix = '@gmail.com';
   
-  final Color _primaryColor = const Color(0xFF6366F1); // Indigo Premium
-  final Color _surfaceColor = const Color(0xFF0F1218); // Deep Luxury Charcoal
-  final Color _borderColor = Colors.white.withValues(alpha: 0.08);
-  final Color _neonBlue = const Color(0xFF6366F1);
-  final Color _neonGreen = const Color(0xFF10B981);
+  Color get _primaryColor => const Color(0xFF6366F1);
+  Color _surfaceColor(BuildContext context) => Theme.of(context).brightness == Brightness.dark 
+      ? const Color(0xFF0F1218) 
+      : Colors.white;
+  Color _borderColor(BuildContext context) => Theme.of(context).brightness == Brightness.dark
+      ? Colors.white.withValues(alpha: 0.08)
+      : Colors.black.withValues(alpha: 0.08);
+  Color get _neonGreen => const Color(0xFF10B981);
+  Color get _neonBlue => const Color(0xFF6366F1);
 
 
 
@@ -57,6 +64,17 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _fetchCourses();
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    _searchController.dispose();
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _debounce?.cancel();
+    super.dispose();
   }
 
   Future<void> _fetchCourses() async {
@@ -95,7 +113,9 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
     try {
       final results = await Future.wait([
         usersRef.where('name', isGreaterThanOrEqualTo: query).where('name', isLessThan: '$query\uf8ff').get(),
+        usersRef.where('name', isGreaterThanOrEqualTo: query.toLowerCase()).where('name', isLessThan: '${query.toLowerCase()}\uf8ff').get(),
         usersRef.where('email', isGreaterThanOrEqualTo: query).where('email', isLessThan: '$query\uf8ff').get(),
+        usersRef.where('email', isGreaterThanOrEqualTo: query.toLowerCase()).where('email', isLessThan: '${query.toLowerCase()}\uf8ff').get(),
         usersRef.where('phone', isGreaterThanOrEqualTo: query).where('phone', isLessThan: '$query\uf8ff').get(),
       ]);
 
@@ -125,6 +145,17 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
 
   // --- Logic: Create User (REAL) ---
   Future<String> _createNewUser(String email) async {
+    // Check if user already exists with this email
+    final existing = await FirebaseFirestore.instance
+        .collection('users')
+        .where('email', isEqualTo: email)
+        .limit(1)
+        .get();
+
+    if (existing.docs.isNotEmpty) {
+      throw 'A user with this email already exists. Please use "Existing User" tab.';
+    }
+
     // Create a new user specific for manual enrollment
     // Note: This user will need to claim this account or have a separate auth flow
     final docRef = await FirebaseFirestore.instance.collection('users').add({
@@ -132,6 +163,8 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
       'email': email,
       'phone': _phoneController.text.trim(),
       'role': 'user',
+      'enrolledCourses': 0, // Initialize count for new user
+      'isActive': true,     // Default active status
       'createdAt': FieldValue.serverTimestamp(),
       'createdBy': 'admin_manual_enrollment',
     });
@@ -181,8 +214,41 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
       }
 
       if (_selectedCourseId != null) {
+        // --- ⚡ IMPROVED: Check for duplicate enrollment (Only for Existing Users) ---
+        if (_tabController.index == 0) {
+          final existingEnrollments = await FirestoreService().getStudentEnrollments(studentId);
+          if (existingEnrollments.contains(_selectedCourseId)) {
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('User is already enrolled in this course!'), backgroundColor: Colors.orange)
+            );
+            return;
+          }
+        }
+        DateTime? expiry;
+        final selectedCourse = _courses.firstWhere((c) => c.id == _selectedCourseId);
+        
+        if (_validityType == 'Lifetime') {
+          expiry = null;
+        } else if (_validityType == '1 Year') {
+          expiry = DateTime.now().add(const Duration(days: 365));
+        } else if (_validityType == 'Custom') {
+          expiry = _selectedExpiryDate;
+        } else {
+          // Default: Use Course Validity Days
+          if (selectedCourse.courseValidityDays > 0) {
+            expiry = DateTime.now().add(Duration(days: selectedCourse.courseValidityDays));
+          } else {
+            expiry = null; // 0 days means lifetime
+          }
+        }
+
         // Call Firestore Service
-        await FirestoreService().enrollStudent(studentId, _selectedCourseId!);
+        await FirestoreService().enrollStudent(
+          studentId, 
+          _selectedCourseId!,
+          expiryDate: expiry
+        );
         
         // Also update the local user document with enrollment flag/count if needed
         // For now, enrolling via FirestoreService is sufficient
@@ -194,32 +260,44 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
       unawaited(showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (ctx) => AlertDialog(
-          backgroundColor: Colors.black,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(3.0),
-            side: BorderSide(color: _neonGreen.withValues(alpha: 0.5), width: 1),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.check_circle, color: _neonGreen, size: 60),
-              const SizedBox(height: 20),
-              Text('Activation Successful', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-              const SizedBox(height: 10),
-              Text('$studentName has been enrolled successfully.', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70)),
+        builder: (ctx) {
+          final bool isDark = Theme.of(ctx).brightness == Brightness.dark;
+          return AlertDialog(
+            backgroundColor: isDark ? Colors.black : Colors.white,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(3.0),
+              side: BorderSide(color: _neonGreen.withValues(alpha: 0.5), width: 1),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.check_circle, color: _neonGreen, size: 60),
+                const SizedBox(height: 20),
+                Text('Activation Successful', 
+                  style: GoogleFonts.poppins(
+                    color: isDark ? Colors.white : Colors.black87, 
+                    fontWeight: FontWeight.bold, 
+                    fontSize: 16
+                  )),
+                const SizedBox(height: 10),
+                Text('$studentName has been enrolled successfully.', 
+                  textAlign: TextAlign.center, 
+                  style: TextStyle(color: isDark ? Colors.white70 : Colors.black54)),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () { 
+                  // Refresh data to reflect new enrollment
+                  Provider.of<DashboardProvider>(context, listen: false).refreshData();
+                  Navigator.pop(ctx); 
+                  Navigator.pop(context); 
+                }, 
+                child: Text('Done', style: TextStyle(color: _neonGreen, fontWeight: FontWeight.bold))
+              )
             ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () { 
-                Navigator.pop(ctx); 
-                Navigator.pop(context); 
-              }, 
-              child: Text('Done', style: TextStyle(color: _neonGreen, fontWeight: FontWeight.bold))
-            )
-          ],
-        ),
+          );
+        },
       ));
 
     } catch (e) {
@@ -231,19 +309,20 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
 
   @override
   Widget build(BuildContext context) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color backgroundColor = isDark ? Colors.black : const Color(0xFFF8FAFC);
+    final Color textColor = isDark ? Colors.white : Colors.black87;
+
     final size = MediaQuery.of(context).size;
     final bool isTablet = size.width > 600;
     final double contentWidth = isTablet ? 600 : size.width;
 
-    // Dynamic Tab Pill Width Calculation
-    // Total container width = contentWidth - 40 (margin)
-    // Each tab area = (totalWidth - 8) / 2
     final double maxTabWidth = (contentWidth - 48) / 2;
-    final double tab1PillWidth = maxTabWidth * 0.65; // 65% of tab area
-    final double tab2PillWidth = maxTabWidth * 0.85; // 85% of tab area
+    final double tab1PillWidth = maxTabWidth * 0.65;
+    final double tab2PillWidth = maxTabWidth * 0.85;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: backgroundColor,
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text('Manual Enrollment',
@@ -251,12 +330,12 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
                 fontWeight: FontWeight.bold,
                 fontSize: isTablet ? 20 : 18,
                 letterSpacing: 0.5,
-                color: Colors.white)),
+                color: textColor)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: textColor),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -265,7 +344,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
           final double horizontalPadding = isTablet ? 30 : 20;
           
           return Container(
-            color: Colors.black,
+            color: backgroundColor,
             width: double.infinity,
             height: double.infinity,
             child: SafeArea(
@@ -279,9 +358,9 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
                         margin: EdgeInsets.symmetric(horizontal: horizontalPadding),
                         padding: const EdgeInsets.all(4),
                         decoration: BoxDecoration(
-                          color: _surfaceColor,
+                          color: _surfaceColor(context),
                           borderRadius: BorderRadius.circular(50.0),
-                          border: Border.all(color: _borderColor),
+                          border: Border.all(color: _borderColor(context)),
                         ),
                         child: TabBar(
                           controller: _tabController,
@@ -295,7 +374,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
                           ),
                           dividerColor: Colors.transparent,
                           labelColor: Colors.white,
-                          unselectedLabelColor: Colors.white70,
+                          unselectedLabelColor: isDark ? Colors.white70 : Colors.black54,
                           labelStyle: GoogleFonts.poppins(
                               fontWeight: FontWeight.bold, fontSize: isTablet ? 14 : 12),
                           tabs: const [
@@ -334,20 +413,25 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
   }
 
   Widget _buildExistingUserTab(double padding) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDark ? Colors.white : Colors.black87;
+    final Color subTextColor = isDark ? Colors.white70 : Colors.black54;
+
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       child: Column(
         children: [
           Padding(
             padding: EdgeInsets.fromLTRB(padding, 20, padding, 10),
-            child: _buildTechTextField(
+            child: TechTextField(
               controller: _searchController, 
               label: 'Search User (Name, Email, or Phone)',
               icon: Icons.search,
               onChanged: _onSearchChanged,
-              keyboardType: TextInputType.text, 
+              keyboardType: TextInputType.text,
+              textInputAction: TextInputAction.search,
               suffix: _searchController.text.isNotEmpty 
-                ? IconButton(icon: const Icon(Icons.clear, color: Colors.white54), onPressed: () { 
+                ? IconButton(icon: Icon(Icons.clear, color: subTextColor), onPressed: () { 
                     setState(() {
                       _searchController.clear(); 
                       _searchResults = [];
@@ -383,19 +467,19 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
                                 _selectedUser != null 
                                   ? (_selectedUser!.data() as Map)['name'] ?? 'User' 
                                   : 'Unknown', 
-                                style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.white)
+                                style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: textColor)
                               ),
                               Text(
                                 _selectedUser != null 
                                   ? (_selectedUser!.data() as Map)['email'] ?? '' 
                                   : 'No Email', 
-                                style: GoogleFonts.poppins(fontSize: 12, color: Colors.white70, fontWeight: FontWeight.w500)
+                                style: GoogleFonts.poppins(fontSize: 12, color: subTextColor, fontWeight: FontWeight.w500)
                               ),
                             ],
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.close, color: Colors.white70), 
+                          icon: Icon(Icons.close, color: subTextColor), 
                           onPressed: () => setState(() {
                             _selectedUser = null;
                           })
@@ -410,7 +494,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
                   _buildCourseSelector(),
                   
                   const SizedBox(height: 40),
-                  _buildActionBtn('Activate Course', _verifyAndSubmit),
+                  _buildActionBtn('Activate Course Access', _verifyAndSubmit),
                 ],
               ),
             )
@@ -425,7 +509,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
               ? Container(
                   height: 200,
                   alignment: Alignment.center,
-                  child: Text("No users found.", style: GoogleFonts.poppins(color: Colors.white54))
+                  child: Text("No users found.", style: GoogleFonts.poppins(color: subTextColor))
                 )
               : Column(
                   children: [
@@ -443,18 +527,18 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: _surfaceColor,
+                      color: _surfaceColor(context),
                       borderRadius: BorderRadius.circular(3.0),
-                      border: Border.all(color: _borderColor),
+                      border: Border.all(color: _borderColor(context)),
                     ),
                     child: Column(
                       children: [
-                        Icon(Icons.person_search, color: Colors.white.withValues(alpha: 0.3), size: 40),
+                        Icon(Icons.person_search, color: isDark ? Colors.white.withValues(alpha: 0.3) : Colors.black12, size: 40),
                         const SizedBox(height: 10),
                         Text(
                           "Search and select a user above", 
                           style: GoogleFonts.poppins(
-                            color: Colors.white38, 
+                            color: isDark ? Colors.white38 : Colors.black38, 
                             fontSize: 13.0, 
                             fontWeight: FontWeight.w600
                           )
@@ -469,7 +553,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
                   _buildCourseSelector(),
                   
                   const SizedBox(height: 40),
-                  _buildActionBtn('Activate Course', _verifyAndSubmit),
+                  _buildActionBtn('Activate Course Access', _verifyAndSubmit),
                 ],
               ),
             ), 
@@ -488,25 +572,36 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
           children: [
             _buildSectionHeader("Personal Details"),
             const SizedBox(height: 16),
-            _buildTechTextField(controller: _nameController, label: 'Full Name', icon: Icons.person),
+            TechTextField(
+              controller: _nameController, 
+              label: 'Full Name', 
+              icon: Icons.person,
+              textInputAction: TextInputAction.next,
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z\s]'))],
+              validator: (val) => val!.isEmpty ? 'Enter full name' : null,
+            ),
             const SizedBox(height: 12),
-            _buildTechTextField(
+            TechTextField(
               controller: _emailController, 
-              label: 'Email Address', 
+              label: 'Email Address / Username', 
               icon: Icons.email,
               keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
               suffixText: _emailSuffix,
               onChanged: (val) => setState(() => _emailSuffix = val.contains('@') ? null : '@gmail.com'),
               inputFormatters: [_NoSpaceFormatter(context, 'Email')],
+              validator: (val) => val!.isEmpty ? 'Enter email' : null,
             ),
             const SizedBox(height: 12),
-            _buildTechTextField(
+            TechTextField(
               controller: _phoneController, 
-              label: 'WhatsApp No', 
+              label: 'WhatsApp No (10-Digit)', 
               icon: FontAwesomeIcons.whatsapp,
-              keyboardType: TextInputType.number,
+              keyboardType: TextInputType.phone,
+              textInputAction: TextInputAction.done,
               inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly, // Allow only digits
+                FilteringTextInputFormatter.digitsOnly,
+                LengthLimitingTextInputFormatter(10),
                 _NoSpaceFormatter(context, 'WhatsApp No'),
               ],
             ),
@@ -517,7 +612,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
             _buildCourseSelector(),
             
             const SizedBox(height: 40),
-            _buildActionBtn('Create & Enroll', _verifyAndSubmit),
+            _buildActionBtn('Create & Activate User', _verifyAndSubmit),
           ],
         ),
       ),
@@ -525,18 +620,22 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
   }
 
   Widget _buildCourseSelector() {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDark ? Colors.white : Colors.black87;
+    final Color subTextColor = isDark ? Colors.white70 : Colors.black54;
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: _surfaceColor,
+        color: _surfaceColor(context),
         borderRadius: BorderRadius.circular(3.0),
-        border: Border.all(color: _borderColor),
+        border: Border.all(color: _borderColor(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text("Select Course", style: GoogleFonts.rubik(
-            color: Colors.white70, 
+            color: subTextColor, 
             fontSize: 10.6, 
             letterSpacing: 1.5,
             fontWeight: FontWeight.w600
@@ -545,19 +644,19 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
            _isLoadingCourses 
              ? _buildShimmerBox(height: 50)
              : DropdownButtonFormField<String>(
-            dropdownColor: _surfaceColor,
+            dropdownColor: _surfaceColor(context),
             isExpanded: true,
-            style: const TextStyle(color: Colors.white),
-            decoration: _inputDecoration(null),
+            style: TextStyle(color: textColor),
+            decoration: TechTextField.decoration(context),
             initialValue: _selectedCourseId,
             items: _courses.isEmpty 
               ? [const DropdownMenuItem(value: null, child: Text("No Courses Available"))]
-              : _courses.map((c) => DropdownMenuItem(value: c.id, child: Text(c.title, overflow: TextOverflow.ellipsis))).toList(),
+              : _courses.map((c) => DropdownMenuItem(value: c.id, child: Text(c.title, style: TextStyle(color: textColor), overflow: TextOverflow.ellipsis))).toList(),
             onChanged: (v) => setState(() => _selectedCourseId = v),
-            hint: const Text(
+            hint: Text(
               "Choose Course", 
               style: TextStyle(
-                color: Colors.white38, 
+                color: isDark ? Colors.white38 : Colors.black38, 
                 fontSize: 13.0, 
                 fontWeight: FontWeight.w600
               ), 
@@ -567,7 +666,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
           
           const SizedBox(height: 20),
           Text("Validity / Expiry", style: GoogleFonts.rubik(
-            color: Colors.white70, 
+            color: subTextColor, 
             fontSize: 10.6, 
             letterSpacing: 1.5,
             fontWeight: FontWeight.w600
@@ -577,12 +676,12 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
             children: [
                Expanded(
                   child: DropdownButtonFormField<String>(
-                    dropdownColor: _surfaceColor,
+                    dropdownColor: _surfaceColor(context),
                     isExpanded: true,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: _inputDecoration(null),
+                    style: TextStyle(color: textColor),
+                    decoration: TechTextField.decoration(context),
                     initialValue: _validityType,
-                    items: ['Course Validity', 'Lifetime', '1 Year', 'Custom'].map((v) => DropdownMenuItem(value: v, child: Text(v, overflow: TextOverflow.ellipsis))).toList(),
+                    items: ['Course Validity', 'Lifetime', '1 Year', 'Custom'].map((v) => DropdownMenuItem(value: v, child: Text(v, style: TextStyle(color: textColor), overflow: TextOverflow.ellipsis))).toList(),
                     onChanged: (v) => setState(() => _validityType = v!),
                   ),
               ),
@@ -596,18 +695,20 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
                         firstDate: DateTime.now(), 
                         lastDate: DateTime(2030),
                         builder: (context, child) {
-                          return Theme(data: ThemeData.dark().copyWith(
-                              colorScheme: ColorScheme.dark(primary: _primaryColor, onPrimary: Colors.white, surface: _surfaceColor, onSurface: Colors.white),
-                            ), child: child!);
+                          return Theme(data: isDark ? ThemeData.dark().copyWith(
+                                colorScheme: ColorScheme.dark(primary: _primaryColor, onPrimary: Colors.white, surface: _surfaceColor(context), onSurface: Colors.white),
+                              ) : ThemeData.light().copyWith(
+                                colorScheme: ColorScheme.light(primary: _primaryColor, onPrimary: Colors.white, surface: Colors.white, onSurface: Colors.black87),
+                              ), child: child!);
                         }
                       );
                       if (date != null) setState(() => _selectedExpiryDate = date);
                     },
                     child: InputDecorator(
-                      decoration: _inputDecoration(Icons.calendar_today),
+                      decoration: TechTextField.decoration(context, icon: Icons.calendar_today),
                       child: Text(
                         _selectedExpiryDate == null ? 'Select Date' : DateFormat('dd/MM/yyyy').format(_selectedExpiryDate!),
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: textColor),
                       ),
                     ),
                   ),
@@ -621,21 +722,25 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
   }
 
   Widget _buildUserListTile(Map data, VoidCallback onTap) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final Color textColor = isDark ? Colors.white : Colors.black87;
+    final Color subTextColor = isDark ? Colors.white70 : Colors.black54;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 8, left: 20, right: 20),
       decoration: BoxDecoration(
-        color: _surfaceColor,
+        color: _surfaceColor(context),
         borderRadius: BorderRadius.circular(3.0),
-        border: Border.all(color: _borderColor),
+        border: Border.all(color: _borderColor(context)),
       ),
       child: ListTile(
-        leading: const CircleAvatar(
-            backgroundColor: Colors.white10,
-            child: Icon(Icons.person, color: Colors.white)),
+        leading: CircleAvatar(
+            backgroundColor: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+            child: Icon(Icons.person, color: isDark ? Colors.white70 : Colors.black54)),
         title: Text(data['name'] ?? 'Unknown',
-            style: const TextStyle(color: Colors.white)),
+            style: TextStyle(color: textColor)),
         subtitle: Text('${data['email']}\n${data['phone'] ?? ''}',
-            style: const TextStyle(color: Colors.white54, fontSize: 11)),
+            style: TextStyle(color: subTextColor, fontSize: 11)),
         isThreeLine: true,
         trailing: ElevatedButton(
           style: ElevatedButton.styleFrom(
@@ -647,66 +752,9 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
     ).animate().slideX(duration: 200.ms, begin: 0.1);
   }
 
-  Widget _buildTechTextField({
-    required TextEditingController controller, 
-    required String label, 
-    required IconData icon,
-    bool isObscure = false,
-    Function(String)? onSubmitted,
-    Function(String)? onChanged,
-    TextInputType? keyboardType,
-    List<TextInputFormatter>? inputFormatters,
-    Widget? suffix,
-    String? suffixText,
-  }) {
-    return TextFormField(
-      controller: controller,
-      obscureText: isObscure,
-      keyboardType: keyboardType,
-      inputFormatters: inputFormatters,
-      style: const TextStyle(color: Colors.white),
-      decoration: _inputDecoration(icon, suffixText: suffixText).copyWith(
-        labelText: label,
-        suffixIcon: suffix,
-      ),
-      validator: (v) => v!.isEmpty ? 'Required' : null,
-      onFieldSubmitted: onSubmitted,
-      onChanged: onChanged,
-    );
-  }
-
-  InputDecoration _inputDecoration(IconData? icon, {String? suffixText}) {
-    return InputDecoration(
-      prefixIcon: icon != null
-          ? Icon(icon, color: _primaryColor.withValues(alpha: 0.8), size: 18)
-          : null,
-      suffixText: suffixText,
-      suffixStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
-      filled: true,
-      fillColor: _surfaceColor,
-      labelStyle: TextStyle(
-          color: Colors.white.withValues(alpha: 0.5),
-          fontSize: 13.0,
-          fontWeight: FontWeight.w600),
-      hintStyle: TextStyle(
-          color: Colors.white.withValues(alpha: 0.3),
-          fontSize: 13.0,
-          fontWeight: FontWeight.w600),
-      floatingLabelStyle:
-          TextStyle(color: _primaryColor, fontSize: 17.6, fontWeight: FontWeight.bold),
-      border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(3.0), borderSide: BorderSide.none),
-      enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(3.0),
-          borderSide: BorderSide(color: _borderColor)),
-      focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(3.0),
-          borderSide: BorderSide(color: _primaryColor, width: 1)),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-    );
-  }
-  
   Widget _buildSectionHeader(String title) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Row(
       children: [
         Container(
@@ -718,7 +766,7 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
           ),
           margin: const EdgeInsets.only(right: 12),
         ),
-        Text(title, style: GoogleFonts.poppins(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+        Text(title, style: GoogleFonts.poppins(color: isDark ? Colors.white : Colors.black87, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
       ],
     );
   }
@@ -757,14 +805,15 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
     );
   }
   Widget _buildShimmerTile() {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     return Shimmer.fromColors(
-      baseColor: Colors.white.withValues(alpha: 0.05),
-      highlightColor: Colors.white.withValues(alpha: 0.1),
+      baseColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+      highlightColor: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1),
       child: Container(
         margin: const EdgeInsets.only(bottom: 8, left: 20, right: 20),
         height: 70,
         decoration: BoxDecoration(
-          color: Colors.black,
+          color: isDark ? Colors.black : Colors.white,
           borderRadius: BorderRadius.circular(3.0),
         ),
       ),
@@ -772,13 +821,14 @@ class _ManualEnrollmentScreenState extends State<ManualEnrollmentScreen> with Si
   }
 
   Widget _buildShimmerBox({required double height}) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
     return Shimmer.fromColors(
-      baseColor: Colors.white.withValues(alpha: 0.05),
-      highlightColor: Colors.white.withValues(alpha: 0.1),
+      baseColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05),
+      highlightColor: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1),
       child: Container(
         height: height,
         decoration: BoxDecoration(
-          color: Colors.black,
+          color: isDark ? Colors.black : Colors.white,
           borderRadius: BorderRadius.circular(3.0),
         ),
       ),

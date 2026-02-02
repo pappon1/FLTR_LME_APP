@@ -1,5 +1,5 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/course_model.dart';
+import '../models/student_model.dart';
 
 class DummyData {
   // 1. Mock Course List
@@ -51,9 +51,7 @@ class DummyData {
     ),
   ];
 
-  // 2. Mock User List (Simulating Firestore Document Snapshots)
-  // Note: Since we can't easily create a real DocumentSnapshot, 
-  // we'll return List<Map<String, dynamic>> or handle it in the screen.
+  // 2. Mock User List (Existing)
   static final List<Map<String, dynamic>> users = [
     {
       'id': 'user_1',
@@ -76,5 +74,59 @@ class DummyData {
       'phone': '8877665544',
       'role': 'user',
     },
+  ];
+
+  // 3. Mock Student Models for Course Buyers Screen
+  static final List<StudentModel> dummyStudents = [
+    StudentModel(
+      id: 's1',
+      name: 'Vikram Malhotra',
+      email: 'vikram.m@example.com',
+      phone: '+91 98765 43210',
+      enrolledCourses: 2,
+      joinedDate: DateTime.now().subtract(const Duration(days: 10)),
+      isActive: true,
+      avatarUrl: 'https://i.pravatar.cc/150?u=s1',
+    ),
+    StudentModel(
+      id: 's2',
+      name: 'Aditi Rao',
+      email: 'aditi.rao@example.com',
+      phone: '+91 91234 56789',
+      enrolledCourses: 1,
+      joinedDate: DateTime.now().subtract(const Duration(days: 25)),
+      isActive: true,
+      avatarUrl: 'https://i.pravatar.cc/150?u=s2',
+    ),
+    StudentModel(
+      id: 's3',
+      name: 'Rohan Das',
+      email: 'rohan.das@example.com',
+      phone: '+91 88997 76655',
+      enrolledCourses: 3,
+      joinedDate: DateTime.now().subtract(const Duration(days: 5)),
+      isActive: false, // Inactive example
+      avatarUrl: 'https://i.pravatar.cc/150?u=s3',
+    ),
+    StudentModel(
+      id: 's4',
+      name: 'Sneha Gupta',
+      email: 'sneha.g@example.com',
+      phone: '+91 77665 54433',
+      enrolledCourses: 1,
+      joinedDate: DateTime.now().subtract(const Duration(days: 60)),
+      isActive: true,
+      avatarUrl: 'https://i.pravatar.cc/150?u=s4',
+    ),
+    StudentModel(
+      id: 's5',
+      name: 'Michelle Stark',
+      email: 'm.stark@example.com',
+      phone: '+91 99880 01122',
+      enrolledCourses: 5,
+      joinedDate: DateTime.now().subtract(const Duration(days: 2)),
+      isActive: true,
+      avatarUrl: 'https://i.pravatar.cc/150?u=s5',
+    ),
   ];
 }
