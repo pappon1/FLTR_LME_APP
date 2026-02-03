@@ -3,24 +3,14 @@ import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:shimmer/shimmer.dart';
-import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 import '../../models/course_model.dart';
-import '../../models/video_model.dart';
 import '../../services/firestore_service.dart';
 import '../../services/bunny_cdn_service.dart';
 import '../../utils/app_theme.dart';
-import '../../widgets/custom_video_player.dart';
-import 'add_video_screen.dart';
-import '../content_viewers/video_player_screen.dart';
-import '../content_viewers/pdf_viewer_screen.dart';
-import '../content_viewers/pdf_viewer_screen.dart';
-import 'folder_detail_screen.dart';
 import 'tabs/course_content_tab.dart'; 
 import 'edit_course_info_screen.dart';
 import '../../data/dummy_course_data.dart'; // Import dummy data file
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import '../user_profile/user_profile_screen.dart';
 import '../../models/student_model.dart';
 
@@ -203,7 +193,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.favorite, color: const Color(0xFFFF3B30), size: _fHHeartIconSize),
+                          const Icon(Icons.favorite, color: Color(0xFFFF3B30), size: _fHHeartIconSize),
                           const SizedBox(width: 4),
                           Text(
                             '4',
@@ -824,18 +814,18 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(3.0),
                       borderSide: BorderSide(
-                        color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey.withOpacity(0.2),
+                        color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.withValues(alpha: 0.2),
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(3.0),
                       borderSide: BorderSide(
-                        color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey.withOpacity(0.2),
+                        color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.withValues(alpha: 0.2),
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(3.0),
-                      borderSide: BorderSide(
+                      borderSide: const BorderSide(
                         color: AppTheme.primaryColor,
                       ),
                     ),
@@ -868,12 +858,12 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
                           color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
                           borderRadius: BorderRadius.circular(3.0),
                           border: Border.all(
-                            color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey.withOpacity(0.15),
+                            color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.withValues(alpha: 0.15),
                             width: 1
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
+                              color: Colors.black.withValues(alpha: 0.05),
                               blurRadius: 4,
                               offset: const Offset(0, 2),
                             )
@@ -894,10 +884,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
                                 isActive: true,
                                 avatarUrl: student['image'] ?? '',
                               );
-                              Navigator.push(
+                              unawaited(Navigator.push(
                                 context, 
                                 MaterialPageRoute(builder: (_) => UserProfileScreen(student: dummyStudent))
-                              );
+                              ));
                             },
                             child: Padding(
                               padding: const EdgeInsets.all(12),

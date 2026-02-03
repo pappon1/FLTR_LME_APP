@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:intl/intl.dart';
 import '../../services/razorpay_service.dart';
 import '../../widgets/shimmer_loading.dart';
 
@@ -46,7 +45,7 @@ class _RazorpaySettlementsScreenState extends State<RazorpaySettlementsScreen> {
         title: Text("Settlements", style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
       ),
       body: _isLoading
-          ? SimpleShimmerList(itemHeight: 80.0)
+          ? const SimpleShimmerList(itemHeight: 80.0)
           : _error != null
               ? Center(child: Padding(padding: const EdgeInsets.all(20), child: Text("Error: $_error\n\nPlease check your API Keys in Config.", textAlign: TextAlign.center)))
               : ListView.builder(

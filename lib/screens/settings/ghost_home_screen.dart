@@ -93,7 +93,7 @@ class _GhostHomeScreenState extends State<GhostHomeScreen> {
           ],
         ),
         body: _isLoading 
-            ? SafeArea(child: SimpleShimmerList(itemCount: 3, itemHeight: 200.0))
+            ? const SafeArea(child: SimpleShimmerList(itemCount: 3, itemHeight: 200.0))
             : SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 child: Column(

@@ -5,6 +5,7 @@ import '../models/course_model.dart';
 import '../services/bunny_cdn_service.dart';
 import '../screens/courses/course_detail_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 class CourseCard extends StatelessWidget {
   final CourseModel course;
@@ -41,7 +42,11 @@ class CourseCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Card(
-      margin: EdgeInsets.only(bottom: bottomMargin ?? 20, left: customHorizontalMargin ?? (isEdgeToEdge ? 0 : 16), right: customHorizontalMargin ?? (isEdgeToEdge ? 0 : 16)),
+      margin: EdgeInsets.only(
+        bottom: bottomMargin ?? 20, 
+        left: customHorizontalMargin ?? (isEdgeToEdge ? 0 : 16), 
+        right: customHorizontalMargin ?? (isEdgeToEdge ? 0 : 16)
+      ),
       elevation: 0,  
       clipBehavior: Clip.antiAlias,
       color: isDark ? const Color(0xFF000000) : Colors.white, // Deep Black
@@ -100,70 +105,81 @@ class CourseCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                   // ✨ Badges Row (Standard Icons for Clean Look)
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      children: [
-                        // ✨ New
-                        if (isNew) ...[
-                          const Icon(Icons.auto_awesome, size: 14, color: Color(0xFFFFA000)),
-                          const SizedBox(width: 4),
-                          Text(
-                            'New',
-                            style: GoogleFonts.inter(
-                              color: const Color(0xFFFFA000),
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(width: 14),
-                        ],
-
-                        // 📖 Videos (Standard Book)
-                        const Icon(Icons.menu_book, size: 14, color: Color(0xFF536DFE)),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${course.totalVideos} Course Videos',
-                          style: GoogleFonts.inter(
-                            color: const Color(0xFF536DFE),
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-
-                        // ▶️ Demo (Standard Play Arrow)
-                        const Icon(Icons.play_arrow, size: 16, color: Color(0xFF00E676)),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Demo Videos',
-                          style: GoogleFonts.inter(
-                            color: const Color(0xFF00E676),
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(width: 14),
-
-                        // 🎗️ Cert (Standard Medal)
-                        const Icon(Icons.workspace_premium, size: 15, color: Color(0xFFFF5252)),
-                        const SizedBox(width: 4),
-                        Text(
-                          'Certificate',
-                          style: GoogleFonts.inter(
-                            color: const Color(0xFFFF5252),
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                          ),
+                  // ✨ Badges Row (Warped for better visibility)
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 8,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      // ✨ New
+                      if (isNew) ...[
+                        _buildBadge(
+                          icon: Icons.auto_awesome,
+                          label: 'New',
+                          color: const Color(0xFFFFA000),
                         ),
                       ],
-                    ),
+
+                      // 🌐 Language
+                      _buildBadge(
+                        icon: Icons.language,
+                        label: course.language,
+                        color: const Color(0xFF9C27B0),
+                      ),
+
+                      // 🎥 Mode
+                      _buildBadge(
+                        icon: course.courseMode.toLowerCase().contains('live')
+                            ? Icons.sensors
+                            : Icons.play_circle_outline,
+                        label: course.courseMode,
+                        color: const Color(0xFFFF5722),
+                      ),
+
+                      // 🎗️ Cert
+                      if (course.hasCertificate) ...[
+                        _buildBadge(
+                          icon: Icons.workspace_premium,
+                          label: 'Certificate',
+                          color: const Color(0xFFFF5252),
+                        ),
+                      ],
+
+                      // ▶️ Demo
+                      _buildBadge(
+                        icon: Icons.play_arrow,
+                        label: 'Demo',
+                        color: const Color(0xFF00E676),
+                      ),
+
+                      // 💻 Web Support
+                      if (course.isBigScreenEnabled) ...[
+                        _buildBadge(
+                          icon: Icons.computer,
+                          label: 'PC Support',
+                          color: const Color(0xFF03A9F4),
+                        ),
+                      ],
+
+                      // 💬 WhatsApp Support Group
+                      if (course.supportType == 'WhatsApp Group') ...[
+                        _buildBadge(
+                          icon: FontAwesomeIcons.whatsapp,
+                          label: 'WhatsApp Support Group',
+                          color: const Color(0xFF25D366),
+                        ),
+                      ],
+
+                      // 📖 Videos
+                      _buildBadge(
+                        icon: Icons.menu_book,
+                        label: '${course.totalVideos} Videos',
+                        color: const Color(0xFF536DFE),
+                      ),
+                    ],
                   ),
-                  
-                  const SizedBox(height: 8),
+
+                  const SizedBox(height: 12),
                   
                   // 🏷️ Title
                   Text(
@@ -173,7 +189,7 @@ class CourseCard extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                       color: isDark ? Colors.white : Colors.black,
                       letterSpacing: 0.1,
-                      height: 1.0, // Reduced from 1.2 to remove extra gap
+                      height: 1.0, 
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -185,7 +201,7 @@ class CourseCard extends StatelessWidget {
                   Divider(
                     color: isDark ? Colors.white.withOpacity(0.2) : Colors.black.withOpacity(0.2),
                     thickness: 1,
-                    height: 1, // Fix: Set height to avoid default 16px padding
+                    height: 1, 
                   ),
                   
                   const SizedBox(height: 6),
@@ -262,5 +278,26 @@ class CourseCard extends StatelessWidget {
       ),
     );
   }
-}
 
+  Widget _buildBadge({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 10.2, color: color),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: GoogleFonts.inter(
+            color: color,
+            fontSize: 11.2,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
+  }
+}

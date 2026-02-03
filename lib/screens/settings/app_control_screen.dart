@@ -245,7 +245,7 @@ class _AppControlScreenState extends State<AppControlScreen> {
                                 fontSize: 13,
                               ),
                             ),
-                            activeColor: Colors.red,
+                            activeThumbColor: Colors.red,
                             secondary: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
@@ -286,9 +286,9 @@ class _AppControlScreenState extends State<AppControlScreen> {
                       child: ElevatedButton(
                         onPressed: _saveSettings,
                         style: Theme.of(context).elevatedButtonTheme.style?.copyWith(
-                          backgroundColor: MaterialStateProperty.all(AppTheme.primaryColor),
-                          foregroundColor: MaterialStateProperty.all(Colors.white),
-                          elevation: MaterialStateProperty.all(2),
+                          backgroundColor: WidgetStateProperty.all(AppTheme.primaryColor),
+                          foregroundColor: WidgetStateProperty.all(Colors.white),
+                          elevation: WidgetStateProperty.all(2),
                         ),
                         child: const Text(
                           'Save Configuration',
@@ -333,7 +333,7 @@ class _AppControlScreenState extends State<AppControlScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppTheme.primaryColor),
+          borderSide: const BorderSide(color: AppTheme.primaryColor),
         ),
         filled: true,
         fillColor: Theme.of(context).cardColor,

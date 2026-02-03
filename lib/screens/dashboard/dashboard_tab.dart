@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
-import '../../widgets/shimmer_loading.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -13,7 +12,6 @@ import '../../providers/admin_notification_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../widgets/stat_card.dart';
 import '../../widgets/course_card.dart';
-import '../../models/course_model.dart';
 import '../notifications/notification_manager_screen.dart';
 import '../students/students_tab.dart';
 import '../../services/local_notification_service.dart';
@@ -83,7 +81,7 @@ class _DashboardTabState extends State<DashboardTab> with SingleTickerProviderSt
       if (!_pageController.hasClients) return;
       
       // Calculate next page correctly for infinite scroll
-      int nextPage = _currentPage + 1;
+      final int nextPage = _currentPage + 1;
       
       _pageController.animateToPage(
         nextPage,
@@ -230,7 +228,7 @@ class _DashboardTabState extends State<DashboardTab> with SingleTickerProviderSt
                           : const FaIcon(FontAwesomeIcons.bell, size: 22),
 
                         // Badge Layer
-                        if (badgeWidget != null) badgeWidget,
+                        ?badgeWidget,
                       ],
                     ),
                   ),
@@ -454,7 +452,7 @@ class _DashboardTabState extends State<DashboardTab> with SingleTickerProviderSt
                           AnimatedBuilder(
                             animation: _bounceController,
                             builder: (context, child) {
-                              double val = _bounceController.value;
+                              final double val = _bounceController.value;
                               // Fade in start, Fade out end
                               double opacity = 1.0;
                               if (val < 0.15) {
@@ -625,7 +623,7 @@ class _DashboardTabState extends State<DashboardTab> with SingleTickerProviderSt
                                 onTap: () {
                                    Navigator.push(context, MaterialPageRoute(builder: (_) => const ContactLinksScreen()));
                                 },
-                                child: StatCard(
+                                child: const StatCard(
                                   title: 'Contact Links',
                                   value: 'Socials', // Or just '4 Links'
                                   icon: FontAwesomeIcons.shareNodes, // Represents sharing/socials
@@ -641,7 +639,7 @@ class _DashboardTabState extends State<DashboardTab> with SingleTickerProviderSt
                         const SizedBox(height: 24),
                         
                         // Razorpay Section
-                        RazorpayDashboardCard().animate().fadeIn(duration: 500.ms, delay: 500.ms).slideY(begin: 0.1, end: 0),
+                        const RazorpayDashboardCard().animate().fadeIn(duration: 500.ms, delay: 500.ms).slideY(begin: 0.1, end: 0),
 
                         const SizedBox(height: 30),
 

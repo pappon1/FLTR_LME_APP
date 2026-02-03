@@ -26,6 +26,12 @@ class CourseModel {
   final List<Map<String, String>> faqs;
   final bool isOfflineDownloadEnabled;
   final List<dynamic> contents; // Nested content structure (Folders, Videos, PDFs)
+  final String language; // e.g. Hindi, English
+  final String courseMode; // e.g. Recorded, Live
+  final String supportType; // e.g. WhatsApp, Call
+  final String whatsappNumber;
+  final bool isBigScreenEnabled;
+  final String websiteUrl;
 
   CourseModel({
     required this.id,
@@ -53,6 +59,12 @@ class CourseModel {
     this.faqs = const [],
     this.isOfflineDownloadEnabled = true,
     this.contents = const [],
+    this.language = 'Hindi',
+    this.courseMode = 'Recorded',
+    this.supportType = 'WhatsApp Group',
+    this.whatsappNumber = '',
+    this.isBigScreenEnabled = false,
+    this.websiteUrl = '',
   }) : createdAt = createdAt ?? DateTime.now();
 
   // Convert to Map for Firestore
@@ -82,6 +94,12 @@ class CourseModel {
       'faqs': faqs,
       'isOfflineDownloadEnabled': isOfflineDownloadEnabled,
       'contents': contents,
+      'language': language,
+      'courseMode': courseMode,
+      'supportType': supportType,
+      'whatsappNumber': whatsappNumber,
+      'isBigScreenEnabled': isBigScreenEnabled,
+      'websiteUrl': websiteUrl,
     };
   }
 
@@ -114,6 +132,12 @@ class CourseModel {
       faqs: (data['faqs'] as List<dynamic>?)?.map((e) => Map<String, String>.from(e)).toList() ?? [],
       isOfflineDownloadEnabled: data['isOfflineDownloadEnabled'] ?? true,
       contents: data['contents'] ?? [],
+      language: data['language'] ?? 'Hindi',
+      courseMode: data['courseMode'] ?? 'Recorded',
+      supportType: data['supportType'] ?? 'WhatsApp Group',
+      whatsappNumber: data['whatsappNumber'] ?? '',
+      isBigScreenEnabled: data['isBigScreenEnabled'] ?? false,
+      websiteUrl: data['websiteUrl'] ?? '',
     );
   }
 
@@ -155,6 +179,12 @@ class CourseModel {
       faqs: (map['faqs'] as List<dynamic>?)?.map((e) => Map<String, String>.from(e)).toList() ?? [],
       isOfflineDownloadEnabled: map['isOfflineDownloadEnabled'] ?? true,
       contents: map['contents'] ?? [],
+      language: map['language'] ?? 'Hindi',
+      courseMode: map['courseMode'] ?? 'Recorded',
+      supportType: map['supportType'] ?? 'WhatsApp Group',
+      whatsappNumber: map['whatsappNumber'] ?? '',
+      isBigScreenEnabled: map['isBigScreenEnabled'] ?? false,
+      websiteUrl: map['websiteUrl'] ?? '',
     );
   }
 
@@ -184,6 +214,12 @@ class CourseModel {
     List<Map<String, String>>? faqs,
     bool? isOfflineDownloadEnabled,
     List<dynamic>? contents,
+    String? language,
+    String? courseMode,
+    String? supportType,
+    String? whatsappNumber,
+    bool? isBigScreenEnabled,
+    String? websiteUrl,
   }) {
     return CourseModel(
       id: id ?? this.id,
@@ -211,6 +247,12 @@ class CourseModel {
       faqs: faqs ?? this.faqs,
       isOfflineDownloadEnabled: isOfflineDownloadEnabled ?? this.isOfflineDownloadEnabled,
       contents: contents ?? this.contents,
+      language: language ?? this.language,
+      courseMode: courseMode ?? this.courseMode,
+      supportType: supportType ?? this.supportType,
+      whatsappNumber: whatsappNumber ?? this.whatsappNumber,
+      isBigScreenEnabled: isBigScreenEnabled ?? this.isBigScreenEnabled,
+      websiteUrl: websiteUrl ?? this.websiteUrl,
     );
   }
 }

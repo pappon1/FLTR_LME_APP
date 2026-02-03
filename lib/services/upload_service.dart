@@ -2,13 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
-import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
-import 'package:path/path.dart' as path;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'bunny_cdn_service.dart';
@@ -131,10 +129,10 @@ void onStart(ServiceInstance service) async {
   // 2. STATE INITIALIZATION (Fast)
   // Shared Prefs is usually fast enough, but we should still be careful.
   final prefs = await SharedPreferences.getInstance();
-  List<Map<String, dynamic>> _queue = [];
-  bool _isProcessing = false;
-  bool _isPaused = false;
-  final Map<String, CancelToken> _activeUploads = {};
+  List<Map<String, dynamic>> queue = [];
+  bool isProcessing = false;
+  bool isPaused = false;
+  final Map<String, CancelToken> activeUploads = {};
   final bunnyService = BunnyCDNService();
   // TUS Uploader with Real Credentials
   final tusUploader = TusUploader(
@@ -148,24 +146,24 @@ void onStart(ServiceInstance service) async {
   // Initialize Notifications immediately for instant feedback
   const AndroidInitializationSettings initializationSettingsAndroid =
       AndroidInitializationSettings('ic_bg_service_small'); // Use your icon
-  final InitializationSettings initializationSettings = InitializationSettings(
+  const InitializationSettings initializationSettings = InitializationSettings(
     android: initializationSettingsAndroid,
   );
-  await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+  await flutterLocalNotificationsPlugin.initialize(settings: initializationSettings);
 
   // 3. HELPER FUNCTIONS
-  Future<void> _saveQueue() async {
-    print("💾 [BG SERVICE] Saving Queue... size: ${_queue.length}");
-    await prefs.setString(kQueueKey, jsonEncode(_queue));
-    await prefs.setBool(kServiceStateKey, _isPaused);
-    service.invoke('update', {'queue': _queue, 'isPaused': _isPaused});
+  Future<void> saveQueue() async {
+    print("💾 [BG SERVICE] Saving Queue... size: ${queue.length}");
+    await prefs.setString(kQueueKey, jsonEncode(queue));
+    await prefs.setBool(kServiceStateKey, isPaused);
+    service.invoke('update', {'queue': queue, 'isPaused': isPaused});
   }
 
-  void _broadcastQueue() {
-    service.invoke('update', {'queue': _queue, 'isPaused': _isPaused});
+  void broadcastQueue() {
+    service.invoke('update', {'queue': queue, 'isPaused': isPaused});
   }
 
-  Future<void> _updateNotification(String? specificStatus, int? specificProgress) async {
+  Future<void> updateNotification(String? specificStatus, int? specificProgress) async {
     if (Platform.isAndroid) {
       // 1. Calculate Stats
       int pending = 0;
@@ -173,21 +171,22 @@ void onStart(ServiceInstance service) async {
       int failed = 0;
       int completed = 0;
       
-      for (final t in _queue) {
+      for (final t in queue) {
           final s = t['status'];
-          if (s == 'pending' && t['paused'] != true) pending++;
-          else if (s == 'uploading') uploading++;
+          if (s == 'pending' && t['paused'] != true) {
+            pending++;
+          } else if (s == 'uploading') uploading++;
           else if (s == 'failed') failed++;
           else if (s == 'completed') completed++;
           else if (t['paused'] == true) pending++; // Treat paused as pending for count
       }
 
-      final int total = _queue.length;
+      final int total = queue.length;
       
       // 1.5 Calculate Byte-Level Progress for smoothness
       double totalQueueBytes = 0;
       double uploadedQueueBytes = 0;
-      for (final t in _queue) {
+      for (final t in queue) {
           double tTotal = (t['totalBytes'] ?? 0).toDouble();
           
           // CRITICAL: If totalBytes is missing (legacy tasks), try to get it now
@@ -221,7 +220,7 @@ void onStart(ServiceInstance service) async {
       String title = 'Upload Service';
       String body = '';
 
-      if (_isPaused) {
+      if (isPaused) {
          title = 'Uploads Paused ⏸️';
          body = 'The entire queue is currently on hold.';
          if (failed > 0) body += " ($failed failed ⚠️)";
@@ -229,7 +228,7 @@ void onStart(ServiceInstance service) async {
          title = failed > 0 ? 'Upload Error ⚠️ ($progressInt%)' : 'Uploading Files ($progressInt%) 📤';
          if (uploading == 1) {
             try {
-              final activeTask = _queue.firstWhere((t) => t['status'] == 'uploading');
+              final activeTask = queue.firstWhere((t) => t['status'] == 'uploading');
               final name = activeTask['remotePath'].toString().split('/').last;
               body = "Now: $name";
               if (failed > 0) body += " • $failed Failed ⚠️";
@@ -260,20 +259,20 @@ void onStart(ServiceInstance service) async {
       }
 
       await flutterLocalNotificationsPlugin.show(
-        kServiceNotificationId,
-        title,
-        body,
-        NotificationDetails(
+        id: kServiceNotificationId,
+        title: title,
+        body: body,
+        notificationDetails: NotificationDetails(
           android: AndroidNotificationDetails(
             kServiceNotificationChannelId,
             'Upload Status',
             icon: 'ic_bg_service_small',
-            ongoing: uploading > 0 || _isPaused || failed > 0,
-            showProgress: uploading > 0 || _isPaused,
+            ongoing: uploading > 0 || isPaused || failed > 0,
+            showProgress: uploading > 0 || isPaused,
             maxProgress: 100,
             progress: progressInt,
-            priority: (uploading > 0 || _isPaused || failed > 0) ? Priority.high : Priority.low,
-            importance: (uploading > 0 || _isPaused || failed > 0) ? Importance.high : Importance.low,
+            priority: (uploading > 0 || isPaused || failed > 0) ? Priority.high : Priority.low,
+            importance: (uploading > 0 || isPaused || failed > 0) ? Importance.high : Importance.low,
             color: const Color(0xFF2196F3),
             enableVibration: false,
           ),
@@ -281,32 +280,32 @@ void onStart(ServiceInstance service) async {
       );
     }
   }
-  final Map<String, int> _lastUiUpdates = {};
+  final Map<String, int> lastUiUpdates = {};
 
   // Helper Progress Handler
-  void _handleProgress(int sent, int total, String taskId) {
+  void handleProgress(int sent, int total, String taskId) {
     if (total > 0) {
       final progress = sent / total;
-      final currentIdx = _queue.indexWhere((t) => t['id'] == taskId);
+      final currentIdx = queue.indexWhere((t) => t['id'] == taskId);
       
       if (currentIdx != -1) {
-        _queue[currentIdx]['progress'] = progress;
-        _queue[currentIdx]['uploadedBytes'] = sent;
-        _queue[currentIdx]['totalBytes'] = total;
+        queue[currentIdx]['progress'] = progress;
+        queue[currentIdx]['uploadedBytes'] = sent;
+        queue[currentIdx]['totalBytes'] = total;
         
         // Throttling: Update UI only every 500ms
         final now = DateTime.now().millisecondsSinceEpoch;
-        final lastUpdate = _lastUiUpdates[taskId] ?? 0;
+        final lastUpdate = lastUiUpdates[taskId] ?? 0;
         
         if (now - lastUpdate > 500 || progress >= 1.0) {
-           _lastUiUpdates[taskId] = now;
-           _broadcastQueue();
+           lastUiUpdates[taskId] = now;
+           broadcastQueue();
            
            // Update Notification smoothly (every 1.5s to save battery)
-           final lastNotif = _lastUiUpdates['__notification__'] ?? 0;
+           final lastNotif = lastUiUpdates['__notification__'] ?? 0;
            if (now - lastNotif > 1500) {
-               _lastUiUpdates['__notification__'] = now;
-               _updateNotification(null, null);
+               lastUiUpdates['__notification__'] = now;
+               updateNotification(null, null);
            }
         }
       }
@@ -315,11 +314,11 @@ void onStart(ServiceInstance service) async {
 
   // 🔥 INSTANT INITIAL UPDATE
   // This overwrites "Initializing..." with actual stats (e.g. "3 Pending") immediately.
-  await _updateNotification(null, null);
+  await updateNotification(null, null);
 
   // 4. BOOTSTRAP DEPENDENCIES
-  bool _depsReady = false;
-  Future<void> _initDeps() async {
+  bool depsReady = false;
+  Future<void> initDeps() async {
     try {
       print("🔥 [BG SERVICE] Initializing Dependencies...");
       await Firebase.initializeApp();
@@ -327,7 +326,7 @@ void onStart(ServiceInstance service) async {
       
       /* Notifications already initialized at top */
       
-      _depsReady = true;
+      depsReady = true;
       // Heartbeat removed
     } catch (e) {
       print("❌ [BG SERVICE] Dependency Init Failed: $e");
@@ -335,13 +334,13 @@ void onStart(ServiceInstance service) async {
   }
 
   // Define _triggerProcessing here...
-  void _triggerProcessing() async {
-    if (_isProcessing) return;
-    if (!_depsReady) {
+  void triggerProcessing() async {
+    if (isProcessing) return;
+    if (!depsReady) {
        print("⏳ [BG SERVICE] Waiting for dependencies before starting engine...");
-       await _initDeps();
+       await initDeps();
     }
-    _isProcessing = true;
+    isProcessing = true;
     const int kMaxConcurrent = 5; 
 
     print("🚀 [BG SERVICE] Engine Loop Started");
@@ -357,10 +356,10 @@ void onStart(ServiceInstance service) async {
        
        if (hasNoInternet) {
           print("📡 [BG SERVICE] No Internet. Idle check (5s)...");
-          await _updateNotification("Waiting for internet... 📡", null);
+          await updateNotification("Waiting for internet... 📡", null);
           for (int i=0; i<5; i++) {
              await Future.delayed(const Duration(seconds: 1));
-             if (!_isProcessing) return; 
+             if (!isProcessing) return; 
           }
           continue;
        }
@@ -372,16 +371,16 @@ void onStart(ServiceInstance service) async {
       // even if the master toggle is in 'Paused' state. Master toggle now acts as a batch command.
 
       // 3. FRESH COUNTS
-      final pendingCount = _queue.where((t) => t['status'] == 'pending' && t['paused'] != true).length;
-      final activeCount = _activeUploads.length;
+      final pendingCount = queue.where((t) => t['status'] == 'pending' && t['paused'] != true).length;
+      final activeCount = activeUploads.length;
       
       if (pendingCount == 0 && activeCount == 0) {
          // Check if everything is either completed or paused
-         final bool allDoneOrPaused = _queue.every((t) => t['status'] == 'completed' || t['paused'] == true);
-         final bool hasFailedTasks = _queue.any((t) => t['status'] == 'failed');
+         final bool allDoneOrPaused = queue.every((t) => t['status'] == 'completed' || t['paused'] == true);
+         final bool hasFailedTasks = queue.any((t) => t['status'] == 'failed');
 
-         if (allDoneOrPaused && _queue.isNotEmpty) {
-            final bool allCompleted = _queue.every((t) => t['status'] == 'completed');
+         if (allDoneOrPaused && queue.isNotEmpty) {
+            final bool allCompleted = queue.every((t) => t['status'] == 'completed');
             if (allCompleted) {
                 print("✅ [BG SERVICE] Every single task completed. Finalizing...");
                 bool isTargetPublished = false;
@@ -393,33 +392,33 @@ void onStart(ServiceInstance service) async {
                   }
                 } catch(_) {}
 
-                await _finalizeCourseIfPending(service, _queue, _isPaused);
-                await _finalizeUpdateIfPending(service, _queue, _isPaused);
+                await _finalizeCourseIfPending(service, queue, isPaused);
+                await _finalizeUpdateIfPending(service, queue, isPaused);
                 
                 final msg = isTargetPublished 
                     ? "Course Published Successfully! ✅" 
                     : "Course Uploaded Successfully (Admin Side)! ✅";
-                await _updateNotification(msg, 100);
+                await updateNotification(msg, 100);
             } else {
                 print("⏸️ [BG SERVICE] Remaining tasks are PAUSED. Waiting 10s before sleep...");
-                await _updateNotification("Uploads Paused ⏸️", null);
+                await updateNotification("Uploads Paused ⏸️", null);
             }
             
             // 1. Release the lock so new triggers can wake the engine instantly
-            _isProcessing = false;
+            isProcessing = false;
             
             print("⏸️ [BG SERVICE] Tasks are PAUSED. Idle grace period (5s)...");
             for (int i = 0; i < 5; i++) {
                 await Future.delayed(const Duration(seconds: 1));
                 // Check if someone else woke up the engine
-                if (_isProcessing) {
+                if (isProcessing) {
                    print("🚀 [BG SERVICE] Engine woken up by another trigger! Stopping this idle loop.");
                    return; 
                 }
-                final quickCheck = _queue.where((t) => t['status'] == 'pending' && t['paused'] != true).length;
-                if (quickCheck > 0 || _activeUploads.isNotEmpty) {
+                final quickCheck = queue.where((t) => t['status'] == 'pending' && t['paused'] != true).length;
+                if (quickCheck > 0 || activeUploads.isNotEmpty) {
                    print("🚀 [BG SERVICE] Instant wake-up detected! Re-triggering...");
-                   _triggerProcessing();
+                   triggerProcessing();
                    return;
                 }
             }
@@ -431,14 +430,14 @@ void onStart(ServiceInstance service) async {
          }
 
          if (hasFailedTasks) {
-            _isProcessing = false; // Release lock for manual intervention
+            isProcessing = false; // Release lock for manual intervention
             print("ℹ️ [BG SERVICE] Actionable tasks 0, but FAILED tasks exist. Idle check (15s)...");
             for (int i = 0; i < 15; i++) {
                 await Future.delayed(const Duration(seconds: 1));
-                if (_isProcessing) return; 
-                final quickCheck = _queue.where((t) => t['status'] == 'pending' && t['paused'] != true).length;
+                if (isProcessing) return; 
+                final quickCheck = queue.where((t) => t['status'] == 'pending' && t['paused'] != true).length;
                 if (quickCheck > 0) {
-                   _triggerProcessing();
+                   triggerProcessing();
                    return;
                 }
             }
@@ -446,21 +445,21 @@ void onStart(ServiceInstance service) async {
          }
 
          // Idle wait for new tasks (10s)
-         _isProcessing = false; 
+         isProcessing = false; 
          for (int i = 0; i < 10; i++) {
             await Future.delayed(const Duration(seconds: 1));
-            if (_isProcessing) return;
-            if (_queue.where((t) => t['status'] == 'pending' && t['paused'] != true).isNotEmpty) {
-               _triggerProcessing();
+            if (isProcessing) return;
+            if (queue.where((t) => t['status'] == 'pending' && t['paused'] != true).isNotEmpty) {
+               triggerProcessing();
                return;
             }
          }
          
-         if (_queue.isEmpty) {
+         if (queue.isEmpty) {
              print("🛑 [BG SERVICE] Queue empty. Syncing and Stopping.");
-             await _updateNotification("Ready for tasks 🚀", null);
-             service.invoke('update', {'queue': _queue, 'isPaused': _isPaused});
-             _isProcessing = false;
+             await updateNotification("Ready for tasks 🚀", null);
+             service.invoke('update', {'queue': queue, 'isPaused': isPaused});
+             isProcessing = false;
              await Future.delayed(const Duration(milliseconds: 500)); // Brief pause for UI delivery
              // service.stopSelf(); // Disabled for debugging
              return;
@@ -474,30 +473,30 @@ void onStart(ServiceInstance service) async {
       
       // 3. SLOT FILLING
       bool slotFilled = false;
-      if (_activeUploads.length < kMaxConcurrent) {
+      if (activeUploads.length < kMaxConcurrent) {
          final now = DateTime.now().millisecondsSinceEpoch;
          
          // Re-scan for next task
-         int nextIndex = _queue.indexWhere((t) => 
+         final int nextIndex = queue.indexWhere((t) => 
             t['status'] == 'pending' && 
             t['paused'] != true && 
-            !_isPaused && // Master Gate: If global pause is ON, no NEW tasks start
+            !isPaused && // Master Gate: If global pause is ON, no NEW tasks start
             (t['retryAt'] == null || now > t['retryAt'])
          );
 
          if (nextIndex != -1) {
-            final task = _queue[nextIndex];
+            final task = queue[nextIndex];
             final String taskId = task['id'];
             print("📤 [BG SERVICE] Dispatching Task: $taskId");
 
             task['status'] = 'uploading';
-            _queue[nextIndex] = task;
-            await _saveQueue(); // Sync status change
+            queue[nextIndex] = task;
+            await saveQueue(); // Sync status change
             
             final cancelToken = CancelToken();
-            _activeUploads[taskId] = cancelToken;
+            activeUploads[taskId] = cancelToken;
             slotFilled = true;
-            int lastUiUpdate = 0;
+            const int lastUiUpdate = 0;
 
              // Check File Type
              final String pathLower = task['filePath'].toString().toLowerCase();
@@ -512,7 +511,7 @@ void onStart(ServiceInstance service) async {
                  // TUS for Videos (Stream)
                  uploadFuture = tusUploader.upload(
                     File(task['filePath']),
-                    onProgress: (sent, total) => _handleProgress(sent, total, taskId),
+                    onProgress: (sent, total) => handleProgress(sent, total, taskId),
                     cancelToken: cancelToken,
                  ).then((videoId) {
                     // TUS returns Video ID. Construct Playback URL.
@@ -523,7 +522,7 @@ void onStart(ServiceInstance service) async {
                  uploadFuture = bunnyService.uploadFile(
                     filePath: task['filePath'],
                     remotePath: task['remotePath'], // Uses the actual path structure for storage
-                    onProgress: (sent, total) => _handleProgress(sent, total, taskId),
+                    onProgress: (sent, total) => handleProgress(sent, total, taskId),
                     cancelToken: cancelToken,
                  );
              }
@@ -533,24 +532,24 @@ void onStart(ServiceInstance service) async {
              uploadFuture.then((resultUrl) async {
                print("✅ [BG SERVICE] Upload Success: $resultUrl");
                
-               _activeUploads.remove(taskId);
-               final idx = _queue.indexWhere((t) => t['id'] == taskId);
+               activeUploads.remove(taskId);
+               final idx = queue.indexWhere((t) => t['id'] == taskId);
                if (idx != -1) {
-                 _queue[idx]['status'] = 'completed';
-                 _queue[idx]['progress'] = 1.0;
-                 _queue[idx]['url'] = resultUrl;
+                 queue[idx]['status'] = 'completed';
+                 queue[idx]['progress'] = 1.0;
+                 queue[idx]['url'] = resultUrl;
                  // Ensure bytes are synced on completion
-                 if (_queue[idx]['totalBytes'] != null) {
-                   _queue[idx]['uploadedBytes'] = _queue[idx]['totalBytes'];
+                 if (queue[idx]['totalBytes'] != null) {
+                   queue[idx]['uploadedBytes'] = queue[idx]['totalBytes'];
                  }
                  
                  // If it was TUS, we might have a Video ID, but the URL is enough for now.
                  // For storage files, resultUrl is the CDN URL.
                  
-                 await _saveQueue();
+                 await saveQueue();
                  service.invoke('task_completed', {'id': taskId, 'url': resultUrl});
                }
-               _triggerProcessing(); 
+               triggerProcessing(); 
              }).catchError((e) async {
                final String errorStr = e.toString();
                final bool isMissingFile = errorStr.contains('File not found') || errorStr.contains('No such file');
@@ -561,8 +560,8 @@ void onStart(ServiceInstance service) async {
                   print("⚠️ [BG SERVICE] Task Failed: File missing from device ($taskId)");
                }
 
-               _activeUploads.remove(taskId);
-               final currentIdx = _queue.indexWhere((t) => t['id'] == taskId);
+               activeUploads.remove(taskId);
+               final currentIdx = queue.indexWhere((t) => t['id'] == taskId);
                if (currentIdx != -1) {
                  final isNetworkError = e is DioException && 
                                         (e.type == DioExceptionType.connectionTimeout || 
@@ -571,28 +570,28 @@ void onStart(ServiceInstance service) async {
                                          e.type == DioExceptionType.connectionError);
 
                  if (e is DioException && e.type == DioExceptionType.cancel) {
-                    _queue[currentIdx]['status'] = 'pending';
+                    queue[currentIdx]['status'] = 'pending';
                     print("⏸️ [BG SERVICE] Task $taskId marked as pending (Cancelled)");
                  } else if (isNetworkError) {
-                    _queue[currentIdx]['status'] = 'pending';
-                    _queue[currentIdx]['error'] = "Network Issue - Auto Retrying...";
-                    _queue[currentIdx]['retryAt'] = DateTime.now().add(const Duration(seconds: 15)).millisecondsSinceEpoch;
+                    queue[currentIdx]['status'] = 'pending';
+                    queue[currentIdx]['error'] = "Network Issue - Auto Retrying...";
+                    queue[currentIdx]['retryAt'] = DateTime.now().add(const Duration(seconds: 15)).millisecondsSinceEpoch;
                     print("📡 [BG SERVICE] Network error for $taskId - Initializing Auto-Retry in 15s");
                  } else {
-                    _queue[currentIdx]['status'] = 'failed';
-                    _queue[currentIdx]['error'] = isMissingFile ? "File missing from device" : errorStr;
-                    _queue[currentIdx]['retries'] = (_queue[currentIdx]['retries'] ?? 0) + 1;
-                    _queue[currentIdx]['retryAt'] = DateTime.now().add(const Duration(seconds: 30)).millisecondsSinceEpoch;
+                    queue[currentIdx]['status'] = 'failed';
+                    queue[currentIdx]['error'] = isMissingFile ? "File missing from device" : errorStr;
+                    queue[currentIdx]['retries'] = (queue[currentIdx]['retries'] ?? 0) + 1;
+                    queue[currentIdx]['retryAt'] = DateTime.now().add(const Duration(seconds: 30)).millisecondsSinceEpoch;
                  }
-                 await _saveQueue();
+                 await saveQueue();
                }
-               _triggerProcessing();
+               triggerProcessing();
             });
          }
       }
 
       // 4. Notification Update
-      await _updateNotification(null, null);
+      await updateNotification(null, null);
       
       // Throttle the loop
       await Future.delayed(Duration(milliseconds: slotFilled ? 50 : 500));
@@ -601,7 +600,7 @@ void onStart(ServiceInstance service) async {
 
   // 4. LISTENERS REGISTRATION (Priority Events)
   service.on('get_status').listen((event) {
-     service.invoke('update', {'queue': _queue, 'isPaused': _isPaused});
+     service.invoke('update', {'queue': queue, 'isPaused': isPaused});
      print("📊 [BG SERVICE] Status update sent to UI");
   });
 
@@ -620,7 +619,7 @@ void onStart(ServiceInstance service) async {
     for (var item in items) {
       // DUPLICATE CHECK: Skip if file already in queue (any status)
       final String filePath = item['filePath'];
-      final bool alreadyExists = _queue.any((t) => t['filePath'] == filePath);
+      final bool alreadyExists = queue.any((t) => t['filePath'] == filePath);
       
       if (!alreadyExists) {
         final task = Map<String, dynamic>.from(item);
@@ -638,16 +637,16 @@ void onStart(ServiceInstance service) async {
           }
         } catch (_) {}
         
-        _queue.add(task);
+        queue.add(task);
       } else {
         print("⚠️ [BG SERVICE] Skipping duplicate task: $filePath");
       }
     }
-    await _saveQueue();
+    await saveQueue();
     
     // 3. Start
-    _triggerProcessing();
-    _updateNotification("Course Creation Started", 0);
+    triggerProcessing();
+    updateNotification("Course Creation Started", 0);
   });
 
   service.on('update_course').listen((event) async {
@@ -668,7 +667,7 @@ void onStart(ServiceInstance service) async {
     
     for (var item in items) {
       final String filePath = item['filePath'];
-      final bool alreadyExists = _queue.any((t) => t['filePath'] == filePath);
+      final bool alreadyExists = queue.any((t) => t['filePath'] == filePath);
       
       if (!alreadyExists) {
         final task = Map<String, dynamic>.from(item);
@@ -685,20 +684,20 @@ void onStart(ServiceInstance service) async {
           }
         } catch (_) {}
         
-        _queue.add(task);
+        queue.add(task);
       }
     }
-    await _saveQueue();
+    await saveQueue();
     
     // 3. Start
-    _triggerProcessing();
-    _updateNotification("Course Update Started", 0);
+    triggerProcessing();
+    updateNotification("Course Update Started", 0);
   });
 
   service.on('add_task').listen((event) async {
     if (event == null) return;
     final String filePath = event['filePath'];
-    final bool alreadyExists = _queue.any((t) => t['filePath'] == filePath);
+    final bool alreadyExists = queue.any((t) => t['filePath'] == filePath);
 
     if (!alreadyExists) {
         final task = Map<String, dynamic>.from(event);
@@ -716,9 +715,9 @@ void onStart(ServiceInstance service) async {
           }
         } catch (_) {}
 
-        _queue.add(task);
-        await _saveQueue();
-        _triggerProcessing();
+        queue.add(task);
+        await saveQueue();
+        triggerProcessing();
     } else {
         print("⚠️ [BG SERVICE] Skipped adding duplicate task via add_task: $filePath");
     }
@@ -728,15 +727,15 @@ void onStart(ServiceInstance service) async {
     print("🔴 CANCEL ALL: Starting destructive cleanup...");
     
     // 1. Cancel Active Transfers
-    for (var taskId in _activeUploads.keys.toList()) {
+    for (var taskId in activeUploads.keys.toList()) {
        print("🚫 [BG SERVICE] Cancelling task $taskId due to 'cancel_all'");
-       _activeUploads[taskId]?.cancel('User cancelled all uploads');
+       activeUploads[taskId]?.cancel('User cancelled all uploads');
     }
-    _activeUploads.clear();
+    activeUploads.clear();
 
     // 2. DELETE UPLOADED FILES FROM SERVER (Aggressive Status-Independent)
     try {
-      for (var task in _queue) {
+      for (var task in queue) {
          final String? assetUrl = task['url'];
          final String? remotePath = task['remotePath'];
          final String taskId = task['taskId'] ?? task['id'] ?? 'unknown';
@@ -760,9 +759,9 @@ void onStart(ServiceInstance service) async {
     }
     
     // 3. Clear Queue Logic
-    _queue.clear();
-    await _saveQueue();
-    await _updateNotification("Uploads Cancelled", 0);
+    queue.clear();
+    await saveQueue();
+    await updateNotification("Uploads Cancelled", 0);
     
     // 4. Clear Course Metadata
     await prefs.remove(kPendingCourseKey);
@@ -784,51 +783,51 @@ void onStart(ServiceInstance service) async {
     }
     
     print("✅ Destructive cleanup complete!");
-    service.invoke('update', {'queue': _queue, 'isPaused': _isPaused});
+    service.invoke('update', {'queue': queue, 'isPaused': isPaused});
   });
 
   service.on('pause').listen((event) async {
     print("⏸️ [BG SERVICE] TRACE: Global PAUSE received. Data: $event");
-    _isPaused = true;
-    for (var taskId in _activeUploads.keys.toList()) {
-      _activeUploads[taskId]?.cancel('User paused all uploads');
+    isPaused = true;
+    for (var taskId in activeUploads.keys.toList()) {
+      activeUploads[taskId]?.cancel('User paused all uploads');
     }
-    _activeUploads.clear();
-    for (var task in _queue) {
+    activeUploads.clear();
+    for (var task in queue) {
       if (task['status'] == 'pending' || task['status'] == 'uploading') {
         task['paused'] = true;
         if (task['status'] == 'uploading') task['status'] = 'pending';
       }
     }
-    await _saveQueue(); 
-    await _updateNotification(null, null);
+    await saveQueue(); 
+    await updateNotification(null, null);
   });
 
   service.on('resume').listen((event) async {
     print("▶️ [BG SERVICE] TRACE: Global RESUME received. Data: $event");
-    _isPaused = false;
-    for (var task in _queue) {
+    isPaused = false;
+    for (var task in queue) {
       task['paused'] = false;
     }
-    await _saveQueue();
-    await _updateNotification(null, null);
-    _triggerProcessing(); 
+    await saveQueue();
+    await updateNotification(null, null);
+    triggerProcessing(); 
   });
 
   service.on('pause_task').listen((event) async {
     if (event == null || event['taskId'] == null) return;
     final String taskId = event['taskId'];
     print("⏸️ SERVICE RECEIVED pause_task: $taskId");
-    final taskIndex = _queue.indexWhere((t) => (t['taskId'] ?? t['id']) == taskId);
+    final taskIndex = queue.indexWhere((t) => (t['taskId'] ?? t['id']) == taskId);
     if (taskIndex != -1) {
-      _queue[taskIndex]['paused'] = true;
-      if (_activeUploads.containsKey(taskId)) {
-        _activeUploads[taskId]?.cancel('User paused upload');
-        _activeUploads.remove(taskId);
-        _queue[taskIndex]['status'] = 'pending';
+      queue[taskIndex]['paused'] = true;
+      if (activeUploads.containsKey(taskId)) {
+        activeUploads[taskId]?.cancel('User paused upload');
+        activeUploads.remove(taskId);
+        queue[taskIndex]['status'] = 'pending';
       }
-      await _saveQueue();
-      await _updateNotification(null, null);
+      await saveQueue();
+      await updateNotification(null, null);
     }
   });
 
@@ -836,17 +835,17 @@ void onStart(ServiceInstance service) async {
     if (event == null || event['taskId'] == null) return;
     final String taskId = event['taskId'];
     print("✅ SERVICE RECEIVED resume_task: $taskId");
-    final taskIndex = _queue.indexWhere((t) => (t['taskId'] ?? t['id']) == taskId);
+    final taskIndex = queue.indexWhere((t) => (t['taskId'] ?? t['id']) == taskId);
     if (taskIndex != -1) {
-      _queue[taskIndex]['paused'] = false;
-      _queue[taskIndex]['retries'] = 0;
-      _queue[taskIndex]['retryAt'] = null;
-      if (_queue[taskIndex]['status'] == 'failed' || _queue[taskIndex]['status'] == 'uploading') {
-        _queue[taskIndex]['status'] = 'pending';
+      queue[taskIndex]['paused'] = false;
+      queue[taskIndex]['retries'] = 0;
+      queue[taskIndex]['retryAt'] = null;
+      if (queue[taskIndex]['status'] == 'failed' || queue[taskIndex]['status'] == 'uploading') {
+        queue[taskIndex]['status'] = 'pending';
       }
-      await _saveQueue();
-      await _updateNotification(null, null);
-      _triggerProcessing(); 
+      await saveQueue();
+      await updateNotification(null, null);
+      triggerProcessing(); 
     }
   });
 
@@ -856,15 +855,15 @@ void onStart(ServiceInstance service) async {
          print("🗑️ SERVICE RECEIVED delete_task: $taskId");
          
          // 1. Cancel active upload
-         if (_activeUploads.containsKey(taskId)) {
+         if (activeUploads.containsKey(taskId)) {
             print("🚫 Cancelling active upload for $taskId before delete");
-            _activeUploads[taskId]?.cancel('User deleted task');
-            _activeUploads.remove(taskId);
+            activeUploads[taskId]?.cancel('User deleted task');
+            activeUploads.remove(taskId);
          }
          
-         final taskIndex = _queue.indexWhere((t) => (t['taskId'] ?? t['id']) == taskId);
+         final taskIndex = queue.indexWhere((t) => (t['taskId'] ?? t['id']) == taskId);
          if (taskIndex != -1) {
-            final task = _queue[taskIndex];
+            final task = queue[taskIndex];
             final String? remotePath = task['remotePath'];
             final String? assetUrl = task['url']; // Video ID or Storage URL
             
@@ -891,7 +890,7 @@ void onStart(ServiceInstance service) async {
             }
             
             // 3. Remove from local queue (SAFE REMOVAL using taskId)
-            _queue.removeWhere((t) => (t['taskId'] ?? t['id']) == taskId);
+            queue.removeWhere((t) => (t['taskId'] ?? t['id']) == taskId);
             
             // 4. Cleanup Metadata (Course JSON)
             final String? courseJson = prefs.getString(kPendingCourseKey);
@@ -923,15 +922,15 @@ void onStart(ServiceInstance service) async {
                }
             }
             
-            if (_queue.isEmpty) {
+            if (queue.isEmpty) {
                print("💡 Queue empty after delete. Clearing pending course key.");
                await prefs.remove(kPendingCourseKey);
             }
             
-            await _saveQueue();
-            await _updateNotification(null, null);
-            service.invoke('update', {'queue': _queue, 'isPaused': _isPaused});
-            _triggerProcessing();
+            await saveQueue();
+            await updateNotification(null, null);
+            service.invoke('update', {'queue': queue, 'isPaused': isPaused});
+            triggerProcessing();
          } else {
             print("⚠️ Task not found in queue for deletion: $taskId");
          }
@@ -941,7 +940,7 @@ void onStart(ServiceInstance service) async {
 
   // 5. HEAVY INITIALIZATION (Background)
   // 5. BOOTSTRAP (Parallel)
-  _initDeps();
+  initDeps();
 
   // Heartbeat Timer removed per user request
 
@@ -959,17 +958,19 @@ void onStart(ServiceInstance service) async {
 
   if (queueJson != null) {
     try {
-      _queue = List<Map<String, dynamic>>.from(jsonDecode(queueJson));
+      queue = List<Map<String, dynamic>>.from(jsonDecode(queueJson));
       // Fix: Any task left in 'uploading' without a token should be 'pending'
-      for (var task in _queue) if (task['status'] == 'uploading') task['status'] = 'pending';
+      for (var task in queue) {
+        if (task['status'] == 'uploading') task['status'] = 'pending';
+      }
     } catch (_) {}
   }
   
-  service.invoke('update', {'queue': _queue, 'isPaused': _isPaused});
+  service.invoke('update', {'queue': queue, 'isPaused': isPaused});
   
   // Wait a small bit for deps before first trigger
   Future.delayed(const Duration(seconds: 1), () {
-     if (_queue.isNotEmpty) _triggerProcessing();
+     if (queue.isNotEmpty) triggerProcessing();
   });
 }
 
@@ -1000,7 +1001,7 @@ Future<void> _finalizeCourseIfPending(ServiceInstance service, List<Map<String, 
   }
 
   try {
-     Map<String, dynamic> courseData = jsonDecode(courseJson);
+     final Map<String, dynamic> courseData = jsonDecode(courseJson);
      
      // 1. Update Top Level Images
      if (urlMap.containsKey(courseData['thumbnailUrl'])) {
@@ -1018,19 +1019,11 @@ Future<void> _finalizeCourseIfPending(ServiceInstance service, List<Map<String, 
      // But wait, CourseModel has `contents` which is List<Map>.
      // We need to traverse it.
      
-     List<dynamic> contents = courseData['contents'] ?? [];
+     final List<dynamic> contents = courseData['contents'] ?? [];
      _updateContentPaths(contents, urlMap);
      courseData['contents'] = contents;
      
-     // 3. Update Demo Videos
-     List<dynamic> demos = courseData['demoVideos'] ?? [];
-     for (var demo in demos) {
-        if (urlMap.containsKey(demo['path'])) {
-           demo['path'] = urlMap[demo['path']];
-           demo['isLocal'] = false;
-        }
-     }
-     courseData['demoVideos'] = demos;
+
 
      // --- 3.5 NEW SAFETY CHECK: Ensure No Local Paths Remain ---
      bool hasLocalPaths = false;
@@ -1109,10 +1102,10 @@ Future<void> _finalizeCourseIfPending(ServiceInstance service, List<Map<String, 
          : 'Course "${courseData['title']}" uploaded successfully (Admin Side).';
 
      await flutterLocalNotificationsPlugin.show(
-        kServiceNotificationId + 1, // Alert ID
-        alertTitle,
-        alertBody,
-        const NotificationDetails(
+        id: kServiceNotificationId + 1, // Alert ID
+        title: alertTitle,
+        body: alertBody,
+        notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
             kAlertNotificationChannelId,
             'Upload Alerts',
@@ -1153,16 +1146,13 @@ void _removeFileFromMetadata(Map<String, dynamic> data, String filePath) {
   // 1. Direct fields
   if (data['thumbnailUrl'] == filePath) data['thumbnailUrl'] = '';
   if (data['certificateUrl'] == filePath) data['certificateUrl'] = '';
-  if (data['demoVideoUrl'] == filePath) data['demoVideoUrl'] = '';
+
   
   // Handling for specific course fields (if they exist in your structure)
   if (data['certificateUrl1'] == filePath) data['certificateUrl1'] = '';
   if (data['certificateUrl2'] == filePath) data['certificateUrl2'] = '';
 
-  // 2. Demo Videos array
-  if (data['demoVideos'] != null && data['demoVideos'] is List) {
-     (data['demoVideos'] as List).removeWhere((d) => d['path'] == filePath);
-  }
+
 
   // 3. Contents list recursively
   if (data['contents'] != null && data['contents'] is List) {
@@ -1239,7 +1229,7 @@ Future<void> _finalizeUpdateIfPending(ServiceInstance service, List<Map<String, 
   }
 
   try {
-     Map<String, dynamic> updateData = jsonDecode(updateJson);
+     final Map<String, dynamic> updateData = jsonDecode(updateJson);
      final String courseId = updateData['id'];
 
      if (urlMap.containsKey(updateData['thumbnailUrl'])) {
@@ -1253,21 +1243,12 @@ Future<void> _finalizeUpdateIfPending(ServiceInstance service, List<Map<String, 
      }
 
      if (updateData.containsKey('contents')) {
-        List<dynamic> contents = updateData['contents'] ?? [];
+        final List<dynamic> contents = updateData['contents'] ?? [];
         _updateContentPaths(contents, urlMap);
         updateData['contents'] = contents;
      }
      
-     if (updateData.containsKey('demoVideos')) {
-        List<dynamic> demos = updateData['demoVideos'] ?? [];
-        for (var demo in demos) {
-           if (urlMap.containsKey(demo['path'])) {
-              demo['path'] = urlMap[demo['path']];
-              demo['isLocal'] = false;
-           }
-        }
-        updateData['demoVideos'] = demos;
-     }
+
 
      updateData.remove('id'); 
 
@@ -1293,10 +1274,10 @@ Future<void> _finalizeUpdateIfPending(ServiceInstance service, List<Map<String, 
      
      final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
      await flutterLocalNotificationsPlugin.show(
-        kServiceNotificationId + 1,
-        'Update Complete! ✅',
-        'Course updated successfully.',
-        const NotificationDetails(
+        id: kServiceNotificationId + 1,
+        title: 'Update Complete! ✅',
+        body: 'Course updated successfully.',
+        notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
             kAlertNotificationChannelId,
             'Upload Alerts',

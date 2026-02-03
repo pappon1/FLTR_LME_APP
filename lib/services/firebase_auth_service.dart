@@ -8,12 +8,12 @@ class FirebaseAuthService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   
   // Use getter to ensure fresh instance/config
-  GoogleSignIn get _googleSignIn => GoogleSignIn(
-    scopes: [
-      'email',
-      'https://www.googleapis.com/auth/contacts.readonly',
-    ],
-  );
+  // GoogleSignIn is now a singleton in v7.x
+  GoogleSignIn get _googleSignIn => GoogleSignIn.instance;
+
+  Future<void> _initGoogleSignIn() async {
+    await _googleSignIn.initialize();
+  }
 
   // Current user stream
   Stream<User?> get authStateChanges => _auth.authStateChanges();
@@ -24,21 +24,39 @@ class FirebaseAuthService {
   /// Sign in with Google
   Future<UserCredential?> signInWithGoogle() async {
     try {
-      // Trigger Google Sign-In flow
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      // 1. Initialize (Required in v7)
+      await _initGoogleSignIn();
+
+      // 2. Trigger Google Sign-In flow (authenticate replaces signIn)
+      final GoogleSignInAccount? googleUser = await _googleSignIn.authenticate();
       
       if (googleUser == null) {
         // User cancelled flow
         return null; 
       }
       
-      // Obtain auth details from request
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      // 3. Obtain auth details (Synchronous getter in v7)
+      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
 
-      // Create a new credential
+      // 4. Obtain access token via authorization (Separate step in v7)
+      String? accessToken;
+      try {
+        final authClient = await googleUser.authorizationClient.authorizeScopes(
+          [
+            'email',
+            'https://www.googleapis.com/auth/contacts.readonly',
+          ],
+        );
+        accessToken = authClient.accessToken;
+      } catch (e) {
+        debugPrint('Authorization error (access token): $e');
+        // We might still proceed with just idToken for Firebase if that's enough
+      }
+
+      // 5. Create a new credential
       final credential = GoogleAuthProvider.credential(
         idToken: googleAuth.idToken,
-        accessToken: googleAuth.accessToken,
+        accessToken: accessToken,
       );
 
       // Sign in to Firebase with the credential

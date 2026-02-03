@@ -77,7 +77,7 @@ class TechTextField extends StatelessWidget {
           fontSize: 13.0,
           fontWeight: FontWeight.w600),
       floatingLabelStyle:
-          TextStyle(color: primaryColor, fontSize: 16, fontWeight: FontWeight.bold),
+          const TextStyle(color: primaryColor, fontSize: 16, fontWeight: FontWeight.bold),
       border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(3.0), borderSide: BorderSide.none),
       enabledBorder: OutlineInputBorder(
@@ -85,7 +85,7 @@ class TechTextField extends StatelessWidget {
           borderSide: BorderSide(color: borderColor)),
       focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(3.0),
-          borderSide: BorderSide(color: primaryColor, width: 1.5)),
+          borderSide: const BorderSide(color: primaryColor, width: 1.5)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     );
   }

@@ -45,10 +45,19 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
   late TextEditingController _discountController;
   late TextEditingController _finalPriceController;
   late TextEditingController _customValidityController;
+  late TextEditingController _whatsappController;
+  late TextEditingController _websiteUrlController;
 
   // State Variables
   String? _selectedCategory;
   String? _difficulty;
+  final List<String> _languages = ['Hindi', 'English', 'Hinglish', 'Bengali', 'Marathi', 'Gujarati', 'Tamil', 'Kannada', 'Telugu', 'Malayalam'];
+  final List<String> _courseModes = ['Recorded', 'Live Session'];
+  final List<String> _supportTypes = ['WhatsApp Group', 'No Support'];
+
+  String _selectedLanguage = 'Hindi';
+  String _selectedCourseMode = 'Recorded';
+  String _selectedSupportType = 'WhatsApp Group';
   File? _thumbnailImage;
   String? _currentThumbnailUrl;
   bool _thumbnailChanged = false;
@@ -65,8 +74,9 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
   bool _cert2Changed = false;
   int _selectedCertSlot = 1;
   bool _isOfflineDownloadEnabled = true;
+  bool _isBigScreenEnabled = false;
   bool _isPublished = false;
-  List<Map<String, dynamic>> _demoVideos = [];
+
 
   // Contents Management (New Tab)
   List<Map<String, dynamic>> _courseContents = [];
@@ -113,6 +123,8 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
     _discountController = TextEditingController();
     _finalPriceController = TextEditingController();
     _customValidityController = TextEditingController();
+    _whatsappController = TextEditingController();
+    _websiteUrlController = TextEditingController();
 
     _mrpController.addListener(_calculateFinalPrice);
     _discountController.addListener(_calculateFinalPrice);
@@ -150,6 +162,12 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
       _selectedCertSlot = course.selectedCertificateSlot;
       _isOfflineDownloadEnabled = course.isOfflineDownloadEnabled;
       _isPublished = course.isPublished;
+      _selectedLanguage = course.language;
+      _selectedCourseMode = course.courseMode;
+      _selectedSupportType = course.supportType;
+      _whatsappController.text = course.whatsappNumber;
+      _isBigScreenEnabled = course.isBigScreenEnabled;
+      _websiteUrlController.text = course.websiteUrl;
 
       // Load certificate URLs
       if (course.certificateUrl1 != null && course.certificateUrl1!.isNotEmpty) {
@@ -160,18 +178,11 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
       }
 
       // Load Contents
-      if (course.contents != null) {
-        _courseContents = List<Map<String, dynamic>>.from(
-          course.contents.map((x) => Map<String, dynamic>.from(x))
-        );
-      }
+      _courseContents = List<Map<String, dynamic>>.from(
+        course.contents.map((x) => Map<String, dynamic>.from(x))
+      );
+    
 
-      // Load Demo Videos
-      if (course.demoVideos != null) {
-        _demoVideos = List<Map<String, dynamic>>.from(
-          course.demoVideos.map((x) => Map<String, dynamic>.from(x))
-        );
-      }
 
       // Load custom validity if needed
       if (_courseValidityDays != null &&
@@ -217,6 +228,8 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
     _customValidityController.dispose();
     _pageController.dispose();
     _scrollController.dispose();
+    _whatsappController.dispose();
+    _websiteUrlController.dispose();
     _titleFocus.dispose();
     _descFocus.dispose();
     _mrpFocus.dispose();
@@ -285,8 +298,9 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
 
   void _nextStep() {
     if (_currentStep == 0 && !_validateStep0()) return;
+    if (_currentStep == 1 && !_validateStep1()) return;
 
-    if (_currentStep < 2) {
+    if (_currentStep < 3) {
       FocusScope.of(context).unfocus();
       _pageController.nextPage(
         duration: const Duration(milliseconds: 300),
@@ -323,11 +337,6 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
       _showWarning('Please enter a course description');
       return false;
     }
-    if (_mrpController.text.trim().isEmpty) {
-      _mrpFocus.requestFocus();
-      _showWarning('Please enter MRP (Price)');
-      return false;
-    }
     if (_selectedCategory == null) {
       _showWarning('Please select a course category');
       return false;
@@ -343,23 +352,30 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
     return true;
   }
 
-  bool _validateAllFields() {
-    if (!_validateStep0()) return false;
-
-    if (_courseValidityDays == null) {
-      _showWarning('Please select Course Validity duration (Step 3)');
+  bool _validateStep1() {
+    if (_mrpController.text.trim().isEmpty) {
+      _mrpFocus.requestFocus();
+      _showWarning('Please enter MRP (Price) in Step 2');
       return false;
     }
-
+    if (_courseValidityDays == null) {
+      _showWarning('Please select Course Validity duration in Step 2');
+      return false;
+    }
     if (_hasCertificate) {
       final hasCert1 = _certificate1Image != null || _currentCert1Url != null;
       final hasCert2 = _certificate2Image != null || _currentCert2Url != null;
       if (!hasCert1 && !hasCert2) {
-        _showWarning('Please upload at least one certificate design (Step 3)');
+        _showWarning('Please upload at least one certificate design in Step 2');
         return false;
       }
     }
+    return true;
+  }
 
+  bool _validateAllFields() {
+    if (!_validateStep0()) return false;
+    if (!_validateStep1()) return false;
     return true;
   }
 
@@ -391,6 +407,12 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
       updateData['category'] = _selectedCategory;
       updateData['difficulty'] = _difficulty;
       updateData['newBatchDays'] = _newBatchDurationDays;
+      updateData['language'] = _selectedLanguage;
+      updateData['courseMode'] = _selectedCourseMode;
+      updateData['supportType'] = _selectedSupportType;
+      updateData['whatsappNumber'] = _whatsappController.text.trim();
+      updateData['isBigScreenEnabled'] = _isBigScreenEnabled;
+      updateData['websiteUrl'] = _websiteUrlController.text.trim();
 
       // Validity
       final int finalValidity = _courseValidityDays == -1
@@ -405,7 +427,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
       // Settings
       updateData['isOfflineDownloadEnabled'] = _isOfflineDownloadEnabled;
       updateData['isPublished'] = _isPublished;
-      updateData['demoVideos'] = _demoVideos;
+
 
       // Highlights
       updateData['highlights'] = _highlightControllers
@@ -565,6 +587,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
         },
         children: [
           KeepAliveWrapper(child: _buildBasicInfoTab()),
+          KeepAliveWrapper(child: _buildSetupTab()),
           KeepAliveWrapper(child: _buildContentsTab()),
           KeepAliveWrapper(child: _buildAdvancedTab()),
         ],
@@ -621,7 +644,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
         onPressed: () => Navigator.pop(context),
       ),
        actions: [
-        if (_currentStep == 1) // Content Step
+        if (_currentStep == 2) // Content Step (Index shifted)
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Center(
@@ -727,7 +750,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
             isSelectionMode: false,
             isDragMode: false,
           ),
-          pinned: true,
+          pinned: true, 
         ),
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
@@ -753,12 +776,12 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                         borderRadius: BorderRadius.circular(3.0),
                         border: Border.all(color: Colors.green.withValues(alpha: 0.2)),
                       ),
-                      child: Row(
+                      child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.check_circle, size: 16, color: Colors.green),
-                          const SizedBox(width: 8),
-                          const Text(
+                          Icon(Icons.check_circle, size: 16, color: Colors.green),
+                          SizedBox(width: 8),
+                          Text(
                             'Safe & Synced',
                             style: TextStyle(
                               fontSize: 12,
@@ -803,45 +826,6 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                   alignTop: true,
                 ),
 
-                // 4. Pricing (Row of 3)
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: _buildTextField(
-                        controller: _mrpController,
-                        focusNode: _mrpFocus,
-                        label: 'MRP',
-                        hint: '5000',
-                        keyboardType: TextInputType.number,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 3,
-                      child: _buildTextField(
-                        controller: _discountController,
-                        focusNode: _discountFocus,
-                        label: 'Discount ₹',
-                        hint: '1000',
-                        keyboardType: TextInputType.number,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 2,
-                      child: _buildTextField(
-                        controller: _finalPriceController,
-                        label: 'Final',
-                        hint: 'Automatic',
-                        keyboardType: TextInputType.number,
-                        readOnly: true,
-                      ),
-                    ),
-                  ],
-                ),
-
                 // 5. Category & Type
                 Row(
                   children: [
@@ -853,8 +837,9 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                 const SizedBox(height: 16),
 
                 _buildNewBadgeDurationSelector(),
+                const SizedBox(height: 16),
 
-                const SizedBox(height: 32),
+                const SizedBox(height: 16),
 
                 // 6. Highlights Section
                 Row(
@@ -1018,6 +1003,223 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
     );
   }
 
+  Widget _buildSetupTab() {
+    return CustomScrollView(
+      slivers: [
+        SliverPersistentHeader(
+          delegate: CollapsingStepIndicator(
+            currentStep: _currentStep,
+            isSelectionMode: false,
+            isDragMode: false,
+          ),
+          pinned: true, 
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.all(24),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // 1. Pricing
+                const Text(
+                  'Pricing Setup',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: _buildTextField(
+                        controller: _mrpController,
+                        focusNode: _mrpFocus,
+                        label: 'MRP',
+                        hint: '5000',
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 3,
+                      child: _buildTextField(
+                        controller: _discountController,
+                        focusNode: _discountFocus,
+                        label: 'Discount ₹',
+                        hint: '1000',
+                        keyboardType: TextInputType.number,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 2,
+                      child: _buildTextField(
+                        controller: _finalPriceController,
+                        label: 'Final',
+                        hint: 'Automatic',
+                        keyboardType: TextInputType.number,
+                        readOnly: true,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 32),
+
+                // 2. Language & Support
+                const Text(
+                  'Language & Support',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: _selectedLanguage,
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.symmetric(vertical: _inputVerticalPadding, horizontal: 16),
+                    labelText: 'Course Language',
+                    floatingLabelBehavior: FloatingLabelBehavior.always,
+                    prefixIcon: const Icon(Icons.language, size: 20),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(_globalRadius),
+                      borderSide: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: _borderOpacity)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(_globalRadius),
+                      borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(_globalRadius)),
+                    filled: true,
+                    fillColor: AppTheme.primaryColor.withValues(alpha: _fillOpacity),
+                  ),
+                  items: _languages.map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
+                  onChanged: (v) {
+                    if (v != null) setState(() => _selectedLanguage = v);
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        isExpanded: true,
+                        initialValue: _selectedCourseMode,
+                        decoration: InputDecoration(
+                          contentPadding: const EdgeInsets.symmetric(vertical: _inputVerticalPadding, horizontal: 16),
+                          labelText: 'Course Mode',
+                          floatingLabelBehavior: FloatingLabelBehavior.always,
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(_globalRadius),
+                            borderSide: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: _borderOpacity)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(_globalRadius),
+                            borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+                          ),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(_globalRadius)),
+                          filled: true,
+                          fillColor: AppTheme.primaryColor.withValues(alpha: _fillOpacity),
+                        ),
+                        items: _courseModes.map((m) => DropdownMenuItem(value: m, child: Text(m, overflow: TextOverflow.ellipsis))).toList(),
+                        onChanged: (v) {
+                          if (v != null) setState(() => _selectedCourseMode = v);
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        isExpanded: true,
+                        initialValue: _selectedSupportType,
+                        decoration: InputDecoration(
+                          contentPadding: const EdgeInsets.symmetric(vertical: _inputVerticalPadding, horizontal: 16),
+                          labelText: 'Support Type',
+                          floatingLabelBehavior: FloatingLabelBehavior.always,
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(_globalRadius),
+                            borderSide: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: _borderOpacity)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(_globalRadius),
+                            borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+                          ),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(_globalRadius)),
+                          filled: true,
+                          fillColor: AppTheme.primaryColor.withValues(alpha: _fillOpacity),
+                        ),
+                        items: _supportTypes.map((s) => DropdownMenuItem(value: s, child: Text(s, overflow: TextOverflow.ellipsis))).toList(),
+                        onChanged: (v) {
+                          if (v != null) setState(() => _selectedSupportType = v);
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                _buildTextField(
+                  controller: _whatsappController,
+                  label: 'Support WhatsApp Number',
+                  hint: 'e.g. 919876543210',
+                  icon: Icons.phone_android,
+                  keyboardType: TextInputType.phone,
+                ),
+                const SizedBox(height: 32),
+
+                // 3. Validity & Certificate
+                const Text(
+                  'Validity & Certificate',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 12),
+                _buildValiditySelector(),
+                const SizedBox(height: 24),
+                _buildCertificateSettings(),
+                const SizedBox(height: 32),
+
+                // 4. PC/Web Support
+                const Text(
+                  'PC & Web Support',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 12),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text(
+                    'Watch on Big Screens',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: const Text(
+                    'Allow access via Web/Desktop',
+                  ),
+                  value: _isBigScreenEnabled,
+                  onChanged: (v) => setState(() => _isBigScreenEnabled = v),
+                  activeThumbColor: AppTheme.primaryColor,
+                ),
+                if (_isBigScreenEnabled) ...[
+                  const SizedBox(height: 12),
+                  _buildTextField(
+                    controller: _websiteUrlController,
+                    label: 'Website Login URL',
+                    hint: 'https://yourwebsite.com/login',
+                    icon: Icons.language,
+                  ),
+                ],
+                const SizedBox(height: 40),
+              ],
+            ),
+          ),
+        ),
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: _buildBottomNavigation(),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildAdvancedTab() {
     return CustomScrollView(
       slivers: [
@@ -1027,7 +1229,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
             isSelectionMode: false,
             isDragMode: false,
           ),
-          pinned: true,
+          pinned: true, 
         ),
         SliverPadding(
           padding: const EdgeInsets.all(24),
@@ -1035,22 +1237,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                 const Text(
-                  'Course Validity',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                 const SizedBox(height: 12),
-                 _buildValiditySelector(),
-                 const SizedBox(height: 32),
-
-                // Certificate Settings
-                const Text(
-                  'Certificate Settings',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
                 const SizedBox(height: 12),
-                _buildCertificateSettings(),
-                const SizedBox(height: 32),
 
                 // Offline Download
                  const Text(
@@ -1069,7 +1256,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                   value: _isOfflineDownloadEnabled,
                   onChanged: (v) =>
                       setState(() => _isOfflineDownloadEnabled = v),
-                  activeColor: AppTheme.primaryColor,
+                  activeThumbColor: AppTheme.primaryColor,
                   tileColor: Colors.transparent,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(_globalRadius),
@@ -1080,141 +1267,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                 ),
                 const SizedBox(height: 32),
 
-                // Demo Videos Section
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Demo Videos',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    TextButton.icon(
-                      onPressed: _courseContents.isEmpty
-                          ? null
-                          : () => _showDemoSelectionDialog(),
-                      icon: const Icon(Icons.playlist_add_check, size: 20),
-                      label: const Text('Select from Contents'),
-                      style: TextButton.styleFrom(
-                        foregroundColor: AppTheme.primaryColor,
-                      ),
-                    ),
-                  ],
-                ),
-                const Text(
-                  'Free videos shown to all users as previews',
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
                 const SizedBox(height: 12),
-                if (_demoVideos.isEmpty)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(_globalRadius),
-                      border: Border.all(
-                        color: Theme.of(context).dividerColor.withValues(alpha: _borderOpacity),
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.video_library_outlined,
-                          color: Colors.grey.shade400,
-                          size: 32,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'No demo videos added yet',
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                else
-                  Theme(
-                    data: Theme.of(
-                      context,
-                    ).copyWith(canvasColor: Colors.transparent),
-                    child: ReorderableListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: _demoVideos.length,
-                      onReorder: (oldIndex, newIndex) {
-                        setState(() {
-                          if (newIndex > oldIndex) newIndex -= 1;
-                          final item = _demoVideos.removeAt(oldIndex);
-                          _demoVideos.insert(newIndex, item);
-                        });
-                      },
-                      itemBuilder: (context, index) {
-                        final video = _demoVideos[index];
-                        return Container(
-                          key: ValueKey(video['name'] + index.toString()),
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.transparent,
-                            borderRadius: BorderRadius.circular(_globalRadius),
-                            border: Border.all(
-                              color: Theme.of(context).dividerColor.withValues(alpha: _borderOpacity),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.drag_indicator,
-                                color: Colors.grey,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                width: 60,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: Colors.black,
-                                  borderRadius: BorderRadius.circular(_globalRadius),
-                                ),
-                                child: const Icon(
-                                  Icons.play_circle_filled,
-                                  color: Colors.white,
-                                  size: 20,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Text(
-                                  video['name'],
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(
-                                  Icons.remove_circle_outline,
-                                  color: Colors.red,
-                                  size: 20,
-                                ),
-                                onPressed: () =>
-                                    setState(() => _demoVideos.removeAt(index)),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                const SizedBox(height: 32),
 
                 // Published Status
                 const Text(
@@ -1236,7 +1289,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                   ),
                   value: _isPublished,
                   onChanged: (v) => setState(() => _isPublished = v),
-                   activeColor: Colors.green,
+                   activeThumbColor: Colors.green,
                   tileColor: Colors.transparent,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(_globalRadius),
@@ -1293,7 +1346,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
             child: ElevatedButton(
               onPressed: _isLoading
                   ? null
-                  : (_currentStep < 2 ? _nextStep : _updateCourse),
+                  : (_currentStep < 3 ? _nextStep : _updateCourse),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primaryColor,
                 foregroundColor: Colors.white,
@@ -1312,7 +1365,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                       ),
                     )
                   : Text(
-                      _currentStep < 2 ? 'Next' : 'Update Course',
+                      _currentStep < 3 ? 'Next' : 'Update Course',
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -1383,21 +1436,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                     ),
                   ],
                 )
-              : Container(
-                    alignment: Alignment.bottomRight,
-                    padding: const EdgeInsets.all(8),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.7),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Text(
-                        'Change',
-                        style: TextStyle(color: Colors.white, fontSize: 12),
-                      ),
-                    ),
-                ),
+              : const SizedBox.shrink(),
         ),
       ),
     );
@@ -1406,7 +1445,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
   Widget _buildCategoryDropdown() {
     return DropdownButtonFormField<String>(
       isExpanded: true,
-      value: _selectedCategory,
+      initialValue: _selectedCategory,
       hint: Text(
         'Select Category',
         style: TextStyle(
@@ -1416,7 +1455,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
         ),
       ),
       decoration: InputDecoration(
-        contentPadding: EdgeInsets.symmetric(
+        contentPadding: const EdgeInsets.symmetric(
           vertical: _inputVerticalPadding,
           horizontal: 16,
         ),
@@ -1430,7 +1469,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(_globalRadius),
-          borderSide: BorderSide(
+          borderSide: const BorderSide(
             color: AppTheme.primaryColor,
             width: 2,
           ),
@@ -1456,7 +1495,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
   Widget _buildDifficultyDropdown() {
     return DropdownButtonFormField<String>(
       isExpanded: true,
-      value: _difficulty,
+      initialValue: _difficulty,
       hint: Text(
         'Select Type',
         style: TextStyle(
@@ -1466,7 +1505,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
         ),
       ),
       decoration: InputDecoration(
-        contentPadding: EdgeInsets.symmetric(
+        contentPadding: const EdgeInsets.symmetric(
           vertical: _inputVerticalPadding,
           horizontal: 16,
         ),
@@ -1480,7 +1519,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(_globalRadius),
-          borderSide: BorderSide(
+          borderSide: const BorderSide(
             color: AppTheme.primaryColor,
             width: 2,
           ),
@@ -1505,7 +1544,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
 
   Widget _buildNewBadgeDurationSelector() {
     return DropdownButtonFormField<int>(
-      value: _newBatchDurationDays,
+      initialValue: _newBatchDurationDays,
       hint: Text(
         'Select Duration',
         style: TextStyle(
@@ -1515,7 +1554,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
         ),
       ),
       decoration: InputDecoration(
-        contentPadding: EdgeInsets.symmetric(
+        contentPadding: const EdgeInsets.symmetric(
           vertical: _inputVerticalPadding,
           horizontal: 16,
         ),
@@ -1530,7 +1569,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(_globalRadius),
-          borderSide: BorderSide(
+          borderSide: const BorderSide(
             color: AppTheme.primaryColor,
             width: 2,
           ),
@@ -1555,13 +1594,13 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
       children: [
         DropdownButtonFormField<int>(
           isExpanded: true,
-          value: _courseValidityDays,
+          initialValue: _courseValidityDays,
           hint: const Text('Select Validity'),
           decoration: InputDecoration(
             labelText: 'Course Validity',
             floatingLabelBehavior: FloatingLabelBehavior.always,
             prefixIcon: const Icon(Icons.history_toggle_off),
-            contentPadding: EdgeInsets.symmetric(
+            contentPadding: const EdgeInsets.symmetric(
               vertical: _inputVerticalPadding,
               horizontal: 16,
             ),
@@ -1573,7 +1612,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(_globalRadius),
-              borderSide: BorderSide(color: AppTheme.primaryColor, width: 2),
+              borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(_globalRadius),
@@ -1626,7 +1665,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
             ),
             value: _hasCertificate,
             onChanged: (val) => setState(() => _hasCertificate = val),
-            activeColor: AppTheme.primaryColor,
+            activeThumbColor: AppTheme.primaryColor,
             tileColor: Colors.transparent,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(_globalRadius),
@@ -1871,7 +1910,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                     )
                   : Icon(icon, color: Colors.grey))
               : null,
-          contentPadding: EdgeInsets.symmetric(
+          contentPadding: const EdgeInsets.symmetric(
             vertical: _inputVerticalPadding,
             horizontal: 12,
           ),
@@ -1883,7 +1922,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(_globalRadius),
-            borderSide: BorderSide(color: AppTheme.primaryColor, width: 2),
+            borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(_globalRadius),
@@ -1907,7 +1946,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
             isSelectionMode: _isSelectionMode,
             isDragMode: _isDragModeActive,
           ),
-          pinned: true,
+          pinned: true, 
         ),
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
@@ -1973,7 +2012,12 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                       onEnterSelectionMode: () => _enterSelectionMode(index),
                       onStartHold: _startHoldTimer,
                       onCancelHold: _cancelHoldTimer,
-                      onRename: () => _renameContent(index),
+                      onRename: () => _renameContent(index), 
+                       onToggleLock: () { 
+                         setState(() { 
+                           _courseContents[index]['isLocked'] = !(_courseContents[index]['isLocked'] ?? true); 
+                         }); 
+                       },
                       onRemove: () => _confirmRemoveContent(index),
                       onAddThumbnail: () => _showThumbnailManagerDialog(index), 
                     );
@@ -2008,7 +2052,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
             Future<void> pickAndValidate() async {
               final result = await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => SimpleFileExplorer(
+                MaterialPageRoute(builder: (_) => const SimpleFileExplorer(
                   allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
                 )),
               );
@@ -2059,7 +2103,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                   if (hasThumbnail)
                      ClipRRect(borderRadius: BorderRadius.circular(3), child: AspectRatio(aspectRatio: 16/9, child: Image.file(File(currentThumbnail!), fit: BoxFit.cover, errorBuilder: (_,__,___) => const Center(child: Icon(Icons.broken_image)))))
                   else
-                     Container(height: 120, width: double.infinity, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(3), border: Border.all(color: Colors.grey.withValues(alpha: 0.3))), child: Column(mainAxisAlignment: MainAxisAlignment.center, children: const [Icon(Icons.image_not_supported_outlined, size: 40, color: Colors.grey), SizedBox(height: 8), Text('No Thumbnail', style: TextStyle(color: Colors.grey))])),
+                     Container(height: 120, width: double.infinity, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(3), border: Border.all(color: Colors.grey.withValues(alpha: 0.3))), child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.image_not_supported_outlined, size: 40, color: Colors.grey), SizedBox(height: 8), Text('No Thumbnail', style: TextStyle(color: Colors.grey))])),
                   
                   if (isProcessing) const Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator())
                   else Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
@@ -2110,7 +2154,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                    _buildOptionItem(Icons.video_library, 'Video', Colors.red, () => _pickContentFile('video', ['mp4', 'mkv', 'avi'])),
                    _buildOptionItem(Icons.picture_as_pdf, 'PDF', Colors.redAccent, () => _pickContentFile('pdf', ['pdf'])),
                    _buildOptionItem(Icons.image, 'Image', Colors.purple, () => _pickContentFile('image', ['jpg', 'jpeg', 'png', 'webp'])),
-                   _buildOptionItem(Icons.folder_zip, 'Zip', Colors.blueGrey, () => _pickContentFile('zip', ['zip', 'rar'])),
+                   
                    _buildOptionItem(Icons.content_paste, 'Paste', Colors.grey, _pasteContent),
                 ],
               ),
@@ -2152,7 +2196,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
           ElevatedButton(
             onPressed: () {
               if (folderNameController.text.trim().isNotEmpty) {
-                setState(() { _courseContents.insert(0, {'type': 'folder', 'name': folderNameController.text.trim(), 'contents': <Map<String, dynamic>>[], 'isLocal': true}); });
+                setState(() { _courseContents.insert(0, {'type': 'folder', 'name': folderNameController.text.trim(), 'contents': <Map<String, dynamic>>[], 'isLocal': true, 'isLocked': true}); });
                 Navigator.pop(context);
               }
             },
@@ -2181,7 +2225,8 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
              'type': type, 
              'name': path.split('/').last, 
              'path': path, 
-             'isLocal': true
+             'isLocal': true,
+             'isLocked': true
            });
          }
          
@@ -2332,7 +2377,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                       _selectedIndices.clear();
                       _isSelectionMode = false;
                    } else {
-                      _courseContents.removeAt(index!);
+                      _courseContents.removeAt(index);
                    }
                 });
                 Navigator.pop(context);
@@ -2351,7 +2396,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
      final items = ContentClipboard.items!;
      setState(() {
          for (var item in items) {
-             var newItem = Map<String, dynamic>.from(item);
+             final newItem = Map<String, dynamic>.from(item);
              newItem['isLocal'] = true; 
              _courseContents.insert(0, newItem);
          }
@@ -2360,65 +2405,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
   }
 
 
-  void _showDemoSelectionDialog() {
-    final List<Map<String, dynamic>> allVideos = _extractVideosFromContents(_courseContents);
-    if (allVideos.isEmpty) return;
 
-    showDialog(
-      context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Select Demo Videos'),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: allVideos.length,
-                  itemBuilder: (context, index) {
-                    final video = allVideos[index];
-                    final isSelected = _demoVideos.any((v) => v['url'] == video['url'] || (v['path'] == video['path'] && v['path'] != null));
-                    
-                    return CheckboxListTile(
-                      title: Text(video['name']),
-                      subtitle: video['isLocal'] == true ? const Text('Unsaved Content', style: TextStyle(fontSize: 10, color: Colors.orange)) : null,
-                      value: isSelected,
-                      onChanged: (val) {
-                        setState(() {
-                          if (val == true) {
-                            _demoVideos.add(video);
-                          } else {
-                            _demoVideos.removeWhere((v) => v['url'] == video['url'] || (v['path'] == video['path'] && v['path'] != null));
-                          }
-                        });
-                        setDialogState(() {});
-                      },
-                    );
-                  },
-                ),
-              ),
-              actions: [
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Done')),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  List<Map<String, dynamic>> _extractVideosFromContents(List<Map<String, dynamic>> items) {
-    final videos = <Map<String, dynamic>>[];
-    for (final item in items) {
-      if (item['type'] == 'video') {
-        videos.add(item);
-      } else if (item['type'] == 'folder' && item['contents'] != null) {
-        videos.addAll(_extractVideosFromContents((item['contents'] as List).cast<Map<String, dynamic>>()));
-      }
-    }
-    return videos;
-  }
 
   List<Map<String, dynamic>> _collectLocalFiles(Map<String, dynamic> updateData) {
      final List<Map<String, dynamic>> localFiles = [];
@@ -2452,16 +2439,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
          }
      }
 
-     // 2. Demo Videos
-     for (var demo in _demoVideos) {
-        if (demo['isLocal'] == true && demo['path'] != null) {
-            localFiles.add({
-               'filePath': demo['path'],
-               'remotePath': '', // TUS doesn't need remote path
-               'type': 'video'
-            });
-        }
-     }
+
 
      // 3. Contents
      void traverse(List<dynamic> items) {

@@ -1,14 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:convert';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:media_kit/media_kit.dart';
-import 'package:video_thumbnail/video_thumbnail.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../utils/app_theme.dart';
@@ -472,7 +469,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
               // ZERO CACHE: Use custom explorer
               final result = await Navigator.push(
                 context, 
-                MaterialPageRoute(builder: (_) => SimpleFileExplorer(
+                MaterialPageRoute(builder: (_) => const SimpleFileExplorer(
                   allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
                 ))
               );
@@ -543,10 +540,10 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                            child: AspectRatio(
                              aspectRatio: 16/9,
                              child: Image.file(
-                               File(currentThumbnail!), 
-                               fit: BoxFit.cover,
-                               errorBuilder: (_,__,___) => const Center(child: Icon(Icons.broken_image)),
-                             )
+                                File(currentThumbnail!), 
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => const Center(child: Icon(Icons.broken_image)),
+                              )
                            ),
                          ),
                          const SizedBox(height: 16),
@@ -562,9 +559,9 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                         border: Border.all(color: Colors.grey.withValues(alpha: 0.3), style: BorderStyle.solid)
                       ),
                       margin: const EdgeInsets.only(bottom: 16),
-                      child: Column(
+                      child: const Column(
                         mainAxisAlignment: MainAxisAlignment.center,
-                        children: const [
+                        children: [
                           Icon(Icons.image_not_supported_outlined, size: 40, color: Colors.grey),
                           SizedBox(height: 8),
                           Text('No Thumbnail', style: TextStyle(color: Colors.grey)),
@@ -640,7 +637,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
    _buildOptionItem(Icons.video_library, 'Video', Colors.red, () => _pickContentFile('video', ['mp4', 'mkv', 'avi'])),
    _buildOptionItem(Icons.picture_as_pdf, 'PDF', Colors.redAccent, () => _pickContentFile('pdf', ['pdf'])),
    _buildOptionItem(Icons.image, 'Image', Colors.purple, () => _pickContentFile('image', ['jpg', 'jpeg', 'png', 'webp'])),
-   _buildOptionItem(Icons.folder_zip, 'Zip', Colors.blueGrey, () => _pickContentFile('zip', ['zip', 'rar'])),
+   
    _buildOptionItem(Icons.content_paste, 'Paste', Colors.grey, _pasteContent),
                 ],
               ),
@@ -682,7 +679,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
           ElevatedButton(
             onPressed: () {
               if (folderNameController.text.trim().isNotEmpty) {
-                setState(() { _contents.insert(0, {'type': 'folder', 'name': folderNameController.text.trim(), 'contents': <Map<String, dynamic>>[], 'isLocal': true}); });
+                setState(() { _contents.insert(0, {'type': 'folder', 'name': folderNameController.text.trim(), 'contents': <Map<String, dynamic>>[], 'isLocal': true, 'isLocked': true}); });
                 _savePersistentContent();
                 Navigator.pop(context);
               }
@@ -715,7 +712,8 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
              'path': path, 
              'duration': null, // Will be filled by _fixMissingData
              'thumbnail': null,
-             'isLocal': true
+             'isLocal': true,
+             'isLocked': true
            });
          }
          
@@ -723,12 +721,12 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
            _contents.insertAll(0, newItems);
          });
          
-         // Only process video if needed (currently disabled for cache safety)
-         if (type == 'video') {
-            _processVideosInParallel(newItems);
-         } else {
-            _savePersistentContent();
-         }
+          // Only process video if needed (currently disabled for cache safety)
+          if (type == 'video') {
+             unawaited(_processVideosInParallel(newItems));
+          } else {
+             unawaited(_savePersistentContent());
+          }
       }
   }
 
@@ -738,9 +736,6 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       Future.delayed(const Duration(milliseconds: 500), () => _fixMissingData());
   }
 
-  Future<String?> _generateThumbnail(String path) async {
-    return null; // System Removed
-  }
 
   Future<int> _getVideoDuration(String path) async {
     final player = Player();
@@ -770,16 +765,6 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
     }
   }
 
-  String _formatDurationString(Duration dur) {
-    if (dur.inSeconds == 0) return "00:00";
-    String twoDigits(int n) => n.toString().padLeft(2, '0');
-    final minutes = twoDigits(dur.inMinutes.remainder(60));
-    final seconds = twoDigits(dur.inSeconds.remainder(60));
-    if (dur.inHours > 0) {
-      return "${twoDigits(dur.inHours)}:$minutes:$seconds";
-    }
-    return "$minutes:$seconds";
-  }
 
   Future<void> _fixMissingData() async {
     bool hasChanges = false;
@@ -827,11 +812,11 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
           }
       } else if (item['type'] == 'image' && path != null) {
           final bool isNetwork = path.startsWith('http');
-          Navigator.push(context, MaterialPageRoute(builder: (_) => ImageViewerScreen(
+          unawaited(Navigator.push(context, MaterialPageRoute(builder: (_) => ImageViewerScreen(
             filePath: path,
             title: item['name'],
             isNetwork: isNetwork,
-          )));
+          ))));
       } else if (item['type'] == 'video' && path != null) {
           // CREATE PLAYLIST: Filter only video items
           final videoList = _contents
@@ -858,17 +843,17 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
           
           final initialIndex = videoList.indexWhere((e) => e['name'] == item['name']);
           
-          Navigator.push(context, MaterialPageRoute(builder: (_) => VideoPlayerScreen(
+          unawaited(Navigator.push(context, MaterialPageRoute(builder: (_) => VideoPlayerScreen(
             playlist: videoList, 
             initialIndex: initialIndex >= 0 ? initialIndex : 0,
-          )));
+          ))));
       } else if (item['type'] == 'pdf' && path != null) {
           final bool isNetwork = path.startsWith('http');
-          Navigator.push(context, MaterialPageRoute(builder: (_) => PDFViewerScreen(
+          unawaited(Navigator.push(context, MaterialPageRoute(builder: (_) => PDFViewerScreen(
             filePath: path,
             title: item['name'],
             isNetwork: isNetwork,
-          )));
+          ))));
       }
   }
 
@@ -933,7 +918,13 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                            onEnterSelectionMode: () => _enterSelectionMode(index),
                            onStartHold: _startHoldTimer,
                            onCancelHold: _cancelHoldTimer,
-                           onRename: () => _renameContent(index),
+                           onRename: () => _renameContent(index), 
+                            onToggleLock: () { 
+                              setState(() { 
+                                _contents[index]['isLocked'] = !(_contents[index]['isLocked'] ?? true); 
+                              }); 
+                              _savePersistentContent(); 
+                            },
                            onRemove: () => _confirmRemoveContent(index),
                            onAddThumbnail: () => _showThumbnailManagerDialog(index),
                            isReadOnly: widget.isReadOnly, // Pass Read-Only state

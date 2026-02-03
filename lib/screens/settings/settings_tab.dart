@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import '../../providers/theme_provider.dart';
 import '../../utils/app_theme.dart';
 import '../../services/firebase_auth_service.dart';
 import '../../utils/quick_cleanup.dart';
@@ -80,8 +78,8 @@ class SettingsTab extends StatelessWidget {
                       color: Colors.white,
                     ),
                   ),
-                  title: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('App Control Center', maxLines: 1, overflow: TextOverflow.ellipsis)),
-                  subtitle: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('Version, Maintenance & Global Config', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                  title: const FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('App Control Center', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                  subtitle: const FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('Version, Maintenance & Global Config', maxLines: 1, overflow: TextOverflow.ellipsis)),
                   trailing: const FaIcon(
                     FontAwesomeIcons.chevronRight,
                     size: 14,
@@ -127,8 +125,8 @@ class SettingsTab extends StatelessWidget {
                       color: Colors.white,
                     ),
                   ),
-                  title: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('App Version', maxLines: 1, overflow: TextOverflow.ellipsis)),
-                  subtitle: FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('1.0.0', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                  title: const FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('App Version', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                  subtitle: const FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('1.0.0', maxLines: 1, overflow: TextOverflow.ellipsis)),
                   trailing: null,
                   onTap: null,
                 ),

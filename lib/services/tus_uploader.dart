@@ -132,8 +132,9 @@ class TusUploader {
         print("❌ [TUS] Creation Error Body: $errorData");
         
         String errorMsg = "Upload Creation Failed (${e.response?.statusCode})";
-        if (errorData != null) errorMsg += ": $errorData";
-        else if (e.message != null) errorMsg += ": ${e.message}";
+        if (errorData != null) {
+          errorMsg += ": $errorData";
+        } else if (e.message != null) errorMsg += ": ${e.message}";
         
         throw Exception(errorMsg);
       } catch (e) {
@@ -149,7 +150,7 @@ class TusUploader {
     try {
       while (offset < fileSize) {
         if (cancelToken?.isCancelled == true) {
-          throw DioException(requestOptions: RequestOptions(path: uploadUrl!), type: DioExceptionType.cancel, error: "User paused upload");
+          throw DioException(requestOptions: RequestOptions(path: uploadUrl), type: DioExceptionType.cancel, error: "User paused upload");
         }
 
         // Read chunk
@@ -164,7 +165,7 @@ class TusUploader {
         // Upload chunk
         try {
           final response = await _dio.patch(
-            uploadUrl!,
+            uploadUrl,
             data: chunkData,
             options: Options(
               validateStatus: (status) => status! < 500, // Don't throw for 400

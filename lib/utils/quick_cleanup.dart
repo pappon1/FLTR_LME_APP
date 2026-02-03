@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
@@ -71,13 +70,7 @@ class QuickCleanup {
           }
           
           // Collect demo videos
-          if (data['demoVideos'] != null) {
-            for (var demo in data['demoVideos']) {
-              if (demo['path'] != null && demo['path'].toString().contains('b-cdn.net')) {
-                filesToDelete.add(demo['path']);
-              }
-            }
-          }
+
 
           // Delete each file from BunnyCDN
           for (var fileUrl in filesToDelete) {

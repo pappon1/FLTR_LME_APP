@@ -4,10 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../utils/app_theme.dart';
-import 'package:shimmer/shimmer.dart';
-import 'package:flutter_background_service/flutter_background_service.dart';
 import '../uploads/upload_progress_screen.dart';
-import '../../widgets/shimmer_loading.dart';
 import '../../widgets/course_card_skeleton.dart';
 import '../../widgets/course_card.dart';
 import '../../models/course_model.dart';
@@ -71,7 +68,7 @@ class _CoursesTabState extends State<CoursesTab> {
               onPressed: () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const UploadProgressScreen()));
               },
-              icon: Icon(Icons.cloud_upload_outlined, color: AppTheme.primaryColor),
+              icon: const Icon(Icons.cloud_upload_outlined, color: AppTheme.primaryColor),
               tooltip: 'Upload Manager',
             ),
           ),

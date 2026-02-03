@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'dart:io';
-import 'package:lottie/lottie.dart';
 import '../../utils/app_theme.dart';
 import 'dart:convert';
 import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../../widgets/shimmer_loading.dart';
 import '../../widgets/video_thumbnail_widget.dart';
 import 'dart:math' as math;
@@ -338,8 +336,9 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
 
     for (final t in _queue) {
       final status = t['status'];
-      if (status == 'pending') pending++;
-      else if (status == 'uploading') uploading++;
+      if (status == 'pending') {
+        pending++;
+      } else if (status == 'uploading') uploading++;
       else if (status == 'completed') completed++;
       else if (status == 'failed') failed++;
     }
@@ -506,7 +505,7 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
               const SizedBox(width: 8),
               Text(
                 '${(progress * 100).toInt()}%', 
-                style: TextStyle(
+                style: const TextStyle(
                   color: AppTheme.primaryColor, 
                   fontSize: 14, 
                   fontWeight: FontWeight.bold
@@ -525,7 +524,7 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
                 value: value,
                 minHeight: 4, 
                 backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-                valueColor: AlwaysStoppedAnimation(AppTheme.primaryColor),
+                valueColor: const AlwaysStoppedAnimation(AppTheme.primaryColor),
               ),
             ),
           ),
@@ -667,8 +666,8 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
 String _formatBytes(int? bytes, int decimals) {
   if (bytes == null || bytes <= 0) return "0 B";
   const suffixes = ["B", "KB", "MB", "GB", "TB"];
-  var i = (math.log(bytes) / math.log(1024)).floor();
-  return ((bytes / math.pow(1024, i)).toStringAsFixed(decimals)) + ' ' + suffixes[i];
+  final i = (math.log(bytes) / math.log(1024)).floor();
+  return '${(bytes / math.pow(1024, i)).toStringAsFixed(decimals)} ${suffixes[i]}';
 }
 
 class UploadTaskCard extends StatelessWidget {
@@ -751,7 +750,7 @@ class UploadTaskCard extends StatelessWidget {
                         color: Colors.white,
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(Icons.check_circle_rounded, color: AppTheme.primaryColor, size: 20),
+                      child: const Icon(Icons.check_circle_rounded, color: AppTheme.primaryColor, size: 20),
                     ),
                   ),
               ],

@@ -140,8 +140,8 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                     }
                   },
                   style: Theme.of(context).elevatedButtonTheme.style?.copyWith(
-                    backgroundColor: MaterialStateProperty.all(AppTheme.primaryColor),
-                    foregroundColor: MaterialStateProperty.all(Colors.white),
+                    backgroundColor: WidgetStateProperty.all(AppTheme.primaryColor),
+                    foregroundColor: WidgetStateProperty.all(Colors.white),
                   ),
                   child: const Text('Save Changes'),
                 ),
@@ -192,7 +192,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppTheme.primaryColor),
+          borderSide: const BorderSide(color: AppTheme.primaryColor),
         ),
         filled: true,
         fillColor: readOnly ? Theme.of(context).dividerColor.withOpacity(0.05) : Theme.of(context).cardColor,

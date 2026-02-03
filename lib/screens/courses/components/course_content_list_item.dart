@@ -17,6 +17,7 @@ class CourseContentListItem extends StatelessWidget {
   final VoidCallback onRename;
   final VoidCallback onRemove;
   final VoidCallback? onAddThumbnail;
+  final VoidCallback? onToggleLock;
   final bool isReadOnly;
 
   const CourseContentListItem({
@@ -34,12 +35,13 @@ class CourseContentListItem extends StatelessWidget {
     required this.onRename,
     required this.onRemove,
     this.onAddThumbnail,
+    this.onToggleLock,
     this.isReadOnly = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    bool isMedia = item['type'] == 'video' || item['type'] == 'image';
+    final bool isMedia = item['type'] == 'video' || item['type'] == 'image';
 
     return Material(
       color: Colors.transparent,
@@ -151,17 +153,14 @@ class CourseContentListItem extends StatelessWidget {
           color = Colors.blue;
       }
 
-      double size = 60.0; // Fixed size as per user request
-      double iconDisplaySize = size * 0.56; // Ratio 28/50 approx -> ~33.6
+      const double size = 60.0; // Fixed size as per user request
+      const double iconDisplaySize = size * 0.56; // Ratio 28/50 approx -> ~33.6
 
       return ListTile(
         onTap: isReadOnly
-            ? () {
-                print('🎯 [ListTile TAP] Read-only mode: ${item['name']}');
-                onTap();
-              }
+            ? onTap
             : null,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8), 
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8), 
         leading: Hero(
           tag: (item['path'] ?? item['name']) + index.toString() + (isReadOnly ? '_read' : ''),
           child: Container(
@@ -185,79 +184,105 @@ class CourseContentListItem extends StatelessWidget {
             height: 1.2, 
           ),
         ),
-        trailing: !isReadOnly && !isSelectionMode
-            ? PopupMenuButton<String>(
-                icon: Icon(Icons.more_vert, color: Colors.grey.shade600),
-                onSelected: (value) {
-                  switch (value) {
-                    case 'rename':
-                      onRename();
-                      break;
-                    case 'thumbnail':
-                      onAddThumbnail?.call();
-                      break;
-                    case 'delete':
-                      onRemove();
-                      break;
-                  }
-                },
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'rename',
-                    child: Row(
-                      children: [
-                        Icon(Icons.edit, size: 18),
-                        SizedBox(width: 8),
-                        Text('Rename'),
-                      ],
-                    ),
-                  ),
-                  if (onAddThumbnail != null && item['type'] == 'video')
-                    const PopupMenuItem(
-                      value: 'thumbnail',
-                      child: Row(
-                        children: [
-                          Icon(Icons.image, size: 18),
-                          SizedBox(width: 8),
-                          Text('Thumbnail'),
-                        ],
+        trailing: isReadOnly 
+            ? Icon(Icons.lock_outline, size: 20, color: Colors.grey.shade400)
+            : (!isSelectionMode
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      PopupMenuButton<String>(
+                    icon: Icon(Icons.more_vert, color: Colors.grey.shade600),
+                    onSelected: (value) {
+                      switch (value) {
+                        case 'rename':
+                          onRename();
+                          break;
+                        case 'thumbnail':
+                          onAddThumbnail?.call();
+                          break;
+                        case 'delete':
+                          onRemove();
+                          break;
+                        case 'toggle_lock':
+                          onToggleLock?.call();
+                          break;
+                      }
+                    },
+                    itemBuilder: (context) {
+                      final bool isLocked = item['isLocked'] ?? true;
+                      return [
+                      const PopupMenuItem(
+                        value: 'rename',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit, size: 18),
+                            SizedBox(width: 8),
+                            Text('Rename'),
+                          ],
+                        ),
                       ),
-                    ),
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete, size: 18, color: Colors.red),
-                        SizedBox(width: 8),
-                        Text('Delete', style: TextStyle(color: Colors.red)),
-                      ],
-                    ),
+                      if (onAddThumbnail != null && item['type'] == 'video')
+                        const PopupMenuItem(
+                          value: 'thumbnail',
+                          child: Row(
+                            children: [
+                              Icon(Icons.image, size: 18),
+                              SizedBox(width: 8),
+                              Text('Thumbnail'),
+                            ],
+                          ),
+                        ),
+                      PopupMenuItem(
+                        value: 'toggle_lock',
+                        child: Row(
+                          children: [
+                            Icon(isLocked ? Icons.lock_open : Icons.lock, size: 18),
+                            const SizedBox(width: 8),
+                            Text(isLocked ? 'Unlock' : 'Lock'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete, size: 18, color: Colors.red),
+                            SizedBox(width: 8),
+                            Text('Delete', style: TextStyle(color: Colors.red)),
+                          ],
+                        ),
+                      ),
+                    ];
+                    },
                   ),
-                ],
-              )
-            : null,
+                  if (item['isLocked'] ?? true) ...[
+                      const SizedBox(width: 4),
+                      const Icon(Icons.lock, size: 16, color: Colors.orange), 
+                  ],
+                  ],
+                )
+                : null),
       );
   }
 
   Widget _buildMediaLayout(BuildContext context) {
     // YouTube Style List Layout: Left Thumbnail, Right Title
-    bool isImage = item['type'] == 'image';
+    final bool isImage = item['type'] == 'image';
     
     // Config: Image = 80x80 (1:1), Video = 120x68 (16:9)
-    double thumbWidth = isImage ? 80.0 : 120.0;
-    double thumbHeight = isImage ? 80.0 : 68.0;
+    final double thumbWidth = isImage ? 80.0 : 120.0;
+    final double thumbHeight = isImage ? 80.0 : 68.0;
 
     return InkWell(
       onTap: isReadOnly 
-        ? () {
-            print('🎯 [Media TAP] Read-only mode: ${item['name']}');
-            onTap();
-          } 
+        ? onTap 
         : null,
       borderRadius: BorderRadius.circular(3.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
           // 1. Left Thumbnail Section
           Hero(
             tag: (item['path'] ?? item['name']) + index.toString() + (isReadOnly ? '_read' : ''),
@@ -303,7 +328,7 @@ class CourseContentListItem extends StatelessWidget {
                             return Container(
                               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                               decoration: BoxDecoration(
-                                color: Colors.black.withOpacity(0.8),
+                                color: Colors.black.withValues(alpha: 0.8),
                                 borderRadius: BorderRadius.circular(4),
                               ),
                               child: Text(
@@ -325,13 +350,13 @@ class CourseContentListItem extends StatelessWidget {
             ),
           ),
           
-          // 2. Right Info Section
+          // 2. Center Text Section
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 8, 0), // Tuned padding: Top aligned with image
+              padding: const EdgeInsets.symmetric(horizontal: 12), // Gap between thumb and text
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
                     item['name'],
@@ -350,10 +375,10 @@ class CourseContentListItem extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: isImage ? Colors.blue.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                      color: isImage ? Colors.blue.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(3),
                       border: Border.all(
-                        color: isImage ? Colors.blue.withOpacity(0.2) : Colors.red.withOpacity(0.2),
+                        color: isImage ? Colors.blue.withValues(alpha: 0.2) : Colors.red.withValues(alpha: 0.2),
                         width: 0.5
                       )
                     ),
@@ -372,11 +397,16 @@ class CourseContentListItem extends StatelessWidget {
             ),
           ),
           
-          // 3. Right 3-dot Menu
-          if (!isReadOnly && !isSelectionMode)
-            PopupMenuButton<String>(
+          // 3. Right 3-dot Menu or Lock Icon
+            if (isReadOnly)
+             Icon(Icons.lock_outline, size: 20, color: Colors.grey.shade400)
+             else if (!isSelectionMode)
+             Row(
+               mainAxisSize: MainAxisSize.min,
+               children: [
+                 PopupMenuButton<String>(
               icon: Icon(Icons.more_vert, color: Colors.grey.shade600),
-              padding: const EdgeInsets.all(8),
+              // Remove explicit padding to let Row/ListTile alignment handle it
               onSelected: (value) {
                 switch (value) {
                   case 'rename':
@@ -388,9 +418,14 @@ class CourseContentListItem extends StatelessWidget {
                   case 'delete':
                     onRemove();
                     break;
+                  case 'toggle_lock':
+                    onToggleLock?.call();
+                    break;
                 }
               },
-              itemBuilder: (context) => [
+              itemBuilder: (context) {
+                final bool isLocked = item['isLocked'] ?? true;
+                return [
                 const PopupMenuItem(
                   value: 'rename',
                   child: Row(
@@ -412,6 +447,16 @@ class CourseContentListItem extends StatelessWidget {
                       ],
                     ),
                   ),
+                PopupMenuItem(
+                  value: 'toggle_lock',
+                  child: Row(
+                    children: [
+                      Icon(isLocked ? Icons.lock_open : Icons.lock, size: 18),
+                      const SizedBox(width: 8),
+                      Text(isLocked ? 'Unlock' : 'Lock'),
+                    ],
+                  ),
+                ),
                 const PopupMenuItem(
                   value: 'delete',
                   child: Row(
@@ -422,10 +467,18 @@ class CourseContentListItem extends StatelessWidget {
                     ],
                   ),
                 ),
-              ],
+              ];
+              },
             ),
+             if (item['isLocked'] ?? true) ...[
+                 const SizedBox(width: 4),
+                 const Icon(Icons.lock, size: 16, color: Colors.orange),
+             ],
+           ],
+          ),
         ],
       ),
+     ),
     );
   }
   
@@ -454,8 +507,8 @@ class CourseContentListItem extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             isNetwork
-                ? Image.network(thumb, fit: BoxFit.cover, errorBuilder: (_,__,___) => Container(color: Colors.black))
-                : Image.file(File(thumb), fit: BoxFit.cover, errorBuilder: (_,__,___) => Container(color: Colors.black)),
+                ? Image.network(thumb, fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) => Container(color: Colors.black))
+                : Image.file(File(thumb), fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) => Container(color: Colors.black)),
 
           ],
         );
@@ -474,8 +527,8 @@ class CourseContentListItem extends StatelessWidget {
        final bool isNetwork = pathStr.startsWith('http');
        try {
          return isNetwork
-            ? Image.network(pathStr, fit: BoxFit.cover, errorBuilder: (_,__,___) => Center(child: Icon(defaultIcon, color: defaultColor, size: 48)))
-            : Image.file(File(pathStr), fit: BoxFit.cover, errorBuilder: (_,__,___) => Center(child: Icon(defaultIcon, color: defaultColor, size: 48)));
+            ? Image.network(pathStr, fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) => Center(child: Icon(defaultIcon, color: defaultColor, size: 48)))
+            : Image.file(File(pathStr), fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) => Center(child: Icon(defaultIcon, color: defaultColor, size: 48)));
        } catch (_) {
          return Center(child: Icon(defaultIcon, color: defaultColor, size: 48));
        }
@@ -527,9 +580,9 @@ class CourseContentListItem extends StatelessWidget {
       final seconds = totalSeconds % 60;
 
       if (hours > 0) {
-        return '${hours}:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+        return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
       } else {
-        return '${minutes}:${seconds.toString().padLeft(2, '0')}';
+        return '$minutes:${seconds.toString().padLeft(2, '0')}';
       }
     } catch (e) {
       return '';

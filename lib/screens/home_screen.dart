@@ -9,7 +9,6 @@ import 'courses/courses_tab.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'settings/settings_tab.dart';
-import 'uploads/upload_progress_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});

@@ -44,7 +44,7 @@ class _CourseMigrationScreenState extends State<CourseMigrationScreen> {
         
         _addLog('Processing: $courseName');
         
-        List<dynamic> contents = data['contents'] ?? [];
+        final List<dynamic> contents = data['contents'] ?? [];
         bool hasChanges = false;
 
         // Recursive function to fix durations

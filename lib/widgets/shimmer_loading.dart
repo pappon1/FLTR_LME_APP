@@ -112,34 +112,34 @@ class StudentShimmerItem extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: _SkeletonBox(height: 16, width: 140),
           ),
-          subtitle: Column(
+          subtitle: const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 8), // Gap between title and subtitle
+              SizedBox(height: 8), // Gap between title and subtitle
               // Email Row
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const _SkeletonBox(height: 11, width: 11, borderRadius: 3),
-                  const SizedBox(width: 8),
-                  const Expanded(
+                  _SkeletonBox(height: 11, width: 11, borderRadius: 3),
+                  SizedBox(width: 8),
+                  Expanded(
                     child: _SkeletonBox(height: 12, width: double.infinity),
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
                // WhatsApp Row
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                   const _SkeletonBox(height: 11, width: 11, borderRadius: 3),
-                  const SizedBox(width: 8),
-                  const Expanded(
+                   _SkeletonBox(height: 11, width: 11, borderRadius: 3),
+                  SizedBox(width: 8),
+                  Expanded(
                     child: _SkeletonBox(height: 12, width: 100),
                   ),
                 ],
               ),
-              const SizedBox(height: 10),
+              SizedBox(height: 10),
               // Details Row (Wrapped)
               Wrap(
                 spacing: 16,
@@ -149,18 +149,18 @@ class StudentShimmerItem extends StatelessWidget {
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const _SkeletonBox(height: 11, width: 11, borderRadius: 3),
-                      const SizedBox(width: 6),
-                      const _SkeletonBox(height: 10, width: 50),
+                      _SkeletonBox(height: 11, width: 11, borderRadius: 3),
+                      SizedBox(width: 6),
+                      _SkeletonBox(height: 10, width: 50),
                     ],
                   ),
                   // Joined Date
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const _SkeletonBox(height: 11, width: 11, borderRadius: 3),
-                      const SizedBox(width: 6),
-                      const _SkeletonBox(height: 10, width: 70),
+                      _SkeletonBox(height: 11, width: 11, borderRadius: 3),
+                      SizedBox(width: 6),
+                      _SkeletonBox(height: 10, width: 70),
                     ],
                   ),
                 ],

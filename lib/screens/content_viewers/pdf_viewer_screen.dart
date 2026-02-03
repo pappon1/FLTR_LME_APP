@@ -73,7 +73,10 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
     _fadeController.dispose();
     // Memory optimization: Clear temp PDF files
     if (widget.isNetwork && _localPath != null) {
-      File(_localPath!).delete().catchError((_) {});
+      File(_localPath!).delete().catchError((error) {
+        debugPrint('Error deleting local PDF: $error');
+        return File(_localPath!);
+      });
     }
     super.dispose();
   }

@@ -16,24 +16,24 @@ class UserProfileScreen extends StatefulWidget {
 
 class _UserProfileScreenState extends State<UserProfileScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  double _profileCardHeight = 84.0; 
-  double _profileCardOffset = -10.0;
-  double _profileCardWidthMargin = 20.0;
-  double _profileCardRadius = 100.0;
+  final double _profileCardHeight = 84.0; 
+  final double _profileCardOffset = -10.0;
+  final double _profileCardWidthMargin = 20.0;
+  final double _profileCardRadius = 100.0;
 
   // Final Tab Indicator Values
-  double _tabIndHeight = 35.0;
-  double _tabIndWidthPadding = 19.0;
-  double _tabIndRadius = 50.0;
-  double _tabIndOffsetY = 0.0;
+  final double _tabIndHeight = 35.0;
+  final double _tabIndWidthPadding = 19.0;
+  final double _tabIndRadius = 50.0;
+  final double _tabIndOffsetY = 0.0;
 
   // Tabs & Divider Shift
-  double _tabsLift = -7.0;
-  double _dividerShift = -9.0;
-  double _contentLift = -15.0; // Lifting the content inside tabs
-  double _infoCardPadding = 9.0; // Vertical padding for info cards
-  double _borderOpacity = 0.22; // Fixed Border Opacity
-  double _dividerOpacity = 0.22; // Fixed Divider Opacity
+  final double _tabsLift = -7.0;
+  final double _dividerShift = -9.0;
+  final double _contentLift = -15.0; // Lifting the content inside tabs
+  final double _infoCardPadding = 9.0; // Vertical padding for info cards
+  final double _borderOpacity = 0.22; // Fixed Border Opacity
+  final double _dividerOpacity = 0.22; // Fixed Divider Opacity
 
   @override
   void initState() {
@@ -635,7 +635,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> with SingleTicker
                 ],
               ),
             );
-          }).toList(),
+          }),
         ],
       ),
     );

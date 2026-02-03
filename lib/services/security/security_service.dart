@@ -176,24 +176,31 @@ class _ResetPinAuthDialogState extends State<_ResetPinAuthDialog> {
       if (user == null) return;
 
       if (_isGoogleUser) {
-        // Use constructor (v6)
-        final GoogleSignIn googleSignIn = GoogleSignIn();
+        final GoogleSignIn googleSignIn = GoogleSignIn.instance;
+        await googleSignIn.initialize();
         
         try {
-          // Trigger the authentication flow (v6 uses signIn)
-          final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+          // Trigger the authentication flow (v7 uses authenticate)
+          final GoogleSignInAccount? googleUser = await googleSignIn.authenticate();
           
           if (googleUser == null) {
             throw FirebaseAuthException(code: 'user-cancelled', message: 'User cancelled sign in');
           }
           
-          // Obtain the auth details from the request
-          final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+          // Obtain the auth details from the request (synchronous in v7)
+          final GoogleSignInAuthentication googleAuth = googleUser.authentication;
+
+          // Obtain access token via authorization (Separate step in v7)
+          String? accessToken;
+          try {
+            final authClient = await googleUser.authorizationClient.authorizeScopes([]);
+            accessToken = authClient.accessToken;
+          } catch (_) {}
 
           // Create a new credential
           final AuthCredential credential = GoogleAuthProvider.credential(
             idToken: googleAuth.idToken,
-            accessToken: googleAuth.accessToken,
+            accessToken: accessToken,
           );
           
           // Reauthenticate

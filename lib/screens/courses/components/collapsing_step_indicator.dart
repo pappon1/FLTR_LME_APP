@@ -52,9 +52,11 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
                 children: [
                   Flexible(child: _buildStepCircle(0, 'Basic Info', progress)),
                   _buildStepLine(0, progress),
-                  Flexible(child: _buildStepCircle(1, 'Contents', progress)),
+                  Flexible(child: _buildStepCircle(1, 'Setup', progress)),
                   _buildStepLine(1, progress),
-                  Flexible(child: _buildStepCircle(2, 'Advance', progress)),
+                  Flexible(child: _buildStepCircle(2, 'Contents', progress)),
+                  _buildStepLine(2, progress),
+                  Flexible(child: _buildStepCircle(3, 'Advance', progress)),
                 ],
               ),
             ),

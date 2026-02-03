@@ -330,13 +330,7 @@ class AdminCleanupUtility {
             }
 
             if (data['contents'] != null) collectFiles(data['contents']);
-            if (data['demoVideos'] != null) {
-              for (var demo in data['demoVideos']) {
-                if (demo['path'] != null && demo['path'].toString().contains('b-cdn.net')) {
-                  filesToDelete.add(demo['path']);
-                }
-              }
-            }
+
 
             // Delete each file
             for (var fileUrl in filesToDelete) {
@@ -370,8 +364,7 @@ class AdminCleanupUtility {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              '✅ Successfully deleted ${coursesSnapshot.docs.length} courses' +
-              (deleteFiles ? ' and all associated files' : ''),
+              '✅ Successfully deleted ${coursesSnapshot.docs.length} courses${deleteFiles ? ' and all associated files' : ''}',
             ),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 4),
