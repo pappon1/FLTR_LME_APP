@@ -36,9 +36,26 @@ class AddCourseScreen extends StatefulWidget {
 }
 
 class CourseUploadTask {
+  final String id;
   final String label;
   double progress;
-  CourseUploadTask({required this.label, this.progress = 0.0});
+  String status;
+
+  CourseUploadTask({
+    required this.id,
+    required this.label,
+    this.progress = 0.0,
+    this.status = 'pending',
+  });
+
+  factory CourseUploadTask.fromMap(Map<String, dynamic> map) {
+    return CourseUploadTask(
+      id: map['id'] ?? '',
+      label: map['remotePath']?.toString().split('/').last ?? 'File',
+      progress: (map['progress'] ?? 0.0).toDouble(),
+      status: map['status'] ?? 'pending',
+    );
+  }
 }
 
 class _AddCourseScreenState extends State<AddCourseScreen>
@@ -147,6 +164,28 @@ class _AddCourseScreenState extends State<AddCourseScreen>
     // Load Draft
     _loadCourseDraft().then((_) {
       if (mounted) setState(() => _isInitialLoading = false);
+    });
+
+    // Background Service Progress Listener
+    final service = FlutterBackgroundService();
+    service.on('update').listen((event) {
+      if (event != null && mounted) {
+        final List<dynamic>? queue = event['queue'];
+        if (queue != null) {
+          setState(() {
+            _uploadTasks = queue.map((t) => CourseUploadTask.fromMap(Map<String, dynamic>.from(t))).toList();
+            _calculateOverallProgress();
+          });
+        }
+      }
+    });
+
+    service.on('all_completed').listen((event) {
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+        });
+      }
     });
   }
 
@@ -483,6 +522,11 @@ class _AddCourseScreenState extends State<AddCourseScreen>
       _showWarning('Please select Course Validity duration in Step 2');
       return false;
     }
+    if (_courseValidityDays == -1 && _customValidityController.text.trim().isEmpty) {
+      _jumpToStep(1);
+      _showWarning('Please enter custom validity days in Step 2');
+      return false;
+    }
     if (_hasCertificate) {
       if (_certificate1Image == null && _certificate2Image == null) {
         _jumpToStep(1);
@@ -638,41 +682,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
       ),
     );
   }
-
   void _nextStep() async {
-    // 1. Validation for Step 0 (Basic Info)
-    if (_currentStep == 0) {
-      if (!_validateStep0()) return;
-
-      // Auto-Cleanup FAQs & Highlights: Step 1 contains both
-      bool cleaned = false;
-      setState(() {
-        // Cleanup FAQs
-        for (int i = _faqControllers.length - 1; i >= 0; i--) {
-          final q = _faqControllers[i]['q']?.text.trim() ?? '';
-          final a = _faqControllers[i]['a']?.text.trim() ?? '';
-          if (q.isEmpty && a.isEmpty) {
-            _faqControllers[i]['q']?.dispose();
-            _faqControllers[i]['a']?.dispose();
-            _faqControllers.removeAt(i);
-            cleaned = true;
-          }
-        }
-
-        // Cleanup Highlights
-        for (int i = _highlightControllers.length - 1; i >= 0; i--) {
-          if (_highlightControllers[i].text.trim().isEmpty) {
-            _highlightControllers[i].dispose();
-            _highlightControllers.removeAt(i);
-            cleaned = true;
-          }
-        }
-      });
-      if (cleaned) {
-        await _saveCourseDraft();
-      }
-    }
-
     if (_currentStep == 0 && !_validateStep0()) return;
     if (_currentStep == 1 && !_validateStep1_5()) return;
 
@@ -699,11 +709,6 @@ class _AddCourseScreenState extends State<AddCourseScreen>
     if (_descController.text.trim().isEmpty) {
       _descFocus.requestFocus();
       _showWarning('Please enter a course description');
-      return false;
-    }
-    if (_mrpController.text.trim().isEmpty) {
-      _mrpFocus.requestFocus();
-      _showWarning('Please enter MRP (Price)');
       return false;
     }
     if (_selectedCategory == null) {
@@ -852,11 +857,11 @@ class _AddCourseScreenState extends State<AddCourseScreen>
         id: newDocId,
         title: _titleController.text.trim(),
         category: _selectedCategory!,
-        price: int.parse(_finalPriceController.text),
-        discountPrice: int.parse(_mrpController.text),
+        price: int.tryParse(_mrpController.text) ?? 0,
+        discountPrice: int.tryParse(_finalPriceController.text) ?? 0,
         description: finalDesc,
         thumbnailUrl: _thumbnailImage?.path ?? '',
-        duration: '',
+        duration: _durationController.text.trim(),
         difficulty: _difficulty!,
         enrolledStudents: 0,
         rating: 0.0,
@@ -905,7 +910,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
           'filePath': filePath,
           'remotePath': remotePath,
           'id': id,
-          'thumbnail': ?thumbnail,
+          'thumbnail': thumbnail,
         });
       }
 
@@ -1073,6 +1078,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
     }
     _totalProgress = total / _uploadTasks.length;
   }
+
 
   // Helper to get ALL local files for upload
   List<Map<String, dynamic>> _getAllLocalFilesFromContents(
@@ -2179,7 +2185,6 @@ class _AddCourseScreenState extends State<AddCourseScreen>
         videos.addAll(_getAllVideosFromContents(item['contents']));
       }
     }
-    return videos;
     return videos;
   }
 
@@ -3537,7 +3542,9 @@ class _AddCourseScreenState extends State<AddCourseScreen>
               children: [
                 const SizedBox(height: 16),
 
-
+                // Review Card
+                _buildCourseReviewCard(),
+                const SizedBox(height: 32),
 
                 // 5. Publish Toggle
                 const Text(
