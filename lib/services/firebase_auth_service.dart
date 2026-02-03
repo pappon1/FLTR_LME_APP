@@ -28,12 +28,7 @@ class FirebaseAuthService {
       await _initGoogleSignIn();
 
       // 2. Trigger Google Sign-In flow (authenticate replaces signIn)
-      final GoogleSignInAccount? googleUser = await _googleSignIn.authenticate();
-      
-      if (googleUser == null) {
-        // User cancelled flow
-        return null; 
-      }
+      final GoogleSignInAccount googleUser = await _googleSignIn.authenticate();
       
       // 3. Obtain auth details (Synchronous getter in v7)
       final GoogleSignInAuthentication googleAuth = googleUser.authentication;
