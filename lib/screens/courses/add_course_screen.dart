@@ -1813,6 +1813,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         isExpanded: true,
+                        style: const TextStyle(color: Colors.white, fontSize: 16),
                         initialValue: _selectedCategory,
                         hint: Text(
                           'Select Category',
@@ -1871,6 +1872,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         isExpanded: true,
+                        style: const TextStyle(color: Colors.white, fontSize: 16),
                         initialValue: _difficulty,
                         hint: Text(
                           'Select Type',
@@ -1930,6 +1932,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                 const SizedBox(height: 16),
 
                 DropdownButtonFormField<int>(
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
                   initialValue: _newBatchDurationDays,
                   hint: Text(
                     'Select Duration',
@@ -3106,6 +3109,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
                   initialValue: _selectedLanguage,
                   decoration: InputDecoration(
                     contentPadding: EdgeInsets.symmetric(vertical: _inputVerticalPadding, horizontal: 16),
@@ -3137,6 +3141,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         isExpanded: true,
+                        style: const TextStyle(color: Colors.white, fontSize: 16),
                         initialValue: _selectedCourseMode,
                         decoration: InputDecoration(
                           contentPadding: EdgeInsets.symmetric(vertical: _inputVerticalPadding, horizontal: 16),
@@ -3165,6 +3170,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         isExpanded: true,
+                        style: const TextStyle(color: Colors.white, fontSize: 16),
                         initialValue: _selectedSupportType,
                         decoration: InputDecoration(
                           contentPadding: EdgeInsets.symmetric(vertical: _inputVerticalPadding, horizontal: 16),
@@ -3268,6 +3274,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
   Widget _buildValiditySelector() {
     return DropdownButtonFormField<int>(
       isExpanded: true,
+      style: const TextStyle(color: Colors.white, fontSize: 16),
       initialValue: _courseValidityDays,
       hint: const Text('Select Validity'),
       decoration: InputDecoration(
@@ -3705,11 +3712,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
             ? TextAlignVertical.top
             : TextAlignVertical.center,
         style: TextStyle(
-          color: readOnly
-              ? Theme.of(
-                  context,
-                ).textTheme.bodyMedium?.color?.withValues(alpha: 0.8)
-              : Theme.of(context).textTheme.bodyMedium?.color,
+          color: Colors.white,
           fontWeight: readOnly ? FontWeight.bold : FontWeight.normal,
         ),
         decoration: InputDecoration(

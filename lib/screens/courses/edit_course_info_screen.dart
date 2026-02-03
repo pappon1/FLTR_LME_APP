@@ -1072,6 +1072,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
+                  style: const TextStyle(color: Colors.white, fontSize: 16),
                   initialValue: _selectedLanguage,
                   decoration: InputDecoration(
                     contentPadding: const EdgeInsets.symmetric(vertical: _inputVerticalPadding, horizontal: 16),
@@ -1102,6 +1103,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         isExpanded: true,
+                        style: const TextStyle(color: Colors.white, fontSize: 16),
                         initialValue: _selectedCourseMode,
                         decoration: InputDecoration(
                           contentPadding: const EdgeInsets.symmetric(vertical: _inputVerticalPadding, horizontal: 16),
@@ -1129,6 +1131,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         isExpanded: true,
+                        style: const TextStyle(color: Colors.white, fontSize: 16),
                         initialValue: _selectedSupportType,
                         decoration: InputDecoration(
                           contentPadding: const EdgeInsets.symmetric(vertical: _inputVerticalPadding, horizontal: 16),
@@ -1445,6 +1448,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
   Widget _buildCategoryDropdown() {
     return DropdownButtonFormField<String>(
       isExpanded: true,
+      style: const TextStyle(color: Colors.white, fontSize: 16),
       initialValue: _selectedCategory,
       hint: Text(
         'Select Category',
@@ -1495,6 +1499,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
   Widget _buildDifficultyDropdown() {
     return DropdownButtonFormField<String>(
       isExpanded: true,
+      style: const TextStyle(color: Colors.white, fontSize: 16),
       initialValue: _difficulty,
       hint: Text(
         'Select Type',
@@ -1544,6 +1549,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
 
   Widget _buildNewBadgeDurationSelector() {
     return DropdownButtonFormField<int>(
+      style: const TextStyle(color: Colors.white, fontSize: 16),
       initialValue: _newBatchDurationDays,
       hint: Text(
         'Select Duration',
@@ -1594,6 +1600,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
       children: [
         DropdownButtonFormField<int>(
           isExpanded: true,
+          style: const TextStyle(color: Colors.white, fontSize: 16),
           initialValue: _courseValidityDays,
           hint: const Text('Select Validity'),
           decoration: InputDecoration(
@@ -1881,9 +1888,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
         onChanged: onChanged,
         textAlignVertical: alignTop ? TextAlignVertical.top : TextAlignVertical.center,
         style: TextStyle(
-          color: readOnly
-              ? Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.8)
-              : Theme.of(context).textTheme.bodyMedium?.color,
+          color: Colors.white,
           fontWeight: readOnly ? FontWeight.bold : FontWeight.normal,
         ),
         decoration: InputDecoration(
