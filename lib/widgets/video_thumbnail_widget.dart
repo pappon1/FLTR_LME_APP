@@ -53,7 +53,8 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
   @override
   void didUpdateWidget(covariant VideoThumbnailWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.videoPath != widget.videoPath) {
+    if (oldWidget.videoPath != widget.videoPath || 
+        oldWidget.customThumbnailPath != widget.customThumbnailPath) {
       _checkCacheAndGenerate();
     }
   }

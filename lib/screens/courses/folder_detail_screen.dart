@@ -40,6 +40,33 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
   Timer? _holdTimer;
   bool _isInitialLoading = true;
 
+  // Content Spacing (Synced with AddCourseScreen)
+  final double _contentItemLeftOffset = 5.0;
+  final double _videoThumbTop = 0.50;
+  final double _videoThumbBottom = 0.50;
+  final double _imageThumbTop = 0.50;
+  final double _imageThumbBottom = 0.50;
+  final double _itemBottomSpacing = 5.0;
+
+  // Menu & Lock Positioning
+  final double _menuOffset = 14.0;
+  final double _lockLeftOffset = -3.0;
+  final double _lockTopOffset = 0.0;
+  final double _lockSize = 14.0;
+
+  // Label Positioning
+  final double _videoLabelOffset = 12.0;
+  final double _imageLabelOffset = 26.5;
+  final double _pdfLabelOffset = 16.5;
+  final double _folderLabelOffset = 15.5;
+  final double _tagLabelFontSize = 6.0;
+
+  // Menu Panel Offsets & Size
+  final double _menuPanelDX = -23.03;
+  final double _menuPanelDY = 16.0;
+  final double _menuPanelWidth = 125.0;
+  final double _menuPanelHeight = 200.0;
+
   @override
   void initState() {
     super.initState();
@@ -825,13 +852,14 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                 final converted = Map<String, dynamic>.from(video);
                 final videoPath = video['path'] ?? video['url'];
                 converted['path'] = videoPath; // Normalize to path
+                converted['thumbnail'] = video['thumbnail']; // Ensure custom thumbnail is passed
                 
                 // Convert iframe URL to actual video URL in read-only mode
                 if (widget.isReadOnly && videoPath != null && videoPath.toString().contains('iframe.mediadelivery.net')) {
                   final videoId = videoPath.toString().split('/').last;
                   converted['path'] = 'https://vz-583681.b-cdn.net/$videoId/playlist.m3u8';
                   
-                  // Add thumbnail if missing
+                  // Add network thumbnail if manual one is missing
                   if (converted['thumbnail'] == null) {
                     converted['thumbnail'] = 'https://vz-583681.b-cdn.net/$videoId/thumbnail.jpg';
                   }
@@ -878,19 +906,28 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
              : _contents.isEmpty
                 ? SliverFillRemaining(
                     hasScrollBody: false,
-                    child: Center(
+                    child: Container(
+                      height: 300,
+                      alignment: Alignment.center,
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.folder_open, size: 64, color: Colors.grey.shade300),
-                          const SizedBox(height: 8),
-                          Text('No content in this folder', style: TextStyle(color: Colors.grey.shade400)),
+                          Icon(
+                            Icons.folder_open,
+                            size: 64,
+                            color: Colors.grey.shade300,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No content in this folder',
+                            style: TextStyle(color: Colors.grey.shade400),
+                          ),
                         ],
                       ),
                     ),
                   )
                 : SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                    padding: const EdgeInsets.fromLTRB(10.0, 16.0, 10.0, 24.0),
                     sliver: SliverReorderableList(
                       itemCount: _contents.length,
                       onReorder: (oldIndex, newIndex) {
@@ -913,6 +950,25 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                            isSelected: isSelected,
                            isSelectionMode: _isSelectionMode,
                            isDragMode: _isDragModeActive,
+                           leftOffset: _contentItemLeftOffset,
+                           videoThumbTop: _videoThumbTop,
+                           videoThumbBottom: _videoThumbBottom,
+                           imageThumbTop: _imageThumbTop,
+                           imageThumbBottom: _imageThumbBottom,
+                           bottomSpacing: _itemBottomSpacing,
+                           menuOffset: _menuOffset,
+                           lockLeftOffset: _lockLeftOffset,
+                           lockTopOffset: _lockTopOffset,
+                           lockSize: _lockSize,
+                           videoLabelOffset: _videoLabelOffset,
+                           imageLabelOffset: _imageLabelOffset,
+                           pdfLabelOffset: _pdfLabelOffset,
+                           folderLabelOffset: _folderLabelOffset,
+                           tagLabelFontSize: _tagLabelFontSize,
+                           menuPanelOffsetDX: _menuPanelDX,
+                           menuPanelOffsetDY: _menuPanelDY,
+                           menuPanelWidth: _menuPanelWidth,
+                           menuPanelHeight: _menuPanelHeight,
                            onTap: () => _handleContentTap(item, index),
                            onToggleSelection: () => _toggleSelection(index),
                            onEnterSelectionMode: () => _enterSelectionMode(index),

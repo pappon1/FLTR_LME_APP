@@ -113,25 +113,79 @@ class _AddCourseScreenState extends State<AddCourseScreen>
     'Advanced',
   ];
   final List<String> _categories = ['Hardware', 'Software'];
-  final List<String> _languages = ['Hindi', 'English', 'Hinglish', 'Bengali', 'Marathi', 'Gujarati', 'Tamil', 'Kannada', 'Telugu', 'Malayalam'];
+  final List<String> _languages = ['Hindi', 'English', 'Bengali'];
   final List<String> _courseModes = ['Recorded', 'Live Session'];
   final List<String> _supportTypes = ['WhatsApp Group', 'No Support'];
 
-  String _selectedLanguage = 'Hindi';
-  String _selectedCourseMode = 'Recorded';
-  String _selectedSupportType = 'WhatsApp Group';
+  String? _selectedLanguage;
+  String? _selectedCourseMode;
+  String? _selectedSupportType;
 
   // Parallel Upload Progress State
   List<CourseUploadTask> _uploadTasks = [];
   bool _isUploading = false;
   double _totalProgress = 0.0;
-  final String _uploadStatus = '';
+  String _uploadStatus = '';
 
-  // Design State
-  final double _globalRadius = 3.0;
-  final double _inputVerticalPadding = 10.0;
-  final double _borderOpacity = 0.12;
-  final double _fillOpacity = 0.0;
+  // Design State (Dynamic for Layout Management)
+  static const double _defRadius = 3.0;
+  static const double _defInputPad = 10.0;
+  static const double _defBorderOp = 0.12;
+  static const double _defFillOp = 0.0;
+  static const double _defSecSpace = 32.0;
+  static const double _defFieldSpace = 16.0;
+  static const double _defScreenPad = 10.0;
+  static const double _defLabelSize = 14.0;
+
+  double _globalRadius = _defRadius;
+  double _inputVerticalPadding = _defInputPad;
+  double _borderOpacity = _defBorderOp;
+  double _fillOpacity = _defFillOp;
+  double _screenPadding = _defScreenPad;
+  double _labelFontSize = _defLabelSize;
+
+  bool _tightVerticalMode = false;
+
+  // Granular Spacing Variables (Fixed Values)
+  double _s1HeaderSpace = 10.0;
+  double _s1ImageSpace = 20.0;
+  double _s1FieldSpace = 16.0;
+  double _s2HeaderSpace = 10.0;
+  double _s2PricingSpace = 20.0;
+  double _s2LanguageSpace = 12.0;
+  double _s2ValiditySpace = 12.0;
+  double _s2PCSpace = 12.0;
+  
+  // Content Spacing
+  double _contentItemLeftOffset = 5.0; 
+  double _videoThumbTop = 0.50;
+  double _videoThumbBottom = 0.50;
+  double _imageThumbTop = 0.50;
+  double _imageThumbBottom = 0.50;
+  double _itemBottomSpacing = 5.0; // Fixed at 5.0
+  
+  // Menu & Lock Positioning (Fixed)
+  double _menuOffset = 14.0;
+  double _lockLeftOffset = -3.0;
+  double _lockTopOffset = 0.0;
+  double _lockSize = 14.0;
+  
+  // Label Positioning (Fixed)
+  double _videoLabelOffset = 12.0;
+  double _imageLabelOffset = 26.5;
+  double _pdfLabelOffset = 16.5;
+  double _folderLabelOffset = 15.5;
+  double _tagLabelFontSize = 6.0;
+  
+  double _certToBigScreenSpace = 1.0;
+  double _bigScreenToNavSpace = 24.0;
+  double _contentIconOffset = 0.0; // New offset for content icons
+
+  // Menu Panel Offsets & Size (Fixed)
+  final double _menuPanelDX = -23.03;
+  final double _menuPanelDY = 16.0;
+  final double _menuPanelWidth = 125.0;
+  final double _menuPanelHeight = 200.0;
 
   // Highlights & FAQs Controllers
   final List<TextEditingController> _highlightControllers = [];
@@ -139,6 +193,25 @@ class _AddCourseScreenState extends State<AddCourseScreen>
 
   // Validation & Focus
   bool _thumbnailError = false;
+  bool _titleError = false;
+  bool _descError = false;
+  bool _categoryError = false;
+  bool _difficultyError = false;
+  bool _batchDurationError = false;
+  bool _highlightsError = false;
+  bool _faqsError = false;
+
+  // Step 2 Errors
+  bool _mrpError = false;
+  bool _languageError = false;
+  bool _courseModeError = false;
+  bool _supportTypeError = false;
+  bool _wpGroupLinkError = false;
+  bool _validityError = false;
+  bool _certError = false;
+  bool _bigScreenUrlError = false;
+  bool _discountError = false;
+  bool _courseContentError = false;
   final _titleFocus = FocusNode();
   final _descFocus = FocusNode();
   final _mrpFocus = FocusNode();
@@ -156,10 +229,34 @@ class _AddCourseScreenState extends State<AddCourseScreen>
     // Auto-save listeners for basic info
     _titleController.addListener(() => _saveCourseDraft());
     _descController.addListener(() => _saveCourseDraft());
-    _mrpController.addListener(() => _saveCourseDraft());
-    _discountAmountController.addListener(() => _saveCourseDraft());
-    _whatsappController.addListener(() => _saveCourseDraft());
-    _websiteUrlController.addListener(() => _saveCourseDraft());
+    
+    _mrpController.addListener(() {
+      if (_mrpError && _mrpController.text.trim().isNotEmpty) {
+        setState(() => _mrpError = false);
+      }
+      _saveCourseDraft();
+    });
+    
+    _discountAmountController.addListener(() {
+      if (_discountError && _discountAmountController.text.trim().isNotEmpty) {
+        setState(() => _discountError = false);
+      }
+      _saveCourseDraft();
+    });
+    
+    _whatsappController.addListener(() {
+      if (_wpGroupLinkError && _whatsappController.text.trim().isNotEmpty) {
+        setState(() => _wpGroupLinkError = false);
+      }
+      _saveCourseDraft();
+    });
+    
+    _websiteUrlController.addListener(() {
+      if (_bigScreenUrlError && _websiteUrlController.text.trim().isNotEmpty) {
+        setState(() => _bigScreenUrlError = false);
+      }
+      _saveCourseDraft();
+    });
 
     // Load Draft
     _loadCourseDraft().then((_) {
@@ -214,9 +311,9 @@ class _AddCourseScreenState extends State<AddCourseScreen>
           _discountAmountController.text = draft['discount'] ?? '';
           _selectedCategory = draft['category'];
           _difficulty = draft['difficulty'];
-          _selectedLanguage = draft['language'] ?? 'Hindi';
-          _selectedCourseMode = draft['courseMode'] ?? 'Recorded';
-          _selectedSupportType = draft['supportType'] ?? 'WhatsApp Group';
+          _selectedLanguage = draft['language'];
+          _selectedCourseMode = draft['courseMode'];
+          _selectedSupportType = draft['supportType'];
           _whatsappController.text = draft['whatsappNumber'] ?? '';
           _isBigScreenEnabled = draft['isBigScreenEnabled'] ?? false;
           _websiteUrlController.text = draft['websiteUrl'] ?? '';
@@ -228,9 +325,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
             );
           }
 
-          // _courseValidityDays = draft['validity']; // IGNORED: Force null by default as per user request
-          // _courseValidityDays = draft['validity']; // IGNORED: Force null by default as per user request
-          _courseValidityDays = null;
+          _courseValidityDays = draft['validity'];
           _hasCertificate = draft['certificate'] ?? false;
           _selectedCertSlot = draft['certSlot'] ?? 1;
           _isOfflineDownloadEnabled = draft['offlineDownload'] ?? true;
@@ -512,29 +607,81 @@ class _AddCourseScreenState extends State<AddCourseScreen>
   }
 
   bool _validateStep1_5() {
+    bool isValid = true;
+    String? firstError;
+
+    setState(() {
+      _mrpError = false;
+      _discountError = false;
+      _languageError = false;
+      _courseModeError = false;
+      _supportTypeError = false;
+      _wpGroupLinkError = false;
+      _validityError = false;
+      _certError = false;
+      _bigScreenUrlError = false;
+    });
+
     if (_mrpController.text.trim().isEmpty) {
-      _jumpToStep(1);
-      _showWarning('Please enter MRP (Price) in Step 2');
-      return false;
+      setState(() => _mrpError = true);
+      firstError ??= 'Please enter MRP (Price)';
+      isValid = false;
     }
+
+    if (_discountAmountController.text.trim().isEmpty) {
+      setState(() => _discountError = true);
+      firstError ??= 'Please enter Discount Amount';
+      isValid = false;
+    }
+
+    if (_selectedLanguage == null) {
+      setState(() => _languageError = true);
+      firstError ??= 'Please select Course Language';
+      isValid = false;
+    }
+
+    if (_selectedCourseMode == null) {
+      setState(() => _courseModeError = true);
+      firstError ??= 'Please select Course Mode';
+      isValid = false;
+    }
+
+    if (_selectedSupportType == null) {
+      setState(() => _supportTypeError = true);
+      firstError ??= 'Please select Support Type';
+      isValid = false;
+    }
+
+    if (_selectedSupportType == 'WhatsApp Group' && _whatsappController.text.trim().isEmpty) {
+      setState(() => _wpGroupLinkError = true);
+      firstError ??= 'Please paste WhatsApp Group Link';
+      isValid = false;
+    }
+
     if (_courseValidityDays == null) {
+      setState(() => _validityError = true);
+      firstError ??= 'Please select Course Validity';
+      isValid = false;
+    }
+
+    if (_hasCertificate && _certificate1Image == null && _certificate2Image == null) {
+      setState(() => _certError = true);
+      firstError ??= 'Please upload at least one certificate design';
+      isValid = false;
+    }
+
+    if (_isBigScreenEnabled && _websiteUrlController.text.trim().isEmpty) {
+      setState(() => _bigScreenUrlError = true);
+      firstError ??= 'Please enter Website Login URL';
+      isValid = false;
+    }
+
+    if (!isValid) {
       _jumpToStep(1);
-      _showWarning('Please select Course Validity duration in Step 2');
-      return false;
+      if (firstError != null) _showWarning(firstError);
     }
-    if (_courseValidityDays == -1 && _customValidityController.text.trim().isEmpty) {
-      _jumpToStep(1);
-      _showWarning('Please enter custom validity days in Step 2');
-      return false;
-    }
-    if (_hasCertificate) {
-      if (_certificate1Image == null && _certificate2Image == null) {
-        _jumpToStep(1);
-        _showWarning('Please upload at least one certificate design in Step 2');
-        return false;
-      }
-    }
-    return true;
+
+    return isValid;
   }
 
   void _jumpToStep(int step) {
@@ -547,11 +694,23 @@ class _AddCourseScreenState extends State<AddCourseScreen>
 
   void _showWarning(String message) {
     HapticFeedback.vibrate();
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
+        content: Text(
+          message,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.red.shade800,
         behavior: SnackBarBehavior.floating,
+        margin: EdgeInsets.only(
+          bottom: 85 + MediaQuery.of(context).padding.bottom,
+          left: 24,
+          right: 24,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -685,6 +844,16 @@ class _AddCourseScreenState extends State<AddCourseScreen>
   void _nextStep() async {
     if (_currentStep == 0 && !_validateStep0()) return;
     if (_currentStep == 1 && !_validateStep1_5()) return;
+    
+    if (_currentStep == 2) {
+      if (_courseContents.isEmpty) {
+        setState(() => _courseContentError = true);
+        _showWarning('Please add at least one content to proceed');
+        return;
+      } else {
+        setState(() => _courseContentError = false);
+      }
+    }
 
     if (_currentStep < 3) {
       FocusScope.of(context).unfocus();
@@ -693,34 +862,130 @@ class _AddCourseScreenState extends State<AddCourseScreen>
     }
   }
 
-  bool _validateStep0() {
-    setState(() => _thumbnailError = false);
+  bool get _hasContent =>
+      _thumbnailImage != null ||
+      _titleController.text.trim().isNotEmpty ||
+      _descController.text.trim().isNotEmpty ||
+      _selectedCategory != null ||
+      _difficulty != null ||
+      _newBatchDurationDays != null ||
+      _highlightControllers.any((c) => c.text.trim().isNotEmpty) ||
+      _faqControllers.any((f) =>
+          (f['q']?.text.trim().isNotEmpty ?? false) ||
+          (f['a']?.text.trim().isNotEmpty ?? false));
 
+  bool get _hasSetupContent =>
+      _mrpController.text.trim().isNotEmpty ||
+      _discountAmountController.text.trim().isNotEmpty ||
+      _selectedLanguage != null ||
+      _selectedCourseMode != null ||
+      _selectedSupportType != null ||
+      _whatsappController.text.trim().isNotEmpty ||
+      _courseValidityDays != null ||
+      _certificate1Image != null ||
+      _certificate2Image != null ||
+      _websiteUrlController.text.trim().isNotEmpty;
+
+  bool _validateStep0() {
+    bool isValid = true;
+    String? firstErrorOne;
+
+    // Reset all errors
+    setState(() {
+      _thumbnailError = false;
+      _titleError = false;
+      _descError = false;
+      _categoryError = false;
+      _difficultyError = false;
+      _batchDurationError = false;
+    });
+
+    // 1. Check Thumbnail
     if (_thumbnailImage == null) {
       setState(() => _thumbnailError = true);
-      _showWarning('Please select a course cover image');
-      return false;
+      isValid = false;
+      firstErrorOne ??= 'thumbnail';
     }
+
+    // 2. Check Title
     if (_titleController.text.trim().isEmpty) {
-      _titleFocus.requestFocus();
-      _showWarning('Please enter a course title');
-      return false;
+      setState(() => _titleError = true);
+      isValid = false;
+      firstErrorOne ??= 'title';
     }
+
+    // 3. Check Description
     if (_descController.text.trim().isEmpty) {
-      _descFocus.requestFocus();
-      _showWarning('Please enter a course description');
-      return false;
+      setState(() => _descError = true);
+      isValid = false;
+      firstErrorOne ??= 'desc';
     }
+
+    // 4. Check Category
     if (_selectedCategory == null) {
-      _showWarning('Please select a course category');
-      return false;
+      setState(() => _categoryError = true);
+      isValid = false;
+      firstErrorOne ??= 'category';
     }
+
+    // 5. Check Difficulty
     if (_difficulty == null) {
-      _showWarning('Please select a course type');
-      return false;
+      setState(() => _difficultyError = true);
+      isValid = false;
+      firstErrorOne ??= 'difficulty';
     }
+
+    // 6. Check Duration
     if (_newBatchDurationDays == null) {
-      _showWarning('Please select new badge duration');
+      setState(() => _batchDurationError = true);
+      isValid = false;
+      firstErrorOne ??= 'duration';
+    }
+
+    // 7. Check Highlights
+    bool hasEmptyHighlight = _highlightControllers.any((c) => c.text.trim().isEmpty);
+    if (_highlightControllers.isEmpty || hasEmptyHighlight) {
+      setState(() => _highlightsError = true);
+      isValid = false;
+      firstErrorOne ??= 'highlights';
+    }
+
+    // 8. Check FAQs
+    bool hasEmptyFaq = _faqControllers.any((f) => 
+        (f['q']?.text.trim().isEmpty ?? true) || 
+        (f['a']?.text.trim().isEmpty ?? true)
+    );
+    if (_faqControllers.isEmpty || hasEmptyFaq) {
+      setState(() => _faqsError = true);
+      isValid = false;
+      firstErrorOne ??= 'faqs';
+    }
+
+    if (!isValid) {
+      if (firstErrorOne == 'thumbnail') {
+        _scrollController.animateTo(0, duration: 300.ms, curve: Curves.easeOut);
+        _showWarning('Please upload a cover image');
+      } else if (firstErrorOne == 'title') {
+        _titleFocus.requestFocus();
+        _showWarning('Please enter a course title');
+      } else if (firstErrorOne == 'desc') {
+        _descFocus.requestFocus();
+        _showWarning('Please enter a course description');
+      } else if (firstErrorOne == 'category') {
+        _showWarning('Please select a course category');
+      } else if (firstErrorOne == 'difficulty') {
+        _showWarning('Please select a course type');
+      } else if (firstErrorOne == 'duration') {
+        _showWarning('Please select new badge duration');
+      } else if (firstErrorOne == 'highlights') {
+         // Auto scroll to Highlights section
+        _scrollController.animateTo(600, duration: 300.ms, curve: Curves.easeOut);
+        _showWarning('Please add at least one highlight');
+      } else if (firstErrorOne == 'faqs') {
+         // Auto scroll to FAQs section
+        _scrollController.animateTo(800, duration: 300.ms, curve: Curves.easeOut);
+        _showWarning('Please add at least one FAQ');
+      }
       return false;
     }
     return true;
@@ -741,9 +1006,9 @@ class _AddCourseScreenState extends State<AddCourseScreen>
   Future<void> _submitCourse() async {
     if (!_validateAllFields()) return;
     if (_courseContents.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please add some content to the course')),
-      );
+      setState(() => _courseContentError = true);
+      _showWarning('Please add at least one content to the course');
+      _jumpToStep(2);
       return;
     }
 
@@ -876,9 +1141,9 @@ class _AddCourseScreenState extends State<AddCourseScreen>
         selectedCertificateSlot: _selectedCertSlot,
         demoVideos: [],
         isOfflineDownloadEnabled: _isOfflineDownloadEnabled,
-        language: _selectedLanguage,
-        courseMode: _selectedCourseMode,
-        supportType: _selectedSupportType,
+        language: _selectedLanguage!,
+        courseMode: _selectedCourseMode!,
+        supportType: _selectedSupportType!,
         whatsappNumber: _whatsappController.text.trim(),
         isBigScreenEnabled: _isBigScreenEnabled,
         websiteUrl: _websiteUrlController.text.trim(),
@@ -1120,6 +1385,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
   // --- Highlights Management ---
   void _addHighlight() {
     setState(() {
+      _highlightsError = false;
       _highlightControllers.add(TextEditingController());
     });
   }
@@ -1127,6 +1393,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
   void _removeHighlight(int index) {
     if (index >= 0 && index < _highlightControllers.length) {
       setState(() {
+        _highlightsError = false;
         _highlightControllers[index].dispose();
         _highlightControllers.removeAt(index);
       });
@@ -1137,6 +1404,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
   // --- FAQs Management ---
   void _addFAQ() {
     setState(() {
+      _faqsError = false;
       _faqControllers.add({
         'q': TextEditingController(),
         'a': TextEditingController(),
@@ -1147,6 +1415,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
   void _removeFAQ(int index) {
     if (index >= 0 && index < _faqControllers.length) {
       setState(() {
+        _faqsError = false;
         _faqControllers[index]['q']?.dispose();
         _faqControllers[index]['a']?.dispose();
         _faqControllers.removeAt(index);
@@ -1173,9 +1442,6 @@ class _AddCourseScreenState extends State<AddCourseScreen>
               setState(() {
                 _titleController.clear();
                 _descController.clear();
-                _mrpController.clear();
-                _discountAmountController.clear();
-                _finalPriceController.clear();
                 _selectedCategory = null;
                 _difficulty = null;
                 _newBatchDurationDays = null;
@@ -1191,6 +1457,47 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                   f['a']?.dispose();
                 }
                 _faqControllers.clear();
+              });
+              _saveCourseDraft();
+              Navigator.pop(context);
+            },
+            child: const Text('Clear', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _clearSetupDraft() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear Setup Info?'),
+        content: const Text(
+          'This will reset Pricing, Validity, Language and Certificate settings. Basic Info and Content will remain safe.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                _mrpController.clear();
+                _discountAmountController.clear();
+                _finalPriceController.clear();
+                _selectedLanguage = null;
+                _selectedCourseMode = null;
+                _selectedSupportType = null;
+                _whatsappController.clear();
+                _courseValidityDays = null;
+                _hasCertificate = false;
+                _certificate1Image = null;
+                _certificate2Image = null;
+                _selectedCertSlot = 1;
+                _isBigScreenEnabled = false;
+                _websiteUrlController.clear();
               });
               _saveCourseDraft();
               Navigator.pop(context);
@@ -1567,25 +1874,36 @@ class _AddCourseScreenState extends State<AddCourseScreen>
   Widget _buildNavButtons() {
     return Padding(
       padding: EdgeInsets.only(
-        top: 32,
+        top: 20,
         bottom: 12 + MediaQuery.of(context).padding.bottom,
       ),
       child: Row(
         children: [
           if (_currentStep > 0)
             Expanded(
-              child: OutlinedButton(
+              child: ElevatedButton(
                 onPressed: _prevStep,
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryColor,
+                  padding: EdgeInsets.zero,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(3.0),
                   ),
                 ),
-                child: const Text('Back'),
+                child: const FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Text(
+                    'Back',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               ),
             ),
-          if (_currentStep > 0) const SizedBox(width: 16),
+          if (_currentStep > 0) const SizedBox(width: 24),
           Expanded(
             child: ElevatedButton(
               onPressed: _currentStep == 3
@@ -1593,7 +1911,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                   : _nextStep,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppTheme.primaryColor,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: EdgeInsets.zero,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(3.0),
                 ),
@@ -1611,7 +1929,11 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                       fit: BoxFit.scaleDown,
                       child: Text(
                         _currentStep == 3 ? 'Create Course' : 'Next Step',
-                        style: const TextStyle(color: Colors.white),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
             ),
@@ -1635,7 +1957,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
           pinned: true, 
         ),
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          padding: EdgeInsets.symmetric(horizontal: _screenPadding),
           sliver: SliverToBoxAdapter(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1643,11 +1965,11 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
+                    Text(
                       'Create New Course',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        fontSize: 18,
+                        fontSize: _labelFontSize + 2, // Slightly larger than section labels
                       ),
                     ),
                     TextButton.icon(
@@ -1665,63 +1987,58 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                     ),
                   ],
                 ),
-                if (_isSavingDraft)
-                  TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0.0, end: 1.0),
-                    duration: const Duration(milliseconds: 400),
-                    builder: (context, value, child) => Transform.translate(
-                      offset: Offset(0, (1 - value) * -10),
-                      child: Opacity(
-                        opacity: value,
-                        child: Container(
-                          margin: const EdgeInsets.only(top: 8, bottom: 12),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.green.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(3.0),
-                            border: Border.all(
-                              color: Colors.green.withValues(alpha: 0.2),
-                            ),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.green.withValues(alpha: 0.05),
-                                blurRadius: 10,
-                                spreadRadius: 0,
-                              ),
-                            ],
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.check_circle,
-                                size: 16,
-                                color: Colors.green,
-                              ),
-                              SizedBox(width: 8),
-                              Text(
-                                'Safe & Synced',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.green,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
+                Visibility(
+                  visible: _hasContent,
+                  maintainSize: true,
+                  maintainAnimation: true,
+                  maintainState: true,
+                  child: Container(
+                    margin: EdgeInsets.zero,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(3.0),
+                      border: Border.all(
+                        color: Colors.green.withValues(alpha: 0.2),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.green.withValues(alpha: 0.05),
+                          blurRadius: 10,
+                          spreadRadius: 0,
+                        ),
+                      ],
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.check_circle,
+                          size: 16,
+                          color: Colors.green,
+                        ),
+                        SizedBox(width: 8),
+                        Text(
+                          'Safe & Synced',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
                           ),
                         ),
-                      ),
+                      ],
                     ),
                   ),
-                const SizedBox(height: 24),
+                ),
+                SizedBox(height: _s1HeaderSpace),
                 // 1. Image
-                const Text(
+                Text(
                   'Course Cover (16:9 Size)',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: _labelFontSize),
                 ),
                 const SizedBox(height: 10),
                 GestureDetector(
@@ -1784,7 +2101,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: _s1ImageSpace),
 
                 // 2. Title
                 _buildTextField(
@@ -1794,6 +2111,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                   hint: 'Advanced Mobile Repairing',
                   icon: Icons.title,
                   maxLength: 40, // Updated to 40 characters
+                  hasError: _titleError,
                 ),
 
                 // 3. Description
@@ -1804,6 +2122,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                   hint: 'Explain what students will learn...',
                   maxLines: 5,
                   alignTop: true,
+                  hasError: _descError,
                 ),
 
 
@@ -1820,7 +2139,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                           style: TextStyle(
                             color: Theme.of(context).textTheme.bodyMedium?.color
                                 ?.withValues(alpha: 0.4),
-                            fontSize: 13,
+                            fontSize: 11,
                             fontWeight: FontWeight.normal,
                           ),
                         ),
@@ -1834,9 +2153,11 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(_globalRadius),
                             borderSide: BorderSide(
-                              color: Theme.of(
-                                context,
-                              ).dividerColor.withValues(alpha: _borderOpacity),
+                              color: _categoryError
+                                  ? Colors.red
+                                  : Theme.of(
+                                      context,
+                                    ).dividerColor.withValues(alpha: _borderOpacity),
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
@@ -1863,7 +2184,13 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                             )
                             .toList(),
                         onChanged: (v) {
-                          setState(() => _selectedCategory = v);
+                          setState(() {
+                            if (_selectedCategory == v) {
+                              _selectedCategory = null;
+                            } else {
+                              _selectedCategory = v;
+                            }
+                          });
                           unawaited(_saveCourseDraft());
                         },
                       ),
@@ -1879,7 +2206,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                           style: TextStyle(
                             color: Theme.of(context).textTheme.bodyMedium?.color
                                 ?.withValues(alpha: 0.4),
-                            fontSize: 13,
+                            fontSize: 11,
                             fontWeight: FontWeight.normal,
                           ),
                         ),
@@ -1893,9 +2220,11 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(_globalRadius),
                             borderSide: BorderSide(
-                              color: Theme.of(
-                                context,
-                              ).dividerColor.withValues(alpha: _borderOpacity),
+                              color: _difficultyError
+                                  ? Colors.red
+                                  : Theme.of(
+                                      context,
+                                    ).dividerColor.withValues(alpha: _borderOpacity),
                             ),
                           ),
                           focusedBorder: OutlineInputBorder(
@@ -1922,14 +2251,20 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                             )
                             .toList(),
                         onChanged: (v) {
-                          setState(() => _difficulty = v);
+                          setState(() {
+                            if (_difficulty == v) {
+                              _difficulty = null;
+                            } else {
+                              _difficulty = v;
+                            }
+                          });
                           unawaited(_saveCourseDraft());
                         },
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
 
                 DropdownButtonFormField<int>(
                   style: const TextStyle(color: Colors.white, fontSize: 16),
@@ -1955,9 +2290,11 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(_globalRadius),
                       borderSide: BorderSide(
-                        color: Theme.of(
-                          context,
-                        ).dividerColor.withValues(alpha: _borderOpacity),
+                        color: _batchDurationError
+                            ? Colors.red
+                            : Theme.of(
+                                context,
+                              ).dividerColor.withValues(alpha: _borderOpacity),
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
@@ -1981,12 +2318,18 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                     DropdownMenuItem(value: 90, child: Text('3 Months')),
                   ],
                   onChanged: (v) {
-                    setState(() => _newBatchDurationDays = v);
+                    setState(() {
+                      if (_newBatchDurationDays == v) {
+                        _newBatchDurationDays = null;
+                      } else {
+                        _newBatchDurationDays = v;
+                      }
+                    });
                     unawaited(_saveCourseDraft());
                   },
                 ),
 
-                const SizedBox(height: 32),
+                const SizedBox(height: 20),
 
                 // 6. Highlights Section
                 Row(
@@ -2011,63 +2354,63 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                 ),
                 const SizedBox(height: 8),
                 if (_highlightControllers.isEmpty)
-                  const Text(
-                    'No highlights added.',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 13,
-                      fontStyle: FontStyle.italic,
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: Text(
+                      _highlightsError ? 'Please add at least one highlight *' : 'No highlights added.',
+                      style: TextStyle(
+                        color: _highlightsError ? Colors.red : Colors.grey,
+                        fontSize: 13,
+                        fontStyle: FontStyle.italic,
+                        fontWeight: _highlightsError ? FontWeight.bold : FontWeight.normal,
+                      ),
                     ),
                   )
                 else
                   ..._highlightControllers.asMap().entries.map((entry) {
                     final index = entry.key;
                     final controller = entry.value;
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        children: [
-                          const Padding(
-                            padding: EdgeInsets.only(
-                              top: 0,
-                            ), // Already centered by row
-                            child: Icon(
-                              Icons.check_circle_outline,
-                              color: Colors.green,
+                    return Row(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            bottom: 20,
+                          ),
+                          child: const Icon(
+                            Icons.check_circle_outline,
+                            color: Colors.green,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: _buildTextField(
+                            controller: controller,
+                            label: 'Highlight',
+                            hint: 'Practical Chip Level Training',
+                            onChanged: (_) => unawaited(_saveCourseDraft()),
+                            hasError: _highlightsError && controller.text.trim().isEmpty,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Padding(
+                          padding: const EdgeInsets.only(
+                            bottom: 20,
+                          ),
+                          child: IconButton(
+                            icon: const Icon(
+                              Icons.remove_circle_outline,
+                              color: Colors.red,
                               size: 20,
                             ),
+                            onPressed: () => _removeHighlight(index),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildTextField(
-                              controller: controller,
-                              label: 'Highlight',
-                              hint: 'Practical Chip Level Training',
-                              onChanged: (_) => unawaited(_saveCourseDraft()),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Padding(
-                            padding: const EdgeInsets.only(
-                              bottom: 16,
-                            ), // Match _buildTextField's bottom padding
-                            child: IconButton(
-                              icon: const Icon(
-                                Icons.remove_circle_outline,
-                                color: Colors.red,
-                                size: 20,
-                              ),
-                              onPressed: () => _removeHighlight(index),
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     );
                   }),
-
-                const SizedBox(height: 32),
 
                 // 7. FAQs Section
                 Row(
@@ -2090,14 +2433,18 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                     ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 5),
                 if (_faqControllers.isEmpty)
-                  const Text(
-                    'No FAQs added.',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 13,
-                      fontStyle: FontStyle.italic,
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: Text(
+                      _faqsError ? 'Please add at least one FAQ *' : 'No FAQs added.',
+                      style: TextStyle(
+                        color: _faqsError ? Colors.red : Colors.grey,
+                        fontSize: 13,
+                        fontStyle: FontStyle.italic,
+                        fontWeight: _faqsError ? FontWeight.bold : FontWeight.normal,
+                      ),
                     ),
                   )
                 else
@@ -2105,8 +2452,8 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                     final index = entry.key;
                     final faq = entry.value;
                     return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(12),
+                      margin: const EdgeInsets.only(bottom: 10),
+                      padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
                       decoration: BoxDecoration(
                         color: Colors.transparent,
                         border: Border.all(
@@ -2126,6 +2473,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                                   controller: faq['q'] as TextEditingController,
                                   label: 'Question',
                                   hint: 'e.g. Who can join this course?',
+                                  hasError: _faqsError && (faq['q']?.text.trim().isEmpty ?? true),
                                   onChanged: (_) =>
                                       unawaited(_saveCourseDraft()),
                                 ),
@@ -2146,11 +2494,13 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                               ),
                             ],
                           ),
-                          const SizedBox(height: 12),
+                          // Removed SizedBox(height: 12) as Question field has 20px padding
                           _buildTextField(
                             controller: faq['a'] as TextEditingController,
                             label: 'Answer',
                             hint: 'Anyone with basic mobile knowledge...',
+                            bottomPadding: 0.0,
+                            hasError: _faqsError && (faq['a']?.text.trim().isEmpty ?? true),
                             onChanged: (_) => unawaited(_saveCourseDraft()),
                           ),
                         ],
@@ -2163,12 +2513,18 @@ class _AddCourseScreenState extends State<AddCourseScreen>
         ),
         SliverFillRemaining(
           hasScrollBody: false,
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: _buildNavButtons(),
-            ),
+          child: Column(
+            children: [
+              Expanded(
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: _buildNavButtons(),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -2349,7 +2705,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
 
         SliverPadding(
           key: const ValueKey('step2_content_padding'),
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          padding: EdgeInsets.symmetric(horizontal: _screenPadding),
           sliver: _isInitialLoading
                   ? SliverToBoxAdapter(child: _buildShimmerList())
                   : _courseContents.isEmpty
@@ -2368,8 +2724,13 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              'No content added yet',
-                              style: TextStyle(color: Colors.grey.shade400),
+                              _courseContentError 
+                                ? 'Add at least one content to proceed *' 
+                                : 'No content added yet',
+                              style: TextStyle(
+                                color: _courseContentError ? Colors.red : Colors.grey.shade400,
+                                fontWeight: _courseContentError ? FontWeight.bold : FontWeight.normal,
+                              ),
                             ),
                           ],
                         ),
@@ -2390,6 +2751,25 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                           isSelected: isSelected,
                           isSelectionMode: _isSelectionMode,
                           isDragMode: _isDragModeActive,
+                          leftOffset: _contentItemLeftOffset,
+                          videoThumbTop: _videoThumbTop,
+                          videoThumbBottom: _videoThumbBottom,
+                          imageThumbTop: _imageThumbTop,
+                          imageThumbBottom: _imageThumbBottom,
+                          bottomSpacing: _itemBottomSpacing,
+                          menuOffset: _menuOffset,
+                          lockLeftOffset: _lockLeftOffset,
+                          lockTopOffset: _lockTopOffset,
+                          lockSize: _lockSize,
+                          videoLabelOffset: _videoLabelOffset,
+                          imageLabelOffset: _imageLabelOffset,
+                          pdfLabelOffset: _pdfLabelOffset,
+                          folderLabelOffset: _folderLabelOffset,
+                          tagLabelFontSize: _tagLabelFontSize,
+                          menuPanelOffsetDX: _menuPanelDX,
+                          menuPanelOffsetDY: _menuPanelDY,
+                          menuPanelWidth: _menuPanelWidth,
+                          menuPanelHeight: _menuPanelHeight,
                           onTap: () => _handleContentTap(item, index),
                           onToggleSelection: () => _toggleSelection(index),
                           onEnterSelectionMode: () =>
@@ -2413,12 +2793,18 @@ class _AddCourseScreenState extends State<AddCourseScreen>
 
             SliverFillRemaining(
               hasScrollBody: false,
-              child: Align(
-                alignment: Alignment.bottomCenter,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: _buildNavButtons(),
-                ),
+              child: Column(
+                children: [
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: _buildNavButtons(),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
       ],
@@ -2466,8 +2852,16 @@ class _AddCourseScreenState extends State<AddCourseScreen>
     } else if (type == 'video') {
       final videoList = _courseContents
           .where((element) => element['type'] == 'video')
-          .toList();
-      final initialIndex = videoList.indexOf(item);
+          .map((v) {
+            // Ensure thumbnail data is passed to playlist
+            final map = Map<String, dynamic>.from(v);
+            map['thumbnail'] = v['thumbnail'];
+            return map;
+          }).toList();
+      final initialIndex = _courseContents
+          .where((element) => element['type'] == 'video')
+          .toList()
+          .indexOf(item);
       unawaited(
         Navigator.push(
           context,
@@ -2953,8 +3347,10 @@ class _AddCourseScreenState extends State<AddCourseScreen>
         content: TextField(
           controller: folderNameController,
           autofocus: true,
+          maxLength: 40,
           decoration: InputDecoration(
             labelText: 'Folder Name',
+            counterText: "",
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(3.0)),
             filled: true,
           ),
@@ -3012,9 +3408,20 @@ class _AddCourseScreenState extends State<AddCourseScreen>
 
       final List<Map<String, dynamic>> newItems = [];
       for (var path in paths) {
+        String name = path.split('/').last;
+        if (name.length > 40) {
+          final extensionIndex = name.lastIndexOf('.');
+          if (extensionIndex != -1 && name.length - extensionIndex < 10) {
+            // Keep extension if possible
+            final ext = name.substring(extensionIndex);
+            name = name.substring(0, 40 - ext.length) + ext;
+          } else {
+            name = name.substring(0, 40);
+          }
+        }
         newItems.add({
           'type': type,
-          'name': path.split('/').last,
+          'name': name,
           'path': path,
           'isLocal': true,
           'isLocked': true,
@@ -3052,73 +3459,150 @@ class _AddCourseScreenState extends State<AddCourseScreen>
           pinned: true, 
         ),
         SliverPadding(
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.symmetric(horizontal: _screenPadding),
           sliver: SliverToBoxAdapter(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // 1. Pricing
-                const Text(
-                  'Pricing Setup',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Course Setup',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: _labelFontSize + 2,
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: _clearSetupDraft,
+                      icon: const Icon(Icons.refresh, size: 16),
+                      label: const Text(
+                        'Clear Draft',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        padding: EdgeInsets.zero,
+                        minimumSize: const Size(0, 0),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
+                Visibility(
+                  visible: _hasSetupContent,
+                  maintainSize: true,
+                  maintainAnimation: true,
+                  maintainState: true,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(3.0),
+                      border: Border.all(
+                        color: Colors.green.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _isSavingDraft
+                            ? const SizedBox(
+                                height: 12,
+                                width: 12,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.green,
+                                ),
+                              )
+                            : const Icon(
+                                Icons.check_circle,
+                                size: 16,
+                                color: Colors.green,
+                              ),
+                        const SizedBox(width: 8),
+                        Text(
+                          _isSavingDraft ? 'Syncing...' : 'Safe & Synced',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.green,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SizedBox(height: _s2HeaderSpace),
+                SizedBox(height: _s2PricingSpace),
+                // 1. Pricing
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      flex: 2,
                       child: _buildTextField(
                         controller: _mrpController,
                         focusNode: _mrpFocus,
                         label: 'MRP',
                         hint: '5000',
                         keyboardType: TextInputType.number,
+                        hasError: _mrpError,
+                        verticalPadding: 7,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      flex: 3,
                       child: _buildTextField(
                         controller: _discountAmountController,
                         focusNode: _discountFocus,
-                        label: 'Discount ₹',
+                        label: 'Discount',
                         hint: '1000',
                         keyboardType: TextInputType.number,
+                        hasError: _discountError,
+                        verticalPadding: 7,
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      flex: 2,
                       child: _buildTextField(
                         controller: _finalPriceController,
                         label: 'Final',
-                        hint: 'Automatic',
+                        hint: '0',
                         keyboardType: TextInputType.number,
                         readOnly: true,
+                        verticalPadding: 7,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 32),
+                SizedBox(height: _s2LanguageSpace),
 
                 // 2. Language & Support
-                const Text(
-                  'Language & Support',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   style: const TextStyle(color: Colors.white, fontSize: 16),
-                  initialValue: _selectedLanguage,
+                  value: _selectedLanguage,
+                  hint: Text(
+                    'Select Language',
+                    style: TextStyle(
+                      color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.4),
+                      fontSize: 13,
+                      fontWeight: FontWeight.normal,
+                    ),
+                  ),
                   decoration: InputDecoration(
-                    contentPadding: EdgeInsets.symmetric(vertical: _inputVerticalPadding, horizontal: 16),
+                    contentPadding: EdgeInsets.symmetric(
+                      vertical: _inputVerticalPadding, 
+                      horizontal: 16
+                    ),
                     labelText: 'Course Language',
                     floatingLabelBehavior: FloatingLabelBehavior.always,
                     prefixIcon: const Icon(Icons.language, size: 20),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(_globalRadius),
-                      borderSide: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: _borderOpacity)),
+                      borderSide: BorderSide(color: _languageError ? Colors.red : Theme.of(context).dividerColor.withValues(alpha: _borderOpacity)),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(_globalRadius),
@@ -3130,11 +3614,18 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                   ),
                   items: _languages.map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
                   onChanged: (v) {
-                    if (v != null) setState(() => _selectedLanguage = v);
+                    setState(() {
+                      if (_selectedLanguage == v) {
+                        _selectedLanguage = null;
+                      } else {
+                        _selectedLanguage = v;
+                        _languageError = false;
+                      }
+                    });
                     unawaited(_saveCourseDraft());
                   },
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: _tightVerticalMode ? 0 : 16),
 
                 Row(
                   children: [
@@ -3142,14 +3633,25 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                       child: DropdownButtonFormField<String>(
                         isExpanded: true,
                         style: const TextStyle(color: Colors.white, fontSize: 16),
-                        initialValue: _selectedCourseMode,
+                        value: _selectedCourseMode,
+                        hint: Text(
+                          'Select Mode',
+                          style: TextStyle(
+                            color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.4),
+                            fontSize: 11,
+                            fontWeight: FontWeight.normal,
+                          ),
+                        ),
                         decoration: InputDecoration(
-                          contentPadding: EdgeInsets.symmetric(vertical: _inputVerticalPadding, horizontal: 16),
+                          contentPadding: EdgeInsets.symmetric(
+                            vertical: _inputVerticalPadding, 
+                            horizontal: 16
+                          ),
                           labelText: 'Course Mode',
                           floatingLabelBehavior: FloatingLabelBehavior.always,
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(_globalRadius),
-                            borderSide: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: _borderOpacity)),
+                            borderSide: BorderSide(color: _courseModeError ? Colors.red : Theme.of(context).dividerColor.withValues(alpha: _borderOpacity)),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(_globalRadius),
@@ -3161,7 +3663,14 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                         ),
                         items: _courseModes.map((m) => DropdownMenuItem(value: m, child: Text(m, overflow: TextOverflow.ellipsis))).toList(),
                         onChanged: (v) {
-                          if (v != null) setState(() => _selectedCourseMode = v);
+                          setState(() {
+                            if (_selectedCourseMode == v) {
+                              _selectedCourseMode = null;
+                            } else {
+                              _selectedCourseMode = v;
+                              _courseModeError = false;
+                            }
+                          });
                           unawaited(_saveCourseDraft());
                         },
                       ),
@@ -3171,14 +3680,25 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                       child: DropdownButtonFormField<String>(
                         isExpanded: true,
                         style: const TextStyle(color: Colors.white, fontSize: 16),
-                        initialValue: _selectedSupportType,
+                        value: _selectedSupportType,
+                        hint: Text(
+                          'Select Type',
+                          style: TextStyle(
+                            color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.4),
+                            fontSize: 11,
+                            fontWeight: FontWeight.normal,
+                          ),
+                        ),
                         decoration: InputDecoration(
-                          contentPadding: EdgeInsets.symmetric(vertical: _inputVerticalPadding, horizontal: 16),
+                          contentPadding: EdgeInsets.symmetric(
+                            vertical: _inputVerticalPadding, 
+                            horizontal: 16
+                          ),
                           labelText: 'Support Type',
                           floatingLabelBehavior: FloatingLabelBehavior.always,
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(_globalRadius),
-                            borderSide: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: _borderOpacity)),
+                            borderSide: BorderSide(color: _supportTypeError ? Colors.red : Theme.of(context).dividerColor.withValues(alpha: _borderOpacity)),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(_globalRadius),
@@ -3190,42 +3710,41 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                         ),
                         items: _supportTypes.map((s) => DropdownMenuItem(value: s, child: Text(s, overflow: TextOverflow.ellipsis))).toList(),
                         onChanged: (v) {
-                          if (v != null) setState(() => _selectedSupportType = v);
+                          setState(() {
+                            if (_selectedSupportType == v) {
+                              _selectedSupportType = null;
+                            } else {
+                              _selectedSupportType = v;
+                              _supportTypeError = false;
+                            }
+                          });
                           unawaited(_saveCourseDraft());
                         },
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-
-                _buildTextField(
-                  controller: _whatsappController,
-                  label: 'Support WhatsApp Number',
-                  hint: 'e.g. 919876543210',
-                  icon: Icons.phone_android,
-                  keyboardType: TextInputType.phone,
-                  onChanged: (_) => unawaited(_saveCourseDraft()),
-                ),
-                const SizedBox(height: 32),
+                if (_selectedSupportType == 'WhatsApp Group') ...[
+                  const SizedBox(height: 12),
+                  _buildTextField(
+                    controller: _whatsappController,
+                    label: 'Support WP Group Link',
+                    hint: 'Paste WhatsApp Group Invite Link',
+                    icon: Icons.link,
+                    keyboardType: TextInputType.url,
+                    onChanged: (_) => unawaited(_saveCourseDraft()),
+                    hasError: _wpGroupLinkError,
+                  ),
+                ],
+                SizedBox(height: _s2ValiditySpace),
 
                 // 3. Validity & Certificate
-                const Text(
-                  'Validity & Certificate',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                const SizedBox(height: 12),
                 _buildValiditySelector(),
                 const SizedBox(height: 24),
                 _buildCertificateSettings(),
-                const SizedBox(height: 32),
+                SizedBox(height: _certToBigScreenSpace),
 
                 // 4. PC/Web Support
-                const Text(
-                  'PC & Web Support',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                const SizedBox(height: 12),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   title: const Text(
@@ -3243,28 +3762,34 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                   activeThumbColor: AppTheme.primaryColor,
                 ),
                 if (_isBigScreenEnabled) ...[
-                  const SizedBox(height: 12),
+                  SizedBox(height: _tightVerticalMode ? 0 : 12),
                   _buildTextField(
                     controller: _websiteUrlController,
                     label: 'Website Login URL',
                     hint: 'https://yourwebsite.com/login',
                     icon: Icons.language,
                     onChanged: (_) => unawaited(_saveCourseDraft()),
+                    hasError: _bigScreenUrlError,
                   ),
                 ],
-                const SizedBox(height: 40),
               ],
             ),
           ),
         ),
         SliverFillRemaining(
           hasScrollBody: false,
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: _buildNavButtons(),
-            ),
+          child: Column(
+            children: [
+              Expanded(
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: _buildNavButtons(),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -3275,7 +3800,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
     return DropdownButtonFormField<int>(
       isExpanded: true,
       style: const TextStyle(color: Colors.white, fontSize: 16),
-      initialValue: _courseValidityDays,
+      value: _courseValidityDays,
       hint: const Text('Select Validity'),
       decoration: InputDecoration(
         labelText: 'Course Validity',
@@ -3288,7 +3813,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(_globalRadius),
           borderSide: BorderSide(
-            color: Theme.of(context).dividerColor.withValues(alpha: _borderOpacity),
+            color: _validityError ? Colors.red : Theme.of(context).dividerColor.withValues(alpha: _borderOpacity),
           ),
         ),
         focusedBorder: OutlineInputBorder(
@@ -3309,7 +3834,14 @@ class _AddCourseScreenState extends State<AddCourseScreen>
         DropdownMenuItem(value: 1095, child: Text('3 Years')),
       ],
       onChanged: (v) {
-        setState(() => _courseValidityDays = v);
+        setState(() {
+          if (_courseValidityDays == v) {
+            _courseValidityDays = null;
+          } else {
+            _courseValidityDays = v;
+            _validityError = false;
+          }
+        });
         unawaited(_saveCourseDraft());
       },
     );
@@ -3319,39 +3851,6 @@ class _AddCourseScreenState extends State<AddCourseScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Certification Management',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 8,
-                vertical: 4,
-              ),
-              decoration: BoxDecoration(
-                color: _hasCertificate
-                    ? Colors.green.withOpacity(0.1)
-                    : Colors.grey.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(3.0),
-              ),
-              child: Text(
-                _hasCertificate ? 'ENABLED' : 'DISABLED',
-                style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                  color: _hasCertificate ? Colors.green : Colors.grey,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
           title: const Text(
@@ -3425,8 +3924,10 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                           bottom: 8,
                           left: 8,
                           child: ElevatedButton(
-                            onPressed: () =>
-                                setState(() => _selectedCertSlot = 1),
+                            onPressed: () {
+                              setState(() => _selectedCertSlot = 1);
+                              unawaited(_saveCourseDraft());
+                            },
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
@@ -3493,8 +3994,10 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                           bottom: 8,
                           left: 8,
                           child: ElevatedButton(
-                            onPressed: () =>
-                                setState(() => _selectedCertSlot = 2),
+                            onPressed: () {
+                              setState(() => _selectedCertSlot = 2);
+                              unawaited(_saveCourseDraft());
+                            },
                             style: ElevatedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 8,
@@ -3539,16 +4042,14 @@ class _AddCourseScreenState extends State<AddCourseScreen>
             isSelectionMode: false,
             isDragMode: false,
           ),
-          pinned: true, 
+          pinned: true,
         ),
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 24),
+          padding: EdgeInsets.symmetric(horizontal: _screenPadding),
           sliver: SliverToBoxAdapter(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 16),
-
                 // Review Card
                 _buildCourseReviewCard(),
                 const SizedBox(height: 32),
@@ -3588,19 +4089,25 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
               ],
             ),
           ),
         ),
         SliverFillRemaining(
           hasScrollBody: false,
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: _buildNavButtons(),
-            ),
+          child: Column(
+            children: [
+              Expanded(
+                child: Align(
+                  alignment: Alignment.bottomCenter,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    child: _buildNavButtons(),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -3697,9 +4204,12 @@ class _AddCourseScreenState extends State<AddCourseScreen>
     bool alignTop = false,
     void Function(String)? onChanged,
     FocusNode? focusNode,
+    double bottomPadding = 20.0,
+    bool hasError = false,
+    double? verticalPadding,
   }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: EdgeInsets.only(bottom: _tightVerticalMode ? 0 : bottomPadding),
       child: TextFormField(
         controller: controller,
         focusNode: focusNode,
@@ -3745,15 +4255,17 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                     : Icon(icon, color: Colors.grey))
               : null,
           contentPadding: EdgeInsets.symmetric(
-            vertical: _inputVerticalPadding,
+            vertical: verticalPadding ?? _inputVerticalPadding,
             horizontal: 12,
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(_globalRadius),
             borderSide: BorderSide(
-              color: Theme.of(
-                context,
-              ).dividerColor.withValues(alpha: _borderOpacity),
+              color: hasError
+                  ? Colors.red
+                  : Theme.of(
+                      context,
+                    ).dividerColor.withValues(alpha: _borderOpacity),
             ),
           ),
           focusedBorder: OutlineInputBorder(
@@ -3798,25 +4310,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
     );
   }
 
-  // Concurrency Limited Queue Processor
-  Future<void> _processQueue(
-    List<Future<void> Function()> tasks, {
-    int concurrent = 2,
-  }) async {
-    final queue = List.of(tasks);
-    final active = <Future<void>>[];
 
-    while (queue.isNotEmpty || active.isNotEmpty) {
-      while (active.length < concurrent && queue.isNotEmpty) {
-        final task = queue.removeAt(0);
-        final future = task();
-        active.add(future);
-        future.then((_) => active.remove(future));
-      }
-      if (active.isEmpty) break;
-      await Future.any(active); // Wait for at least one to finish
-    }
-  }
 }
 
 class KeepAliveWrapper extends StatefulWidget {
