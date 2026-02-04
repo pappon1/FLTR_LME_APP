@@ -79,6 +79,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
   final _durationController = TextEditingController();
   final _whatsappController = TextEditingController();
   final _websiteUrlController = TextEditingController();
+  final _specialTagController = TextEditingController(); // For "Special Offer" badges
   // Content Management
   final List<Map<String, dynamic>> _courseContents = [];
 
@@ -258,6 +259,8 @@ class _AddCourseScreenState extends State<AddCourseScreen>
       _saveCourseDraft();
     });
 
+    _specialTagController.addListener(() => _saveCourseDraft());
+
     // Load Draft
     _loadCourseDraft().then((_) {
       if (mounted) setState(() => _isInitialLoading = false);
@@ -315,6 +318,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
           _selectedCourseMode = draft['courseMode'];
           _selectedSupportType = draft['supportType'];
           _whatsappController.text = draft['whatsappNumber'] ?? '';
+          _specialTagController.text = draft['specialTag'] ?? '';
           _isBigScreenEnabled = draft['isBigScreenEnabled'] ?? false;
           _websiteUrlController.text = draft['websiteUrl'] ?? '';
 
@@ -418,6 +422,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
         'courseMode': _selectedCourseMode,
         'supportType': _selectedSupportType,
         'whatsappNumber': _whatsappController.text.trim(),
+        'specialTag': _specialTagController.text.trim(),
         'isBigScreenEnabled': _isBigScreenEnabled,
         'websiteUrl': _websiteUrlController.text.trim(),
 
@@ -723,68 +728,116 @@ class _AddCourseScreenState extends State<AddCourseScreen>
         borderRadius: BorderRadius.circular(3.0),
         border: Border.all(color: AppTheme.primaryColor.withOpacity(0.2)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Row(
-            children: [
-              Icon(
-                Icons.rate_review_outlined,
-                color: AppTheme.primaryColor,
-                size: 20,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Row(
+              children: [
+                Icon(
+                  Icons.rate_review_outlined,
+                  color: AppTheme.primaryColor,
+                  size: 20,
+                ),
+                SizedBox(width: 8),
+                Text(
+                  'Quick Course Review',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                ),
+              ],
+            ),
+            const Divider(height: 24),
+            
+            // --- Step 1: Basic Info ---
+            Text('BASIC INFO', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.withOpacity(0.7), letterSpacing: 1.1)),
+            const SizedBox(height: 12),
+            _buildReviewItem(
+              Icons.title,
+              'Title',
+              _titleController.text.isEmpty ? 'Not Set' : _titleController.text,
+              () => _jumpToStep(0),
+            ),
+            _buildReviewItem(
+              Icons.category_outlined,
+              'Category',
+              _selectedCategory ?? 'Not Selected',
+              () => _jumpToStep(0),
+            ),
+            _buildReviewItem(
+              Icons.new_releases_outlined,
+              'Badge',
+              _newBatchDurationDays != null ? '$_newBatchDurationDays Days' : 'Not Set',
+              () => _jumpToStep(0),
+            ),
+            
+            const SizedBox(height: 8),
+            const Divider(height: 24),
+            
+            // --- Step 1.5: Setup ---
+            Text('SETUP & PRICING', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.withOpacity(0.7), letterSpacing: 1.1)),
+            const SizedBox(height: 12),
+            _buildReviewItem(
+              Icons.payments_outlined,
+              'Pricing',
+              '₹${_mrpController.text} (MRP) - ₹${_discountAmountController.text} (Disc) = ₹${_finalPriceController.text}',
+              () => _jumpToStep(1),
+            ),
+            _buildReviewItem(
+              Icons.language,
+              'Language',
+              _selectedLanguage ?? 'Not Set',
+              () => _jumpToStep(1),
+            ),
+            _buildReviewItem(
+              Icons.computer,
+              'Mode',
+              _selectedCourseMode ?? 'Not Set',
+              () => _jumpToStep(1),
+            ),
+            _buildReviewItem(
+              Icons.support_agent,
+              'Support',
+              _selectedSupportType ?? 'Not Set',
+              () => _jumpToStep(1),
+            ),
+            _buildReviewItem(
+              Icons.history_toggle_off,
+              'Validity',
+              _getValidityText(_courseValidityDays),
+              () => _jumpToStep(1),
+            ),
+            _buildReviewItem(
+              Icons.laptop_chromebook,
+              'Web/PC',
+              _isBigScreenEnabled ? 'Allowed' : 'Not Allowed',
+              () => _jumpToStep(1),
+            ),
+            _buildReviewItem(
+              Icons.download_for_offline_outlined,
+              'Downloads',
+              _isOfflineDownloadEnabled ? 'Enabled' : 'Disabled',
+              () => _jumpToStep(3),
+            ),
+            if (_specialTagController.text.isNotEmpty)
+              _buildReviewItem(
+                Icons.local_offer_outlined,
+                'Special Tag',
+                _specialTagController.text,
+                () => _jumpToStep(3),
               ),
-              SizedBox(width: 8),
-              Text(
-                'Quick Course Review',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-              ),
-            ],
-          ),
-          const Divider(height: 24),
-          _buildReviewItem(
-            Icons.title,
-            'Title',
-            _titleController.text.isEmpty ? 'Not Set' : _titleController.text,
-            () => _jumpToStep(0),
-          ),
-          _buildReviewItem(
-            Icons.category_outlined,
-            'Category',
-            _selectedCategory ?? 'Not Selected',
-            () => _jumpToStep(0),
-          ),
-          _buildReviewItem(
-            Icons.payments_outlined,
-            'Price',
-            '₹${_finalPriceController.text}',
-            () => _jumpToStep(0),
-          ),
-          _buildReviewItem(
-            Icons.video_collection_outlined,
-            'Content',
-            '${_getAllVideosFromContents(_courseContents).length} Videos',
-            () => _jumpToStep(1),
-          ),
-          _buildReviewItem(
-            Icons.history_toggle_off,
-            'Validity',
-            _getValidityText(_courseValidityDays),
-            null,
-          ),
-          _buildReviewItem(
-            Icons.workspace_premium_outlined,
-            'Certificate',
-            _hasCertificate ? 'Enabled' : 'Disabled',
-            null,
-          ),
-          _buildReviewItem(
-            Icons.public,
-            'Status',
-            _isPublished ? 'Public' : 'Hidden',
-            null,
-          ),
-        ],
-      ),
+            _buildReviewItem(
+              Icons.video_collection_outlined,
+              'Videos',
+              '${_countItemsRecursively(_courseContents, 'video')} Videos Added',
+              () => _jumpToStep(2),
+            ),
+            _buildReviewItem(
+              Icons.picture_as_pdf_outlined,
+              'Resources',
+              '${_countItemsRecursively(_courseContents, 'pdf')} PDFs Added',
+              () => _jumpToStep(2),
+            ),
+          ],
+        ),
     );
   }
 
@@ -2547,6 +2600,19 @@ class _AddCourseScreenState extends State<AddCourseScreen>
     return videos;
   }
 
+  // Helper to count items of a specific type recursively
+  int _countItemsRecursively(List<dynamic> items, String type) {
+    int count = 0;
+    for (var item in items) {
+      if (item['type'] == type) {
+        count++;
+      } else if (item['type'] == 'folder' && item['contents'] != null) {
+        count += _countItemsRecursively(item['contents'], type);
+      }
+    }
+    return count;
+  }
+
 
 
 
@@ -4054,7 +4120,73 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                 _buildCourseReviewCard(),
                 const SizedBox(height: 32),
 
-                // 5. Publish Toggle
+                // 4.5 Special Badge/Tag
+                const Text(
+                  'Special Course Badge (Tag)',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                _buildTextField(
+                  controller: _specialTagController,
+                  label: 'Badge Text',
+                  hint: 'e.g. Special Offer, Best Seller',
+                  icon: Icons.local_offer,
+                  maxLength: 20,
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    'Special Offer',
+                    'Best Seller',
+                    'Trending',
+                    'Limited Seats',
+                  ].map((tag) {
+                    return ActionChip(
+                      label: Text(tag, style: const TextStyle(fontSize: 11)),
+                      padding: EdgeInsets.zero,
+                      onPressed: () {
+                        _specialTagController.text = tag;
+                        _saveCourseDraft();
+                      },
+                      backgroundColor: AppTheme.primaryColor.withOpacity(0.05),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 32),
+
+                // 5. Offline Download Toggle
+                const Text(
+                  'Distribution Settings',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 12),
+                SwitchListTile(
+                  title: const Text(
+                    'Offline Downloads',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: const Text(
+                    'Allow students to download videos inside the app',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  value: _isOfflineDownloadEnabled,
+                  onChanged: (v) {
+                    setState(() => _isOfflineDownloadEnabled = v);
+                    unawaited(_saveCourseDraft());
+                  },
+                  activeThumbColor: AppTheme.primaryColor,
+                  tileColor: Colors.transparent,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(_globalRadius),
+                    side: BorderSide(
+                      color: Colors.grey.withOpacity(_borderOpacity),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // 6. Publish Status
                 const Text(
                   'Publish Status',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
@@ -4071,6 +4203,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                     _isPublished
                         ? 'Visible to all students on the app'
                         : 'Only visible to admins',
+                    style: const TextStyle(fontSize: 12),
                   ),
                   value: _isPublished,
                   onChanged: (v) {
