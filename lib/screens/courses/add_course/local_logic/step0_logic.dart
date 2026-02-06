@@ -22,7 +22,9 @@ class Step0Logic {
 
         final double ratio = decodedImage.width / decodedImage.height;
         if (ratio < 1.7 || ratio > 1.85) {
-          showWarning('Error: Image must be YouTube Size (16:9 Ratio).');
+          if (context.mounted) {
+            showWarning('Error: Image must be YouTube Size (16:9 Ratio).');
+          }
           return;
         }
 
@@ -32,7 +34,9 @@ class Step0Logic {
         await draftManager.saveCourseDraft();
       }
     } catch (e) {
-      showWarning('Error picking image: $e');
+      if (context.mounted) {
+        showWarning('Error picking image: $e');
+      }
     }
   }
 

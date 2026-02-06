@@ -17,7 +17,6 @@ class CustomTextField extends StatelessWidget {
   final double bottomPadding;
   final bool hasError;
   final double? verticalPadding;
-  final bool tightVerticalMode;
   final Widget? suffixWidget;
 
   const CustomTextField({
@@ -36,14 +35,13 @@ class CustomTextField extends StatelessWidget {
     this.bottomPadding = 20.0,
     this.hasError = false,
     this.verticalPadding,
-    this.tightVerticalMode = false,
     this.suffixWidget,
   });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: tightVerticalMode ? 0 : bottomPadding),
+      padding: EdgeInsets.only(bottom: bottomPadding),
       child: TextFormField(
         controller: controller,
         focusNode: focusNode,

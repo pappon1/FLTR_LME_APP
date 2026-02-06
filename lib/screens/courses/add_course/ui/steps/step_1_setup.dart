@@ -253,7 +253,7 @@ class Step1SetupWidget extends StatelessWidget {
             },
           ),
         ),
-        SizedBox(height: state.tightVerticalMode ? 0 : 16),
+        SizedBox(height: 16),
         Row(
           children: [
             Expanded(
@@ -325,8 +325,8 @@ class Step1SetupWidget extends StatelessWidget {
               suffixWidget: state.isWpChecking
                   ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
                   : state.isWpValid
-                      ? const Icon(Icons.check_circle, color: Colors.green)
-                      : null,
+                       ? const Icon(Icons.check_circle, color: Colors.green)
+                       : null,
             ),
           ),
         ],
@@ -443,7 +443,7 @@ class Step1SetupWidget extends StatelessWidget {
           activeThumbColor: AppTheme.primaryColor,
         ),
         if (state.isBigScreenEnabled) ...[
-          SizedBox(height: state.tightVerticalMode ? 0 : 12),
+          const SizedBox(height: 12),
           Container(
             key: state.bigScreenKey,
             child: CustomTextField(

@@ -76,7 +76,7 @@ class Step1Logic {
         state.isWebChecking = false;
       }
       state.updateState();
-      draftManager.saveCourseDraft();
+      await draftManager.saveCourseDraft();
     }
   }
 
@@ -150,7 +150,9 @@ class Step1Logic {
         final int sizeInBytes = file.lengthSync();
         final double sizeInMb = sizeInBytes / (1024 * 1024);
         if (sizeInMb > 10) {
-           showWarning('PDF size should be less than 10MB');
+           if (context.mounted) {
+             showWarning('PDF size should be less than 10MB');
+           }
            return;
         }
 
@@ -160,7 +162,9 @@ class Step1Logic {
         await draftManager.saveCourseDraft();
       }
     } catch (e) {
-      showWarning('Error picking PDF: $e');
+      if (context.mounted) {
+        showWarning('Error picking PDF: $e');
+      }
     }
   }
 }

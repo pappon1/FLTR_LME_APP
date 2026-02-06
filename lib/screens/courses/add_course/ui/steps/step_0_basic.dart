@@ -279,7 +279,7 @@ class Step0BasicWidget extends StatelessWidget {
                     const SizedBox(height: 20),
     
                     Container(
-                      key: state.difficultyKey,
+                      key: state.batchDurationKey,
                       child: _buildDropdownInt(
                         context,
                         label: 'New Badge Duration',

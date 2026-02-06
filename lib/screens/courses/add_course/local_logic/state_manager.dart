@@ -26,7 +26,6 @@ class CourseStateManager extends ChangeNotifier {
   final discountAmountController = TextEditingController();
   final finalPriceController = TextEditingController();
 
-  final durationController = TextEditingController();
   final whatsappController = TextEditingController();
   final websiteUrlController = TextEditingController();
   final specialTagController = TextEditingController();
@@ -128,15 +127,7 @@ class CourseStateManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  String? _certificate1FileName;
-  String? get certificate1FileName => _certificate1FileName;
-  set certificate1FileName(String? value) {
-    if (_certificate1FileName == value) return;
-    _certificate1FileName = value;
-    notifyListeners();
-  }
-
-  // Removed Syllabus and Single/Double Selection Slot logic as per new requirement
+  // Removed Syllabus logic as per new requirement
   // Defaulting everything to a single slot logic.
 
 
@@ -171,7 +162,6 @@ class CourseStateManager extends ChangeNotifier {
   }
 
   bool isRestoringDraft = false;
-  bool tightVerticalMode = false;
 
   String? _difficulty;
   String? get difficulty => _difficulty;
@@ -222,22 +212,6 @@ class CourseStateManager extends ChangeNotifier {
   }
 
   double _totalProgress = 0.0;
-  double get totalProgress => _totalProgress;
-  set totalProgress(double value) {
-    if (_totalProgress == value) return;
-    _totalProgress = value;
-    totalProgressNotifier.value = value;
-    notifyListeners();
-  }
-
-  String _uploadStatus = '';
-  String get uploadStatus => _uploadStatus;
-  set uploadStatus(String value) {
-    _uploadStatus = value;
-    notifyListeners();
-  }
-
-  // Efficient Progress Updates
   void calculateOverallProgress() {
     if (_uploadTasks.isEmpty) {
       if (_totalProgress != 0.0) {
@@ -262,7 +236,7 @@ class CourseStateManager extends ChangeNotifier {
     if (index != -1) {
       if ((_uploadTasks[index].progress - progress).abs() > 0.01) {
         _uploadTasks[index].progress = progress;
-        notifyListeners();
+        calculateOverallProgress();
       }
     }
   }
@@ -317,6 +291,7 @@ class CourseStateManager extends ChangeNotifier {
   final descKey = GlobalKey();
   final categoryKey = GlobalKey();
   final difficultyKey = GlobalKey(); // Also for duration
+  final batchDurationKey = GlobalKey();
   final highlightsKey = GlobalKey();
   final faqsKey = GlobalKey();
 
@@ -351,7 +326,6 @@ class CourseStateManager extends ChangeNotifier {
       selectedCourseMode != null ||
       selectedSupportType != null ||
       whatsappController.text.trim().isNotEmpty ||
-      courseValidityDays != null ||
       courseValidityDays != null ||
       certificate1File != null ||
       websiteUrlController.text.trim().isNotEmpty;
@@ -390,7 +364,6 @@ class CourseStateManager extends ChangeNotifier {
     mrpController.dispose();
     discountAmountController.dispose();
     finalPriceController.dispose();
-    durationController.dispose();
     whatsappController.dispose();
     websiteUrlController.dispose();
     specialTagController.dispose();

@@ -29,12 +29,11 @@ class CourseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double sellingPrice = course.price.toDouble();
-    final double originalPrice = (course.discountPrice > course.price) 
-        ? course.discountPrice.toDouble() 
-        : sellingPrice;
+    // Correct Pricing Logic: price = MRP, discountPrice = Selling Price
+    final double sellingPrice = course.discountPrice.toDouble();
+    final double originalPrice = course.price.toDouble();
         
-    final int discountPercent = originalPrice > 0 
+    final int discountPercent = (originalPrice > sellingPrice && originalPrice > 0)
         ? ((originalPrice - sellingPrice) / originalPrice * 100).round()
         : 0;
     
@@ -111,6 +110,15 @@ class CourseCard extends StatelessWidget {
                     runSpacing: 8,
                     crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
+                      // 🔥 Special Tag (Targeted Badge)
+                      if (course.specialTag.isNotEmpty) ...[
+                        _buildBadge(
+                          icon: Icons.local_offer,
+                          label: course.specialTag,
+                          color: const Color(0xFFE91E63), // Pinkish Red
+                        ),
+                      ],
+
                       // ✨ New
                       if (isNew) ...[
                         _buildBadge(
@@ -145,11 +153,11 @@ class CourseCard extends StatelessWidget {
                         ),
                       ],
 
-                      // ▶️ Demo
+                      // ⏳ Validity
                       _buildBadge(
-                        icon: Icons.play_arrow,
-                        label: 'Demo',
-                        color: const Color(0xFF00E676),
+                        icon: Icons.history_toggle_off,
+                        label: course.duration,
+                        color: const Color(0xFF00BCD4), // Cyan
                       ),
 
                       // 💻 Web Support
@@ -170,9 +178,9 @@ class CourseCard extends StatelessWidget {
                         ),
                       ],
 
-                      // 📖 Videos
+                      // 🎥 Videos
                       _buildBadge(
-                        icon: Icons.menu_book,
+                        icon: Icons.video_library,
                         label: '${course.totalVideos} Videos',
                         color: const Color(0xFF536DFE),
                       ),
@@ -216,36 +224,38 @@ class CourseCard extends StatelessWidget {
                           alignment: Alignment.centerLeft,
                           child: Row(
                             children: [
-                              // Bold Price
+                              // Bold Selling Price
                               Text(
-                                '₹${course.price}',
+                                '₹${sellingPrice.toInt()}',
                                 style: GoogleFonts.inter(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,
                                   color: isDark ? Colors.white : Colors.black,
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              // Red Strikethrough
-                              Text(
-                                '₹${originalPrice.toInt()}',
-                                style: GoogleFonts.inter(
-                                  fontSize: 15,
-                                  color: const Color(0xFFFF5252),
-                                  decoration: TextDecoration.lineThrough,
-                                  decorationColor: const Color(0xFFFF5252),
+                              if (discountPercent > 0) ...[
+                                const SizedBox(width: 12),
+                                // Red Strikethrough (MRP)
+                                Text(
+                                  '₹${originalPrice.toInt()}',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 15,
+                                    color: const Color(0xFFFF5252),
+                                    decoration: TextDecoration.lineThrough,
+                                    decorationColor: const Color(0xFFFF5252),
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 12),
-                              // Neon Green Discount
-                              Text(
-                                '$discountPercent % Off',
-                                style: GoogleFonts.inter(
-                                  fontSize: 15,
-                                  color: const Color(0xFF00E676),
-                                  fontWeight: FontWeight.bold,
+                                const SizedBox(width: 12),
+                                // Neon Green Discount
+                                Text(
+                                  '$discountPercent % Off',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 15,
+                                    color: const Color(0xFF00E676),
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
+                              ],
                             ],
                           ),
                         ),

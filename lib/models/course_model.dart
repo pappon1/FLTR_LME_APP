@@ -21,7 +21,6 @@ class CourseModel {
   final String? certificateUrl1;
   final String? certificateUrl2;
   final int selectedCertificateSlot; // 1 or 2
-  final List<dynamic> demoVideos; // List of demo video objects
   final List<String> highlights;
   final List<Map<String, String>> faqs;
   final bool isOfflineDownloadEnabled;
@@ -32,6 +31,7 @@ class CourseModel {
   final String whatsappNumber;
   final bool isBigScreenEnabled;
   final String websiteUrl;
+  final String specialTag; // e.g. "Best Seller", "80% Off"
 
   CourseModel({
     required this.id,
@@ -54,7 +54,6 @@ class CourseModel {
     this.certificateUrl1,
     this.certificateUrl2,
     this.selectedCertificateSlot = 1,
-    this.demoVideos = const [],
     this.highlights = const [],
     this.faqs = const [],
     this.isOfflineDownloadEnabled = true,
@@ -65,6 +64,7 @@ class CourseModel {
     this.whatsappNumber = '',
     this.isBigScreenEnabled = false,
     this.websiteUrl = '',
+    this.specialTag = '',
   }) : createdAt = createdAt ?? DateTime.now();
 
   // Convert to Map for Firestore
@@ -89,7 +89,6 @@ class CourseModel {
       'certificateUrl1': certificateUrl1,
       'certificateUrl2': certificateUrl2,
       'selectedCertificateSlot': selectedCertificateSlot,
-      'demoVideos': demoVideos,
       'highlights': highlights,
       'faqs': faqs,
       'isOfflineDownloadEnabled': isOfflineDownloadEnabled,
@@ -100,6 +99,7 @@ class CourseModel {
       'whatsappNumber': whatsappNumber,
       'isBigScreenEnabled': isBigScreenEnabled,
       'websiteUrl': websiteUrl,
+      'specialTag': specialTag,
     };
   }
 
@@ -112,6 +112,7 @@ class CourseModel {
       category: data['category'] ?? '',
       price: _toInt(data['price'], 0),
       discountPrice: _toInt(data['discountPrice'] ?? data['price'], 0),
+      specialTag: data['specialTag'] ?? '',
       description: data['description'] ?? '',
       thumbnailUrl: data['thumbnailUrl'] ?? '',
       duration: data['duration'] ?? '0 hours',
@@ -127,7 +128,6 @@ class CourseModel {
       certificateUrl1: data['certificateUrl1']?.toString(),
       certificateUrl2: data['certificateUrl2']?.toString(),
       selectedCertificateSlot: _toInt(data['selectedCertificateSlot'], 1),
-      demoVideos: data['demoVideos'] ?? [],
       highlights: List<String>.from(data['highlights'] ?? []),
       faqs: (data['faqs'] as List<dynamic>?)?.map((e) => Map<String, String>.from(e)).toList() ?? [],
       isOfflineDownloadEnabled: data['isOfflineDownloadEnabled'] ?? true,
@@ -157,6 +157,7 @@ class CourseModel {
       category: map['category'] ?? '',
       price: map['price'] ?? 0,
       discountPrice: map['discountPrice'] ?? map['price'] ?? 0,
+      specialTag: map['specialTag'] ?? '',
       description: map['description'] ?? '',
       thumbnailUrl: map['thumbnailUrl'] ?? '',
       duration: map['duration'] ?? '0 hours',
@@ -174,7 +175,6 @@ class CourseModel {
       certificateUrl1: map['certificateUrl1'],
       certificateUrl2: map['certificateUrl2'],
       selectedCertificateSlot: map['selectedCertificateSlot'] ?? 1,
-      demoVideos: map['demoVideos'] ?? [],
       highlights: List<String>.from(map['highlights'] ?? []),
       faqs: (map['faqs'] as List<dynamic>?)?.map((e) => Map<String, String>.from(e)).toList() ?? [],
       isOfflineDownloadEnabled: map['isOfflineDownloadEnabled'] ?? true,
@@ -209,7 +209,6 @@ class CourseModel {
     String? certificateUrl1,
     String? certificateUrl2,
     int? selectedCertificateSlot,
-    List<dynamic>? demoVideos,
     List<String>? highlights,
     List<Map<String, String>>? faqs,
     bool? isOfflineDownloadEnabled,
@@ -220,6 +219,7 @@ class CourseModel {
     String? whatsappNumber,
     bool? isBigScreenEnabled,
     String? websiteUrl,
+    String? specialTag,
   }) {
     return CourseModel(
       id: id ?? this.id,
@@ -242,7 +242,6 @@ class CourseModel {
       certificateUrl1: certificateUrl1 ?? this.certificateUrl1,
       certificateUrl2: certificateUrl2 ?? this.certificateUrl2,
       selectedCertificateSlot: selectedCertificateSlot ?? this.selectedCertificateSlot,
-      demoVideos: demoVideos ?? this.demoVideos,
       highlights: highlights ?? this.highlights,
       faqs: faqs ?? this.faqs,
       isOfflineDownloadEnabled: isOfflineDownloadEnabled ?? this.isOfflineDownloadEnabled,
@@ -253,6 +252,7 @@ class CourseModel {
       whatsappNumber: whatsappNumber ?? this.whatsappNumber,
       isBigScreenEnabled: isBigScreenEnabled ?? this.isBigScreenEnabled,
       websiteUrl: websiteUrl ?? this.websiteUrl,
+      specialTag: specialTag ?? this.specialTag,
     );
   }
 }

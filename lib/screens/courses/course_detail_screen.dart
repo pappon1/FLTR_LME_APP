@@ -625,13 +625,13 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
   }
 
   Widget _buildBottomBar(bool isDark, CourseModel course) {
-    final double sellingPrice = course.price.toDouble();
-    final double originalPrice = (course.discountPrice > course.price) 
-        ? course.discountPrice.toDouble() 
-        : sellingPrice * 7; 
-    final int discountPercent = originalPrice > 0 
+    // Correct Pricing Logic: price = MRP, discountPrice = Selling Price
+    final double sellingPrice = course.discountPrice.toDouble();
+    final double originalPrice = course.price.toDouble();
+    
+    final int discountPercent = (originalPrice > sellingPrice && originalPrice > 0)
         ? ((originalPrice - sellingPrice) / originalPrice * 100).round()
-        : 85; 
+        : 0; 
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: _fBarPaddingV),
@@ -660,26 +660,28 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
                         color: isDark ? Colors.white : Colors.black,
                       ),
                     ),
-                    const SizedBox(width: _fElemSpace),
-                    Text(
-                      '₹${originalPrice.toStringAsFixed(0)}',
-                      style: GoogleFonts.manrope(
-                        fontSize: _fOldPriceSize,
-                        decoration: TextDecoration.lineThrough,
-                        decorationColor: const Color(0xFFF05151),
-                        color: const Color(0xFFF05151), 
-                        fontWeight: FontWeight.w600,
+                    if (discountPercent > 0) ...[
+                      const SizedBox(width: _fElemSpace),
+                      Text(
+                        '₹${originalPrice.toStringAsFixed(0)}',
+                        style: GoogleFonts.manrope(
+                          fontSize: _fOldPriceSize,
+                          decoration: TextDecoration.lineThrough,
+                          decorationColor: const Color(0xFFF05151),
+                          color: const Color(0xFFF05151), 
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: _fElemSpace),
-                    Text(
-                      '$discountPercent% OFF',
-                      style: GoogleFonts.manrope(
-                        fontSize: _fDiscSize,
-                        fontWeight: FontWeight.w800,
-                        color: const Color(0xFF2DC572),
+                      const SizedBox(width: _fElemSpace),
+                      Text(
+                        '$discountPercent% OFF',
+                        style: GoogleFonts.manrope(
+                          fontSize: _fDiscSize,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF2DC572),
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),

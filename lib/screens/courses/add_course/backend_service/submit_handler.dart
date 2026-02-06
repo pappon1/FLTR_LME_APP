@@ -107,7 +107,7 @@ class SubmitHandler {
         discountPrice: int.tryParse(state.finalPriceController.text) ?? 0,
         description: finalDesc,
         thumbnailUrl: state.thumbnailImage?.path ?? '',
-        duration: state.durationController.text.trim(),
+        duration: finalValidity == 0 ? 'Lifetime Access' : '$finalValidity Days',
         difficulty: state.difficulty!,
         enrolledStudents: 0,
         rating: 0.0,
@@ -119,7 +119,6 @@ class SubmitHandler {
         hasCertificate: state.hasCertificate,
         certificateUrl1: state.certificate1File?.path,
         selectedCertificateSlot: 1,
-        demoVideos: [],
         isOfflineDownloadEnabled: state.isOfflineDownloadEnabled,
         language: state.selectedLanguage!,
         courseMode: state.selectedCourseMode!,
@@ -127,6 +126,7 @@ class SubmitHandler {
         whatsappNumber: state.whatsappController.text.trim(),
         isBigScreenEnabled: state.isBigScreenEnabled,
         websiteUrl: state.websiteUrlController.text.trim(),
+        specialTag: state.specialTagController.text.trim(),
         contents: state.courseContents,
         highlights: state.highlightControllers
             .map((c) => c.text.trim())
@@ -235,7 +235,7 @@ class SubmitHandler {
         'files': fileTasks,
       });
 
-      Future.delayed(const Duration(milliseconds: 1500), () {
+      Timer(const Duration(milliseconds: 1500), () {
         service.invoke('submit_course', {
           'course': courseMap,
           'files': fileTasks,
@@ -256,6 +256,7 @@ class SubmitHandler {
           ),
         );
 
+        if (!context.mounted) return;
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (_) => const UploadProgressScreen()),
         );
@@ -264,9 +265,11 @@ class SubmitHandler {
       state.isLoading = false;
       state.isUploading = false;
       state.updateState();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
     } finally {
       await WakelockPlus.disable();
     }
@@ -290,11 +293,8 @@ class SubmitHandler {
 
 
   void _jumpToStep(int step) {
-    state.pageController.animateToPage(
-      step,
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.easeOutQuart,
-    );
+    FocusManager.instance.primaryFocus?.unfocus();
+    state.pageController.jumpToPage(step);
   }
 
   void _showInProcessDialog(BuildContext context) {

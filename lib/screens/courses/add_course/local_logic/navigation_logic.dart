@@ -46,15 +46,11 @@ class NavigationLogic {
   }
 
   Future<void> _animateToPage(int page) async {
-    // Unfocus keyboard and wait, matching original logic for smooth transition
+    // Unfocus immediately
     FocusScope.of(context).unfocus();
-    await Future.delayed(const Duration(milliseconds: 50));
     
-    pageController.animateToPage(
-      page,
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeInOut,
-    );
+    // Jump instantly without animation
+    pageController.jumpToPage(page);
     state.currentStep = page;
   }
 }

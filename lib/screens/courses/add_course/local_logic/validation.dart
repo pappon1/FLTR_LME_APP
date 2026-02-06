@@ -77,7 +77,7 @@ class ValidationLogic {
       state.difficultyError = true;
       if (isValid) {
         firstError = 'Please select a course type';
-        firstErrorKey = state.categoryKey; // In the same row as category
+        firstErrorKey = state.categoryKey; // Stays near category dropdown
         errorType = 'difficulty';
       }
       isValid = false;
@@ -88,7 +88,7 @@ class ValidationLogic {
       state.batchDurationError = true;
       if (isValid) {
         firstError = 'Please select new badge duration';
-        firstErrorKey = state.difficultyKey; // Mapped to Duration in UI
+        firstErrorKey = state.batchDurationKey; // Use specific key for duration
         errorType = 'duration';
       }
       isValid = false;

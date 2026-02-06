@@ -118,16 +118,14 @@ class _AddCourseScreenState extends State<AddCourseScreen> with WidgetsBindingOb
       FlutterBackgroundService().on('update_progress').listen((event) {
         if (event != null) {
           state.updateProgress(event['taskId'], event['progress']);
-          state.calculateOverallProgress();
         }
       }),
     );
 
     _serviceSubscriptions.add(
-      FlutterBackgroundService().on('upload_complete').listen((event) async {
+      FlutterBackgroundService().on('upload_complete').listen((event) {
         if (event != null) {
           state.updateProgress(event['taskId'], 1.0);
-          state.calculateOverallProgress();
           unawaited(draftManager.saveCourseDraft());
         }
       }),
@@ -137,7 +135,6 @@ class _AddCourseScreenState extends State<AddCourseScreen> with WidgetsBindingOb
       FlutterBackgroundService().on('upload_error').listen((event) {
         if (event != null) {
           state.updateProgress(event['taskId'], 0.0);
-          state.calculateOverallProgress();
         }
       }),
     );

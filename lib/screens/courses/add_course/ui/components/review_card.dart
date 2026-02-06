@@ -74,7 +74,7 @@ class CourseReviewCard extends StatelessWidget {
           const Divider(height: 24),
           
           // --- Step 1.5: Setup ---
-          Text('SETUP & PRICING', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.withOpacity(0.7), letterSpacing: 1.1)),
+          Text('SETUP & PRICING', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.withValues(alpha: 0.7), letterSpacing: 1.1)),
           const SizedBox(height: 12),
           ReviewItem(
             icon: Icons.payments_outlined,
@@ -117,7 +117,7 @@ class CourseReviewCard extends StatelessWidget {
           const Divider(height: 24),
 
           // --- Step 3: Advance ---
-          Text('ADVANCE & CONTENT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.withOpacity(0.7), letterSpacing: 1.1)),
+          Text('ADVANCE & CONTENT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.withValues(alpha: 0.7), letterSpacing: 1.1)),
           const SizedBox(height: 12),
           ReviewItem(
             icon: Icons.download_for_offline_outlined,
