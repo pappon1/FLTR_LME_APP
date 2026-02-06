@@ -38,8 +38,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
       body: Stack(
         children: [
           // Image Viewer Layer (Starts below header)
-          Padding(
-            padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top + 60),
+          Center(
             child: PhotoView.customChild(
               scaleStateController: _scaleStateController,
               backgroundDecoration: const BoxDecoration(color: Colors.black),

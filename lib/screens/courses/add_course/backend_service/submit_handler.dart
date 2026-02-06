@@ -68,11 +68,8 @@ class SubmitHandler {
       if (state.thumbnailImage != null) {
         state.thumbnailImage = File(await copyToSafe(state.thumbnailImage!.path));
       }
-      if (state.certificate1Image != null) {
-        state.certificate1Image = File(await copyToSafe(state.certificate1Image!.path));
-      }
-      if (state.certificate2Image != null) {
-        state.certificate2Image = File(await copyToSafe(state.certificate2Image!.path));
+      if (state.certificate1File != null) {
+        state.certificate1File = File(await copyToSafe(state.certificate1File!.path));
       }
 
       Future<void> safeCopyAllContent(List<dynamic> items) async {
@@ -119,9 +116,8 @@ class SubmitHandler {
         newBatchDays: state.newBatchDurationDays!,
         courseValidityDays: finalValidity,
         hasCertificate: state.hasCertificate,
-        certificateUrl1: state.certificate1Image?.path,
-        certificateUrl2: state.certificate2Image?.path,
-        selectedCertificateSlot: state.selectedCertSlot,
+        certificateUrl1: state.certificate1File?.path,
+        selectedCertificateSlot: 1,
         demoVideos: [],
         isOfflineDownloadEnabled: state.isOfflineDownloadEnabled,
         language: state.selectedLanguage!,
@@ -168,18 +164,11 @@ class SubmitHandler {
       }
 
       if (state.hasCertificate) {
-        if (state.certificate1Image != null) {
+        if (state.certificate1File != null) {
           addTask(
-            state.certificate1Image!.path,
-            'courses/$sessionId/certificates/cert1_${path.basename(state.certificate1Image!.path)}',
+            state.certificate1File!.path,
+            'courses/$sessionId/certificates/cert1_${path.basename(state.certificate1File!.path)}',
             'cert1',
-          );
-        }
-        if (state.certificate2Image != null) {
-          addTask(
-            state.certificate2Image!.path,
-            'courses/$sessionId/certificates/cert2_${path.basename(state.certificate2Image!.path)}',
-            'cert2',
           );
         }
       }

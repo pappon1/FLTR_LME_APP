@@ -18,6 +18,7 @@ class CustomTextField extends StatelessWidget {
   final bool hasError;
   final double? verticalPadding;
   final bool tightVerticalMode;
+  final Widget? suffixWidget;
 
   const CustomTextField({
     super.key,
@@ -36,6 +37,7 @@ class CustomTextField extends StatelessWidget {
     this.hasError = false,
     this.verticalPadding,
     this.tightVerticalMode = false,
+    this.suffixWidget,
   });
 
   @override
@@ -60,6 +62,7 @@ class CustomTextField extends StatelessWidget {
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
+          suffixIcon: suffixWidget,
           hintStyle: TextStyle(
             color: Theme.of(
               context,
@@ -102,7 +105,10 @@ class CustomTextField extends StatelessWidget {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(UIConstants.globalRadius),
-            borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+            borderSide: BorderSide(
+              color: hasError ? Colors.red : AppTheme.primaryColor,
+              width: 2,
+            ),
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(UIConstants.globalRadius),

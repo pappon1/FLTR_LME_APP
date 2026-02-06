@@ -38,7 +38,11 @@ class Step2ContentWidget extends StatelessWidget {
         ),
         SliverPadding(
           key: const ValueKey('step2_content_padding'),
-          padding: const EdgeInsets.symmetric(horizontal: UIConstants.screenPadding),
+          padding: EdgeInsets.only(
+            left: UIConstants.screenPadding,
+            right: UIConstants.screenPadding,
+            top: (state.isSelectionMode || state.isDragModeActive) ? 16.0 : 0,
+          ),
           sliver: state.isInitialLoading
               ? const SliverToBoxAdapter(child: ShimmerList())
               : state.courseContents.isEmpty

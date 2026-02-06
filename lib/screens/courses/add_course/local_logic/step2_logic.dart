@@ -21,12 +21,14 @@ class Step2Logic {
   }
 
   void enterSelectionMode(int index) {
+    HapticFeedback.heavyImpact();
     state.isSelectionMode = true;
     state.selectedIndices.add(index);
     state.updateState();
   }
 
   void toggleSelection(int index) {
+    HapticFeedback.heavyImpact();
     if (state.selectedIndices.contains(index)) {
       state.selectedIndices.remove(index);
     } else {

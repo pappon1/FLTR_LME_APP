@@ -42,7 +42,6 @@ class DraftManager {
 
         state.courseValidityDays = draft['validity'];
         state.hasCertificate = draft['certificate'] ?? false;
-        state.selectedCertSlot = draft['certSlot'] ?? 1;
         state.isOfflineDownloadEnabled = draft['offlineDownload'] ?? true;
         state.isPublished = draft['isPublished'] ?? false;
         state.newBatchDurationDays = draft['newBatchDuration'];
@@ -58,11 +57,7 @@ class DraftManager {
         }
         if (draft['cert1Path'] != null) {
           final file = File(draft['cert1Path']);
-          if (file.existsSync()) state.certificate1Image = file;
-        }
-        if (draft['cert2Path'] != null) {
-          final file = File(draft['cert2Path']);
-          if (file.existsSync()) state.certificate2Image = file;
+          if (file.existsSync()) state.certificate1File = file;
         }
 
         // Restore Highlights
@@ -120,7 +115,6 @@ class DraftManager {
         'contents': state.courseContents,
         'validity': state.courseValidityDays,
         'certificate': state.hasCertificate,
-        'certSlot': state.selectedCertSlot,
         'offlineDownload': state.isOfflineDownloadEnabled,
         'isPublished': state.isPublished,
         'language': state.selectedLanguage,
@@ -133,8 +127,7 @@ class DraftManager {
         'customDays': int.tryParse(state.customValidityController.text),
         'thumbnailPath': state.thumbnailImage?.path,
         'newBatchDuration': state.newBatchDurationDays,
-        'cert1Path': state.certificate1Image?.path,
-        'cert2Path': state.certificate2Image?.path,
+        'cert1Path': state.certificate1File?.path,
         'highlights': state.highlightControllers.map((c) => c.text).toList(),
         'faqs': state.faqControllers
             .map((f) => {'question': f['q']!.text, 'answer': f['a']!.text})

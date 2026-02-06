@@ -109,26 +109,16 @@ class CourseStateManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  File? _certificate1Image;
-  File? get certificate1Image => _certificate1Image;
-  set certificate1Image(File? value) {
-    _certificate1Image = value;
+  File? _certificate1File;
+  File? get certificate1File => _certificate1File;
+  set certificate1File(File? value) {
+    _certificate1File = value;
     notifyListeners();
   }
 
-  File? _certificate2Image;
-  File? get certificate2Image => _certificate2Image;
-  set certificate2Image(File? value) {
-    _certificate2Image = value;
-    notifyListeners();
-  }
+  // Removed Single/Double Selection Slot logic as per new requirement
+  // Defaulting everything to a single slot logic.
 
-  int _selectedCertSlot = 1;
-  int get selectedCertSlot => _selectedCertSlot;
-  set selectedCertSlot(int value) {
-    _selectedCertSlot = value;
-    notifyListeners();
-  }
 
   bool _isOfflineDownloadEnabled = true;
   bool get isOfflineDownloadEnabled => _isOfflineDownloadEnabled;
@@ -242,11 +232,37 @@ class CourseStateManager extends ChangeNotifier {
   bool discountError = false;
   bool courseContentError = false;
 
+  // Link Validation State
+  bool isWpChecking = false;
+  bool isWpValid = false;
+  bool isWebChecking = false;
+  bool isWebValid = false;
+
   // Focus Nodes
   final titleFocus = FocusNode();
   final descFocus = FocusNode();
   final mrpFocus = FocusNode();
   final discountFocus = FocusNode();
+
+  // Scroll Keys (Step 0)
+  final thumbnailKey = GlobalKey();
+  final titleKey = GlobalKey();
+  final descKey = GlobalKey();
+  final categoryKey = GlobalKey();
+  final difficultyKey = GlobalKey(); // Also for duration
+  final highlightsKey = GlobalKey();
+  final faqsKey = GlobalKey();
+
+  // Scroll Keys (Step 1)
+  final mrpKey = GlobalKey();
+  final discountKey = GlobalKey();
+  final languageKey = GlobalKey();
+  final courseModeKey = GlobalKey();
+  final supportTypeKey = GlobalKey();
+  final whatsappKey = GlobalKey();
+  final validityKey = GlobalKey();
+  final certificateKey = GlobalKey();
+  final bigScreenKey = GlobalKey();
 
   // Computed Properties for UI validation checks
   bool get hasContent =>
@@ -269,8 +285,8 @@ class CourseStateManager extends ChangeNotifier {
       selectedSupportType != null ||
       whatsappController.text.trim().isNotEmpty ||
       courseValidityDays != null ||
-      certificate1Image != null ||
-      certificate2Image != null ||
+      courseValidityDays != null ||
+      certificate1File != null ||
       websiteUrlController.text.trim().isNotEmpty;
 
   void updateState() {

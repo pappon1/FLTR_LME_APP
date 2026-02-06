@@ -15,6 +15,7 @@ import '../content_viewers/video_player_screen.dart';
 import '../content_viewers/pdf_viewer_screen.dart';
 import '../utils/simple_file_explorer.dart';
 import 'components/course_content_list_item.dart';
+import 'add_course/ui/components/content_dialogs.dart';
 
 class FolderDetailScreen extends StatefulWidget {
   final String folderName;
@@ -422,31 +423,16 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
   }
 
   void _renameContent(int index) {
-      final TextEditingController renameController = TextEditingController(text: _contents[index]['name']);
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Rename Content'),
-          content: TextField(
-            controller: renameController,
-            decoration: const InputDecoration(hintText: 'Enter new name', border: OutlineInputBorder()),
-            autofocus: true,
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-            TextButton(
-              onPressed: () {
-                if (renameController.text.trim().isNotEmpty) {
-                  setState(() { _contents[index]['name'] = renameController.text.trim(); });
-                  _savePersistentContent();
-                  Navigator.pop(context);
-                }
-              },
-              child: const Text('Rename'),
-            ),
-          ],
-        ),
-      );
+    ContentDialogs.showRenameDialog(
+      context: context,
+      initialName: _contents[index]['name'],
+      onRename: (newName) {
+        setState(() {
+          _contents[index]['name'] = newName;
+        });
+        _savePersistentContent();
+      },
+    );
   }
 
   void _confirmRemoveContent(int index) {
@@ -479,166 +465,15 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
   }
 
   void _showThumbnailManagerDialog(int index) {
-    String? errorMessage;
-    bool isProcessing = false;
-    // Local state for the dialog
-    String? currentThumbnail = _contents[index]['thumbnail'];
-
-    showDialog(
+    ContentDialogs.showThumbnailManagerDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            final bool hasThumbnail = currentThumbnail != null;
-
-            Future<void> pickAndValidate() async {
-              // ZERO CACHE: Use custom explorer
-              final result = await Navigator.push(
-                context, 
-                MaterialPageRoute(builder: (_) => const SimpleFileExplorer(
-                  allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
-                ))
-              );
-              
-              if (result != null && result is List && result.isNotEmpty) {
-                  setDialogState(() => isProcessing = true);
-                  final String filePath = result.first as String;
-                  
-                  try {
-                    final File file = File(filePath);
-                    final decodedImage = await decodeImageFromList(file.readAsBytesSync());
-                    
-                    final double ratio = decodedImage.width / decodedImage.height;
-                    // 16:9 is approx 1.77. Allow 1.7 to 1.85
-                    if (ratio < 1.7 || ratio > 1.85) {
-                      setDialogState(() {
-                         errorMessage = "Invalid Ratio: ${ratio.toStringAsFixed(2)}\n\n"
-                                        "Required: 16:9 (YouTube Standard)\n"
-                                        "Please crop your image to 1920x1080.";
-                         isProcessing = false;
-                      });
-                      return;
-                    }
-
-                    // Valid - Update LOCAL Dialog State only
-                    setDialogState(() {
-                      currentThumbnail = filePath;
-                      errorMessage = null;
-                      isProcessing = false;
-                    });
-                  } catch (e) {
-                     setDialogState(() {
-                        errorMessage = "Error processing image: $e";
-                        isProcessing = false;
-                     });
-                  }
-              }
-            }
-
-            return AlertDialog(
-              title: const Text('Manage Thumbnail'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                   if (errorMessage != null)
-                     Container(
-                       margin: const EdgeInsets.only(bottom: 16),
-                       padding: const EdgeInsets.all(12),
-                       decoration: BoxDecoration(
-                         color: Colors.red.withValues(alpha: 0.1),
-                         borderRadius: BorderRadius.circular(3.0),
-                         border: Border.all(color: Colors.red.withValues(alpha: 0.5))
-                       ),
-                       child: Row(
-                         children: [
-                           const Icon(Icons.error_outline, color: Colors.red),
-                           const SizedBox(width: 8),
-                           Expanded(child: Text(errorMessage!, style: const TextStyle(color: Colors.red, fontSize: 13))),
-                         ],
-                       ),
-                     ),
-
-                  if (hasThumbnail)
-                    Column(
-                      children: [
-                         ClipRRect(
-                           borderRadius: BorderRadius.circular(3.0),
-                           child: AspectRatio(
-                             aspectRatio: 16/9,
-                             child: Image.file(
-                                File(currentThumbnail!), 
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) => const Center(child: Icon(Icons.broken_image)),
-                              )
-                           ),
-                         ),
-                         const SizedBox(height: 16),
-                      ],
-                    )
-                  else
-                    Container(
-                      height: 120,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(3.0),
-                        border: Border.all(color: Colors.grey.withValues(alpha: 0.3), style: BorderStyle.solid)
-                      ),
-                      margin: const EdgeInsets.only(bottom: 16),
-                      child: const Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.image_not_supported_outlined, size: 40, color: Colors.grey),
-                          SizedBox(height: 8),
-                          Text('No Thumbnail', style: TextStyle(color: Colors.grey)),
-                        ],
-                      ),
-                    ),
-                  
-                  if (isProcessing)
-                    const Padding(padding: EdgeInsets.all(16.0), child: CircularProgressIndicator())
-                  else
-                    Row(
-                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                       children: [
-                         ElevatedButton.icon(
-                           onPressed: pickAndValidate,
-                           icon: const Icon(Icons.add_photo_alternate),
-                           label: Text(hasThumbnail ? 'Change' : 'Add Image'),
-                           style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, foregroundColor: Colors.white),
-                         ),
-                         if (hasThumbnail)
-                           TextButton.icon(
-                             onPressed: () {
-                                setDialogState(() => currentThumbnail = null);
-                             },
-                             icon: const Icon(Icons.delete, color: Colors.red),
-                             label: const Text('Remove', style: TextStyle(color: Colors.red)),
-                           )
-                       ],
-                    )
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    // SAVE ACTION
-                     setState(() {
-                      _contents[index]['thumbnail'] = currentThumbnail;
-                    });
-                    _savePersistentContent();
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Thumbnail Saved!')));
-                  },
-                  child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
-              ],
-            );
-          }
-        );
-      }
+      initialThumbnail: _contents[index]['thumbnail'],
+      onSave: (newThumbnail) {
+        setState(() {
+          _contents[index]['thumbnail'] = newThumbnail;
+        });
+        _savePersistentContent();
+      },
     );
   }
 
@@ -927,7 +762,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                     ),
                   )
                 : SliverPadding(
-                    padding: EdgeInsets.fromLTRB(10.0, 16.0, 10.0, 100.0 + MediaQuery.of(context).padding.bottom),
+                    padding: EdgeInsets.fromLTRB(10.0, 16.0, 10.0, 24.0 + MediaQuery.of(context).padding.bottom),
                     sliver: SliverReorderableList(
                       itemCount: _contents.length,
                       onReorder: (oldIndex, newIndex) {
@@ -988,9 +823,6 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                       },
                     ),
                   ),
-          SliverToBoxAdapter(
-            child: SizedBox(height: MediaQuery.of(context).padding.bottom + 80),
-          ),
         ],
       ),
       ),

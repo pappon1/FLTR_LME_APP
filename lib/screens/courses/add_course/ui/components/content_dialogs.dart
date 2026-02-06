@@ -206,6 +206,12 @@ class ContentDialogs {
               actions: [
                 TextButton(
                   onPressed: () {
+                    if (currentThumbnail == null) {
+                       setDialogState(() {
+                          errorMessage = "Please add a thumbnail image or close dialog.";
+                       });
+                       return;
+                    }
                     onSave(currentThumbnail);
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(

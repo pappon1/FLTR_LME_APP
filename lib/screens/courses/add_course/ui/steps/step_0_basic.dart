@@ -123,6 +123,7 @@ class Step0BasicWidget extends StatelessWidget {
                 ),
                 const SizedBox(height: 10),
                 GestureDetector(
+                  key: state.thumbnailKey,
                   onTap: () => logic.pickImage(context, showWarning),
                   child: AspectRatio(
                     aspectRatio: 16 / 9,
@@ -183,30 +184,38 @@ class Step0BasicWidget extends StatelessWidget {
                 const SizedBox(height: UIConstants.s1ImageSpace),
 
                 // 2. Title
-                CustomTextField(
-                  controller: state.titleController,
-                  focusNode: state.titleFocus,
-                  label: 'Course Title',
-                  hint: 'Advanced Mobile Repairing',
-                  icon: Icons.title,
-                  maxLength: 40,
-                  hasError: state.titleError,
+                Container(
+                  key: state.titleKey,
+                  child: CustomTextField(
+                    controller: state.titleController,
+                    focusNode: state.titleFocus,
+                    label: 'Course Title',
+                    hint: 'Advanced Mobile Repairing',
+                    icon: Icons.title,
+                    maxLength: 40,
+                    hasError: state.titleError,
+                  ),
                 ),
 
                 // 3. Description
-                CustomTextField(
-                  controller: state.descController,
-                  focusNode: state.descFocus,
-                  label: 'Description',
-                  hint: 'Explain what students will learn...',
-                  maxLines: 5,
-                  alignTop: true,
-                  hasError: state.descError,
+                Container(
+                  key: state.descKey,
+                  child: CustomTextField(
+                    controller: state.descController,
+                    focusNode: state.descFocus,
+                    label: 'Description',
+                    hint: 'Explain what students will learn...',
+                    maxLines: 5,
+                    alignTop: true,
+                    hasError: state.descError,
+                  ),
                 ),
 
                 // 5. Category & Type
-                Row(
-                  children: [
+                Container(
+                  key: state.categoryKey,
+                  child: Row(
+                    children: [
                     Expanded(
                       child: _buildDropdown(
                         context,
@@ -249,11 +258,16 @@ class Step0BasicWidget extends StatelessWidget {
                     ),
                   ],
                 ),
+                ),
                 const SizedBox(height: 20),
 
-                _buildDropdownInt(
-                  context,
-                  label: 'New Badge Duration',
+                const SizedBox(height: 20),
+
+                Container(
+                  key: state.difficultyKey,
+                  child: _buildDropdownInt(
+                    context,
+                    label: 'New Badge Duration',
                   hint: 'Select Duration',
                   value: state.newBatchDurationDays,
                   items: {30: '1 Month', 60: '2 Months', 90: '3 Months'},
@@ -270,24 +284,28 @@ class Step0BasicWidget extends StatelessWidget {
                     logic.draftManager.saveCourseDraft();
                   },
                 ),
+                ),
 
                 const SizedBox(height: 20),
 
                 // 6. Highlights Section
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Highlights',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                    TextButton.icon(
-                      onPressed: logic.addHighlight,
-                      icon: const Icon(Icons.add_circle_outline, size: 18),
-                      label: const Text('Add'),
-                      style: TextButton.styleFrom(foregroundColor: AppTheme.primaryColor),
-                    ),
-                  ],
+                Container(
+                  key: state.highlightsKey,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Highlights',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      TextButton.icon(
+                        onPressed: logic.addHighlight,
+                        icon: const Icon(Icons.add_circle_outline, size: 18),
+                        label: const Text('Add'),
+                        style: TextButton.styleFrom(foregroundColor: AppTheme.primaryColor),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 8),
                 if (state.highlightControllers.isEmpty)
@@ -338,20 +356,23 @@ class Step0BasicWidget extends StatelessWidget {
                   }),
 
                 // 7. FAQs Section
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'FAQs',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                    ),
-                    TextButton.icon(
-                      onPressed: logic.addFAQ,
-                      icon: const Icon(Icons.add_circle_outline, size: 18),
-                      label: const Text('Add'),
-                      style: TextButton.styleFrom(foregroundColor: AppTheme.primaryColor),
-                    ),
-                  ],
+                Container(
+                  key: state.faqsKey,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'FAQs',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      TextButton.icon(
+                        onPressed: logic.addFAQ,
+                        icon: const Icon(Icons.add_circle_outline, size: 18),
+                        label: const Text('Add'),
+                        style: TextButton.styleFrom(foregroundColor: AppTheme.primaryColor),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 5),
                 if (state.faqControllers.isEmpty)
@@ -476,7 +497,10 @@ class Step0BasicWidget extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(UIConstants.globalRadius),
-          borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+          borderSide: BorderSide(
+            color: hasError ? Colors.red : AppTheme.primaryColor,
+            width: 2,
+          ),
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(UIConstants.globalRadius),
@@ -523,7 +547,10 @@ class Step0BasicWidget extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(UIConstants.globalRadius),
-          borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+          borderSide: BorderSide(
+            color: hasError ? Colors.red : AppTheme.primaryColor,
+            width: 2,
+          ),
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(UIConstants.globalRadius),

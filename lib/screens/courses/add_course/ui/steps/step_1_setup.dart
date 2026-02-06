@@ -6,6 +6,8 @@ import '../../local_logic/step1_logic.dart';
 import '../components/collapsing_step_indicator.dart';
 import '../components/text_field.dart';
 import '../components/image_uploader.dart';
+import '../components/pdf_uploader.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 class Step1SetupWidget extends StatelessWidget {
   final CourseStateManager state;
@@ -120,26 +122,32 @@ class Step1SetupWidget extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      child: CustomTextField(
-                        controller: state.mrpController,
-                        focusNode: state.mrpFocus,
-                        label: 'MRP',
-                        hint: '5000',
-                        keyboardType: TextInputType.number,
-                        hasError: state.mrpError,
-                        verticalPadding: 7,
+                      child: Container(
+                        key: state.mrpKey,
+                        child: CustomTextField(
+                          controller: state.mrpController,
+                          focusNode: state.mrpFocus,
+                          label: 'MRP',
+                          hint: '5000',
+                          keyboardType: TextInputType.number,
+                          hasError: state.mrpError,
+                          verticalPadding: 7,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
-                      child: CustomTextField(
-                        controller: state.discountAmountController,
-                        focusNode: state.discountFocus,
-                        label: 'Discount',
-                        hint: '1000',
-                        keyboardType: TextInputType.number,
-                        hasError: state.discountError,
-                        verticalPadding: 7,
+                      child: Container(
+                        key: state.discountKey,
+                        child: CustomTextField(
+                          controller: state.discountAmountController,
+                          focusNode: state.discountFocus,
+                          label: 'Discount',
+                          hint: '1000',
+                          keyboardType: TextInputType.number,
+                          hasError: state.discountError,
+                          verticalPadding: 7,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -158,92 +166,118 @@ class Step1SetupWidget extends StatelessWidget {
                 const SizedBox(height: UIConstants.s2LanguageSpace),
 
                 // 2. Language & Support
-                _buildDropdown(
-                  context,
-                  label: 'Course Language',
-                  hint: 'Select Language',
-                  value: state.selectedLanguage,
-                  items: ['Hindi', 'English', 'Bengali'],
-                  hasError: state.languageError,
-                  prefixIcon: Icons.language,
-                  onChanged: (v) {
-                    if (state.selectedLanguage == v) {
-                      state.selectedLanguage = null;
-                    } else {
-                      state.selectedLanguage = v;
-                      state.languageError = false;
-                    }
-                    state.updateState();
-                    logic.draftManager.saveCourseDraft();
-                  },
+                Container(
+                  key: state.languageKey,
+                  child: _buildDropdown(
+                    context,
+                    label: 'Course Language',
+                    hint: 'Select Language',
+                    value: state.selectedLanguage,
+                    items: ['Hindi', 'English', 'Bengali'],
+                    hasError: state.languageError,
+                    prefixIcon: Icons.language,
+                    onChanged: (v) {
+                      if (state.selectedLanguage == v) {
+                        state.selectedLanguage = null;
+                      } else {
+                        state.selectedLanguage = v;
+                        state.languageError = false;
+                      }
+                      state.updateState();
+                      logic.draftManager.saveCourseDraft();
+                    },
+                  ),
                 ),
                 SizedBox(height: state.tightVerticalMode ? 0 : 16),
 
                 Row(
                   children: [
                     Expanded(
-                      child: _buildDropdown(
-                        context,
-                        label: 'Course Mode',
-                        hint: 'Select Mode',
-                        hintFontSize: 11,
-                        value: state.selectedCourseMode,
-                        items: ['Recorded', 'Live Session'],
-                        hasError: state.courseModeError,
-                        onChanged: (v) {
-                          if (state.selectedCourseMode == v) {
-                            state.selectedCourseMode = null;
-                          } else {
-                            state.selectedCourseMode = v;
-                            state.courseModeError = false;
-                          }
-                          state.updateState();
-                          logic.draftManager.saveCourseDraft();
-                        },
+                      child: Container(
+                        key: state.courseModeKey,
+                        child: _buildDropdown(
+                          context,
+                          label: 'Course Mode',
+                          hint: 'Select Mode',
+                          hintFontSize: 11,
+                          value: state.selectedCourseMode,
+                          items: ['Recorded', 'Live Session'],
+                          hasError: state.courseModeError,
+                          onChanged: (v) {
+                            if (state.selectedCourseMode == v) {
+                              state.selectedCourseMode = null;
+                            } else {
+                              state.selectedCourseMode = v;
+                              state.courseModeError = false;
+                            }
+                            state.updateState();
+                            logic.draftManager.saveCourseDraft();
+                          },
+                        ),
                       ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: _buildDropdown(
-                        context,
-                        label: 'Support Type',
-                        hint: 'Select Type',
-                        hintFontSize: 11,
-                        value: state.selectedSupportType,
-                        items: ['WhatsApp Group', 'No Support'],
-                        hasError: state.supportTypeError,
-                        onChanged: (v) {
-                          if (state.selectedSupportType == v) {
-                            state.selectedSupportType = null;
-                          } else {
-                            state.selectedSupportType = v;
-                            state.supportTypeError = false;
-                          }
-                          state.updateState();
-                          logic.draftManager.saveCourseDraft();
-                        },
+                      child: Container(
+                        key: state.supportTypeKey,
+                        child: _buildDropdown(
+                          context,
+                          label: 'Support Type',
+                          hint: 'Select Type',
+                          hintFontSize: 11,
+                          value: state.selectedSupportType,
+                          items: ['WhatsApp Group', 'No Support'],
+                          hasError: state.supportTypeError,
+                          onChanged: (v) {
+                            if (state.selectedSupportType == v) {
+                              state.selectedSupportType = null;
+                            } else {
+                              state.selectedSupportType = v;
+                              state.supportTypeError = false;
+                            }
+                            state.updateState();
+                            logic.draftManager.saveCourseDraft();
+                          },
+                        ),
                       ),
                     ),
                   ],
                 ),
                 if (state.selectedSupportType == 'WhatsApp Group') ...[
                   const SizedBox(height: 12),
-                  CustomTextField(
-                    controller: state.whatsappController,
-                    label: 'Support WP Group Link',
-                    hint: 'Paste WhatsApp Group Invite Link',
-                    icon: Icons.link,
-                    keyboardType: TextInputType.url,
-                    hasError: state.wpGroupLinkError,
-                    onChanged: (_) => logic.draftManager.saveCourseDraft(),
+                  Container(
+                    key: state.whatsappKey,
+                    child: CustomTextField(
+                      controller: state.whatsappController,
+                      label: 'Support WP Group Link',
+                      hint: 'Paste WhatsApp Group Invite Link',
+                      icon: Icons.link,
+                      keyboardType: TextInputType.url,
+                      hasError: state.wpGroupLinkError,
+                      onChanged: (v) {
+                        logic.draftManager.saveCourseDraft();
+                        logic.checkUrlValidity(v, isWhatsapp: true);
+                      },
+                      suffixWidget: state.isWpChecking
+                          ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
+                          : state.isWpValid
+                              ? const Icon(Icons.check_circle, color: Colors.green)
+                              : null,
+                    ),
                   ),
                 ],
                 const SizedBox(height: UIConstants.s2ValiditySpace),
 
                 // 3. Validity & Certificate
-                _buildValiditySelector(context),
+                Container(
+                  key: state.validityKey,
+                  child: _buildValiditySelector(context),
+                ),
                 const SizedBox(height: 24),
-                _buildCertificateSettings(context),
+                Container(
+                  key: state.certificateKey,
+                  child: _buildCertificateSettings(context),
+                ),
                 const SizedBox(height: UIConstants.certToBigScreenSpace),
 
                 // 4. PC/Web Support
@@ -264,13 +298,24 @@ class Step1SetupWidget extends StatelessWidget {
                 ),
                 if (state.isBigScreenEnabled) ...[
                   SizedBox(height: state.tightVerticalMode ? 0 : 12),
-                  CustomTextField(
-                    controller: state.websiteUrlController,
-                    label: 'Website Login URL',
-                    hint: 'https://yourwebsite.com/login',
-                    icon: Icons.language,
-                    onChanged: (_) => logic.draftManager.saveCourseDraft(),
-                    hasError: state.bigScreenUrlError,
+                  Container(
+                    key: state.bigScreenKey,
+                    child: CustomTextField(
+                      controller: state.websiteUrlController,
+                      label: 'Website Login URL',
+                      hint: 'https://yourwebsite.com/login',
+                      icon: Icons.language,
+                      onChanged: (v) {
+                        logic.draftManager.saveCourseDraft();
+                        logic.checkUrlValidity(v, isWhatsapp: false);
+                      },
+                      suffixWidget: state.isWebChecking
+                          ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
+                          : state.isWebValid
+                              ? const Icon(Icons.check_circle, color: Colors.green)
+                              : null,
+                      hasError: state.bigScreenUrlError,
+                    ),
                   ),
                 ],
               ],
@@ -321,7 +366,10 @@ class Step1SetupWidget extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(UIConstants.globalRadius),
-          borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+          borderSide: BorderSide(
+            color: state.validityError ? Colors.red : AppTheme.primaryColor,
+            width: 2,
+          ),
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(UIConstants.globalRadius),
@@ -375,12 +423,12 @@ class Step1SetupWidget extends StatelessWidget {
         if (state.hasCertificate) ...[
           const SizedBox(height: 24),
           const Text(
-            'Upload Two Certificate Designs',
+            'Upload Certificate Design',
             style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
           ),
           const SizedBox(height: 4),
           const Text(
-            'Strictly 3508 x 2480 Pixels (A4 Landscape)',
+            'Upload PDF File (A4 Landscape)',
             style: TextStyle(
               fontSize: 11,
               color: Colors.orange,
@@ -388,157 +436,48 @@ class Step1SetupWidget extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  children: [
-                    Text(
-                      'Design A',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: state.selectedCertSlot == 1
-                            ? AppTheme.primaryColor
-                            : Colors.grey,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Stack(
-                      children: [
-                        ImageUploader(
-                          image: state.certificate1Image,
-                          label: 'Box 1',
-                          icon: Icons.upload_file,
-                          onTap: () {
-                            logic.pickCertificateImage(context, 1, showWarning);
-                            // Auto-select logic is handled in logic or manual here
-                            state.selectedCertSlot = 1; 
-                            state.updateState();
-                          },
-                          aspectRatio: 1.414,
-                        ),
-                        if (state.selectedCertSlot == 1)
-                          const Positioned(
-                            top: 8,
-                            right: 8,
-                            child: Icon(
-                              Icons.check_circle,
-                              color: AppTheme.primaryColor,
-                              size: 24,
-                            ),
-                          ),
-                        Positioned(
-                          bottom: 8,
-                          left: 8,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              state.selectedCertSlot = 1;
-                              state.updateState();
-                              logic.draftManager.saveCourseDraft();
-                            },
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              minimumSize: const Size(0, 0),
-                              backgroundColor: state.selectedCertSlot == 1
-                                  ? AppTheme.primaryColor
-                                  : Theme.of(context).cardColor,
-                            ),
-                            child: Text(
-                              'Select',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: state.selectedCertSlot == 1
-                                    ? Colors.white
-                                    : Theme.of(context).textTheme.bodyMedium?.color,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  children: [
-                    Text(
-                      'Design B',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: state.selectedCertSlot == 2
-                            ? AppTheme.primaryColor
-                            : Colors.grey,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Stack(
-                      children: [
-                        ImageUploader(
-                          image: state.certificate2Image,
-                          label: 'Box 2',
-                          icon: Icons.upload_file,
-                          onTap: () {
-                            logic.pickCertificateImage(context, 2, showWarning);
-                            state.selectedCertSlot = 2;
-                            state.updateState();
-                          },
-                          aspectRatio: 1.414,
-                        ),
-                        if (state.selectedCertSlot == 2)
-                          const Positioned(
-                            top: 8,
-                            right: 8,
-                            child: Icon(
-                              Icons.check_circle,
-                              color: AppTheme.primaryColor,
-                              size: 24,
-                            ),
-                          ),
-                        Positioned(
-                          bottom: 8,
-                          left: 8,
-                          child: ElevatedButton(
-                            onPressed: () {
-                              state.selectedCertSlot = 2;
-                              state.updateState();
-                              logic.draftManager.saveCourseDraft();
-                            },
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              minimumSize: const Size(0, 0),
-                              backgroundColor: state.selectedCertSlot == 2
-                                  ? AppTheme.primaryColor
-                                  : Theme.of(context).cardColor,
-                            ),
-                            child: Text(
-                              'Select',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: state.selectedCertSlot == 2
-                                    ? Colors.white
-                                    : Theme.of(context).textTheme.bodyMedium?.color,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
+          PdfUploader(
+            file: state.certificate1File,
+            label: 'Tap to upload Certificate PDF',
+            onTap: () {
+              logic.pickCertificatePdf(context, showWarning);
+            },
+            onRemove: state.certificate1File != null ? () {
+              state.certificate1File = null;
+              state.updateState();
+              logic.draftManager.saveCourseDraft();
+            } : null,
+            onView: state.certificate1File != null ? () {
+               showDialog(
+                 context: context,
+                 builder: (context) => Dialog(
+                   insetPadding: const EdgeInsets.all(20),
+                   child: SizedBox(
+                     width: 800,
+                     height: 600,
+                     child: Column(
+                       children: [
+                         AppBar(
+                           title: Text(state.certificate1File!.path.split('/').last),
+                           leading: IconButton(
+                             icon: const Icon(Icons.close),
+                             onPressed: () => Navigator.pop(context),
+                           ),
+                           elevation: 0,
+                           backgroundColor: Colors.transparent,
+                           foregroundColor: Colors.black,
+                         ),
+                         Expanded(
+                           child: SfPdfViewer.file(state.certificate1File!),
+                         ),
+                       ],
+                     ),
+                   ),
+                 ),
+               );
+            } : null,
           ),
-          if (state.certError && state.certificate1Image == null && state.certificate2Image == null)
+          if (state.certError && state.certificate1File == null)
             const Padding(
               padding: EdgeInsets.only(top: 8),
               child: Text(
@@ -587,7 +526,10 @@ class Step1SetupWidget extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(UIConstants.globalRadius),
-          borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+          borderSide: BorderSide(
+            color: hasError ? Colors.red : AppTheme.primaryColor,
+            width: 2,
+          ),
         ),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(UIConstants.globalRadius)),
         filled: true,
