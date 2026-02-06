@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -13,6 +12,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../utils/app_theme.dart';
+import '../../services/logger_service.dart';
 
 class PDFViewerScreen extends StatefulWidget {
   final String filePath;
@@ -42,7 +42,6 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
   final PdfViewerController _pdfViewerController = PdfViewerController();
   final GlobalKey<SfPdfViewerState> _pdfViewerKey = GlobalKey();
   Timer? _hideControlsTimer;
-  Offset? _pointerDownPos;
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
   late AnimationController _fadeController;
@@ -73,10 +72,10 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
     _fadeController.dispose();
     // Memory optimization: Clear temp PDF files
     if (widget.isNetwork && _localPath != null) {
-      File(_localPath!).delete().catchError((error) {
-        debugPrint('Error deleting local PDF: $error');
+      unawaited(File(_localPath!).delete().catchError((error) {
+        LoggerService.error('Error deleting local PDF: $error', tag: 'PDF_VIEWER');
         return File(_localPath!);
-      });
+      }));
     }
     super.dispose();
   }
@@ -119,7 +118,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
 
       if (mounted) {
         setState(() => _isLoading = false);
-        _fadeController.forward(); // Smooth fade-in animation
+        unawaited(_fadeController.forward()); // Smooth fade-in animation
       }
       
       // Jump to last page after delay to ensure viewer is ready
@@ -143,7 +142,8 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
   void _onSearchResultChanged() {
     // No more setState here! The ValueListenableBuilder will handle UI updates
     // for the match counter and navigation buttons without rebuilding the TextField.
-    _searchResultNotifier.notifyListeners(); 
+    // Changing the value automatically notifies listeners in ValueNotifier.
+    _searchResultNotifier.value = _searchResultNotifier.value; 
   }
 
   @override
@@ -185,12 +185,12 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
                               File(_localPath!),
                               key: _pdfViewerKey,
                               controller: _pdfViewerController,
-                              onPageChanged: (details) {
-                                _currentPageNotifier.value = details.newPageNumber - 1;
-                                SharedPreferences.getInstance().then((prefs) {
-                                  prefs.setInt(_storageKey, details.newPageNumber - 1);
-                                });
-                              },
+                                onPageChanged: (details) {
+                                  _currentPageNotifier.value = details.newPageNumber - 1;
+                                  unawaited(SharedPreferences.getInstance().then((prefs) {
+                                    prefs.setInt(_storageKey, details.newPageNumber - 1);
+                                  }));
+                                },
                               onDocumentLoaded: (details) {
                                 _totalPagesNotifier.value = details.document.pages.count;
                               },
@@ -200,8 +200,8 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
                               },
                               enableDoubleTapZooming: true,
                               enableTextSelection: false, 
-                              otherSearchTextHighlightColor: Colors.red.withOpacity(0.15),
-                              currentSearchTextHighlightColor: Colors.red.withOpacity(0.4),
+                              otherSearchTextHighlightColor: Colors.red.withValues(alpha: 0.15),
+                              currentSearchTextHighlightColor: Colors.red.withValues(alpha: 0.4),
                               maxZoomLevel: 15.0,
                               pageSpacing: 2, 
                               canShowScrollHead: true,
@@ -273,7 +273,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
         color: Theme.of(context).cardColor,
         boxShadow: [
           BoxShadow(
-            color: Theme.of(context).shadowColor.withOpacity(0.1),
+            color: Theme.of(context).shadowColor.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -282,9 +282,9 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: Theme.of(context).canvasColor.withOpacity(0.05),
+          color: Theme.of(context).canvasColor.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(3.0),
-          border: Border.all(color: AppTheme.primaryColor.withOpacity(0.1)),
+          border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.1)),
         ),
         child: Row(
           children: [
@@ -501,16 +501,16 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           // Solid Theme Card look
-          color: Theme.of(context).cardColor.withOpacity(onPressed == null ? 0.5 : 1.0),
+          color: Theme.of(context).cardColor.withValues(alpha: onPressed == null ? 0.5 : 1.0),
           borderRadius: BorderRadius.circular(3.0),
           border: Border.all(
-            color: Theme.of(context).dividerColor.withOpacity(0.1),
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
             width: 1.2,
           ),
           boxShadow: [
             if (onPressed != null)
               BoxShadow(
-                color: Theme.of(context).shadowColor.withOpacity(0.05),
+                color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),
@@ -519,118 +519,12 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
         child: Icon(
           icon, 
           size: 20, 
-          color: Theme.of(context).iconTheme.color?.withOpacity(onPressed == null ? 0.3 : 1.0)
+          color: Theme.of(context).iconTheme.color?.withValues(alpha: onPressed == null ? 0.3 : 1.0)
         ),
       ),
     );
   }
 
-  Widget _buildPageCard(bool isDark) {
-    return ValueListenableBuilder2<int, int>(
-      first: _currentPageNotifier,
-      second: _totalPagesNotifier,
-      builder: (context, currentPage, totalPages, _) {
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(3.0),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: (isDark ? const Color(0xFF1E293B) : Colors.white).withOpacity(0.8),
-                borderRadius: BorderRadius.circular(3.0),
-                border: Border.all(color: AppTheme.primaryColor.withOpacity(0.4), width: 1.5),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.import_contacts_rounded,
-                    size: 14,
-                    color: AppTheme.primaryColor.withOpacity(0.7),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    "${currentPage + 1}",
-                    style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.w900, 
-                      color: isDark ? Colors.white : Colors.black87, 
-                      fontSize: 18,
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
-                    child: Text(
-                      "/",
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: Colors.grey.withOpacity(0.5),
-                        fontWeight: FontWeight.w300,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    "$totalPages",
-                    style: GoogleFonts.inter(
-                      fontSize: 12, 
-                      fontWeight: FontWeight.bold, 
-                      color: AppTheme.primaryColor.withOpacity(0.8),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _showJumpToPageDialog() {
-    final controller = TextEditingController();
-    final total = _totalPagesNotifier.value;
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
-        title: Text("Jump to Page", style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.number,
-          autofocus: true,
-          textAlign: TextAlign.center,
-          style: GoogleFonts.outfit(fontSize: 24, fontWeight: FontWeight.bold),
-          decoration: InputDecoration(
-            hintText: "1 - $total",
-            filled: true,
-            fillColor: Colors.grey.withOpacity(0.1),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(3.0), borderSide: BorderSide.none),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor),
-            onPressed: () {
-              final page = int.tryParse(controller.text);
-              if (page != null && page > 0 && page <= total) {
-                _pdfViewerController.jumpToPage(page);
-                Navigator.pop(context);
-              }
-            },
-            child: const Text("Go", style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 /// A helper class to listen to two ValueListenables simultaneously.
@@ -651,9 +545,9 @@ class ValueListenableBuilder2<A, B> extends StatelessWidget {
   @override
   Widget build(BuildContext context) => ValueListenableBuilder<A>(
         valueListenable: first,
-        builder: (_, a, __) => ValueListenableBuilder<B>(
+        builder: (_, a, _ ) => ValueListenableBuilder<B>(
           valueListenable: second,
-          builder: (context, b, __) => builder(context, a, b, child),
+          builder: (context, b, _ ) => builder(context, a, b, child),
         ),
       );
 }

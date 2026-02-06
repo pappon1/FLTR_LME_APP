@@ -12,6 +12,7 @@ class CourseStateManager extends ChangeNotifier {
   int _currentStep = 0;
   int get currentStep => _currentStep;
   set currentStep(int value) {
+    if (_currentStep == value) return;
     _currentStep = value;
     notifyListeners();
   }
@@ -39,6 +40,7 @@ class CourseStateManager extends ChangeNotifier {
   bool _isSelectionMode = false;
   bool get isSelectionMode => _isSelectionMode;
   set isSelectionMode(bool value) {
+    if (_isSelectionMode == value) return;
     _isSelectionMode = value;
     notifyListeners();
   }
@@ -48,6 +50,7 @@ class CourseStateManager extends ChangeNotifier {
   bool _isDragModeActive = false;
   bool get isDragModeActive => _isDragModeActive;
   set isDragModeActive(bool value) {
+    if (_isDragModeActive == value) return;
     _isDragModeActive = value;
     notifyListeners();
   }
@@ -56,6 +59,7 @@ class CourseStateManager extends ChangeNotifier {
   String? _selectedCategory;
   String? get selectedCategory => _selectedCategory;
   set selectedCategory(String? value) {
+    if (_selectedCategory == value) return;
     _selectedCategory = value;
     notifyListeners();
   }
@@ -63,6 +67,7 @@ class CourseStateManager extends ChangeNotifier {
   File? _thumbnailImage;
   File? get thumbnailImage => _thumbnailImage;
   set thumbnailImage(File? value) {
+    if (_thumbnailImage == value) return;
     _thumbnailImage = value;
     notifyListeners();
   }
@@ -70,6 +75,7 @@ class CourseStateManager extends ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
   set isLoading(bool value) {
+    if (_isLoading == value) return;
     _isLoading = value;
     notifyListeners();
   }
@@ -77,6 +83,7 @@ class CourseStateManager extends ChangeNotifier {
   bool _isPublished = false;
   bool get isPublished => _isPublished;
   set isPublished(bool value) {
+    if (_isPublished == value) return;
     _isPublished = value;
     notifyListeners();
   }
@@ -84,6 +91,7 @@ class CourseStateManager extends ChangeNotifier {
   bool _isInitialLoading = true;
   bool get isInitialLoading => _isInitialLoading;
   set isInitialLoading(bool value) {
+    if (_isInitialLoading == value) return;
     _isInitialLoading = value;
     notifyListeners();
   }
@@ -91,6 +99,7 @@ class CourseStateManager extends ChangeNotifier {
   int? _newBatchDurationDays;
   int? get newBatchDurationDays => _newBatchDurationDays;
   set newBatchDurationDays(int? value) {
+    if (_newBatchDurationDays == value) return;
     _newBatchDurationDays = value;
     notifyListeners();
   }
@@ -98,6 +107,7 @@ class CourseStateManager extends ChangeNotifier {
   int? _courseValidityDays;
   int? get courseValidityDays => _courseValidityDays;
   set courseValidityDays(int? value) {
+    if (_courseValidityDays == value) return;
     _courseValidityDays = value;
     notifyListeners();
   }
@@ -105,6 +115,7 @@ class CourseStateManager extends ChangeNotifier {
   bool _hasCertificate = false;
   bool get hasCertificate => _hasCertificate;
   set hasCertificate(bool value) {
+    if (_hasCertificate == value) return;
     _hasCertificate = value;
     notifyListeners();
   }
@@ -112,17 +123,27 @@ class CourseStateManager extends ChangeNotifier {
   File? _certificate1File;
   File? get certificate1File => _certificate1File;
   set certificate1File(File? value) {
+    if (_certificate1File == value) return;
     _certificate1File = value;
     notifyListeners();
   }
 
-  // Removed Single/Double Selection Slot logic as per new requirement
+  String? _certificate1FileName;
+  String? get certificate1FileName => _certificate1FileName;
+  set certificate1FileName(String? value) {
+    if (_certificate1FileName == value) return;
+    _certificate1FileName = value;
+    notifyListeners();
+  }
+
+  // Removed Syllabus and Single/Double Selection Slot logic as per new requirement
   // Defaulting everything to a single slot logic.
 
 
   bool _isOfflineDownloadEnabled = true;
   bool get isOfflineDownloadEnabled => _isOfflineDownloadEnabled;
   set isOfflineDownloadEnabled(bool value) {
+    if (_isOfflineDownloadEnabled == value) return;
     _isOfflineDownloadEnabled = value;
     notifyListeners();
   }
@@ -130,15 +151,23 @@ class CourseStateManager extends ChangeNotifier {
   bool _isBigScreenEnabled = false;
   bool get isBigScreenEnabled => _isBigScreenEnabled;
   set isBigScreenEnabled(bool value) {
+    if (_isBigScreenEnabled == value) return;
     _isBigScreenEnabled = value;
     notifyListeners();
   }
 
+  // Granular Notifiers for local UI updates
+  final ValueNotifier<bool> isSavingDraftNotifier = ValueNotifier<bool>(false);
+  final ValueNotifier<double> totalProgressNotifier = ValueNotifier<double>(0.0);
+
   bool _isSavingDraft = false;
   bool get isSavingDraft => _isSavingDraft;
   set isSavingDraft(bool value) {
+    if (_isSavingDraft == value) return;
     _isSavingDraft = value;
-    notifyListeners();
+    isSavingDraftNotifier.value = value;
+    // We still notify because some labels depend on this in the header
+    notifyListeners(); 
   }
 
   bool isRestoringDraft = false;
@@ -147,6 +176,7 @@ class CourseStateManager extends ChangeNotifier {
   String? _difficulty;
   String? get difficulty => _difficulty;
   set difficulty(String? value) {
+    if (_difficulty == value) return;
     _difficulty = value;
     notifyListeners();
   }
@@ -154,6 +184,7 @@ class CourseStateManager extends ChangeNotifier {
   String? _selectedLanguage;
   String? get selectedLanguage => _selectedLanguage;
   set selectedLanguage(String? value) {
+    if (_selectedLanguage == value) return;
     _selectedLanguage = value;
     notifyListeners();
   }
@@ -161,6 +192,7 @@ class CourseStateManager extends ChangeNotifier {
   String? _selectedCourseMode;
   String? get selectedCourseMode => _selectedCourseMode;
   set selectedCourseMode(String? value) {
+    if (_selectedCourseMode == value) return;
     _selectedCourseMode = value;
     notifyListeners();
   }
@@ -168,6 +200,7 @@ class CourseStateManager extends ChangeNotifier {
   String? _selectedSupportType;
   String? get selectedSupportType => _selectedSupportType;
   set selectedSupportType(String? value) {
+    if (_selectedSupportType == value) return;
     _selectedSupportType = value;
     notifyListeners();
   }
@@ -183,6 +216,7 @@ class CourseStateManager extends ChangeNotifier {
   bool _isUploading = false;
   bool get isUploading => _isUploading;
   set isUploading(bool value) {
+    if (_isUploading == value) return;
     _isUploading = value;
     notifyListeners();
   }
@@ -190,7 +224,9 @@ class CourseStateManager extends ChangeNotifier {
   double _totalProgress = 0.0;
   double get totalProgress => _totalProgress;
   set totalProgress(double value) {
+    if (_totalProgress == value) return;
     _totalProgress = value;
+    totalProgressNotifier.value = value;
     notifyListeners();
   }
 
@@ -201,12 +237,42 @@ class CourseStateManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Lists for UI
-  final List<String> difficultyLevels = ['Beginner', 'Intermediate', 'Advanced'];
-  final List<String> categories = ['Hardware', 'Software'];
-  final List<String> languages = ['Hindi', 'English', 'Bengali'];
-  final List<String> courseModes = ['Recorded', 'Live Session'];
-  final List<String> supportTypes = ['WhatsApp Group', 'No Support'];
+  // Efficient Progress Updates
+  void calculateOverallProgress() {
+    if (_uploadTasks.isEmpty) {
+      if (_totalProgress != 0.0) {
+        _totalProgress = 0.0;
+        notifyListeners();
+      }
+      return;
+    }
+    double total = 0;
+    for (var task in _uploadTasks) {
+      total += task.progress;
+    }
+    final newProgress = total / _uploadTasks.length;
+    if ((newProgress - _totalProgress).abs() > 0.01) {
+      _totalProgress = newProgress;
+      notifyListeners();
+    }
+  }
+
+  void updateProgress(String id, double progress) {
+    final index = _uploadTasks.indexWhere((t) => t.id == id);
+    if (index != -1) {
+      if ((_uploadTasks[index].progress - progress).abs() > 0.01) {
+        _uploadTasks[index].progress = progress;
+        notifyListeners();
+      }
+    }
+  }
+
+  // Lists for UI (Modern Optimization: static const)
+  static const List<String> difficultyLevels = ['Beginner', 'Intermediate', 'Advanced'];
+  static const List<String> categories = ['Hardware', 'Software'];
+  static const List<String> languages = ['Hindi', 'English', 'Bengali'];
+  static const List<String> courseModes = ['Recorded', 'Live Session'];
+  static const List<String> supportTypes = ['WhatsApp Group', 'No Support'];
 
   // Highlights & FAQs
   final List<TextEditingController> highlightControllers = [];
@@ -230,6 +296,7 @@ class CourseStateManager extends ChangeNotifier {
   bool certError = false;
   bool bigScreenUrlError = false;
   bool discountError = false;
+  bool discountWarning = false; // Updated: Maximum 50% discount check
   bool courseContentError = false;
 
   // Link Validation State
@@ -291,6 +358,27 @@ class CourseStateManager extends ChangeNotifier {
 
   void updateState() {
     notifyListeners();
+  }
+
+  void calculateFinalPrice() {
+    final double mrp = double.tryParse(mrpController.text) ?? 0;
+    final double discountAmt = double.tryParse(discountAmountController.text) ?? 0;
+
+    if (mrp > 0) {
+      // 50% Discount Warning Logic (No auto-correction, just warning)
+      if (discountAmt > (mrp * 0.5)) {
+        discountWarning = true;
+      } else {
+        discountWarning = false;
+      }
+
+      double finalPrice = mrp - discountAmt;
+      if (finalPrice < 0) finalPrice = 0;
+      finalPriceController.text = finalPrice.round().toString();
+    } else {
+      finalPriceController.text = '0';
+      discountWarning = false;
+    }
   }
 
   @override

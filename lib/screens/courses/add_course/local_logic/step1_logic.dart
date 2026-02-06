@@ -1,10 +1,8 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import 'state_manager.dart';
 import 'draft_manager.dart';
-
 import 'package:http/http.dart' as http;
 import 'package:file_picker/file_picker.dart';
 
@@ -19,11 +17,11 @@ class Step1Logic {
       if (isWhatsapp) {
         state.isWpChecking = false;
         state.isWpValid = false;
-        state.wpGroupLinkError = false; // Reset error when empty
+        state.wpGroupLinkError = false;
       } else {
         state.isWebChecking = false;
         state.isWebValid = false;
-        state.bigScreenUrlError = false; // Reset error when empty
+        state.bigScreenUrlError = false;
       }
       state.updateState();
       return;
@@ -39,12 +37,12 @@ class Step1Logic {
     state.updateState();
 
     try {
-      // 1. Basic format check
       if (!url.startsWith('http')) {
         url = 'https://$url';
       }
       
-      final uri = Uri.parse(url);
+      final uri = Uri.tryParse(url);
+      if (uri == null) throw Exception('Invalid URL Format');
 
       if (isWhatsapp) {
         if (!uri.host.contains('chat.whatsapp.com')) {
@@ -52,12 +50,14 @@ class Step1Logic {
         }
       }
 
-      // 2. Network Check (3-second timeout)
-      final response = await http.head(uri).timeout(const Duration(seconds: 3));
+      final response = await http.head(uri).timeout(const Duration(seconds: 5));
       
       if (response.statusCode >= 200 && response.statusCode < 400) {
-        if (isWhatsapp) state.isWpValid = true;
-        else state.isWebValid = true;
+        if (isWhatsapp) {
+          state.isWpValid = true;
+        } else {
+          state.isWebValid = true;
+        }
       } else {
         throw Exception('Unreachable');
       }
@@ -70,11 +70,46 @@ class Step1Logic {
         state.bigScreenUrlError = true;
       }
     } finally {
-      if (isWhatsapp) state.isWpChecking = false;
-      else state.isWebChecking = false;
+      if (isWhatsapp) {
+        state.isWpChecking = false;
+      } else {
+        state.isWebChecking = false;
+      }
       state.updateState();
       draftManager.saveCourseDraft();
     }
+  }
+
+  void _performClearSetupInfo() {
+    state.mrpController.clear();
+    state.discountAmountController.clear();
+    state.finalPriceController.clear();
+    state.selectedLanguage = null;
+    state.selectedCourseMode = null;
+    state.selectedSupportType = null;
+    state.whatsappController.clear();
+    state.courseValidityDays = null;
+    state.customValidityController.clear();
+    state.hasCertificate = false;
+    state.certificate1File = null;
+    state.isBigScreenEnabled = false;
+    state.websiteUrlController.clear();
+    
+    // Reset status flags
+    state.isWpValid = false;
+    state.isWebValid = false;
+    state.wpGroupLinkError = false;
+    state.bigScreenUrlError = false;
+    state.languageError = false;
+    state.courseModeError = false;
+    state.supportTypeError = false;
+    state.validityError = false;
+    state.certError = false;
+    state.mrpError = false;
+    state.discountError = false;
+
+    state.updateState();
+    draftManager.saveCourseDraft();
   }
 
   void clearSetupDraft(BuildContext context) {
@@ -92,21 +127,7 @@ class Step1Logic {
           ),
           TextButton(
             onPressed: () {
-              state.mrpController.clear();
-              state.discountAmountController.clear();
-              state.finalPriceController.clear();
-              state.selectedLanguage = null;
-              state.selectedCourseMode = null;
-              state.selectedSupportType = null;
-              state.whatsappController.clear();
-              state.courseValidityDays = null;
-              state.customValidityController.clear();
-              state.hasCertificate = false;
-              state.certificate1File = null;
-              state.isBigScreenEnabled = false;
-              state.websiteUrlController.clear();
-              state.updateState();
-              draftManager.saveCourseDraft();
+              _performClearSetupInfo();
               Navigator.pop(context);
             },
             child: const Text('Clear', style: TextStyle(color: Colors.red)),
@@ -126,14 +147,15 @@ class Step1Logic {
       if (result != null && result.files.single.path != null) {
         final File file = File(result.files.single.path!);
 
-        int sizeInBytes = file.lengthSync();
-        double sizeInMb = sizeInBytes / (1024 * 1024);
+        final int sizeInBytes = file.lengthSync();
+        final double sizeInMb = sizeInBytes / (1024 * 1024);
         if (sizeInMb > 10) {
            showWarning('PDF size should be less than 10MB');
            return;
         }
 
         state.certificate1File = file;
+        state.certError = false;
         state.updateState();
         await draftManager.saveCourseDraft();
       }

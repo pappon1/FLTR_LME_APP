@@ -12,24 +12,62 @@ class Step0Logic {
   Step0Logic(this.state, this.draftManager);
 
   Future<void> pickImage(BuildContext context, Function(String) showWarning) async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
-    if (pickedFile != null) {
-      final File file = File(pickedFile.path);
-      final decodedImage = await decodeImageFromList(file.readAsBytesSync());
+      if (pickedFile != null) {
+        final File file = File(pickedFile.path);
+        final decodedImage = await decodeImageFromList(await file.readAsBytes());
 
-      final double ratio = decodedImage.width / decodedImage.height;
-      if (ratio < 1.7 || ratio > 1.85) {
-        showWarning('Error: Image must be YouTube Size (16:9 Ratio).');
-        return;
+        final double ratio = decodedImage.width / decodedImage.height;
+        if (ratio < 1.7 || ratio > 1.85) {
+          showWarning('Error: Image must be YouTube Size (16:9 Ratio).');
+          return;
+        }
+
+        state.thumbnailImage = file;
+        state.thumbnailError = false;
+        state.updateState();
+        await draftManager.saveCourseDraft();
       }
-
-      state.thumbnailImage = file;
-      state.thumbnailError = false;
-      state.updateState();
-      await draftManager.saveCourseDraft();
+    } catch (e) {
+      showWarning('Error picking image: $e');
     }
+  }
+
+  void _performClearBasicInfo() {
+    state.titleController.clear();
+    state.descController.clear();
+    state.selectedCategory = null;
+    state.difficulty = null;
+    state.thumbnailImage = null;
+    state.newBatchDurationDays = null;
+    
+    // Dispose and clear controllers
+    for (var c in state.highlightControllers) {
+      c.dispose();
+    }
+    state.highlightControllers.clear();
+    
+    for (var f in state.faqControllers) {
+      f['q']?.dispose();
+      f['a']?.dispose();
+    }
+    state.faqControllers.clear();
+    
+    // Reset error flags
+    state.thumbnailError = false;
+    state.titleError = false;
+    state.descError = false;
+    state.categoryError = false;
+    state.difficultyError = false;
+    state.batchDurationError = false;
+    state.highlightsError = false;
+    state.faqsError = false;
+    
+    state.updateState();
+    draftManager.saveCourseDraft();
   }
 
   void addHighlight() {
@@ -77,31 +115,7 @@ class Step0Logic {
           ),
           TextButton(
             onPressed: () {
-              state.titleController.clear();
-              state.descController.clear();
-              state.selectedCategory = null;
-              state.difficulty = null;
-              state.thumbnailImage = null;
-              state.newBatchDurationDays = null;
-              for (var c in state.highlightControllers) {
-                c.dispose();
-              }
-              state.highlightControllers.clear();
-              for (var f in state.faqControllers) {
-                f['q']?.dispose();
-                f['a']?.dispose();
-              }
-              state.faqControllers.clear();
-              state.thumbnailError = false;
-              state.titleError = false;
-              state.descError = false;
-              state.categoryError = false;
-              state.difficultyError = false;
-              state.batchDurationError = false;
-              state.highlightsError = false;
-              state.faqsError = false;
-              state.updateState();
-              draftManager.saveCourseDraft();
+              _performClearBasicInfo();
               Navigator.pop(context);
             },
             child: const Text('Clear', style: TextStyle(color: Colors.red)),

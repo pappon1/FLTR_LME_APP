@@ -12,7 +12,9 @@ import 'providers/dashboard_provider.dart';
 import 'providers/admin_notification_provider.dart';
 import 'utils/app_theme.dart';
 import 'services/upload_service.dart';
+import 'services/logger_service.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'dart:async';
 
 
 void main() async {
@@ -23,13 +25,13 @@ void main() async {
   
   // 1. Initialize Background Upload Service (Ready but silent)
   try {
-     print("🛠️ Initializing Background Service...");
+     LoggerService.info("Initialising Background Service...", tag: 'INIT');
      await initializeUploadService();
      // Force start for debugging
-     FlutterBackgroundService().startService();
-     print("✅ Service Initialized & Started.");
+     unawaited(FlutterBackgroundService().startService());
+     LoggerService.success("Service Initialized & Started.", tag: 'INIT');
   } catch (e) {
-     print('❌ Service Init Failed: $e');
+     LoggerService.error('Service Init Failed: $e', tag: 'INIT');
   }
   
   // Initialize Firebase

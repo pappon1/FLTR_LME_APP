@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../../utils/clipboard_manager.dart';
 import '../../../utils/simple_file_explorer.dart';
 import '../../../../utils/app_theme.dart';
+import 'package:media_kit/media_kit.dart';
 import 'state_manager.dart';
 import 'draft_manager.dart';
 
@@ -57,11 +58,54 @@ class ContentManager {
       state.updateState();
 
       if (type == 'video') {
-        // _processVideos(newItems) logic would be called here if implemented
-        await draftManager.saveCourseDraft();
-      } else {
-        await draftManager.saveCourseDraft();
+         // Background scan for metadata
+         unawaited(_processVideos(newItems));
       }
+      
+      unawaited(draftManager.saveCourseDraft());
+    }
+  }
+
+  Future<void> _processVideos(List<Map<String, dynamic>> items) async {
+    for (var item in items) {
+      if (item['type'] == 'video' && item['path'] != null) {
+        final duration = await _getVideoDuration(item['path']);
+        if (duration > 0) {
+          // Find the item in the list and update it
+          final index = state.courseContents.indexWhere((e) => e['path'] == item['path']);
+          if (index != -1) {
+            state.courseContents[index]['duration'] = duration;
+            state.updateState();
+            unawaited(draftManager.saveCourseDraft());
+          }
+        }
+      }
+    }
+  }
+
+  Future<int> _getVideoDuration(String path) async {
+    final player = Player();
+    try {
+      final completer = Completer<void>();
+      late final StreamSubscription sub;
+      
+      sub = player.stream.duration.listen((d) {
+        if (d.inSeconds > 0) {
+          if (!completer.isCompleted) completer.complete();
+        }
+      });
+
+      await player.open(Media(path), play: false);
+      await completer.future.timeout(const Duration(seconds: 5), onTimeout: () {});
+      
+      final dur = player.state.duration;
+      await sub.cancel();
+      await player.dispose();
+      
+      return dur.inSeconds;
+    } catch (e) {
+      await player.dispose();
+      return 0;
     }
   }
 
@@ -105,7 +149,7 @@ class ContentManager {
 
     state.courseContents.insertAll(0, itemsToPaste);
     state.updateState();
-    draftManager.saveCourseDraft();
+    unawaited(draftManager.saveCourseDraft());
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -147,7 +191,7 @@ class ContentManager {
 
       state.courseContents.removeAt(index);
       state.updateState();
-      draftManager.saveCourseDraft();
+      unawaited(draftManager.saveCourseDraft());
     }
   }
 
@@ -186,7 +230,7 @@ class ContentManager {
                   'contents': [],
                 });
                 state.updateState();
-                draftManager.saveCourseDraft();
+                unawaited(draftManager.saveCourseDraft());
                 Navigator.pop(ctx);
               }
             },
@@ -240,7 +284,7 @@ class ContentManager {
               state.selectedIndices.clear();
               state.isSelectionMode = false;
               state.updateState();
-              draftManager.saveCourseDraft();
+              unawaited(draftManager.saveCourseDraft());
 
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
@@ -289,7 +333,7 @@ class ContentManager {
       state.selectedIndices.clear();
       state.isSelectionMode = false;
       state.updateState();
-      draftManager.saveCourseDraft();
+      unawaited(draftManager.saveCourseDraft());
     }
   }
 
@@ -322,7 +366,7 @@ class ContentManager {
               if (renameController.text.trim().isNotEmpty) {
                 state.courseContents[index]['name'] = renameController.text.trim();
                 state.updateState();
-                draftManager.saveCourseDraft();
+                unawaited(draftManager.saveCourseDraft());
                 Navigator.pop(ctx);
               }
             },
@@ -364,7 +408,7 @@ class ContentManager {
                 try {
                   final File file = File(filePath);
                   final decodedImage = await decodeImageFromList(
-                    file.readAsBytesSync(),
+                    await file.readAsBytes(),
                   );
 
                   final double ratio = decodedImage.width / decodedImage.height;
@@ -403,9 +447,9 @@ class ContentManager {
                       margin: const EdgeInsets.only(bottom: 16),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
+                        color: Colors.red.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(3.0),
-                        border: Border.all(color: Colors.red.withOpacity(0.5)),
+                        border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
                       ),
                       child: Row(
                         children: [
@@ -447,10 +491,10 @@ class ContentManager {
                       height: 120,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: Colors.grey.withOpacity(0.1),
+                        color: Colors.grey.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(3.0),
                         border: Border.all(
-                          color: Colors.grey.withOpacity(0.3),
+                          color: Colors.grey.withValues(alpha: 0.3),
                           style: BorderStyle.solid,
                         ),
                       ),
@@ -510,7 +554,7 @@ class ContentManager {
                   onPressed: () {
                     state.courseContents[index]['thumbnail'] = currentThumbnail;
                     state.updateState();
-                    draftManager.saveCourseDraft();
+                    unawaited(draftManager.saveCourseDraft());
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Thumbnail Saved!')),

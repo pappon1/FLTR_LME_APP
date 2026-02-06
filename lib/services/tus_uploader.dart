@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:path/path.dart' as path;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'logger_service.dart';
 
 class TusUploader {
   final Dio _dio = Dio();
@@ -56,11 +57,11 @@ class TusUploader {
         final serverOffset = headResponse.headers.value('Upload-Offset');
         if (serverOffset != null) {
           offset = int.parse(serverOffset);
-          print("🔄 [TUS] Resuming upload from byte $offset");
+          LoggerService.info("Resuming upload from byte $offset", tag: 'TUS');
         }
       } catch (e) {
         // If HEAD fails (e.g. 404), restart upload
-        print("⚠️ [TUS] Resume failed, starting fresh. Error: $e");
+        LoggerService.warning("Resume failed, starting fresh. Error: $e", tag: 'TUS');
         uploadUrl = null;
         offset = 0;
         currentVideoId = null;
@@ -92,8 +93,8 @@ class TusUploader {
           'LibraryId': libraryId, // Restore as Header since it worked in Step 589
         };
 
-        print("📡 [TUS] Creating Upload...");
-        print("📡 [TUS] Metadata: $metadataStr");
+        LoggerService.info("Creating Upload...", tag: 'TUS');
+        LoggerService.info("Metadata: $metadataStr", tag: 'TUS');
 
         final response = await _dio.post(
           _baseUrl,
@@ -125,11 +126,11 @@ class TusUploader {
         }
         
         await _saveSession(fingerprint, uploadUrl, currentVideoId);
-        print("🆕 [TUS] Created session: $uploadUrl | VideoID: $currentVideoId");
+        LoggerService.success("Created session: $uploadUrl | VideoID: $currentVideoId", tag: 'TUS');
       } on DioException catch (e) {
         final errorData = e.response?.data;
-        print("❌ [TUS] Creation Error Status: ${e.response?.statusCode}");
-        print("❌ [TUS] Creation Error Body: $errorData");
+        LoggerService.error("Creation Error Status: ${e.response?.statusCode}", tag: 'TUS');
+        LoggerService.error("Creation Error Body: $errorData", tag: 'TUS');
         
         String errorMsg = "Upload Creation Failed (${e.response?.statusCode})";
         if (errorData != null) {
@@ -138,7 +139,7 @@ class TusUploader {
         
         throw Exception(errorMsg);
       } catch (e) {
-        print("❌ [TUS] Creation Error (General): $e");
+        LoggerService.error("Creation Error (General): $e", tag: 'TUS');
         throw Exception("Upload Initializing Error: $e");
       }
     }
@@ -185,13 +186,13 @@ class TusUploader {
               throw Exception("TUS PATCH Error (${response.statusCode}): ${response.data}");
           }
 
-          print("✅ [TUS] Chunk Uploaded: $sizeToRead bytes at offset $offset");
+          LoggerService.success("Chunk Uploaded: $sizeToRead bytes at offset $offset", tag: 'TUS');
         } on DioException catch (e) {
-           print("❌ [TUS] Chunk Patch Error: ${e.type} | ${e.error} | ${e.message}");
-           print("❌ [TUS] Context: Offset $offset, URL: $uploadUrl");
+           LoggerService.error("Chunk Patch Error: ${e.type} | ${e.error} | ${e.message}", tag: 'TUS');
+           LoggerService.error("Context: Offset $offset, URL: $uploadUrl", tag: 'TUS');
            rethrow;
         } catch (e) {
-           print("❌ [TUS] Chunk General Error: $e");
+           LoggerService.error("Chunk General Error: $e", tag: 'TUS');
            rethrow;
         }
 

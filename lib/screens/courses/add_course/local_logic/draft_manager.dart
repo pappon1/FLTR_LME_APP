@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../services/logger_service.dart';
 import 'state_manager.dart';
 
 class DraftManager {
@@ -51,13 +52,26 @@ class DraftManager {
         }
 
         // Restore Image Paths
+        bool missingFiles = false;
         if (draft['thumbnailPath'] != null) {
           final file = File(draft['thumbnailPath']);
-          if (file.existsSync()) state.thumbnailImage = file;
+          if (file.existsSync()) {
+            state.thumbnailImage = file;
+          } else {
+            missingFiles = true;
+          }
         }
         if (draft['cert1Path'] != null) {
           final file = File(draft['cert1Path']);
-          if (file.existsSync()) state.certificate1File = file;
+          if (file.existsSync()) {
+            state.certificate1File = file;
+          } else {
+            missingFiles = true;
+          }
+        }
+
+        if (missingFiles) {
+          LoggerService.warning('Some draft files were missing and could not be restored.', tag: 'DRAFT');
         }
 
         // Restore Highlights
@@ -81,7 +95,7 @@ class DraftManager {
         state.updateState();
       }
     } catch (e) {
-      // Error handling
+      LoggerService.error('Draft Load Error: $e', tag: 'DRAFT');
     } finally {
       state.isRestoringDraft = false;
     }
@@ -135,26 +149,11 @@ class DraftManager {
       };
 
       await prefs.setString('course_creation_draft', jsonEncode(draft));
-      
-      Future.delayed(const Duration(seconds: 2), () {
-        state.isSavingDraft = false;
-      });
+      state.isSavingDraft = false;
+      LoggerService.info('Course draft saved successfully', tag: 'DRAFT');
     } catch (e) {
       state.isSavingDraft = false;
-    }
-  }
-
-  void calculateFinalPrice() {
-    final double mrp = double.tryParse(state.mrpController.text) ?? 0;
-    final double discountAmt =
-        double.tryParse(state.discountAmountController.text) ?? 0;
-
-    if (mrp > 0) {
-      double finalPrice = mrp - discountAmt;
-      if (finalPrice < 0) finalPrice = 0;
-      state.finalPriceController.text = finalPrice.round().toString();
-    } else {
-      state.finalPriceController.text = '0';
+      LoggerService.error('Draft Save Error: $e', tag: 'DRAFT');
     }
   }
 

@@ -4,6 +4,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path_provider/path_provider.dart';
 import 'dart:io';
 import '../services/bunny_cdn_service.dart';
+import '../services/logger_service.dart';
+import 'dart:async';
 
 /// Simple, no-dialog direct deletion script
 class QuickCleanup {
@@ -11,7 +13,7 @@ class QuickCleanup {
   /// Delete everything from Firestore AND BunnyCDN (PERMANENT!)
   static Future<void> deleteAllCoursesNow() async {
     try {
-      print('🗑️ STARTING COMPLETE DELETION (Firestore + BunnyCDN)...');
+      LoggerService.info('STARTING COMPLETE DELETION (Firestore + BunnyCDN)...', tag: 'CLEANUP');
       
       final firestore = FirebaseFirestore.instance;
       final bunnyService = BunnyCDNService();
@@ -133,8 +135,7 @@ class QuickCleanup {
       print('✅ COMPLETE! Deleted ${snapshot.docs.length} courses + $filesDeleted files!');
       
     } catch (e, stack) {
-      print('❌ ERROR: $e');
-      print('Stack: $stack');
+      LoggerService.error('ERROR: $e', tag: 'CLEANUP', stackTrace: stack);
     }
   }
 
@@ -184,7 +185,7 @@ class QuickCleanup {
               Navigator.pop(ctx); // Close dialog first
               
               // Show loading
-              showDialog(
+              unawaited(showDialog(
                 context: context,
                 barrierDismissible: false,
                 builder: (_) => const PopScope(
@@ -205,7 +206,7 @@ class QuickCleanup {
                     ),
                   ),
                 ),
-              );
+              ));
               
               // Execute
               await deleteAllCoursesNow();

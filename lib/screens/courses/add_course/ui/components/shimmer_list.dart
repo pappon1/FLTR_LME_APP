@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
-import '../ui_constants.dart';
 
 class ShimmerList extends StatelessWidget {
   const ShimmerList({super.key});

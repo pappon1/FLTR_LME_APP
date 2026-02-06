@@ -17,7 +17,7 @@ class CourseUploadingOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.black.withOpacity(0.85),
+      color: Colors.black.withValues(alpha: 0.85),
       width: double.infinity,
       height: double.infinity,
       child: BackdropFilter(
@@ -50,7 +50,7 @@ class CourseUploadingOverlay extends StatelessWidget {
               Text(
                 'Upload will continue even if you switch apps',
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.6),
+                  color: Colors.white.withValues(alpha: 0.6),
                   fontSize: 12,
                 ),
               ),
@@ -80,7 +80,7 @@ class CourseUploadingOverlay extends StatelessWidget {
                       child: LinearProgressIndicator(
                         value: totalProgress,
                         minHeight: 12,
-                        backgroundColor: Colors.white.withOpacity(0.1),
+                        backgroundColor: Colors.white.withValues(alpha: 0.1),
                         valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
                       ),
                     ),
@@ -117,7 +117,7 @@ class CourseUploadingOverlay extends StatelessWidget {
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.05),
+                        color: Colors.white.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(3.0),
                       ),
                       child: Column(
@@ -171,7 +171,7 @@ class CourseUploadingOverlay extends StatelessWidget {
               // Warning Footer
               Container(
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(color: Colors.red.withOpacity(0.1)),
+                decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1)),
                 child: const Row(
                   children: [
                     Icon( Icons.warning_amber_rounded, color: Colors.orange, size: 18),

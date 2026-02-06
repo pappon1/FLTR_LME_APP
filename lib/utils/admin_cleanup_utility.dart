@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/bunny_cdn_service.dart';
+import '../services/logger_service.dart';
+import 'dart:async';
 
 class AdminCleanupUtility {
   static Future<void> showCleanupDialog(BuildContext context) async {
@@ -90,9 +92,9 @@ class AdminCleanupUtility {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
           borderRadius: BorderRadius.circular(3.0),
-          color: color.withOpacity(0.05),
+          color: color.withValues(alpha: 0.05),
         ),
         child: Row(
           children: [
@@ -207,6 +209,7 @@ class AdminCleanupUtility {
     );
 
     if (confirmed != true) return;
+    if (!context.mounted) return;
 
     // SAFETY CHECK 2: Type confirmation
     final typeConfirmed = await showDialog<bool>(
@@ -263,6 +266,7 @@ class AdminCleanupUtility {
     );
 
     if (typeConfirmed != true) return;
+    if (!context.mounted) return;
 
     // Show Progress Dialog
     showDialog(
@@ -298,7 +302,7 @@ class AdminCleanupUtility {
       
       // Step 1: Get all courses
       final coursesSnapshot = await firestore.collection('courses').get();
-      print('🗑️ Found ${coursesSnapshot.docs.length} courses to delete');
+      LoggerService.info('Found ${coursesSnapshot.docs.length} courses to delete', tag: 'CLEANUP');
 
       // Step 2: Delete files from BunnyCDN (if requested)
       if (deleteFiles) {
@@ -336,13 +340,13 @@ class AdminCleanupUtility {
             for (var fileUrl in filesToDelete) {
               try {
                 await bunnyService.deleteFile(fileUrl);
-                print('✅ Deleted: $fileUrl');
+                LoggerService.success('Deleted: $fileUrl', tag: 'CLEANUP');
               } catch (e) {
-                print('⚠️ Failed to delete $fileUrl: $e');
+                LoggerService.warning('Failed to delete $fileUrl: $e', tag: 'CLEANUP');
               }
             }
           } catch (e) {
-            print('⚠️ Error processing course ${doc.id}: $e');
+            LoggerService.error('Error processing course ${doc.id}: $e', tag: 'CLEANUP');
           }
         }
       }
@@ -354,7 +358,7 @@ class AdminCleanupUtility {
       }
       await batch.commit();
 
-      print('✅ Deleted ${coursesSnapshot.docs.length} courses from Firestore');
+      LoggerService.success('Deleted ${coursesSnapshot.docs.length} courses from Firestore', tag: 'CLEANUP');
 
       // Close progress dialog
       if (context.mounted) {
@@ -372,7 +376,7 @@ class AdminCleanupUtility {
         );
       }
     } catch (e) {
-      print('❌ Cleanup Error: $e');
+      LoggerService.error('Cleanup Error: $e', tag: 'CLEANUP');
       if (context.mounted) {
         Navigator.pop(context); // Close progress
         ScaffoldMessenger.of(context).showSnackBar(
@@ -394,7 +398,7 @@ class AdminCleanupUtility {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.clear();
-      print('✅ Cleared all local storage');
+      LoggerService.success('Cleared all local storage', tag: 'CLEANUP');
       
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -406,7 +410,7 @@ class AdminCleanupUtility {
         );
       }
     } catch (e) {
-      print('⚠️ Error clearing local storage: $e');
+      LoggerService.error('Error clearing local storage: $e', tag: 'CLEANUP');
     }
   }
 

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:path/path.dart' as path;
+import 'logger_service.dart';
 
 class BunnyCDNService {
   // Bunny.net Storage Zone Configuration
@@ -87,7 +88,7 @@ class BunnyCDNService {
       );
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
-      print('❌ Bunny CDN Storage delete error: $e');
+      LoggerService.error('Bunny CDN Storage delete error: $e', tag: 'CDN');
       return false;
     }
   }
@@ -111,7 +112,7 @@ class BunnyCDNService {
       );
       return response.statusCode == 200;
     } catch (e) {
-      print('❌ Bunny Stream delete error: $e');
+      LoggerService.error('Bunny Stream delete error: $e', tag: 'CDN');
       return false;
     }
   }

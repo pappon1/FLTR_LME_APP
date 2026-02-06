@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:ui';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,6 +12,8 @@ import 'bunny_cdn_service.dart';
 import 'package:path_provider/path_provider.dart';
 import 'tus_uploader.dart';
 import 'dart:developer' as dev;
+import 'dart:ui' show Color, DartPluginRegistrant;
+import 'logger_service.dart';
 
 // Key used for storage
 const String kQueueKey = 'upload_queue_v1';
@@ -95,19 +96,19 @@ Future<void> initializeUploadService() async {
           
           if (hasActiveTasks) shouldStart = true;
       } catch (e) {
-          print("Error parsing queue for auto-start: $e");
+          LoggerService.error("Error parsing queue for auto-start: $e", tag: 'BG_SERVICE');
       }
   }
 
   if (shouldStart) {
     if (!await service.isRunning()) {
-      print("🚀 [BG SERVICE] Auto-starting due to pending tasks...");
+      LoggerService.info("Auto-starting due to pending tasks...", tag: 'BG_SERVICE');
       await service.startService();
     }
   } else {
     // Force Stop if running but no tasks
      if (await service.isRunning()) {
-        print(" [BG SERVICE] No active tasks but service is running. Stopping it.");
+        LoggerService.info("No active tasks but service is running. Stopping it.", tag: 'BG_SERVICE');
         service.invoke("stop"); 
      }
   }
@@ -121,7 +122,7 @@ Future<bool> onIosBackground(ServiceInstance service) async {
 
  @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
-  print("🏗️ [BG SERVICE] onStart triggered! Time: ${DateTime.now()}");
+  LoggerService.info("onStart triggered! Time: ${DateTime.now()}", tag: 'BG_SERVICE');
   
   // 1. DART CONTEXT READY
   DartPluginRegistrant.ensureInitialized();
@@ -153,7 +154,7 @@ void onStart(ServiceInstance service) async {
 
   // 3. HELPER FUNCTIONS
   Future<void> saveQueue() async {
-    print("💾 [BG SERVICE] Saving Queue... size: ${queue.length}");
+    LoggerService.info("Saving Queue... size: ${queue.length}", tag: 'BG_SERVICE');
     await prefs.setString(kQueueKey, jsonEncode(queue));
     await prefs.setBool(kServiceStateKey, isPaused);
     service.invoke('update', {'queue': queue, 'isPaused': isPaused});
@@ -175,10 +176,15 @@ void onStart(ServiceInstance service) async {
           final s = t['status'];
           if (s == 'pending' && t['paused'] != true) {
             pending++;
-          } else if (s == 'uploading') uploading++;
-          else if (s == 'failed') failed++;
-          else if (s == 'completed') completed++;
-          else if (t['paused'] == true) pending++; // Treat paused as pending for count
+          } else if (s == 'uploading') {
+            uploading++;
+          } else if (s == 'failed') {
+            failed++;
+          } else if (s == 'completed') {
+            completed++;
+          } else if (t['paused'] == true) {
+            pending++; // Treat paused as pending for count
+          }
       }
 
       final int total = queue.length;
@@ -197,7 +203,9 @@ void onStart(ServiceInstance service) async {
                  tTotal = file.lengthSync().toDouble();
                  t['totalBytes'] = tTotal.toInt(); // Cache it
                }
-             } catch (_) {}
+             } catch (e) {
+               LoggerService.warning("Error getting file size for task: $e", tag: 'BG_SERVICE');
+             }
           }
 
           final double tUploaded = (t['uploadedBytes'] ?? 0).toDouble();
@@ -221,36 +229,40 @@ void onStart(ServiceInstance service) async {
       String body = '';
 
       if (isPaused) {
-         title = 'Uploads Paused ⏸️';
-         body = 'The entire queue is currently on hold.';
-         if (failed > 0) body += " ($failed failed ⚠️)";
+        title = 'Uploads Paused ⏸️';
+        body = 'The entire queue is currently on hold.';
+        if (failed > 0) body += " ($failed failed ⚠️)";
       } else if (uploading > 0) {
-         title = failed > 0 ? 'Upload Error ⚠️ ($progressInt%)' : 'Uploading Files ($progressInt%) 📤';
-         if (uploading == 1) {
-            try {
-              final activeTask = queue.firstWhere((t) => t['status'] == 'uploading');
-              final name = activeTask['remotePath'].toString().split('/').last;
-              body = "Now: $name";
-              if (failed > 0) body += " • $failed Failed ⚠️";
-            } catch (_) {
-              body = "Processing 1 active task...";
-            }
-         } else {
-            body = "$uploading Active • $pending Pending";
-            if (failed > 0) body += " • $failed Failed ⚠️";
-         }
+        title = failed > 0 ? 'Upload Error ⚠️ ($progressInt%)' : 'Uploading Files ($progressInt%) 📤';
+        if (uploading == 1) {
+          try {
+            // Find the active task to show its name
+            final currentTask = queue.firstWhere(
+              (t) => t['status'] == 'uploading',
+              orElse: () => {},
+            );
+            final taskName = currentTask['name'] ?? 'File';
+            body = "Now: $taskName";
+          } catch (e) {
+            body = "Processing 1 active task...";
+          }
+          if (failed > 0) body += " • $failed Failed ⚠️";
+        } else {
+          body = "$uploading Active • $pending Pending";
+          if (failed > 0) body += " • $failed Failed ⚠️";
+        }
       } else if (failed > 0) {
-         title = 'Upload Issue ⚠️';
-         body = '$failed files failed. Please check the app.';
+        title = 'Upload Issue ⚠️';
+        body = '$failed files failed. Please check the app.';
       } else if (completed == total && total > 0) {
-         title = 'All Uploads Complete! ✅';
-         body = 'Safe to close the app now.';
+        title = 'All Uploads Complete! ✅';
+        body = 'Safe to close the app now.';
       } else if (pending > 0) {
-         title = 'Waiting to Start ⏳';
-         body = '$pending files in queue.';
+        title = 'Waiting to Start ⏳';
+        body = '$pending files in queue.';
       } else {
-         title = 'Upload Service';
-         body = 'Ready for new tasks.';
+        title = 'Upload Service';
+        body = 'Ready for new tasks.';
       }
 
       // 3. Override with specific status if provided
@@ -320,16 +332,16 @@ void onStart(ServiceInstance service) async {
   bool depsReady = false;
   Future<void> initDeps() async {
     try {
-      print("🔥 [BG SERVICE] Initializing Dependencies...");
+      LoggerService.info("Initializing Dependencies...", tag: 'BG_SERVICE');
       await Firebase.initializeApp();
-      print("🔥 [BG SERVICE] Firebase READY");
+      LoggerService.success("Firebase READY", tag: 'BG_SERVICE');
       
       /* Notifications already initialized at top */
       
       depsReady = true;
       // Heartbeat removed
     } catch (e) {
-      print("❌ [BG SERVICE] Dependency Init Failed: $e");
+      LoggerService.error("Dependency Init Failed: $e", tag: 'BG_SERVICE');
     }
   }
 
@@ -337,13 +349,13 @@ void onStart(ServiceInstance service) async {
   void triggerProcessing() async {
     if (isProcessing) return;
     if (!depsReady) {
-       print("⏳ [BG SERVICE] Waiting for dependencies before starting engine...");
+       LoggerService.info("Waiting for dependencies before starting engine...", tag: 'BG_SERVICE');
        await initDeps();
     }
     isProcessing = true;
     const int kMaxConcurrent = 5; 
 
-    print("🚀 [BG SERVICE] Engine Loop Started");
+    LoggerService.info("Engine Loop Started", tag: 'BG_SERVICE');
     final Connectivity connectivity = Connectivity();
 
     while (true) {
@@ -352,10 +364,12 @@ void onStart(ServiceInstance service) async {
        try {
          final results = await connectivity.checkConnectivity();
          hasNoInternet = results.contains(ConnectivityResult.none);
-       } catch (e) {}
+       } catch (e) {
+         LoggerService.warning("Network check failed: $e", tag: 'BG_SERVICE');
+       }
        
        if (hasNoInternet) {
-          print("📡 [BG SERVICE] No Internet. Idle check (5s)...");
+          LoggerService.info("No Internet. Idle check (5s)...", tag: 'BG_SERVICE');
           await updateNotification("Waiting for internet... 📡", null);
           for (int i=0; i<5; i++) {
              await Future.delayed(const Duration(seconds: 1));
@@ -382,7 +396,7 @@ void onStart(ServiceInstance service) async {
          if (allDoneOrPaused && queue.isNotEmpty) {
             final bool allCompleted = queue.every((t) => t['status'] == 'completed');
             if (allCompleted) {
-                print("✅ [BG SERVICE] Every single task completed. Finalizing...");
+                LoggerService.info("Every single task completed. Finalizing...", tag: 'BG_SERVICE');
                 bool isTargetPublished = false;
                 try {
                   final String? cJson = prefs.getString(kPendingCourseKey);
@@ -400,38 +414,38 @@ void onStart(ServiceInstance service) async {
                     : "Course Uploaded Successfully (Admin Side)! ✅";
                 await updateNotification(msg, 100);
             } else {
-                print("⏸️ [BG SERVICE] Remaining tasks are PAUSED. Waiting 10s before sleep...");
+                LoggerService.info("Remaining tasks are PAUSED. Waiting 10s before sleep...", tag: 'BG_SERVICE');
                 await updateNotification("Uploads Paused ⏸️", null);
             }
             
             // 1. Release the lock so new triggers can wake the engine instantly
             isProcessing = false;
             
-            print("⏸️ [BG SERVICE] Tasks are PAUSED. Idle grace period (5s)...");
+            LoggerService.info("Tasks are PAUSED. Idle grace period (5s)...", tag: 'BG_SERVICE');
             for (int i = 0; i < 5; i++) {
                 await Future.delayed(const Duration(seconds: 1));
                 // Check if someone else woke up the engine
                 if (isProcessing) {
-                   print("🚀 [BG SERVICE] Engine woken up by another trigger! Stopping this idle loop.");
+                   LoggerService.info("Engine woken up by another trigger! Stopping this idle loop.", tag: 'BG_SERVICE');
                    return; 
                 }
                 final quickCheck = queue.where((t) => t['status'] == 'pending' && t['paused'] != true).length;
                 if (quickCheck > 0 || activeUploads.isNotEmpty) {
-                   print("🚀 [BG SERVICE] Instant wake-up detected! Re-triggering...");
+                   LoggerService.info("Instant wake-up detected! Re-triggering...", tag: 'BG_SERVICE');
                    triggerProcessing();
                    return;
                 }
             }
 
             service.invoke('all_completed');
-            print("🛑 [BG SERVICE] Engine going to sleep (stopSelf).");
+            LoggerService.info("Engine going to sleep (stopSelf).", tag: 'BG_SERVICE');
             // service.stopSelf(); // Disabled for debugging
             return; 
          }
 
          if (hasFailedTasks) {
             isProcessing = false; // Release lock for manual intervention
-            print("ℹ️ [BG SERVICE] Actionable tasks 0, but FAILED tasks exist. Idle check (15s)...");
+            LoggerService.info("Actionable tasks 0, but FAILED tasks exist. Idle check (15s)...", tag: 'BG_SERVICE');
             for (int i = 0; i < 15; i++) {
                 await Future.delayed(const Duration(seconds: 1));
                 if (isProcessing) return; 
@@ -456,12 +470,11 @@ void onStart(ServiceInstance service) async {
          }
          
          if (queue.isEmpty) {
-             print("🛑 [BG SERVICE] Queue empty. Syncing and Stopping.");
+             LoggerService.info("Queue empty. Syncing and Stopping.", tag: 'BG_SERVICE');
              await updateNotification("Ready for tasks 🚀", null);
              service.invoke('update', {'queue': queue, 'isPaused': isPaused});
              isProcessing = false;
-             await Future.delayed(const Duration(milliseconds: 500)); // Brief pause for UI delivery
-             // service.stopSelf(); // Disabled for debugging
+             await Future.delayed(const Duration(milliseconds: 500)); 
              return;
          }
          continue;
@@ -487,7 +500,7 @@ void onStart(ServiceInstance service) async {
          if (nextIndex != -1) {
             final task = queue[nextIndex];
             final String taskId = task['id'];
-            print("📤 [BG SERVICE] Dispatching Task: $taskId");
+            LoggerService.info("Dispatching Task: $taskId", tag: 'BG_SERVICE');
 
             task['status'] = 'uploading';
             queue[nextIndex] = task;
@@ -496,7 +509,6 @@ void onStart(ServiceInstance service) async {
             final cancelToken = CancelToken();
             activeUploads[taskId] = cancelToken;
             slotFilled = true;
-            const int lastUiUpdate = 0;
 
              // Check File Type
              final String pathLower = task['filePath'].toString().toLowerCase();
@@ -530,7 +542,7 @@ void onStart(ServiceInstance service) async {
              await Future.delayed(const Duration(seconds: 1));
 
              uploadFuture.then((resultUrl) async {
-               print("✅ [BG SERVICE] Upload Success: $resultUrl");
+               LoggerService.success("Upload Success: $resultUrl", tag: 'BG_SERVICE');
                
                activeUploads.remove(taskId);
                final idx = queue.indexWhere((t) => t['id'] == taskId);
@@ -576,7 +588,7 @@ void onStart(ServiceInstance service) async {
                     queue[currentIdx]['status'] = 'pending';
                     queue[currentIdx]['error'] = "Network Issue - Auto Retrying...";
                     queue[currentIdx]['retryAt'] = DateTime.now().add(const Duration(seconds: 15)).millisecondsSinceEpoch;
-                    print("📡 [BG SERVICE] Network error for $taskId - Initializing Auto-Retry in 15s");
+                    LoggerService.info("Network error for $taskId - Initializing Auto-Retry in 15s", tag: 'BG_SERVICE');
                  } else {
                     queue[currentIdx]['status'] = 'failed';
                     queue[currentIdx]['error'] = isMissingFile ? "File missing from device" : errorStr;
@@ -601,21 +613,19 @@ void onStart(ServiceInstance service) async {
   // 4. LISTENERS REGISTRATION (Priority Events)
   service.on('get_status').listen((event) {
      service.invoke('update', {'queue': queue, 'isPaused': isPaused});
-     print("📊 [BG SERVICE] Status update sent to UI");
+     LoggerService.info("Status update sent to UI", tag: 'BG_SERVICE');
   });
 
   service.on('submit_course').listen((event) async {
-    print("📥 [BG SERVICE] RECEIVED 'submit_course' EVENT!");
     if (event == null) return;
-    
     // 1. Save Course Metadata
     final courseData = event['course'];
-    print("📁 [BG SERVICE] Saving metadata for course: ${courseData?['title']}");
+    LoggerService.info("Saving metadata for course: ${courseData?['title']}", tag: 'BG_SERVICE');
     await prefs.setString(kPendingCourseKey, jsonEncode(courseData));
     
     // 2. Add Files to Queue
     final List<dynamic> items = event['files'] ?? [];
-    print("⚡ [BG SERVICE] Adding ${items.length} files to queue");
+    LoggerService.info("Adding ${items.length} files to queue", tag: 'BG_SERVICE');
     for (var item in items) {
       // DUPLICATE CHECK: Skip if file already in queue (any status)
       final String filePath = item['filePath'];
@@ -639,31 +649,28 @@ void onStart(ServiceInstance service) async {
         
         queue.add(task);
       } else {
-        print("⚠️ [BG SERVICE] Skipping duplicate task: $filePath");
+        LoggerService.warning("Skipping duplicate task: $filePath", tag: 'BG_SERVICE');
       }
     }
     await saveQueue();
     
     // 3. Start
     triggerProcessing();
-    updateNotification("Course Creation Started", 0);
+    unawaited(updateNotification("Course Creation Started", 0));
   });
 
   service.on('update_course').listen((event) async {
-    print("📥 [BG SERVICE] RECEIVED 'update_course' EVENT!");
     if (event == null) return;
-    
-    // 1. Save Update Metadata
     final updateData = event['updateData'];
     final String courseId = event['courseId'];
     updateData['id'] = courseId; // Ensure ID is present
     
-    print("📁 [BG SERVICE] Saving update metadata for course: $courseId");
+    LoggerService.info("Saving update metadata for course: $courseId", tag: 'BG_SERVICE');
     await prefs.setString(kPendingUpdateCourseKey, jsonEncode(updateData));
     
     // 2. Add Files to Queue
     final List<dynamic> items = event['files'] ?? [];
-    print("⚡ [BG SERVICE] Adding ${items.length} files to queue (Update)");
+    LoggerService.info("Adding ${items.length} files to queue (Update)", tag: 'BG_SERVICE');
     
     for (var item in items) {
       final String filePath = item['filePath'];
@@ -691,7 +698,7 @@ void onStart(ServiceInstance service) async {
     
     // 3. Start
     triggerProcessing();
-    updateNotification("Course Update Started", 0);
+    unawaited(updateNotification("Course Update Started", 0));
   });
 
   service.on('add_task').listen((event) async {
@@ -719,16 +726,16 @@ void onStart(ServiceInstance service) async {
         await saveQueue();
         triggerProcessing();
     } else {
-        print("⚠️ [BG SERVICE] Skipped adding duplicate task via add_task: $filePath");
+        LoggerService.warning("Skipped adding duplicate task via add_task: $filePath", tag: 'BG_SERVICE');
     }
   });
 
   service.on('cancel_all').listen((event) async {
-    print("🔴 CANCEL ALL: Starting destructive cleanup...");
+    LoggerService.info("CANCEL ALL: Starting destructive cleanup...", tag: 'BG_SERVICE');
     
     // 1. Cancel Active Transfers
     for (var taskId in activeUploads.keys.toList()) {
-       print("🚫 [BG SERVICE] Cancelling task $taskId due to 'cancel_all'");
+       LoggerService.info("Cancelling task $taskId due to 'cancel_all'", tag: 'BG_SERVICE');
        activeUploads[taskId]?.cancel('User cancelled all uploads');
     }
     activeUploads.clear();
@@ -742,7 +749,7 @@ void onStart(ServiceInstance service) async {
 
          if (assetUrl != null && assetUrl.isNotEmpty && !assetUrl.startsWith('http')) {
             // Video record cleanup
-            print("🎬 Bulk Cleanup: Deleting Video ID $assetUrl for task $taskId");
+            LoggerService.info("Bulk Cleanup: Deleting Video ID $assetUrl for task $taskId", tag: 'BG_SERVICE');
             await bunnyService.deleteVideo(
               libraryId: '583681', 
               videoId: assetUrl, 
@@ -750,12 +757,12 @@ void onStart(ServiceInstance service) async {
             );
          } else if (remotePath != null && remotePath.isNotEmpty) {
             // Storage file cleanup
-            print("📁 Bulk Cleanup: Deleting Storage Path $remotePath for task $taskId");
+            LoggerService.info("Bulk Cleanup: Deleting Storage Path $remotePath for task $taskId", tag: 'BG_SERVICE');
             await bunnyService.deleteFile(remotePath);
          }
       }
     } catch (e) {
-       print("Bulk Server cleanup error: $e");
+       LoggerService.error("Bulk Server cleanup error: $e", tag: 'BG_SERVICE');
     }
     
     // 3. Clear Queue Logic
@@ -779,15 +786,15 @@ void onStart(ServiceInstance service) async {
           }
        }
     } catch (e) {
-       print("Local cleanup error: $e");
+       LoggerService.error("Local cleanup error: $e", tag: 'BG_SERVICE');
     }
     
-    print("✅ Destructive cleanup complete!");
+    LoggerService.info("Destructive cleanup complete!", tag: 'BG_SERVICE');
     service.invoke('update', {'queue': queue, 'isPaused': isPaused});
   });
 
   service.on('pause').listen((event) async {
-    print("⏸️ [BG SERVICE] TRACE: Global PAUSE received. Data: $event");
+    LoggerService.info("Global PAUSE received. Data: $event", tag: 'BG_SERVICE');
     isPaused = true;
     for (var taskId in activeUploads.keys.toList()) {
       activeUploads[taskId]?.cancel('User paused all uploads');
@@ -804,7 +811,7 @@ void onStart(ServiceInstance service) async {
   });
 
   service.on('resume').listen((event) async {
-    print("▶️ [BG SERVICE] TRACE: Global RESUME received. Data: $event");
+    LoggerService.info("Global RESUME received. Data: $event", tag: 'BG_SERVICE');
     isPaused = false;
     for (var task in queue) {
       task['paused'] = false;
@@ -817,7 +824,7 @@ void onStart(ServiceInstance service) async {
   service.on('pause_task').listen((event) async {
     if (event == null || event['taskId'] == null) return;
     final String taskId = event['taskId'];
-    print("⏸️ SERVICE RECEIVED pause_task: $taskId");
+    LoggerService.info("SERVICE RECEIVED pause_task: $taskId", tag: 'BG_SERVICE');
     final taskIndex = queue.indexWhere((t) => (t['taskId'] ?? t['id']) == taskId);
     if (taskIndex != -1) {
       queue[taskIndex]['paused'] = true;
@@ -834,7 +841,7 @@ void onStart(ServiceInstance service) async {
   service.on('resume_task').listen((event) async {
     if (event == null || event['taskId'] == null) return;
     final String taskId = event['taskId'];
-    print("✅ SERVICE RECEIVED resume_task: $taskId");
+    LoggerService.info("SERVICE RECEIVED resume_task: $taskId", tag: 'BG_SERVICE');
     final taskIndex = queue.indexWhere((t) => (t['taskId'] ?? t['id']) == taskId);
     if (taskIndex != -1) {
       queue[taskIndex]['paused'] = false;
@@ -849,98 +856,91 @@ void onStart(ServiceInstance service) async {
     }
   });
 
-      service.on('delete_task').listen((event) async {
-         if (event == null || event['taskId'] == null) return;
-         final taskId = event['taskId'];
-         print("🗑️ SERVICE RECEIVED delete_task: $taskId");
-         
-         // 1. Cancel active upload
-         if (activeUploads.containsKey(taskId)) {
-            print("🚫 Cancelling active upload for $taskId before delete");
-            activeUploads[taskId]?.cancel('User deleted task');
-            activeUploads.remove(taskId);
-         }
-         
-         final taskIndex = queue.indexWhere((t) => (t['taskId'] ?? t['id']) == taskId);
-         if (taskIndex != -1) {
-            final task = queue[taskIndex];
-            final String? remotePath = task['remotePath'];
-            final String? assetUrl = task['url']; // Video ID or Storage URL
-            
-            // 2. Delete from Server (Aggressive Cleanup: Status doesn't matter)
-            try {
-               bool deletedFromServer = false;
-               
-               // Attempt server delete if we have ANY remote handle (ID or Path)
-               if (assetUrl != null && assetUrl.isNotEmpty && !assetUrl.startsWith('http')) {
-                  print("🎬 Status Independence: Deleting Video ID $assetUrl from Bunny Stream...");
-                  deletedFromServer = await bunnyService.deleteVideo(
-                    libraryId: '583681', 
-                    videoId: assetUrl, 
-                    apiKey: 'eae59342-6952-4d56-bb2fb8745da1-adf7-402d'
-                  );
-               } else if (remotePath != null && remotePath.isNotEmpty) {
-                  print("📁 Status Independence: Deleting Storage Path $remotePath from Bunny...");
-                  deletedFromServer = await bunnyService.deleteFile(remotePath);
-               }
-               
-               if (deletedFromServer) print("✅ Server Cleanup SUCCESS for $taskId");
-            } catch (e) {
-               print("❌ Server delete error (Target might not exist yet): $e");
-            }
-            
-            // 3. Remove from local queue (SAFE REMOVAL using taskId)
-            queue.removeWhere((t) => (t['taskId'] ?? t['id']) == taskId);
-            
-            // 4. Cleanup Metadata (Course JSON)
-            final String? courseJson = prefs.getString(kPendingCourseKey);
-            if (courseJson != null) {
-               try {
-                  final Map<String, dynamic> courseData = jsonDecode(courseJson);
-                  final String? filePath = task['filePath'];
-                  if (filePath != null) {
-                     print("🧹 Cleaning up metadata for: $filePath");
-                     _removeFileFromMetadata(courseData, filePath);
-                     await prefs.setString(kPendingCourseKey, jsonEncode(courseData));
-                  }
-               } catch (e) {
-                  print("❌ Metadata cleanup error: $e");
-               }
-            }
+  service.on('delete_task').listen((event) async {
+    if (event == null || event['taskId'] == null) return;
+    final taskId = event['taskId'];
+    LoggerService.info("SERVICE RECEIVED delete_task: $taskId", tag: 'BG_SERVICE');
+    
+    // 1. Cancel active upload
+    if (activeUploads.containsKey(taskId)) {
+      LoggerService.warning("Cancelling active upload for $taskId before delete", tag: 'BG_SERVICE');
+      activeUploads[taskId]?.cancel('User deleted task');
+      activeUploads.remove(taskId);
+    }
+    
+    final taskIndex = queue.indexWhere((t) => (t['taskId'] ?? t['id']) == taskId);
+    if (taskIndex != -1) {
+      final task = queue[taskIndex];
+      final String? remotePath = task['remotePath'];
+      final String? assetUrl = task['url']; 
 
-            // 5. Cleanup Local Safe Copy
-            final String? localPath = task['filePath'];
-            if (localPath != null && localPath.contains('pending_uploads')) {
-               try {
-                  final f = File(localPath);
-                  if (await f.exists()) {
-                     await f.delete();
-                     print("🗑️ Deleted local safe copy: $localPath");
-                  }
-               } catch(e) {
-                  print("❌ Local file delete error: $e");
-               }
-            }
-            
-            if (queue.isEmpty) {
-               print("💡 Queue empty after delete. Clearing pending course key.");
-               await prefs.remove(kPendingCourseKey);
-            }
-            
-            await saveQueue();
-            await updateNotification(null, null);
-            service.invoke('update', {'queue': queue, 'isPaused': isPaused});
-            triggerProcessing();
-         } else {
-            print("⚠️ Task not found in queue for deletion: $taskId");
-         }
-      });
+      // 2. Delete from Server
+      try {
+        bool deletedFromServer = false;
+        if (assetUrl != null && assetUrl.isNotEmpty && !assetUrl.startsWith('http')) {
+          LoggerService.info("Deleting Video ID $assetUrl from Bunny Stream...", tag: 'BG_SERVICE');
+          deletedFromServer = await bunnyService.deleteVideo(
+            libraryId: '583681', 
+            videoId: assetUrl, 
+            apiKey: '0db49ca1-ac4b-40ae-9aa5d710ef1d-00ec-4077'
+          );
+        } else if (remotePath != null && remotePath.isNotEmpty) {
+          LoggerService.info("Deleting Storage Path $remotePath from Bunny...", tag: 'BG_SERVICE');
+          deletedFromServer = await bunnyService.deleteFile(remotePath);
+        }
+        if (deletedFromServer) LoggerService.success("Server Cleanup SUCCESS for $taskId", tag: 'BG_SERVICE');
+      } catch (e) {
+        LoggerService.error("Server delete error: $e", tag: 'BG_SERVICE');
+      }
+      
+      // 3. Remove from local queue
+      queue.removeWhere((t) => (t['id'] ?? t['taskId']) == taskId);
+      
+      // 4. Cleanup Metadata
+      final String? courseJson = prefs.getString(kPendingCourseKey);
+      if (courseJson != null) {
+        try {
+          final Map<String, dynamic> courseData = jsonDecode(courseJson);
+          final String? filePath = task['filePath'];
+          if (filePath != null) {
+            _removeFileFromMetadata(courseData, filePath);
+            await prefs.setString(kPendingCourseKey, jsonEncode(courseData));
+          }
+        } catch (e) {
+          LoggerService.error("Metadata cleanup error: $e", tag: 'BG_SERVICE');
+        }
+      }
+
+      // 5. Cleanup Local Safe Copy
+      final String? localPath = task['filePath'];
+      if (localPath != null && localPath.contains('pending_uploads')) {
+        try {
+          final f = File(localPath);
+          if (await f.exists()) await f.delete();
+        } catch(e) {
+          LoggerService.warning("Local file delete error: $e", tag: 'BG_SERVICE');
+        }
+      }
+      
+      if (queue.isEmpty) {
+        LoggerService.info("Queue empty after delete. Clearing pending course key.", tag: 'BG_SERVICE');
+        await prefs.remove(kPendingCourseKey);
+      }
+      
+      await saveQueue();
+      await updateNotification(null, null);
+      service.invoke('update', {'queue': queue, 'isPaused': isPaused});
+      triggerProcessing();
+    } else {
+      LoggerService.warning("Task not found in queue for deletion: $taskId", tag: 'BG_SERVICE');
+    }
+  });
 
   service.on('stop').listen((event) => service.stopSelf());
 
   // 5. HEAVY INITIALIZATION (Background)
   // 5. BOOTSTRAP (Parallel)
-  initDeps();
+  unawaited(initDeps());
 
   // Heartbeat Timer removed per user request
 
@@ -949,8 +949,8 @@ void onStart(ServiceInstance service) async {
   
   // Log Service Info for Debugging
   final dev.ServiceProtocolInfo info = await dev.Service.getInfo();
-  print("🌐 [BG SERVICE] VM Service URI: ${info.serverUri}");
-  print("🆔 [BG SERVICE] OS Process ID: $pid");
+  LoggerService.info("VM Service URI: ${info.serverUri}", tag: 'BG_SERVICE');
+  LoggerService.info("OS Process ID: $pid", tag: 'BG_SERVICE');
   
   // Save ID/URI to help with "restart later" and "terminated tracking"
   await prefs.setString('last_bg_service_uri', info.serverUri?.toString() ?? '');
@@ -1038,7 +1038,7 @@ Future<void> _finalizeCourseIfPending(ServiceInstance service, List<Map<String, 
      hasLocalPaths = _checkForLocalPaths(contents);
      
      if (hasLocalPaths) {
-       print("🛑 [BG SERVICE] SAFETY HALT: Course still contains local paths! Aborting publish.");
+       LoggerService.error("SAFETY HALT: Course still contains local paths! Aborting publish.", tag: 'BG_SERVICE');
        // Ideally, notify user or retry logic here.
        // For now, we return to prevent corruption.
        return; 
@@ -1062,13 +1062,13 @@ Future<void> _finalizeCourseIfPending(ServiceInstance service, List<Map<String, 
      final String? courseId = courseData['id'];
      
      if (courseId != null && courseId.isNotEmpty) {
-        print("📁 Updating Firestore Record: courses/$courseId");
+        LoggerService.info("Updating Firestore Record: courses/$courseId", tag: 'BG_SERVICE');
         await FirebaseFirestore.instance.collection('courses').doc(courseId).set(courseData);
-        print("✅ Firestore Update SUCCESS!");
+        LoggerService.success("Firestore Update SUCCESS!", tag: 'BG_SERVICE');
      } else {
-        print("📁 Adding NEW Firestore Record...");
+        LoggerService.info("Adding NEW Firestore Record...", tag: 'BG_SERVICE');
         final docRef = await FirebaseFirestore.instance.collection('courses').add(courseData);
-        print("✅ Firestore Add SUCCESS! ID: ${docRef.id}");
+        LoggerService.success("Firestore Add SUCCESS! ID: ${docRef.id}", tag: 'BG_SERVICE');
      }
      
      // 5. Success!
@@ -1083,7 +1083,7 @@ Future<void> _finalizeCourseIfPending(ServiceInstance service, List<Map<String, 
           }
        }
      } catch(e) {
-       print("Cleanup error (ignorable): $e");
+       LoggerService.warning("Cleanup error (ignorable): $e", tag: 'BG_SERVICE');
      }
 
      // Clear Data
@@ -1117,7 +1117,7 @@ Future<void> _finalizeCourseIfPending(ServiceInstance service, List<Map<String, 
       );
 
   } catch (e) {
-     print("Finalization Error: $e");
+     LoggerService.error("Finalization Error: $e", tag: 'BG_SERVICE');
      // Notify Error
   }
 }
@@ -1167,14 +1167,14 @@ void _removeFileFromContentsRecursive(List<dynamic> contents, String filePath) {
 
      // If it's the exact file being deleted, remove it
      if (item['path'] == filePath || item['contentPath'] == filePath) {
-        print("🧹 Metadata Cleanup: Removing $filePath from contents list");
+        LoggerService.info("Metadata Cleanup: Removing $filePath from contents list", tag: 'BG_SERVICE');
         contents.removeAt(i);
         continue;
      }
 
      // If it's a thumbnail reference in an item, just clear it
      if (item['thumbnail'] == filePath) {
-        print("🧹 Metadata Cleanup: Clearing thumbnail reference for $filePath");
+        LoggerService.info("Metadata Cleanup: Clearing thumbnail reference for $filePath", tag: 'BG_SERVICE');
         item['thumbnail'] = null;
      }
 
@@ -1191,13 +1191,13 @@ bool _checkForLocalPaths(List<dynamic> contents) {
     
     // Check main path
     if (item['path'] != null && item['path'].toString().startsWith('/')) {
-        print("⚠️ Found local path in content: ${item['name']}");
+        LoggerService.warning("Found local path in content: ${item['name']}", tag: 'BG_SERVICE');
         return true;
     }
 
     // Check thumbnail if exists
     if (item['thumbnail'] != null && item['thumbnail'].toString().startsWith('/')) {
-        print("⚠️ Found local thumbnail in content: ${item['name']}");
+        LoggerService.warning("Found local thumbnail in content: ${item['name']}", tag: 'BG_SERVICE');
         return true;
     }
 
@@ -1252,9 +1252,9 @@ Future<void> _finalizeUpdateIfPending(ServiceInstance service, List<Map<String, 
 
      updateData.remove('id'); 
 
-     print("📁 Updating Firestore (Edit): courses/$courseId");
+     LoggerService.info("Updating Firestore (Edit): courses/$courseId", tag: 'BG_SERVICE');
      await FirebaseFirestore.instance.collection('courses').doc(courseId).update(updateData);
-     print("✅ Firestore Update SUCCESS!");
+     LoggerService.success("Firestore Update SUCCESS!", tag: 'BG_SERVICE');
 
      // Cleanup
      try {
@@ -1264,7 +1264,9 @@ Future<void> _finalizeUpdateIfPending(ServiceInstance service, List<Map<String, 
              if (await f.exists()) await f.delete();
           }
        }
-     } catch(e) {}
+     } catch(e) {
+       LoggerService.warning("Cleanup (Update) error: $e", tag: 'BG_SERVICE');
+     }
 
      await prefs.remove(kPendingUpdateCourseKey);
      await prefs.remove(kQueueKey);
@@ -1289,6 +1291,6 @@ Future<void> _finalizeUpdateIfPending(ServiceInstance service, List<Map<String, 
       );
 
   } catch (e) {
-     print("Finalization (Update) Error: $e");
+     LoggerService.error("Finalization (Update) Error: $e", tag: 'BG_SERVICE');
   }
 }

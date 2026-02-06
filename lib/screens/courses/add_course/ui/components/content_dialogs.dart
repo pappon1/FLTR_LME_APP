@@ -78,7 +78,7 @@ class ContentDialogs {
                 try {
                   final File file = File(filePath);
                   final decodedImage = await decodeImageFromList(
-                    file.readAsBytesSync(),
+                    await file.readAsBytes(),
                   );
 
                   final double ratio = decodedImage.width / decodedImage.height;
@@ -116,9 +116,9 @@ class ContentDialogs {
                       margin: const EdgeInsets.only(bottom: 16),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
+                        color: Colors.red.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(3.0),
-                        border: Border.all(color: Colors.red.withOpacity(0.5)),
+                        border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
                       ),
                       child: Row(
                         children: [
@@ -156,10 +156,10 @@ class ContentDialogs {
                       height: 120,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        color: Colors.grey.withOpacity(0.1),
+                        color: Colors.grey.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(3.0),
                         border: Border.all(
-                          color: Colors.grey.withOpacity(0.3),
+                          color: Colors.grey.withValues(alpha: 0.3),
                           style: BorderStyle.solid,
                         ),
                       ),

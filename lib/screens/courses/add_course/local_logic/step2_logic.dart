@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/services.dart';
-import 'package:flutter/material.dart';
 import 'state_manager.dart';
 import 'draft_manager.dart';
 
@@ -22,9 +21,8 @@ class Step2Logic {
 
   void enterSelectionMode(int index) {
     HapticFeedback.heavyImpact();
-    state.isSelectionMode = true;
     state.selectedIndices.add(index);
-    state.updateState();
+    state.isSelectionMode = true; // Triggers notifyListeners()
   }
 
   void toggleSelection(int index) {
@@ -53,8 +51,7 @@ class Step2Logic {
 
   void enterDragMode() {
     HapticFeedback.heavyImpact();
-    state.isDragModeActive = true;
-    state.updateState();
+    state.isDragModeActive = true; // Triggers notifyListeners()
   }
 
   void cancelHoldTimer() {

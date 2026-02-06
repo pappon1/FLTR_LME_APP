@@ -28,9 +28,10 @@ class SubmitHandler {
       return;
     }
 
+    if (!context.mounted) return;
     final prefs = await SharedPreferences.getInstance();
     if (prefs.containsKey('pending_course_v1')) {
-      _showInProcessDialog(context);
+      if (context.mounted) _showInProcessDialog(context);
       return;
     }
 
@@ -184,8 +185,11 @@ class SubmitHandler {
             String folder = 'others';
             if (type == 'video') {
               folder = 'videos';
-            } else if (type == 'pdf') folder = 'pdfs';
-            else if (type == 'image') folder = 'images';
+            } else if (type == 'pdf') {
+              folder = 'pdfs';
+            } else if (type == 'image') {
+              folder = 'images';
+            }
 
             final uniqueName = '${currentIndex}_${item['name']}';
             addTask(
@@ -243,17 +247,19 @@ class SubmitHandler {
 
       await prefs.remove('course_creation_draft');
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Upload Started in Background 🚀'),
-          backgroundColor: Colors.green,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Upload Started in Background 🚀'),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
 
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const UploadProgressScreen()),
-      );
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const UploadProgressScreen()),
+        );
+      }
     } catch (e) {
       state.isLoading = false;
       state.isUploading = false;

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'dart:async';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import '../../utils/app_theme.dart';
 
@@ -13,7 +14,7 @@ import 'add_course/local_logic/step0_logic.dart';
 import 'add_course/local_logic/step1_logic.dart';
 import 'add_course/local_logic/step2_logic.dart';
 import 'add_course/backend_service/submit_handler.dart';
-import 'add_course/backend_service/models/course_upload_task.dart';
+
 
 // UI Components
 import 'add_course/ui/components/course_app_bar.dart';
@@ -47,6 +48,8 @@ class _AddCourseScreenState extends State<AddCourseScreen> with WidgetsBindingOb
   late Step1Logic step1Logic;
   late Step2Logic step2Logic;
   late SubmitHandler submitHandler;
+  final List<StreamSubscription> _serviceSubscriptions = [];
+  // Removed local _draftDebouncer as DraftManager handles debouncing
 
   @override
   void initState() {
@@ -63,17 +66,11 @@ class _AddCourseScreenState extends State<AddCourseScreen> with WidgetsBindingOb
     step2Logic = Step2Logic(state, draftManager);
     submitHandler = SubmitHandler(state, validation);
 
-    // Listen to state changes
-    state.addListener(() {
-      if (mounted) setState(() {});
-    });
-
+    // Initial draft loading
+    _loadDraft();
 
     // Initial listeners
-    state.mrpController.addListener(_calculateFinalPrice);
-    state.discountAmountController.addListener(_calculateFinalPrice);
-    
-    // Auto-save listeners with error clearing
+    // Auto-save listeners with error clearing (Step 0)
     state.titleController.addListener(() {
       if (state.titleError && state.titleController.text.trim().isNotEmpty) {
         state.titleError = false;
@@ -89,75 +86,75 @@ class _AddCourseScreenState extends State<AddCourseScreen> with WidgetsBindingOb
       }
       draftManager.saveCourseDraft();
     });
+
+    // Step 1 Listeners
+    state.mrpController.addListener(() {
+      state.calculateFinalPrice();
+      _handleFieldChange(() => state.mrpError = false);
+    });
+    state.discountAmountController.addListener(() {
+      state.calculateFinalPrice();
+      _handleFieldChange(() => state.discountError = false);
+    });
     
-    state.mrpController.addListener(() => _handleFieldChange(() => state.mrpError = false));
-    state.discountAmountController.addListener(() => _handleFieldChange(() => state.discountError = false));
     state.whatsappController.addListener(() => _handleFieldChange(() => state.wpGroupLinkError = false));
     state.websiteUrlController.addListener(() => _handleFieldChange(() => state.bigScreenUrlError = false));
     state.specialTagController.addListener(() => draftManager.saveCourseDraft());
 
 
-    // Load Draft
-    draftManager.loadCourseDraft().then((_) {
-      if (mounted) state.isInitialLoading = false;
-      state.updateState();
-    });
-
     // Background Service Progress Listener
     _initBackgroundService();
   }
 
-  void _initBackgroundService() {
-    final service = FlutterBackgroundService();
-    service.on('update').listen((event) {
-      if (event != null && mounted) {
-        final List<dynamic>? queue = event['queue'];
-        if (queue != null) {
-          state.uploadTasks = queue.map((t) => CourseUploadTask.fromMap(Map<String, dynamic>.from(t))).toList();
-          _calculateOverallProgress();
-          state.updateState();
-        }
-      }
-    });
+  void _loadDraft() async {
+    await draftManager.loadCourseDraft();
+    if (mounted) {
+      state.isInitialLoading = false;
+    }
+  }
 
-    service.on('all_completed').listen((event) {
-      if (mounted) {
-        state.isUploading = false;
-        state.updateState();
-      }
-    });
+  void _initBackgroundService() {
+    _serviceSubscriptions.add(
+      FlutterBackgroundService().on('update_progress').listen((event) {
+        if (event != null) {
+          state.updateProgress(event['taskId'], event['progress']);
+          state.calculateOverallProgress();
+        }
+      }),
+    );
+
+    _serviceSubscriptions.add(
+      FlutterBackgroundService().on('upload_complete').listen((event) async {
+        if (event != null) {
+          state.updateProgress(event['taskId'], 1.0);
+          state.calculateOverallProgress();
+          unawaited(draftManager.saveCourseDraft());
+        }
+      }),
+    );
+
+    _serviceSubscriptions.add(
+      FlutterBackgroundService().on('upload_error').listen((event) {
+        if (event != null) {
+          state.updateProgress(event['taskId'], 0.0);
+          state.calculateOverallProgress();
+        }
+      }),
+    );
   }
 
   void _handleFieldChange(VoidCallback resetError) {
     resetError();
+    state.updateState();
     draftManager.saveCourseDraft();
-  }
-
-  void _calculateFinalPrice() {
-    final double mrp = double.tryParse(state.mrpController.text) ?? 0;
-    final double discountAmt = double.tryParse(state.discountAmountController.text) ?? 0;
-
-    if (mrp > 0) {
-      double finalPrice = mrp - discountAmt;
-      if (finalPrice < 0) finalPrice = 0;
-      state.finalPriceController.text = finalPrice.round().toString();
-    } else {
-      state.finalPriceController.text = '0';
-    }
-  }
-
-  void _calculateOverallProgress() {
-    if (state.uploadTasks.isEmpty) return;
-    double total = 0;
-    for (var task in state.uploadTasks) {
-      total += task.progress;
-    }
-    state.totalProgress = total / state.uploadTasks.length;
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    for (var sub in _serviceSubscriptions) {
+      sub.cancel();
+    }
     state.dispose();
     super.dispose();
   }
@@ -182,8 +179,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> with WidgetsBindingOb
 
       if (result != null && result is List<Map<String, dynamic>>) {
         state.courseContents[index]['contents'] = result;
-        state.updateState();
-        draftManager.saveCourseDraft();
+        unawaited(draftManager.saveCourseDraft());
       }
     } else if (item['type'] == 'video' || item['type'] == 'image' || item['type'] == 'pdf') {
        _openViewer(item, index);
@@ -219,8 +215,8 @@ class _AddCourseScreenState extends State<AddCourseScreen> with WidgetsBindingOb
         title: item['name'],
       );
     }
-    Navigator.push(context, MaterialPageRoute(builder: (_) => viewer));
-  }
+      Navigator.push(context, MaterialPageRoute(builder: (_) => viewer));
+    }
 
   void _showAddContentMenu() {
     showModalBottomSheet(
@@ -305,7 +301,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> with WidgetsBindingOb
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(icon, color: color, size: 28),
@@ -322,7 +318,10 @@ class _AddCourseScreenState extends State<AddCourseScreen> with WidgetsBindingOb
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return ListenableBuilder(
+      listenable: state,
+      builder: (context, _) {
+        return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: CourseAppBar(
         state: state,
@@ -330,7 +329,6 @@ class _AddCourseScreenState extends State<AddCourseScreen> with WidgetsBindingOb
         onCancelSelection: () {
           state.isSelectionMode = false;
           state.selectedIndices.clear();
-          state.updateState();
         },
         onSelectAll: () {
           if (state.selectedIndices.length == state.courseContents.length) {
@@ -348,7 +346,6 @@ class _AddCourseScreenState extends State<AddCourseScreen> with WidgetsBindingOb
         onAddContent: _showAddContentMenu,
         onCancelDrag: () {
           state.isDragModeActive = false;
-          state.updateState();
         },
       ),
       body: Form(
@@ -359,8 +356,8 @@ class _AddCourseScreenState extends State<AddCourseScreen> with WidgetsBindingOb
               controller: state.pageController,
               physics: const NeverScrollableScrollPhysics(),
               onPageChanged: (idx) {
+                FocusScope.of(context).unfocus();
                 state.currentStep = idx;
-                state.updateState();
               },
               children: [
                 KeepAliveWrapper(
@@ -398,16 +395,35 @@ class _AddCourseScreenState extends State<AddCourseScreen> with WidgetsBindingOb
                 ),
               ],
             ),
-            if (state.isUploading)
-              CourseUploadingOverlay(
-                totalProgress: state.totalProgress,
-                uploadTasks: state.uploadTasks,
-              ),
-            if (state.isLoading && !state.isUploading)
-              const Center(child: CircularProgressIndicator()),
+            ValueListenableBuilder<double>(
+              valueListenable: state.totalProgressNotifier,
+              builder: (context, progress, _) {
+                return ListenableBuilder(
+                  listenable: state, // For uploadTasks list changes
+                  builder: (context, _) {
+                    if (!state.isUploading) return const SizedBox.shrink();
+                    return CourseUploadingOverlay(
+                      totalProgress: progress,
+                      uploadTasks: state.uploadTasks,
+                    );
+                  },
+                );
+              },
+            ),
+            ListenableBuilder(
+              listenable: state,
+              builder: (context, _) {
+                if (state.isLoading && !state.isUploading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                return const SizedBox.shrink();
+              },
+            ),
           ],
         ),
       ),
+    );
+      },
     );
   }
 
@@ -435,74 +451,79 @@ class _AddCourseScreenState extends State<AddCourseScreen> with WidgetsBindingOb
   }
 
   Widget _buildNavButtons() {
-    return Padding(
-      padding: EdgeInsets.only(
-        top: 20,
-        bottom: 12 + MediaQuery.of(context).padding.bottom,
-      ),
-      child: Row(
-        children: [
-          if (state.currentStep > 0)
-            Expanded(
-              child: ElevatedButton(
-                onPressed: navigation.prevStep,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.primaryColor,
-                  padding: EdgeInsets.zero,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(3.0),
-                  ),
-                ),
-                child: const FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(
-                    'Back',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 17,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          if (state.currentStep > 0) const SizedBox(width: 24),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: state.currentStep == 3
-                  ? (state.isLoading ? null : () => submitHandler.submitCourse(context, _showWarning))
-                  : () => navigation.nextStep(_showWarning),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.primaryColor,
-                padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(3.0),
-                ),
-              ),
-              child: state.isLoading
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
+    return ListenableBuilder(
+      listenable: state,
+      builder: (context, _) {
+        return Padding(
+          padding: EdgeInsets.only(
+            top: 20,
+            bottom: 12 + MediaQuery.of(context).padding.bottom,
+          ),
+          child: Row(
+            children: [
+              if (state.currentStep > 0)
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: navigation.prevStep,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.primaryColor,
+                      padding: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(3.0),
                       ),
-                    )
-                  : FittedBox(
+                    ),
+                    child: const FittedBox(
                       fit: BoxFit.scaleDown,
                       child: Text(
-                        state.currentStep == 3 ? 'Create Course' : 'Next Step',
-                        style: const TextStyle(
+                        'Back',
+                        style: TextStyle(
                           color: Colors.white,
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-            ),
+                  ),
+                ),
+              if (state.currentStep > 0) const SizedBox(width: 24),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: state.currentStep == 3
+                      ? (state.isLoading ? null : () => submitHandler.submitCourse(context, _showWarning))
+                      : () => navigation.nextStep(_showWarning),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    padding: EdgeInsets.zero,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(3.0),
+                    ),
+                  ),
+                  child: state.isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            state.currentStep == 3 ? 'Create Course' : 'Next Step',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 17,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

@@ -9,6 +9,7 @@ class ValidationLogic {
   bool validateAllFields({Function(String)? onValidationError}) {
     if (!validateStep0(onValidationError: onValidationError)) return false;
     if (!validateStep1_5(onValidationError: onValidationError)) return false;
+    if (!validateStep2(onValidationError: onValidationError)) return false;
     return true;
   }
 
@@ -94,7 +95,7 @@ class ValidationLogic {
     }
 
     // 7. Check Highlights
-    bool hasEmptyHighlight = state.highlightControllers.any((c) => c.text.trim().isEmpty);
+    final bool hasEmptyHighlight = state.highlightControllers.any((c) => c.text.trim().isEmpty);
     if (state.highlightControllers.isEmpty || hasEmptyHighlight) {
       state.highlightsError = true;
       if (isValid) {
@@ -106,7 +107,7 @@ class ValidationLogic {
     }
 
     // 8. Check FAQs
-    bool hasEmptyFaq = state.faqControllers.any((f) =>
+    final bool hasEmptyFaq = state.faqControllers.any((f) =>
         (f['q']?.text.trim().isEmpty ?? true) ||
         (f['a']?.text.trim().isEmpty ?? true)
     );
@@ -131,9 +132,9 @@ class ValidationLogic {
       }
 
       // Handle Scrolling
-      if (firstErrorKey != null && firstErrorKey!.currentContext != null) {
+      if (firstErrorKey != null && firstErrorKey.currentContext != null) {
         Scrollable.ensureVisible(
-          firstErrorKey!.currentContext!,
+          firstErrorKey.currentContext!,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeInOut,
           alignment: 0.1, // Scroll slightly below top
@@ -148,7 +149,7 @@ class ValidationLogic {
       }
 
       if (onValidationError != null && firstError != null) {
-        onValidationError(firstError!);
+        onValidationError(firstError);
       }
     }
 
@@ -186,6 +187,14 @@ class ValidationLogic {
         firstErrorKey = state.discountKey;
       }
       isValid = false;
+    } else if (state.discountWarning) {
+      // NEW: Block next step if discount is too high (>50%)
+      state.discountError = true;
+      if (isValid) {
+        firstError = 'Discount cannot exceed 50% of MRP';
+        firstErrorKey = state.discountKey;
+      }
+      isValid = false;
     }
 
     if (state.selectedLanguage == null) {
@@ -215,13 +224,25 @@ class ValidationLogic {
       isValid = false;
     }
 
-    if (state.selectedSupportType == 'WhatsApp Group' && state.whatsappController.text.trim().isEmpty) {
-      state.wpGroupLinkError = true;
-      if (isValid) {
-         firstError = 'Please paste WhatsApp Group Link';
-         firstErrorKey = state.whatsappKey;
+    // WhatsApp Group Link validation
+    if (state.selectedSupportType == 'WhatsApp Group') {
+      final wpLink = state.whatsappController.text.trim();
+      if (wpLink.isEmpty) {
+        state.wpGroupLinkError = true;
+        if (isValid) {
+          firstError = 'Please paste WhatsApp Group Link';
+          firstErrorKey = state.whatsappKey;
+        }
+        isValid = false;
+      } else if (!_isValidWhatsAppGroupLink(wpLink)) {
+        // NEW: Validate WhatsApp link format
+        state.wpGroupLinkError = true;
+        if (isValid) {
+          firstError = 'Invalid WhatsApp Group Link format\nExample: https://chat.whatsapp.com/xxxxx';
+          firstErrorKey = state.whatsappKey;
+        }
+        isValid = false;
       }
-      isValid = false;
     }
 
     if (state.courseValidityDays == null) {
@@ -242,21 +263,33 @@ class ValidationLogic {
       isValid = false;
     }
 
-    if (state.isBigScreenEnabled && state.websiteUrlController.text.trim().isEmpty) {
-      state.bigScreenUrlError = true;
-      if (isValid) {
-        firstError = 'Please enter Website Login URL';
-        firstErrorKey = state.bigScreenKey;
+    // Big Screen (Website) URL validation
+    if (state.isBigScreenEnabled) {
+      final webUrl = state.websiteUrlController.text.trim();
+      if (webUrl.isEmpty) {
+        state.bigScreenUrlError = true;
+        if (isValid) {
+          firstError = 'Please enter Website Login URL';
+          firstErrorKey = state.bigScreenKey;
+        }
+        isValid = false;
+      } else if (!_isValidWebUrl(webUrl)) {
+        // NEW: Validate URL format
+        state.bigScreenUrlError = true;
+        if (isValid) {
+          firstError = 'Invalid URL format\nExample: https://yourwebsite.com/login';
+          firstErrorKey = state.bigScreenKey;
+        }
+        isValid = false;
       }
-      isValid = false;
     }
 
     if (!isValid) {
       state.updateState();
       
-      if (firstErrorKey != null && firstErrorKey!.currentContext != null) {
+      if (firstErrorKey != null && firstErrorKey.currentContext != null) {
         Scrollable.ensureVisible(
-          firstErrorKey!.currentContext!,
+          firstErrorKey.currentContext!,
           duration: const Duration(milliseconds: 500),
           curve: Curves.easeInOut,
           alignment: 0.1,
@@ -270,10 +303,64 @@ class ValidationLogic {
       }
       
       if (onValidationError != null && firstError != null) {
-        onValidationError(firstError!);
+        onValidationError(firstError);
       }
     }
 
     return isValid;
+  }
+
+  bool validateStep2({Function(String)? onValidationError}) {
+    state.courseContentError = false;
+
+    if (state.courseContents.isEmpty) {
+      state.courseContentError = true;
+      state.updateState();
+      if (onValidationError != null) {
+        onValidationError('Please add at least one content item (Video/PDF)');
+      }
+      return false;
+    }
+    return true;
+  }
+
+  // ==================== URL VALIDATION HELPERS ====================
+  
+  /// Validates WhatsApp Group invite link format
+  /// Accepts: https://chat.whatsapp.com/XXXXX or http://chat.whatsapp.com/XXXXX
+  bool _isValidWhatsAppGroupLink(String link) {
+    if (link.isEmpty) return false;
+    
+    // WhatsApp group link pattern
+    final whatsappPattern = RegExp(
+      r'^https?://chat\.whatsapp\.com/[a-zA-Z0-9]+$',
+      caseSensitive: false,
+    );
+    
+    return whatsappPattern.hasMatch(link);
+  }
+  
+  /// Validates general web URL format
+  /// Accepts: http://example.com, https://example.com, https://www.example.com/path
+  bool _isValidWebUrl(String url) {
+    if (url.isEmpty) return false;
+    
+    try {
+      final uri = Uri.parse(url);
+      
+      // Must have http or https scheme
+      if (uri.scheme != 'http' && uri.scheme != 'https') {
+        return false;
+      }
+      
+      // Must have a valid host
+      if (uri.host.isEmpty || !uri.host.contains('.')) {
+        return false;
+      }
+      
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 }

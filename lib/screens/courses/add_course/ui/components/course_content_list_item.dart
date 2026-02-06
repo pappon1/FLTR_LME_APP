@@ -84,27 +84,28 @@ class CourseContentListItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool isMedia = item['type'] == 'video' || item['type'] == 'image';
 
-    return Material(
-      color: Colors.transparent,
-      child: Stack(
-        children: [
-          Padding(
-            padding: EdgeInsets.only(bottom: bottomSpacing),
-            child: Container(
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? AppTheme.primaryColor.withValues(alpha: 0.1)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(3.0),
-                border: Border.all(
-                    color: isSelected
-                        ? AppTheme.primaryColor
-                        : Theme.of(context).dividerColor.withValues(alpha: 0.12),
-                    width: isSelected ? 2 : 1),
+    return RepaintBoundary(
+      child: Material(
+        color: Colors.transparent,
+        child: Stack(
+          children: [
+            Padding(
+              padding: EdgeInsets.only(bottom: bottomSpacing),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppTheme.primaryColor.withValues(alpha: 0.1)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(3.0),
+                  border: Border.all(
+                      color: isSelected
+                          ? AppTheme.primaryColor
+                          : Theme.of(context).dividerColor.withValues(alpha: 0.12),
+                      width: isSelected ? 2 : 1),
+                ),
+                child: isMedia ? _buildMediaLayout(context) : _buildStandardLayout(context),
               ),
-              child: isMedia ? _buildMediaLayout(context) : _buildStandardLayout(context),
             ),
-          ),
 
 
           if (!isReadOnly)
@@ -172,8 +173,9 @@ class CourseContentListItem extends StatelessWidget {
               ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildStandardLayout(BuildContext context) {
       IconData icon;

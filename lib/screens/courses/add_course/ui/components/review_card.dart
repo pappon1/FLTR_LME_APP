@@ -25,9 +25,9 @@ class CourseReviewCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppTheme.primaryColor.withOpacity(0.05),
+        color: AppTheme.primaryColor.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(3.0),
-        border: Border.all(color: AppTheme.primaryColor.withOpacity(0.2)),
+        border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -49,7 +49,7 @@ class CourseReviewCard extends StatelessWidget {
           const Divider(height: 24),
           
           // --- Step 1: Basic Info ---
-          Text('BASIC INFO', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.withOpacity(0.7), letterSpacing: 1.1)),
+          Text('BASIC INFO', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.withValues(alpha: 0.7), letterSpacing: 1.1)),
           const SizedBox(height: 12),
           ReviewItem(
             icon: Icons.title,
