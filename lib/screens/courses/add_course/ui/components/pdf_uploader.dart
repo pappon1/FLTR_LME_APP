@@ -59,7 +59,7 @@ class PdfUploader extends StatelessWidget {
                             file!.path.split('/').last,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 10, color: Colors.white),
+                            style: const TextStyle(fontSize: 10, color: Colors.grey),
                           ),
                          ),
                          const SizedBox(height: 2),

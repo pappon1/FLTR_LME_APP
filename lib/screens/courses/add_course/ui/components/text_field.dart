@@ -54,7 +54,7 @@ class CustomTextField extends StatelessWidget {
             ? TextAlignVertical.top
             : TextAlignVertical.center,
         style: TextStyle(
-          color: Colors.white,
+          color: Theme.of(context).textTheme.bodyLarge?.color,
           fontWeight: readOnly ? FontWeight.bold : FontWeight.normal,
         ),
         decoration: InputDecoration(

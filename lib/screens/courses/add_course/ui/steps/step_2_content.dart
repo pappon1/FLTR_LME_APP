@@ -36,6 +36,7 @@ class Step2ContentWidget extends StatelessWidget {
                 currentStep: 2,
                 isSelectionMode: state.isSelectionMode,
                 isDragMode: state.isDragModeActive,
+                brightness: Theme.of(context).brightness,
               ),
               pinned: true,
             ),

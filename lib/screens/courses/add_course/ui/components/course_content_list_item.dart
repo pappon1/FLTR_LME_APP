@@ -242,7 +242,7 @@ class CourseContentListItem extends StatelessWidget {
                               fontWeight: FontWeight.w600,
                               color: isSelected 
                                   ? AppTheme.primaryColor 
-                                  : (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
+                                  : Theme.of(context).textTheme.bodyLarge?.color,
                               fontSize: 14, 
                               height: 1.1, 
                             ),
@@ -424,7 +424,7 @@ class CourseContentListItem extends StatelessWidget {
                             fontWeight: FontWeight.w600, 
                             color: isSelected 
                                 ? AppTheme.primaryColor 
-                                : (Theme.of(context).brightness == Brightness.dark ? Colors.white : Colors.black),
+                                : Theme.of(context).textTheme.bodyLarge?.color,
                             fontSize: 14,
                             height: 1.1, 
                           ),

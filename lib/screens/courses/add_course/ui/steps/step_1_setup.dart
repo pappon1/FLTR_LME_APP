@@ -30,11 +30,12 @@ class Step1SetupWidget extends StatelessWidget {
         return CustomScrollView(
           controller: state.scrollController,
           slivers: [
-            const SliverPersistentHeader(
+            SliverPersistentHeader(
               delegate: CollapsingStepIndicator(
                 currentStep: 1,
                 isSelectionMode: false,
                 isDragMode: false,
+                brightness: Theme.of(context).brightness,
               ),
               pinned: true,
             ),
@@ -339,7 +340,7 @@ class Step1SetupWidget extends StatelessWidget {
       key: state.validityKey,
       child: DropdownButtonFormField<int>(
         isExpanded: true,
-        style: const TextStyle(color: Colors.white, fontSize: 16),
+        style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 16),
         initialValue: state.courseValidityDays,
         hint: const Text('Select Validity'),
         decoration: _dropdownDecoration(context, 'Course Validity', state.validityError, prefix: Icons.history_toggle_off),
@@ -536,7 +537,7 @@ class Step1SetupWidget extends StatelessWidget {
   }) {
     return DropdownButtonFormField<String>(
       isExpanded: true,
-      style: const TextStyle(color: Colors.white, fontSize: 16),
+      style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 16),
       initialValue: value,
       hint: Text(
         hint ?? 'Select $label',

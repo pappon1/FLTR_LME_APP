@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
@@ -32,88 +33,98 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      extendBodyBehindAppBar: true,
-      body: Stack(
-        children: [
-          // Image Viewer Layer (Starts below header)
-          Center(
-            child: PhotoView.customChild(
-              scaleStateController: _scaleStateController,
-              backgroundDecoration: const BoxDecoration(color: Colors.black),
-              minScale: PhotoViewComputedScale.contained,
-              maxScale: PhotoViewComputedScale.covered * 4.0,
-              initialScale: PhotoViewComputedScale.contained,
-              basePosition: Alignment.center, // Ensures center alignment in the available space
-              heroAttributes: PhotoViewHeroAttributes(tag: widget.filePath),
-              child: widget.isNetwork
-                  ? CachedNetworkImage(
-                      key: ValueKey("network_$_retryKey"),
-                      imageUrl: widget.filePath,
-                      fit: BoxFit.contain,
-                      memCacheWidth: 2048, // Memory optimization
-                      // maxWidthDiskCache: 2048, // Optional: Cache on disk resized
-                      placeholder: (context, url) => _buildShimmerLoader(),
-                      errorWidget: (context, url, error) => _buildErrorWidget(),
-                    )
-                  : Image.file(
-                      File(widget.filePath),
-                      key: ValueKey("file_$_retryKey"),
-                      fit: BoxFit.contain,
-                      cacheWidth: 2048, // Memory optimization
-                      errorBuilder: (context, error, stackTrace) => _buildErrorWidget(),
-                    ),
-            ),
-          ),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = Theme.of(context).scaffoldBackgroundColor;
+    final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white;
+    final iconColor = Theme.of(context).iconTheme.color ?? Colors.white;
 
-          // Top Control Bar (Fixed & Opaque)
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              height: MediaQuery.of(context).padding.top + 60,
-              color: Colors.black,
-              alignment: Alignment.bottomCenter,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: SafeArea(
-                bottom: false,
-                child: Row(
-                  children: [
-                    _buildSimpleButton(
-                      icon: Icons.arrow_back,
-                      onTap: () => Navigator.pop(context),
-                    ),
-                    const SizedBox(width: 16),
-                    if (widget.title != null)
-                      Expanded(
-                        child: Text(
-                          widget.title!,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
+    return Scaffold(
+      backgroundColor: backgroundColor,
+      extendBodyBehindAppBar: true,
+      body: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
+          statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+          statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+        ),
+        child: Stack(
+          children: [
+            // Image Viewer Layer (Starts below header)
+            Center(
+              child: PhotoView.customChild(
+                scaleStateController: _scaleStateController,
+                backgroundDecoration: BoxDecoration(color: backgroundColor),
+                minScale: PhotoViewComputedScale.contained,
+                maxScale: PhotoViewComputedScale.covered * 4.0,
+                initialScale: PhotoViewComputedScale.contained,
+                basePosition: Alignment.center,
+                heroAttributes: PhotoViewHeroAttributes(tag: widget.filePath),
+                child: widget.isNetwork
+                    ? CachedNetworkImage(
+                        key: ValueKey("network_$_retryKey"),
+                        imageUrl: widget.filePath,
+                        fit: BoxFit.contain,
+                        memCacheWidth: 2048,
+                        placeholder: (context, url) => _buildShimmerLoader(isDark),
+                        errorWidget: (context, url, error) => _buildErrorWidget(textColor, iconColor),
+                      )
+                    : Image.file(
+                        File(widget.filePath),
+                        key: ValueKey("file_$_retryKey"),
+                        fit: BoxFit.contain,
+                        cacheWidth: 2048,
+                        errorBuilder: (context, error, stackTrace) => _buildErrorWidget(textColor, iconColor),
                       ),
-                  ],
+              ),
+            ),
+
+            // Top Control Bar (Fixed & Opaque)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: MediaQuery.of(context).padding.top + 60,
+                color: backgroundColor, // Matches theme background
+                alignment: Alignment.bottomCenter,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: SafeArea(
+                  bottom: false,
+                  child: Row(
+                    children: [
+                      _buildSimpleButton(
+                        icon: Icons.arrow_back,
+                        onTap: () => Navigator.pop(context),
+                        color: iconColor,
+                      ),
+                      const SizedBox(width: 16),
+                      if (widget.title != null)
+                        Expanded(
+                          child: Text(
+                            widget.title!,
+                            style: TextStyle(
+                              color: textColor,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
-
-
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildSimpleButton({required IconData icon, required VoidCallback onTap}) {
+  Widget _buildSimpleButton({required IconData icon, required VoidCallback onTap, required Color color}) {
     return IconButton(
       onPressed: onTap,
-      icon: Icon(icon, color: Colors.white, size: 24),
+      icon: Icon(icon, color: color, size: 24),
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints(),
       style: IconButton.styleFrom(
@@ -122,28 +133,28 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
     );
   }
 
-  Widget _buildShimmerLoader() {
+  Widget _buildShimmerLoader(bool isDark) {
     return Shimmer.fromColors(
-      baseColor: Colors.grey[900]!,
-      highlightColor: Colors.grey[800]!,
+      baseColor: isDark ? Colors.grey[900]! : Colors.grey[300]!,
+      highlightColor: isDark ? Colors.grey[800]! : Colors.grey[100]!,
       child: Container(
         width: double.infinity,
         height: double.infinity,
-        color: Colors.black,
+        color: isDark ? Colors.black : Colors.white,
       ),
     );
   }
 
-  Widget _buildErrorWidget() {
+  Widget _buildErrorWidget(Color textColor, Color iconColor) {
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.broken_image_outlined, color: Colors.white24, size: 80),
+          Icon(Icons.broken_image_outlined, color: iconColor.withValues(alpha: 0.5), size: 80),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             "Failed to load image",
-            style: TextStyle(color: Colors.white54, fontSize: 16),
+            style: TextStyle(color: textColor.withValues(alpha: 0.6), fontSize: 16),
           ),
           const SizedBox(height: 24),
           Row(
@@ -151,8 +162,8 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
             children: [
               TextButton.icon(
                 onPressed: () => Navigator.pop(context),
-                icon: const Icon(Icons.arrow_back, color: Colors.white70),
-                label: const Text("Back", style: TextStyle(color: Colors.white70)),
+                icon: Icon(Icons.arrow_back, color: textColor.withValues(alpha: 0.7)),
+                label: Text("Back", style: TextStyle(color: textColor.withValues(alpha: 0.7))),
               ),
               const SizedBox(width: 16),
               ElevatedButton.icon(

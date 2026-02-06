@@ -28,11 +28,12 @@ class Step3AdvanceWidget extends StatelessWidget {
       builder: (context, _) {
         return CustomScrollView(
           slivers: [
-            const SliverPersistentHeader(
+            SliverPersistentHeader(
               delegate: CollapsingStepIndicator(
                 currentStep: 3,
                 isSelectionMode: false,
                 isDragMode: false,
+                brightness: Theme.of(context).brightness,
               ),
               pinned: true,
             ),
@@ -65,7 +66,10 @@ class Step3AdvanceWidget extends StatelessWidget {
                         'Limited Seats',
                       ].map((tag) {
                         return ActionChip(
-                          label: Text(tag, style: const TextStyle(fontSize: 11)),
+                          label: Text(tag, style: TextStyle(
+                            fontSize: 11,
+                            color: Theme.of(context).textTheme.bodyLarge?.color,
+                          )),
                           padding: EdgeInsets.zero,
                           onPressed: () {
                             state.specialTagController.text = tag;
@@ -88,9 +92,9 @@ class Step3AdvanceWidget extends StatelessWidget {
                         'Offline Downloads',
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      subtitle: const Text(
+                      subtitle: Text(
                         'Allow students to download videos inside the app',
-                        style: TextStyle(fontSize: 12),
+                        style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color),
                       ),
                       value: state.isOfflineDownloadEnabled,
                       onChanged: (v) {
@@ -102,7 +106,7 @@ class Step3AdvanceWidget extends StatelessWidget {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(UIConstants.globalRadius),
                         side: BorderSide(
-                          color: Colors.grey.withValues(alpha: UIConstants.borderOpacity),
+                          color: Theme.of(context).dividerColor.withValues(alpha: UIConstants.borderOpacity),
                         ),
                       ),
                     ),
@@ -125,7 +129,7 @@ class Step3AdvanceWidget extends StatelessWidget {
                         state.isPublished
                             ? 'Visible to all students on the app'
                             : 'Only visible to admins',
-                        style: const TextStyle(fontSize: 12),
+                        style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color),
                       ),
                       value: state.isPublished,
                       onChanged: (v) {
@@ -139,7 +143,7 @@ class Step3AdvanceWidget extends StatelessWidget {
                         side: BorderSide(
                           color: state.isPublished
                               ? Colors.green.withValues(alpha: 0.3)
-                              : Colors.grey.withValues(alpha: UIConstants.borderOpacity),
+                              : Theme.of(context).dividerColor.withValues(alpha: UIConstants.borderOpacity),
                         ),
                       ),
                     ),

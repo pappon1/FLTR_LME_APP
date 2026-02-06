@@ -28,11 +28,12 @@ class Step0BasicWidget extends StatelessWidget {
         return CustomScrollView(
           controller: state.scrollController,
           slivers: [
-            const SliverPersistentHeader(
+            SliverPersistentHeader(
               delegate: CollapsingStepIndicator(
                 currentStep: 0,
                 isSelectionMode: false,
                 isDragMode: false,
+                brightness: Theme.of(context).brightness,
               ),
               pinned: true,
             ),
@@ -491,7 +492,7 @@ class Step0BasicWidget extends StatelessWidget {
   }) {
     return DropdownButtonFormField<String>(
       isExpanded: true,
-      style: const TextStyle(color: Colors.white, fontSize: 16),
+      style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 16),
       initialValue: value,
       hint: Text(
         hint ?? 'Select $label',
@@ -540,7 +541,7 @@ class Step0BasicWidget extends StatelessWidget {
     required void Function(int?) onChanged,
   }) {
     return DropdownButtonFormField<int>(
-      style: const TextStyle(color: Colors.white, fontSize: 16),
+      style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 16),
       initialValue: value,
       hint: Text(
         hint ?? 'Select $label',

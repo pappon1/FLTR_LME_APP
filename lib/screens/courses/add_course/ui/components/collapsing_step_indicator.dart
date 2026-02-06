@@ -7,6 +7,7 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
   final bool isDragMode;
   final double cardPaddingH;
   final double lineMargin;
+  final Brightness brightness;
 
   const CollapsingStepIndicator({
     required this.currentStep,
@@ -14,6 +15,7 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
     required this.isDragMode,
     this.cardPaddingH = 12.0,
     this.lineMargin = 0.0,
+    required this.brightness,
   });
 
   @override
@@ -137,8 +139,9 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
     return oldDelegate.currentStep != currentStep || 
            oldDelegate.isSelectionMode != isSelectionMode ||
            oldDelegate.isDragMode != isDragMode ||
-           oldDelegate.cardPaddingH != cardPaddingH || // New Check
-           oldDelegate.lineMargin != lineMargin;       // New Check
+           oldDelegate.cardPaddingH != cardPaddingH || 
+           oldDelegate.brightness != brightness ||       
+           oldDelegate.lineMargin != lineMargin;       
   }
 }
 
