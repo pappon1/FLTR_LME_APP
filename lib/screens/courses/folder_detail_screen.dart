@@ -40,7 +40,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
   Timer? _holdTimer;
   bool _isInitialLoading = true;
 
-  // Content Spacing (Synced with AddCourseScreen)
+  // Content Spacing (Synced with OG AddCourseScreen)
   final double _contentItemLeftOffset = 5.0;
   final double _videoThumbTop = 0.50;
   final double _videoThumbBottom = 0.50;
@@ -896,7 +896,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
          if (context.mounted) Navigator.pop(context, _contents);
       },
       child: Scaffold(
-      appBar: _buildAppBar(),
+        appBar: _buildAppBar(),
       body: CustomScrollView(
         slivers: [
           // Removed plus button from body
@@ -927,7 +927,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                     ),
                   )
                 : SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(10.0, 16.0, 10.0, 24.0),
+                    padding: EdgeInsets.fromLTRB(10.0, 16.0, 10.0, 100.0 + MediaQuery.of(context).padding.bottom),
                     sliver: SliverReorderableList(
                       itemCount: _contents.length,
                       onReorder: (oldIndex, newIndex) {
@@ -988,6 +988,9 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                       },
                     ),
                   ),
+          SliverToBoxAdapter(
+            child: SizedBox(height: MediaQuery.of(context).padding.bottom + 80),
+          ),
         ],
       ),
       ),

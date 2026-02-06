@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import '../../../utils/app_theme.dart';
-import '../../../widgets/video_thumbnail_widget.dart';
+import '../../../../../utils/app_theme.dart';
+import '../../../../../widgets/video_thumbnail_widget.dart';
 
 class CourseContentListItem extends StatelessWidget {
   final Map<String, dynamic> item;
@@ -112,18 +112,20 @@ class CourseContentListItem extends StatelessWidget {
               bottom: bottomSpacing,
               child: isDragMode
                   ? Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const SizedBox(width: 60), // Left Scroll Zone
+                        const SizedBox(width: 40), // Left Scroll Zone
                         Expanded(
                           child: ReorderableDragStartListener(
                             index: index,
                             child: Container(color: Colors.transparent),
                           ),
                         ),
-                        const SizedBox(width: 60), // Right Scroll Zone (increased for menu)
+                        const SizedBox(width: 40), // Right Scroll Zone
                       ],
                     )
                   : Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         // Left Zone: Tap & Hold for Drag
                         Expanded(
@@ -253,7 +255,7 @@ class CourseContentListItem extends StatelessWidget {
               // 1.5 Type Tag Overlay (Fixed at bottom)
               Positioned(
                 bottom: -1, 
-                left: size + leftOffset + 12,
+                left: size + leftOffset + (item['type'] == 'folder' ? folderLabelOffset : pdfLabelOffset),
                 child: _buildTypeTag(typeLabel, tagColor, tagLabelFontSize),
               ),
               
@@ -435,7 +437,7 @@ class CourseContentListItem extends StatelessWidget {
               // 1.5 Type Tag Overlay (Fixed at bottom)
               Positioned(
                 bottom: -1, 
-                left: thumbWidth + leftOffset + 12,
+                left: thumbWidth + leftOffset + (isImage ? imageLabelOffset : videoLabelOffset),
                 child: _buildTypeTag(isImage ? 'IMAGE' : 'VIDEO', isImage ? Colors.blue : Colors.red, tagLabelFontSize),
               ),
             
