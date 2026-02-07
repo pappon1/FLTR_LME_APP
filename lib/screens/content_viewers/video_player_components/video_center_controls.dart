@@ -42,13 +42,17 @@ class VideoCenterControls extends StatelessWidget {
             children: [
               // Previous
               if (onPrev != null) ...[
-                 IconButton(
-                   onPressed: hasPrev ? onPrev : null,
-                   icon: Icon(Icons.skip_previous_rounded, color: hasPrev ? iconColor : Colors.white24, size: iconSize * 1.2),
-                 ),
-                 const SizedBox(width: 32),
+                IconButton(
+                  onPressed: hasPrev ? onPrev : null,
+                  icon: Icon(
+                    Icons.skip_previous_rounded,
+                    color: hasPrev ? iconColor : Colors.white24,
+                    size: iconSize * 1.2,
+                  ),
+                ),
+                const SizedBox(width: 32),
               ],
-            
+
               // Replay 10s
               _buildControlButton(
                 icon: Icons.replay_10,
@@ -88,11 +92,15 @@ class VideoCenterControls extends StatelessWidget {
               ),
 
               if (onNext != null) ...[
-                 const SizedBox(width: 32),
-                 IconButton(
-                   onPressed: hasNext ? onNext : null,
-                   icon: Icon(Icons.skip_next_rounded, color: hasNext ? iconColor : Colors.white24, size: iconSize * 1.2),
-                 ),
+                const SizedBox(width: 32),
+                IconButton(
+                  onPressed: hasNext ? onNext : null,
+                  icon: Icon(
+                    Icons.skip_next_rounded,
+                    color: hasNext ? iconColor : Colors.white24,
+                    size: iconSize * 1.2,
+                  ),
+                ),
               ],
             ],
           ),
@@ -112,10 +120,7 @@ class VideoCenterControls extends StatelessWidget {
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: bgColor,
-          shape: BoxShape.circle,
-        ),
+        decoration: BoxDecoration(color: bgColor, shape: BoxShape.circle),
         child: Icon(icon, color: color, size: size),
       ),
     );

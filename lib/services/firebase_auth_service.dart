@@ -6,7 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class FirebaseAuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  
+
   // Use getter to ensure fresh instance/config
   // GoogleSignIn is now a singleton in v7.x
   GoogleSignIn get _googleSignIn => GoogleSignIn.instance;
@@ -17,7 +17,7 @@ class FirebaseAuthService {
 
   // Current user stream
   Stream<User?> get authStateChanges => _auth.authStateChanges();
-  
+
   // Current user
   User? get currentUser => _auth.currentUser;
 
@@ -29,7 +29,7 @@ class FirebaseAuthService {
 
       // 2. Trigger Google Sign-In flow (authenticate replaces signIn)
       final GoogleSignInAccount googleUser = await _googleSignIn.authenticate();
-      
+
       // 3. Obtain auth details (Synchronous getter in v7)
       final GoogleSignInAuthentication googleAuth = googleUser.authentication;
 
@@ -37,10 +37,7 @@ class FirebaseAuthService {
       String? accessToken;
       try {
         final authClient = await googleUser.authorizationClient.authorizeScopes(
-          [
-            'email',
-            'https://www.googleapis.com/auth/contacts.readonly',
-          ],
+          ['email', 'https://www.googleapis.com/auth/contacts.readonly'],
         );
         accessToken = authClient.accessToken;
       } catch (e) {
@@ -56,21 +53,21 @@ class FirebaseAuthService {
 
       // Sign in to Firebase with the credential
       final userCredential = await _auth.signInWithCredential(credential);
-      
+
       // Check if user is admin
       await _checkAndCreateUserProfile(userCredential.user!);
-      
+
       return userCredential;
     } catch (e) {
       debugPrint('GOOGLE SIGN IN ERROR: $e');
       rethrow;
     }
   }
- 
+
   /// Check if user exists in Firestore and create/update profile
   Future<void> _checkAndCreateUserProfile(User user) async {
     final userDoc = await _firestore.collection('users').doc(user.uid).get();
-    
+
     if (!userDoc.exists) {
       // Create new user profile
       await _firestore.collection('users').doc(user.uid).set({
@@ -93,17 +90,17 @@ class FirebaseAuthService {
   /// Check if current user is admin
   Future<bool> isAdmin() async {
     if (currentUser == null) return false;
-    
+
     try {
       final adminDoc = await _firestore
           .collection('admins')
           .doc(currentUser!.uid)
           .get();
-      
+
       if (adminDoc.exists) {
         return adminDoc.data()?['isActive'] == true;
       }
-      
+
       return false;
     } catch (e) {
       debugPrint('Error checking admin status: $e');
@@ -114,17 +111,17 @@ class FirebaseAuthService {
   /// Get user role
   Future<String> getUserRole() async {
     if (currentUser == null) return 'guest';
-    
+
     try {
       final userDoc = await _firestore
           .collection('users')
           .doc(currentUser!.uid)
           .get();
-      
+
       if (userDoc.exists) {
         return userDoc.data()?['role'] ?? 'user';
       }
-      
+
       return 'user';
     } catch (e) {
       debugPrint('Error getting user role: $e');

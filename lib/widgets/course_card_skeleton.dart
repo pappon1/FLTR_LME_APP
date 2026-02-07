@@ -18,10 +18,10 @@ class CourseCardSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     // Helper for consistency
     Widget shimmerBox({double? width, required double height}) {
-       return Shimmer.fromColors(
+      return Shimmer.fromColors(
         baseColor: isDark ? const Color(0xFF2C2C2C) : Colors.grey[300]!,
         highlightColor: isDark ? const Color(0xFF3D3D3D) : Colors.grey[100]!,
         child: Container(
@@ -29,7 +29,9 @@ class CourseCardSkeleton extends StatelessWidget {
           height: height,
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF2C2C2C) : Colors.grey[300]!,
-            borderRadius: BorderRadius.circular(3.0), // Slight radius for text lines
+            borderRadius: BorderRadius.circular(
+              3.0,
+            ), // Slight radius for text lines
           ),
         ),
       );
@@ -43,9 +45,13 @@ class CourseCardSkeleton extends StatelessWidget {
       ),
       elevation: 0,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(cornerRadius ?? (isEdgeToEdge ? 3.0 : 0.0)),
+        borderRadius: BorderRadius.circular(
+          cornerRadius ?? (isEdgeToEdge ? 3.0 : 0.0),
+        ),
         side: BorderSide(
-          color: isDark ? Colors.white.withOpacity(0.2) : Colors.black.withOpacity(0.1),
+          color: isDark
+              ? Colors.white.withOpacity(0.2)
+              : Colors.black.withOpacity(0.1),
           width: 1,
         ),
       ),
@@ -56,7 +62,9 @@ class CourseCardSkeleton extends StatelessWidget {
           // 🖼️ Thumbnail Placeholder
           Shimmer.fromColors(
             baseColor: isDark ? Colors.grey.shade900 : Colors.grey.shade300,
-            highlightColor: isDark ? Colors.grey.shade800 : Colors.grey.shade100,
+            highlightColor: isDark
+                ? Colors.grey.shade800
+                : Colors.grey.shade100,
             child: Container(
               height: 200,
               width: double.infinity,
@@ -80,21 +88,18 @@ class CourseCardSkeleton extends StatelessWidget {
                     shimmerBox(width: 70, height: 12),
                   ],
                 ),
-                
-                const SizedBox(height: 6), // Matching CourseCard Spacing
 
+                const SizedBox(height: 6), // Matching CourseCard Spacing
                 // 🏷️ Title Placeholder (2 lines)
                 shimmerBox(height: 18, width: double.infinity),
                 const SizedBox(height: 4),
                 shimmerBox(height: 18, width: 200),
-                
+
                 const SizedBox(height: 6), // Matching Divider Spacing
-                
                 // ➖ Divider Placeholder
                 shimmerBox(height: 1, width: double.infinity),
-                
+
                 const SizedBox(height: 6), // Matching Divider Spacing
-                
                 // 💰 Pricing & Button Placeholder
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -109,7 +114,7 @@ class CourseCardSkeleton extends StatelessWidget {
                         shimmerBox(width: 50, height: 15), // Discount
                       ],
                     ),
-                    
+
                     // Button Placeholder
                     Shimmer.fromColors(
                       baseColor: const Color(0xFF536DFE).withOpacity(0.5),
@@ -133,4 +138,3 @@ class CourseCardSkeleton extends StatelessWidget {
     );
   }
 }
-

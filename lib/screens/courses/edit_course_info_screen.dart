@@ -51,7 +51,18 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
   // State Variables
   String? _selectedCategory;
   String? _difficulty;
-  final List<String> _languages = ['Hindi', 'English', 'Hinglish', 'Bengali', 'Marathi', 'Gujarati', 'Tamil', 'Kannada', 'Telugu', 'Malayalam'];
+  final List<String> _languages = [
+    'Hindi',
+    'English',
+    'Hinglish',
+    'Bengali',
+    'Marathi',
+    'Gujarati',
+    'Tamil',
+    'Kannada',
+    'Telugu',
+    'Malayalam',
+  ];
   final List<String> _courseModes = ['Recorded', 'Live Session'];
   final List<String> _supportTypes = ['WhatsApp Group', 'No Support'];
 
@@ -63,7 +74,10 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
   bool _thumbnailChanged = false;
   bool _isLoading = false;
   bool _isInitialLoading = true;
-  int? _newBatchDurationDays;
+  String _specialTagColor = 'Blue';
+  bool _isSpecialTagVisible = true;
+  int _specialTagDurationDays = 30;
+  static const List<String> _tagColors = ['Blue', 'Red', 'Green', 'Pink'];
   int? _courseValidityDays;
   bool _hasCertificate = false;
   File? _certificate1Image;
@@ -77,7 +91,6 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
   bool _isBigScreenEnabled = false;
   bool _isPublished = false;
 
-
   // Contents Management (New Tab)
   List<Map<String, dynamic>> _courseContents = [];
   bool _isSelectionMode = false;
@@ -89,7 +102,11 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
   final List<TextEditingController> _highlightControllers = [];
   final List<Map<String, TextEditingController>> _faqControllers = [];
 
-  static const List<String> _difficultyLevels = ['Beginner', 'Intermediate', 'Advanced'];
+  static const List<String> _difficultyLevels = [
+    'Beginner',
+    'Intermediate',
+    'Advanced',
+  ];
   static const List<String> _categories = ['Hardware', 'Software'];
 
   // Focus Nodes
@@ -105,9 +122,11 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
   static const double _inputVerticalPadding = 10.0;
   static const double _borderOpacity = 0.12;
   static const double _fillOpacity = 0.0;
-  
+
   // Cached BorderRadius to avoid repeated creation
-  static final BorderRadius _globalBorderRadius = BorderRadius.circular(_globalRadius);
+  static final BorderRadius _globalBorderRadius = BorderRadius.circular(
+    _globalRadius,
+  );
 
   @override
   void initState() {
@@ -152,11 +171,14 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
       _titleController.text = course.title;
       _descController.text = course.description;
       _mrpController.text = course.price.toString();
-      _discountController.text = (course.price - course.discountPrice).toString();
+      _discountController.text = (course.price - course.discountPrice)
+          .toString();
       _selectedCategory = course.category;
       _difficulty = course.difficulty;
       _currentThumbnailUrl = course.thumbnailUrl;
-      _newBatchDurationDays = course.newBatchDays;
+      _specialTagColor = course.specialTagColor;
+      _isSpecialTagVisible = course.isSpecialTagVisible;
+      _specialTagDurationDays = course.specialTagDurationDays;
       _courseValidityDays = course.courseValidityDays;
       _hasCertificate = course.hasCertificate;
       _selectedCertSlot = course.selectedCertificateSlot;
@@ -170,19 +192,19 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
       _websiteUrlController.text = course.websiteUrl;
 
       // Load certificate URLs
-      if (course.certificateUrl1 != null && course.certificateUrl1!.isNotEmpty) {
+      if (course.certificateUrl1 != null &&
+          course.certificateUrl1!.isNotEmpty) {
         _currentCert1Url = course.certificateUrl1;
       }
-      if (course.certificateUrl2 != null && course.certificateUrl2!.isNotEmpty) {
+      if (course.certificateUrl2 != null &&
+          course.certificateUrl2!.isNotEmpty) {
         _currentCert2Url = course.certificateUrl2;
       }
 
       // Load Contents
       _courseContents = List<Map<String, dynamic>>.from(
-        course.contents.map((x) => Map<String, dynamic>.from(x))
+        course.contents.map((x) => Map<String, dynamic>.from(x)),
       );
-    
-
 
       // Load custom validity if needed
       if (_courseValidityDays != null &&
@@ -234,7 +256,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
     _descFocus.dispose();
     _mrpFocus.dispose();
     _discountFocus.dispose();
-    
+
     // Cancel timer to prevent memory leaks
     _holdTimer?.cancel();
 
@@ -345,10 +367,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
       _showWarning('Please select a course type');
       return false;
     }
-    if (_newBatchDurationDays == null) {
-      _showWarning('Please select new badge duration');
-      return false;
-    }
+
     return true;
   }
 
@@ -402,11 +421,16 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
       // Basic Info
       updateData['title'] = _titleController.text.trim();
       updateData['description'] = _descController.text.trim();
-      updateData['price'] = int.tryParse(_mrpController.text) ?? widget.course.price;
-      updateData['discountPrice'] = int.tryParse(_finalPriceController.text) ?? widget.course.discountPrice;
+      updateData['price'] =
+          int.tryParse(_mrpController.text) ?? widget.course.price;
+      updateData['discountPrice'] =
+          int.tryParse(_finalPriceController.text) ??
+          widget.course.discountPrice;
       updateData['category'] = _selectedCategory;
       updateData['difficulty'] = _difficulty;
-      updateData['newBatchDays'] = _newBatchDurationDays;
+      updateData['specialTagColor'] = _specialTagColor;
+      updateData['isSpecialTagVisible'] = _isSpecialTagVisible;
+      updateData['specialTagDurationDays'] = _specialTagDurationDays;
       updateData['language'] = _selectedLanguage;
       updateData['courseMode'] = _selectedCourseMode;
       updateData['supportType'] = _selectedSupportType;
@@ -428,7 +452,6 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
       updateData['isOfflineDownloadEnabled'] = _isOfflineDownloadEnabled;
       updateData['isPublished'] = _isPublished;
 
-
       // Highlights
       updateData['highlights'] = _highlightControllers
           .map((c) => c.text.trim())
@@ -437,11 +460,17 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
 
       // FAQs
       updateData['faqs'] = _faqControllers
-          .where((f) => f['q']!.text.trim().isNotEmpty && f['a']!.text.trim().isNotEmpty)
-          .map((f) => {
-                'question': f['q']!.text.trim(),
-                'answer': f['a']!.text.trim(),
-              })
+          .where(
+            (f) =>
+                f['q']!.text.trim().isNotEmpty &&
+                f['a']!.text.trim().isNotEmpty,
+          )
+          .map(
+            (f) => {
+              'question': f['q']!.text.trim(),
+              'answer': f['a']!.text.trim(),
+            },
+          )
           .toList();
 
       // Contents
@@ -449,25 +478,29 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
 
       // START BACKGROUND UPDATE
       final localFiles = _collectLocalFiles(updateData);
-      
-      if (localFiles.isNotEmpty) {
-         // Use Background Service
-         print("🚀 Starting Background Update with ${localFiles.length} files...");
-         FlutterBackgroundService().invoke('update_course', {
-            'courseId': widget.course.id,
-            'updateData': updateData,
-            'files': localFiles
-         });
 
-         if (mounted) {
-           ScaffoldMessenger.of(context).showSnackBar(
-             const SnackBar(
-               content: Text('Update started in background. You can leave this screen.'),
-               backgroundColor: Colors.green
-             ),
-           );
-           Navigator.pop(context);
-         }
+      if (localFiles.isNotEmpty) {
+        // Use Background Service
+        print(
+          "🚀 Starting Background Update with ${localFiles.length} files...",
+        );
+        FlutterBackgroundService().invoke('update_course', {
+          'courseId': widget.course.id,
+          'updateData': updateData,
+          'files': localFiles,
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Update started in background. You can leave this screen.',
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pop(context);
+        }
       } else {
         // No files to upload, direct update
         await firestore.updateCourse(widget.course.id, updateData);
@@ -475,11 +508,13 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
           _showSuccessDialog();
         }
       }
-
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating course: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Error updating course: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     } finally {
@@ -568,7 +603,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (_isInitialLoading) {
-       return Scaffold(
+      return Scaffold(
         backgroundColor: isDark ? const Color(0xFF050505) : Colors.white,
         body: const Center(child: CircularProgressIndicator()),
       );
@@ -596,7 +631,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
   }
 
   PreferredSizeWidget _buildAppBar() {
-     if (_isDragModeActive) {
+    if (_isDragModeActive) {
       return AppBar(
         backgroundColor: AppTheme.primaryColor,
         iconTheme: const IconThemeData(color: Colors.white),
@@ -604,7 +639,10 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
           icon: const Icon(Icons.close),
           onPressed: () => setState(() => _isDragModeActive = false),
         ),
-        title: const Text('Drag and Drop Mode', style: TextStyle(color: Colors.white, fontSize: 16)),
+        title: const Text(
+          'Drag and Drop Mode',
+          style: TextStyle(color: Colors.white, fontSize: 16),
+        ),
         centerTitle: true,
         elevation: 2,
       );
@@ -620,14 +658,17 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
             _selectedIndices.clear();
           }),
         ),
-        title: Text('${_selectedIndices.length} Selected', style: const TextStyle(color: Colors.white, fontSize: 16)),
+        title: Text(
+          '${_selectedIndices.length} Selected',
+          style: const TextStyle(color: Colors.white, fontSize: 16),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete), 
+            icon: const Icon(Icons.delete),
             onPressed: () => _confirmRemoveContent(null), // Bulk delete
           ),
         ],
-         elevation: 2,
+        elevation: 2,
       );
     }
 
@@ -643,7 +684,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
         icon: const Icon(Icons.arrow_back),
         onPressed: () => Navigator.pop(context),
       ),
-       actions: [
+      actions: [
         if (_currentStep == 2) // Content Step (Index shifted)
           Padding(
             padding: const EdgeInsets.only(right: 16),
@@ -665,11 +706,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                       ),
                     ],
                   ),
-                  child: const Icon(
-                    Icons.add,
-                    color: Colors.white,
-                    size: 20,
-                  ),
+                  child: const Icon(Icons.add, color: Colors.white, size: 20),
                 ),
               ),
             ),
@@ -691,7 +728,9 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
           width: 32,
           height: 32,
           decoration: BoxDecoration(
-            color: isActive ? AppTheme.primaryColor : Colors.grey.withValues(alpha: 0.2),
+            color: isActive
+                ? AppTheme.primaryColor
+                : Colors.grey.withValues(alpha: 0.2),
             shape: BoxShape.circle,
             boxShadow: isActive
                 ? [
@@ -699,7 +738,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                       color: AppTheme.primaryColor.withValues(alpha: 0.4),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
-                    )
+                    ),
                   ]
                 : [],
           ),
@@ -707,15 +746,15 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
             child: isCurrent
                 ? const Icon(Icons.edit, size: 16, color: Colors.white)
                 : isActive
-                    ? const Icon(Icons.check, size: 16, color: Colors.white)
-                    : Text(
-                        '${step + 1}',
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.grey.shade400,
-                        ),
-                      ),
+                ? const Icon(Icons.check, size: 16, color: Colors.white)
+                : Text(
+                    '${step + 1}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade400,
+                    ),
+                  ),
           ),
         ),
         const SizedBox(height: 4),
@@ -736,7 +775,9 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
       child: Container(
         height: 2,
         margin: const EdgeInsets.symmetric(horizontal: 8),
-        color: _currentStep > step ? AppTheme.primaryColor : Colors.grey.withValues(alpha: 0.2),
+        color: _currentStep > step
+            ? AppTheme.primaryColor
+            : Colors.grey.withValues(alpha: 0.2),
       ),
     );
   }
@@ -750,7 +791,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
             isSelectionMode: false,
             isDragMode: false,
           ),
-          pinned: true, 
+          pinned: true,
         ),
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
@@ -770,16 +811,25 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                     ),
                     // Draft Status Indicator (Always shown as synced in edit mode)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.green.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(3.0),
-                        border: Border.all(color: Colors.green.withValues(alpha: 0.2)),
+                        border: Border.all(
+                          color: Colors.green.withValues(alpha: 0.2),
+                        ),
                       ),
                       child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.check_circle, size: 16, color: Colors.green),
+                          Icon(
+                            Icons.check_circle,
+                            size: 16,
+                            color: Colors.green,
+                          ),
                           SizedBox(width: 8),
                           Text(
                             'Safe & Synced',
@@ -836,8 +886,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                 ),
                 const SizedBox(height: 16),
 
-                _buildNewBadgeDurationSelector(),
-                const SizedBox(height: 16),
+
 
                 const SizedBox(height: 16),
 
@@ -847,15 +896,24 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                   children: [
                     const Text(
                       'Highlights',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                     TextButton.icon(
                       onPressed: () {
-                        setState(() => _highlightControllers.add(TextEditingController()));
+                        setState(
+                          () => _highlightControllers.add(
+                            TextEditingController(),
+                          ),
+                        );
                       },
                       icon: const Icon(Icons.add_circle_outline, size: 18),
                       label: const Text('Add'),
-                      style: TextButton.styleFrom(foregroundColor: AppTheme.primaryColor),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppTheme.primaryColor,
+                      ),
                     ),
                   ],
                 ),
@@ -863,7 +921,11 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                 if (_highlightControllers.isEmpty)
                   const Text(
                     'No highlights added.',
-                    style: TextStyle(color: Colors.grey, fontSize: 13, fontStyle: FontStyle.italic),
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 13,
+                      fontStyle: FontStyle.italic,
+                    ),
                   )
                 else
                   ..._highlightControllers.asMap().entries.map((entry) {
@@ -873,7 +935,11 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Row(
                         children: [
-                          const Icon(Icons.check_circle_outline, color: Colors.green, size: 20),
+                          const Icon(
+                            Icons.check_circle_outline,
+                            color: Colors.green,
+                            size: 20,
+                          ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: _buildTextField(
@@ -886,7 +952,11 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                           Padding(
                             padding: const EdgeInsets.only(bottom: 16),
                             child: IconButton(
-                              icon: const Icon(Icons.remove_circle_outline, color: Colors.red, size: 20),
+                              icon: const Icon(
+                                Icons.remove_circle_outline,
+                                color: Colors.red,
+                                size: 20,
+                              ),
                               onPressed: () {
                                 setState(() {
                                   controller.dispose();
@@ -910,7 +980,10 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                   children: [
                     const Text(
                       'FAQs',
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                     TextButton.icon(
                       onPressed: () {
@@ -923,7 +996,9 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                       },
                       icon: const Icon(Icons.add_circle_outline, size: 18),
                       label: const Text('Add'),
-                      style: TextButton.styleFrom(foregroundColor: AppTheme.primaryColor),
+                      style: TextButton.styleFrom(
+                        foregroundColor: AppTheme.primaryColor,
+                      ),
                     ),
                   ],
                 ),
@@ -931,7 +1006,11 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                 if (_faqControllers.isEmpty)
                   const Text(
                     'No FAQs added.',
-                    style: TextStyle(color: Colors.grey, fontSize: 13, fontStyle: FontStyle.italic),
+                    style: TextStyle(
+                      color: Colors.grey,
+                      fontSize: 13,
+                      fontStyle: FontStyle.italic,
+                    ),
                   )
                 else
                   ..._faqControllers.asMap().entries.map((entry) {
@@ -943,7 +1022,9 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                       decoration: BoxDecoration(
                         color: Colors.transparent,
                         border: Border.all(
-                          color: Theme.of(context).dividerColor.withValues(alpha: _borderOpacity),
+                          color: Theme.of(
+                            context,
+                          ).dividerColor.withValues(alpha: _borderOpacity),
                         ),
                         borderRadius: BorderRadius.circular(_globalRadius),
                       ),
@@ -963,7 +1044,11 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                               Padding(
                                 padding: const EdgeInsets.only(top: 4),
                                 child: IconButton(
-                                  icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.red,
+                                    size: 20,
+                                  ),
                                   onPressed: () {
                                     setState(() {
                                       faq['q']?.dispose();
@@ -1012,7 +1097,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
             isSelectionMode: false,
             isDragMode: false,
           ),
-          pinned: true, 
+          pinned: true,
         ),
         SliverPadding(
           padding: const EdgeInsets.all(24),
@@ -1075,23 +1160,39 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                   style: const TextStyle(color: Colors.white, fontSize: 16),
                   initialValue: _selectedLanguage,
                   decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.symmetric(vertical: _inputVerticalPadding, horizontal: 16),
+                    contentPadding: const EdgeInsets.symmetric(
+                      vertical: _inputVerticalPadding,
+                      horizontal: 16,
+                    ),
                     labelText: 'Course Language',
                     floatingLabelBehavior: FloatingLabelBehavior.always,
                     prefixIcon: const Icon(Icons.language, size: 20),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(_globalRadius),
-                      borderSide: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: _borderOpacity)),
+                      borderSide: BorderSide(
+                        color: Theme.of(
+                          context,
+                        ).dividerColor.withValues(alpha: _borderOpacity),
+                      ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(_globalRadius),
-                      borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+                      borderSide: const BorderSide(
+                        color: AppTheme.primaryColor,
+                        width: 2,
+                      ),
                     ),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(_globalRadius)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(_globalRadius),
+                    ),
                     filled: true,
-                    fillColor: AppTheme.primaryColor.withValues(alpha: _fillOpacity),
+                    fillColor: AppTheme.primaryColor.withValues(
+                      alpha: _fillOpacity,
+                    ),
                   ),
-                  items: _languages.map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
+                  items: _languages
+                      .map((l) => DropdownMenuItem(value: l, child: Text(l)))
+                      .toList(),
                   onChanged: (v) {
                     if (v != null) setState(() => _selectedLanguage = v);
                   },
@@ -1103,27 +1204,52 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         isExpanded: true,
-                        style: const TextStyle(color: Colors.white, fontSize: 16),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
                         initialValue: _selectedCourseMode,
                         decoration: InputDecoration(
-                          contentPadding: const EdgeInsets.symmetric(vertical: _inputVerticalPadding, horizontal: 16),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: _inputVerticalPadding,
+                            horizontal: 16,
+                          ),
                           labelText: 'Course Mode',
                           floatingLabelBehavior: FloatingLabelBehavior.always,
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(_globalRadius),
-                            borderSide: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: _borderOpacity)),
+                            borderSide: BorderSide(
+                              color: Theme.of(
+                                context,
+                              ).dividerColor.withValues(alpha: _borderOpacity),
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(_globalRadius),
-                            borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+                            borderSide: const BorderSide(
+                              color: AppTheme.primaryColor,
+                              width: 2,
+                            ),
                           ),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(_globalRadius)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(_globalRadius),
+                          ),
                           filled: true,
-                          fillColor: AppTheme.primaryColor.withValues(alpha: _fillOpacity),
+                          fillColor: AppTheme.primaryColor.withValues(
+                            alpha: _fillOpacity,
+                          ),
                         ),
-                        items: _courseModes.map((m) => DropdownMenuItem(value: m, child: Text(m, overflow: TextOverflow.ellipsis))).toList(),
+                        items: _courseModes
+                            .map(
+                              (m) => DropdownMenuItem(
+                                value: m,
+                                child: Text(m, overflow: TextOverflow.ellipsis),
+                              ),
+                            )
+                            .toList(),
                         onChanged: (v) {
-                          if (v != null) setState(() => _selectedCourseMode = v);
+                          if (v != null)
+                            setState(() => _selectedCourseMode = v);
                         },
                       ),
                     ),
@@ -1131,27 +1257,52 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         isExpanded: true,
-                        style: const TextStyle(color: Colors.white, fontSize: 16),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
                         initialValue: _selectedSupportType,
                         decoration: InputDecoration(
-                          contentPadding: const EdgeInsets.symmetric(vertical: _inputVerticalPadding, horizontal: 16),
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: _inputVerticalPadding,
+                            horizontal: 16,
+                          ),
                           labelText: 'Support Type',
                           floatingLabelBehavior: FloatingLabelBehavior.always,
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(_globalRadius),
-                            borderSide: BorderSide(color: Theme.of(context).dividerColor.withValues(alpha: _borderOpacity)),
+                            borderSide: BorderSide(
+                              color: Theme.of(
+                                context,
+                              ).dividerColor.withValues(alpha: _borderOpacity),
+                            ),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(_globalRadius),
-                            borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+                            borderSide: const BorderSide(
+                              color: AppTheme.primaryColor,
+                              width: 2,
+                            ),
                           ),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(_globalRadius)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(_globalRadius),
+                          ),
                           filled: true,
-                          fillColor: AppTheme.primaryColor.withValues(alpha: _fillOpacity),
+                          fillColor: AppTheme.primaryColor.withValues(
+                            alpha: _fillOpacity,
+                          ),
                         ),
-                        items: _supportTypes.map((s) => DropdownMenuItem(value: s, child: Text(s, overflow: TextOverflow.ellipsis))).toList(),
+                        items: _supportTypes
+                            .map(
+                              (s) => DropdownMenuItem(
+                                value: s,
+                                child: Text(s, overflow: TextOverflow.ellipsis),
+                              ),
+                            )
+                            .toList(),
                         onChanged: (v) {
-                          if (v != null) setState(() => _selectedSupportType = v);
+                          if (v != null)
+                            setState(() => _selectedSupportType = v);
                         },
                       ),
                     ),
@@ -1191,9 +1342,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                     'Watch on Big Screens',
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  subtitle: const Text(
-                    'Allow access via Web/Desktop',
-                  ),
+                  subtitle: const Text('Allow access via Web/Desktop'),
                   value: _isBigScreenEnabled,
                   onChanged: (v) => setState(() => _isBigScreenEnabled = v),
                   activeThumbColor: AppTheme.primaryColor,
@@ -1232,7 +1381,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
             isSelectionMode: false,
             isDragMode: false,
           ),
-          pinned: true, 
+          pinned: true,
         ),
         SliverPadding(
           padding: const EdgeInsets.all(24),
@@ -1243,7 +1392,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                 const SizedBox(height: 12),
 
                 // Offline Download
-                 const Text(
+                const Text(
                   'Offline Features',
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                 ),
@@ -1264,7 +1413,9 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(_globalRadius),
                     side: BorderSide(
-                      color: Theme.of(context).dividerColor.withValues(alpha: _borderOpacity),
+                      color: Theme.of(
+                        context,
+                      ).dividerColor.withValues(alpha: _borderOpacity),
                     ),
                   ),
                 ),
@@ -1279,7 +1430,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                 ),
                 const SizedBox(height: 12),
                 SwitchListTile(
-                    title: Text(
+                  title: Text(
                     _isPublished
                         ? 'Course is Public'
                         : 'Course is Hidden (Draft)',
@@ -1292,7 +1443,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                   ),
                   value: _isPublished,
                   onChanged: (v) => setState(() => _isPublished = v),
-                   activeThumbColor: Colors.green,
+                  activeThumbColor: Colors.green,
                   tileColor: Colors.transparent,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(_globalRadius),
@@ -1393,9 +1544,17 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
             borderRadius: BorderRadius.circular(_globalRadius),
             border: Border.all(
               color: (_thumbnailImage == null && _currentThumbnailUrl == null)
-                  ? (_thumbnailError ? Colors.red.withOpacity(0.8) : Theme.of(context).dividerColor.withValues(alpha: _borderOpacity))
+                  ? (_thumbnailError
+                        ? Colors.red.withOpacity(0.8)
+                        : Theme.of(
+                            context,
+                          ).dividerColor.withValues(alpha: _borderOpacity))
                   : AppTheme.primaryColor.withOpacity(0.5),
-              width: ((_thumbnailImage == null && _currentThumbnailUrl == null) && _thumbnailError) ? 2 : 1,
+              width:
+                  ((_thumbnailImage == null && _currentThumbnailUrl == null) &&
+                      _thumbnailError)
+                  ? 2
+                  : 1,
               style: BorderStyle.solid,
             ),
             boxShadow: (_thumbnailImage == null && _currentThumbnailUrl == null)
@@ -1413,11 +1572,11 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                     fit: BoxFit.cover,
                   )
                 : (_currentThumbnailUrl != null
-                    ? DecorationImage(
-                        image: NetworkImage(_currentThumbnailUrl!),
-                        fit: BoxFit.cover,
-                      )
-                    : null),
+                      ? DecorationImage(
+                          image: NetworkImage(_currentThumbnailUrl!),
+                          fit: BoxFit.cover,
+                        )
+                      : null),
           ),
           child: (_thumbnailImage == null && _currentThumbnailUrl == null)
               ? Column(
@@ -1453,7 +1612,9 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
       hint: Text(
         'Select Category',
         style: TextStyle(
-          color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.4),
+          color: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.color?.withValues(alpha: 0.4),
           fontSize: 13,
           fontWeight: FontWeight.normal,
         ),
@@ -1468,15 +1629,14 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(_globalRadius),
           borderSide: BorderSide(
-            color: Theme.of(context).dividerColor.withValues(alpha: _borderOpacity),
+            color: Theme.of(
+              context,
+            ).dividerColor.withValues(alpha: _borderOpacity),
           ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(_globalRadius),
-          borderSide: const BorderSide(
-            color: AppTheme.primaryColor,
-            width: 2,
-          ),
+          borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(_globalRadius),
@@ -1504,7 +1664,9 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
       hint: Text(
         'Select Type',
         style: TextStyle(
-          color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.4),
+          color: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.color?.withValues(alpha: 0.4),
           fontSize: 13,
           fontWeight: FontWeight.normal,
         ),
@@ -1519,15 +1681,14 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(_globalRadius),
           borderSide: BorderSide(
-            color: Theme.of(context).dividerColor.withValues(alpha: _borderOpacity),
+            color: Theme.of(
+              context,
+            ).dividerColor.withValues(alpha: _borderOpacity),
           ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(_globalRadius),
-          borderSide: const BorderSide(
-            color: AppTheme.primaryColor,
-            width: 2,
-          ),
+          borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(_globalRadius),
@@ -1547,53 +1708,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
     );
   }
 
-  Widget _buildNewBadgeDurationSelector() {
-    return DropdownButtonFormField<int>(
-      style: const TextStyle(color: Colors.white, fontSize: 16),
-      initialValue: _newBatchDurationDays,
-      hint: Text(
-        'Select Duration',
-        style: TextStyle(
-          color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.4),
-          fontSize: 13,
-          fontWeight: FontWeight.normal,
-        ),
-      ),
-      decoration: InputDecoration(
-        contentPadding: const EdgeInsets.symmetric(
-          vertical: _inputVerticalPadding,
-          horizontal: 16,
-        ),
-        labelText: 'New Badge Duration',
-        floatingLabelBehavior: FloatingLabelBehavior.always,
-        prefixIcon: const Icon(Icons.timer_outlined, size: 20),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_globalRadius),
-          borderSide: BorderSide(
-            color: Theme.of(context).dividerColor.withValues(alpha: _borderOpacity),
-          ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_globalRadius),
-          borderSide: const BorderSide(
-            color: AppTheme.primaryColor,
-            width: 2,
-          ),
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(_globalRadius),
-        ),
-        filled: true,
-        fillColor: AppTheme.primaryColor.withValues(alpha: _fillOpacity),
-      ),
-      items: const [
-        DropdownMenuItem(value: 30, child: Text('1 Month')),
-        DropdownMenuItem(value: 60, child: Text('2 Months')),
-        DropdownMenuItem(value: 90, child: Text('3 Months')),
-      ],
-      onChanged: (v) => setState(() => _newBatchDurationDays = v),
-    );
-  }
+
 
   Widget _buildValiditySelector() {
     return Column(
@@ -1614,12 +1729,17 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(_globalRadius),
               borderSide: BorderSide(
-                color: Theme.of(context).dividerColor.withValues(alpha: _borderOpacity),
+                color: Theme.of(
+                  context,
+                ).dividerColor.withValues(alpha: _borderOpacity),
               ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(_globalRadius),
-              borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+              borderSide: const BorderSide(
+                color: AppTheme.primaryColor,
+                width: 2,
+              ),
             ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(_globalRadius),
@@ -1655,145 +1775,179 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const Text(
+          'Certification Management',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        const SizedBox(height: 12),
+        SwitchListTile(
+          title: const Text(
+            'Enable Certificate',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          subtitle: Text(
+            _hasCertificate
+                ? 'Certificate will be issued on completion'
+                : 'No certificate for this course',
+          ),
+          value: _hasCertificate,
+          onChanged: (val) => setState(() => _hasCertificate = val),
+          activeThumbColor: AppTheme.primaryColor,
+          tileColor: Colors.transparent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(_globalRadius),
+            side: BorderSide(
+              color: _hasCertificate
+                  ? AppTheme.primaryColor.withOpacity(0.3)
+                  : Theme.of(
+                      context,
+                    ).dividerColor.withValues(alpha: _borderOpacity),
+            ),
+          ),
+        ),
+        if (_hasCertificate) ...[
+          const SizedBox(height: 24),
           const Text(
-            'Certification Management',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            'Upload Two Certificate Designs',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
           ),
-          const SizedBox(height: 12),
-          SwitchListTile(
-            title: const Text(
-              'Enable Certificate',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Text(
-              _hasCertificate
-                  ? 'Certificate will be issued on completion'
-                  : 'No certificate for this course',
-            ),
-            value: _hasCertificate,
-            onChanged: (val) => setState(() => _hasCertificate = val),
-            activeThumbColor: AppTheme.primaryColor,
-            tileColor: Colors.transparent,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(_globalRadius),
-              side: BorderSide(
-                color: _hasCertificate
-                    ? AppTheme.primaryColor.withOpacity(0.3)
-                    : Theme.of(context).dividerColor.withValues(alpha: _borderOpacity),
-              ),
+          const SizedBox(height: 4),
+          const Text(
+            'Strictly 3508 x 2480 Pixels (A4 Landscape)',
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.orange,
+              fontWeight: FontWeight.bold,
             ),
           ),
-          if (_hasCertificate) ...[
-            const SizedBox(height: 24),
-            const Text(
-              'Upload Two Certificate Designs',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-            ),
-            const SizedBox(height: 4),
-            const Text(
-              'Strictly 3508 x 2480 Pixels (A4 Landscape)',
-              style: TextStyle(
-                fontSize: 11,
-                color: Colors.orange,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    children: [
-                      Text(
-                        'Design A',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: _selectedCertSlot == 1 ? AppTheme.primaryColor : Colors.grey,
-                        ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      'Design A',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: _selectedCertSlot == 1
+                            ? AppTheme.primaryColor
+                            : Colors.grey,
                       ),
-                      const SizedBox(height: 8),
-                      Stack(
-                        children: [
-                          _buildCertificateUpload(1),
-                          if (_selectedCertSlot == 1)
-                            const Positioned(
-                              top: 8,
-                              right: 12,
-                              child: Icon(Icons.check_circle, color: AppTheme.primaryColor, size: 24),
+                    ),
+                    const SizedBox(height: 8),
+                    Stack(
+                      children: [
+                        _buildCertificateUpload(1),
+                        if (_selectedCertSlot == 1)
+                          const Positioned(
+                            top: 8,
+                            right: 12,
+                            child: Icon(
+                              Icons.check_circle,
+                              color: AppTheme.primaryColor,
+                              size: 24,
                             ),
-                          Positioned(
-                            bottom: 8,
-                            left: 8,
-                            child: ElevatedButton(
-                              onPressed: () => setState(() => _selectedCertSlot = 1),
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                minimumSize: const Size(0, 0),
-                                backgroundColor: _selectedCertSlot == 1 ? AppTheme.primaryColor : Theme.of(context).cardColor,
+                          ),
+                        Positioned(
+                          bottom: 8,
+                          left: 8,
+                          child: ElevatedButton(
+                            onPressed: () =>
+                                setState(() => _selectedCertSlot = 1),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
                               ),
-                              child: Text(
-                                'Select',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: _selectedCertSlot == 1 ? Colors.white : Theme.of(context).textTheme.bodyMedium?.color,
-                                ),
+                              minimumSize: const Size(0, 0),
+                              backgroundColor: _selectedCertSlot == 1
+                                  ? AppTheme.primaryColor
+                                  : Theme.of(context).cardColor,
+                            ),
+                            child: Text(
+                              'Select',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: _selectedCertSlot == 1
+                                    ? Colors.white
+                                    : Theme.of(
+                                        context,
+                                      ).textTheme.bodyMedium?.color,
                               ),
                             ),
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    children: [
-                      Text(
-                        'Design B',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: _selectedCertSlot == 2 ? AppTheme.primaryColor : Colors.grey,
                         ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      'Design B',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: _selectedCertSlot == 2
+                            ? AppTheme.primaryColor
+                            : Colors.grey,
                       ),
-                      const SizedBox(height: 8),
-                      Stack(
-                        children: [
-                          _buildCertificateUpload(2),
-                          if (_selectedCertSlot == 2)
-                            const Positioned(
-                              top: 8,
-                              right: 12,
-                              child: Icon(Icons.check_circle, color: AppTheme.primaryColor, size: 24),
+                    ),
+                    const SizedBox(height: 8),
+                    Stack(
+                      children: [
+                        _buildCertificateUpload(2),
+                        if (_selectedCertSlot == 2)
+                          const Positioned(
+                            top: 8,
+                            right: 12,
+                            child: Icon(
+                              Icons.check_circle,
+                              color: AppTheme.primaryColor,
+                              size: 24,
                             ),
-                          Positioned(
-                            bottom: 8,
-                            left: 8,
-                            child: ElevatedButton(
-                              onPressed: () => setState(() => _selectedCertSlot = 2),
-                              style: ElevatedButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                minimumSize: const Size(0, 0),
-                                backgroundColor: _selectedCertSlot == 2 ? AppTheme.primaryColor : Theme.of(context).cardColor,
+                          ),
+                        Positioned(
+                          bottom: 8,
+                          left: 8,
+                          child: ElevatedButton(
+                            onPressed: () =>
+                                setState(() => _selectedCertSlot = 2),
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
                               ),
-                              child: Text(
-                                'Select',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: _selectedCertSlot == 2 ? Colors.white : Theme.of(context).textTheme.bodyMedium?.color,
-                                ),
+                              minimumSize: const Size(0, 0),
+                              backgroundColor: _selectedCertSlot == 2
+                                  ? AppTheme.primaryColor
+                                  : Theme.of(context).cardColor,
+                            ),
+                            child: Text(
+                              'Select',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: _selectedCertSlot == 2
+                                    ? Colors.white
+                                    : Theme.of(
+                                        context,
+                                      ).textTheme.bodyMedium?.color,
                               ),
                             ),
                           ),
-                        ],
-                      ),
-                    ],
-                  ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
+          ),
         ],
       ],
     );
@@ -1813,7 +1967,9 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
             color: Colors.transparent,
             borderRadius: BorderRadius.circular(_globalRadius),
             border: Border.all(
-              color: Theme.of(context).dividerColor.withValues(alpha: _borderOpacity),
+              color: Theme.of(
+                context,
+              ).dividerColor.withValues(alpha: _borderOpacity),
               style: BorderStyle.solid,
             ),
             image: hasImage
@@ -1843,7 +1999,11 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
     );
   }
 
-  Widget _buildSwitchTile(String title, bool value, ValueChanged<bool> onChanged) {
+  Widget _buildSwitchTile(
+    String title,
+    bool value,
+    ValueChanged<bool> onChanged,
+  ) {
     return SwitchListTile(
       title: Text(title),
       value: value,
@@ -1886,7 +2046,9 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
         maxLength: maxLength,
         readOnly: readOnly,
         onChanged: onChanged,
-        textAlignVertical: alignTop ? TextAlignVertical.top : TextAlignVertical.center,
+        textAlignVertical: alignTop
+            ? TextAlignVertical.top
+            : TextAlignVertical.center,
         style: TextStyle(
           color: Colors.white,
           fontWeight: readOnly ? FontWeight.bold : FontWeight.normal,
@@ -1895,7 +2057,9 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
           labelText: label,
           hintText: hint,
           hintStyle: TextStyle(
-            color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.4),
+            color: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.color?.withValues(alpha: 0.4),
             fontSize: 13,
             fontWeight: FontWeight.normal,
           ),
@@ -1903,17 +2067,20 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
           alignLabelWithHint: alignTop,
           prefixIcon: icon != null
               ? (alignTop
-                  ? Column(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                          child: Icon(icon, color: Colors.grey),
-                        ),
-                      ],
-                    )
-                  : Icon(icon, color: Colors.grey))
+                    ? Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 12,
+                            ),
+                            child: Icon(icon, color: Colors.grey),
+                          ),
+                        ],
+                      )
+                    : Icon(icon, color: Colors.grey))
               : null,
           contentPadding: const EdgeInsets.symmetric(
             vertical: _inputVerticalPadding,
@@ -1922,12 +2089,17 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(_globalRadius),
             borderSide: BorderSide(
-              color: Theme.of(context).dividerColor.withValues(alpha: _borderOpacity),
+              color: Theme.of(
+                context,
+              ).dividerColor.withValues(alpha: _borderOpacity),
             ),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(_globalRadius),
-            borderSide: const BorderSide(color: AppTheme.primaryColor, width: 2),
+            borderSide: const BorderSide(
+              color: AppTheme.primaryColor,
+              width: 2,
+            ),
           ),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(_globalRadius),
@@ -1951,7 +2123,7 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
             isSelectionMode: _isSelectionMode,
             isDragMode: _isDragModeActive,
           ),
-          pinned: true, 
+          pinned: true,
         ),
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
@@ -1971,8 +2143,11 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.folder_open,
-                            size: 64, color: Colors.grey.shade400),
+                        Icon(
+                          Icons.folder_open,
+                          size: 64,
+                          color: Colors.grey.shade400,
+                        ),
                         const SizedBox(height: 16),
                         Text(
                           'No content added yet',
@@ -2017,19 +2192,20 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
                       onEnterSelectionMode: () => _enterSelectionMode(index),
                       onStartHold: _startHoldTimer,
                       onCancelHold: _cancelHoldTimer,
-                      onRename: () => _renameContent(index), 
-                       onToggleLock: () { 
-                         setState(() { 
-                           _courseContents[index]['isLocked'] = !(_courseContents[index]['isLocked'] ?? true); 
-                         }); 
-                       },
+                      onRename: () => _renameContent(index),
+                      onToggleLock: () {
+                        setState(() {
+                          _courseContents[index]['isLocked'] =
+                              !(_courseContents[index]['isLocked'] ?? true);
+                        });
+                      },
                       onRemove: () => _confirmRemoveContent(index),
-                      onAddThumbnail: () => _showThumbnailManagerDialog(index), 
+                      onAddThumbnail: () => _showThumbnailManagerDialog(index),
                     );
                   },
                 ),
         ),
-        
+
         SliverFillRemaining(
           hasScrollBody: false,
           child: Align(
@@ -2057,9 +2233,11 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
             Future<void> pickAndValidate() async {
               final result = await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const SimpleFileExplorer(
-                  allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
-                )),
+                MaterialPageRoute(
+                  builder: (_) => const SimpleFileExplorer(
+                    allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+                  ),
+                ),
               );
 
               if (result != null && result is List && result.isNotEmpty) {
@@ -2068,12 +2246,15 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
 
                 try {
                   final File file = File(filePath);
-                  final decodedImage = await decodeImageFromList(file.readAsBytesSync());
+                  final decodedImage = await decodeImageFromList(
+                    file.readAsBytesSync(),
+                  );
 
                   final double ratio = decodedImage.width / decodedImage.height;
                   if (ratio < 1.7 || ratio > 1.85) {
                     setDialogState(() {
-                      errorMessage = "Invalid Ratio: ${ratio.toStringAsFixed(2)}\n\nRequired: 16:9 (YouTube Standard)\nPlease crop your image to 1920x1080.";
+                      errorMessage =
+                          "Invalid Ratio: ${ratio.toStringAsFixed(2)}\n\nRequired: 16:9 (YouTube Standard)\nPlease crop your image to 1920x1080.";
                       isProcessing = false;
                     });
                     return;
@@ -2098,39 +2279,128 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                   if (errorMessage != null)
-                     Container(
-                       margin: const EdgeInsets.only(bottom: 16),
-                       padding: const EdgeInsets.all(12),
-                       decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(3), border: Border.all(color: Colors.red.withValues(alpha: 0.5))),
-                       child: Row(children: [const Icon(Icons.error_outline, color: Colors.red), const SizedBox(width: 8), Expanded(child: Text(errorMessage!, style: const TextStyle(color: Colors.red, fontSize: 13)))]),
-                     ),
+                  if (errorMessage != null)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(3),
+                        border: Border.all(
+                          color: Colors.red.withValues(alpha: 0.5),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline, color: Colors.red),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              errorMessage!,
+                              style: const TextStyle(
+                                color: Colors.red,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   if (hasThumbnail)
-                     ClipRRect(borderRadius: BorderRadius.circular(3), child: AspectRatio(aspectRatio: 16/9, child: Image.file(File(currentThumbnail!), fit: BoxFit.cover, errorBuilder: (_,__,___) => const Center(child: Icon(Icons.broken_image)))))
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(3),
+                      child: AspectRatio(
+                        aspectRatio: 16 / 9,
+                        child: Image.file(
+                          File(currentThumbnail!),
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              const Center(child: Icon(Icons.broken_image)),
+                        ),
+                      ),
+                    )
                   else
-                     Container(height: 120, width: double.infinity, decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(3), border: Border.all(color: Colors.grey.withValues(alpha: 0.3))), child: const Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.image_not_supported_outlined, size: 40, color: Colors.grey), SizedBox(height: 8), Text('No Thumbnail', style: TextStyle(color: Colors.grey))])),
-                  
-                  if (isProcessing) const Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator())
-                  else Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-                         ElevatedButton.icon(onPressed: pickAndValidate, icon: const Icon(Icons.add_photo_alternate), label: Text(hasThumbnail ? 'Change' : 'Add Image'), style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryColor, foregroundColor: Colors.white)),
-                         if (hasThumbnail) TextButton.icon(onPressed: () => setDialogState(() => currentThumbnail = null), icon: const Icon(Icons.delete, color: Colors.red), label: const Text('Remove', style: TextStyle(color: Colors.red)))
-                       ])
+                    Container(
+                      height: 120,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(3),
+                        border: Border.all(
+                          color: Colors.grey.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.image_not_supported_outlined,
+                            size: 40,
+                            color: Colors.grey,
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'No Thumbnail',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  if (isProcessing)
+                    const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: CircularProgressIndicator(),
+                    )
+                  else
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: pickAndValidate,
+                          icon: const Icon(Icons.add_photo_alternate),
+                          label: Text(hasThumbnail ? 'Change' : 'Add Image'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryColor,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                        if (hasThumbnail)
+                          TextButton.icon(
+                            onPressed: () =>
+                                setDialogState(() => currentThumbnail = null),
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            label: const Text(
+                              'Remove',
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ),
+                      ],
+                    ),
                 ],
               ),
               actions: [
                 TextButton(
                   onPressed: () {
-                     setState(() { _courseContents[index]['thumbnail'] = currentThumbnail; });
-                     Navigator.pop(context);
+                    setState(() {
+                      _courseContents[index]['thumbnail'] = currentThumbnail;
+                    });
+                    Navigator.pop(context);
                   },
-                  child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: const Text(
+                    'Save',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
-                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Close'),
+                ),
               ],
             );
-          }
+          },
         );
-      }
+      },
     );
   }
 
@@ -2141,26 +2411,59 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
       builder: (context) => Container(
         padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 10),
         decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(16))),
+          color: Theme.of(context).cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+        ),
         child: SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Add to Course',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                'Add to Course',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 24),
               Wrap(
                 spacing: 24,
                 runSpacing: 24,
                 alignment: WrapAlignment.center,
                 children: [
-                   _buildOptionItem(Icons.create_new_folder, 'Folder', Colors.orange, () => _showCreateFolderDialog()),
-                   _buildOptionItem(Icons.video_library, 'Video', Colors.red, () => _pickContentFile('video', ['mp4', 'mkv', 'avi'])),
-                   _buildOptionItem(Icons.picture_as_pdf, 'PDF', Colors.redAccent, () => _pickContentFile('pdf', ['pdf'])),
-                   _buildOptionItem(Icons.image, 'Image', Colors.purple, () => _pickContentFile('image', ['jpg', 'jpeg', 'png', 'webp'])),
-                   
-                   _buildOptionItem(Icons.content_paste, 'Paste', Colors.grey, _pasteContent),
+                  _buildOptionItem(
+                    Icons.create_new_folder,
+                    'Folder',
+                    Colors.orange,
+                    () => _showCreateFolderDialog(),
+                  ),
+                  _buildOptionItem(
+                    Icons.video_library,
+                    'Video',
+                    Colors.red,
+                    () => _pickContentFile('video', ['mp4', 'mkv', 'avi']),
+                  ),
+                  _buildOptionItem(
+                    Icons.picture_as_pdf,
+                    'PDF',
+                    Colors.redAccent,
+                    () => _pickContentFile('pdf', ['pdf']),
+                  ),
+                  _buildOptionItem(
+                    Icons.image,
+                    'Image',
+                    Colors.purple,
+                    () => _pickContentFile('image', [
+                      'jpg',
+                      'jpeg',
+                      'png',
+                      'webp',
+                    ]),
+                  ),
+
+                  _buildOptionItem(
+                    Icons.content_paste,
+                    'Paste',
+                    Colors.grey,
+                    _pasteContent,
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
@@ -2171,19 +2474,33 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
     );
   }
 
-  Widget _buildOptionItem(IconData icon, String label, Color color, VoidCallback onTap) {
+  Widget _buildOptionItem(
+    IconData icon,
+    String label,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return InkWell(
-      onTap: () { Navigator.pop(context); onTap(); },
+      onTap: () {
+        Navigator.pop(context);
+        onTap();
+      },
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
             child: Icon(icon, color: color, size: 28),
           ),
           const SizedBox(height: 8),
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+          ),
         ],
       ),
     );
@@ -2195,13 +2512,31 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('New Folder'),
-        content: TextField(controller: folderNameController, autofocus: true, decoration: const InputDecoration(labelText: 'Folder Name', border: OutlineInputBorder())),
+        content: TextField(
+          controller: folderNameController,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Folder Name',
+            border: OutlineInputBorder(),
+          ),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             onPressed: () {
               if (folderNameController.text.trim().isNotEmpty) {
-                setState(() { _courseContents.insert(0, {'type': 'folder', 'name': folderNameController.text.trim(), 'contents': <Map<String, dynamic>>[], 'isLocal': true, 'isLocked': true}); });
+                setState(() {
+                  _courseContents.insert(0, {
+                    'type': 'folder',
+                    'name': folderNameController.text.trim(),
+                    'contents': <Map<String, dynamic>>[],
+                    'isLocal': true,
+                    'isLocked': true,
+                  });
+                });
                 Navigator.pop(context);
               }
             },
@@ -2213,60 +2548,60 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
   }
 
   Future<void> _pickContentFile(String type, [List<String>? extensions]) async {
-      final result = await Navigator.push(
-        context, 
-        MaterialPageRoute(builder: (_) => SimpleFileExplorer(
-          allowedExtensions: extensions ?? [],
-        ))
-      );
-      
-      if (result != null && result is List) {
-         final List<String> paths = result.cast<String>();
-         if (paths.isEmpty) return;
-         
-         final List<Map<String, dynamic>> newItems = [];
-         for (var path in paths) {
-           newItems.add({
-             'type': type, 
-             'name': path.split('/').last, 
-             'path': path, 
-             'isLocal': true,
-             'isLocked': true
-           });
-         }
-         
-         setState(() {
-           _courseContents.insertAll(0, newItems);
-         });
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SimpleFileExplorer(allowedExtensions: extensions ?? []),
+      ),
+    );
 
-         // Auto generate thumbnails if video
-         if (type == 'video') {
-           unawaited(_processAutoThumbnails(newItems));
-         }
+    if (result != null && result is List) {
+      final List<String> paths = result.cast<String>();
+      if (paths.isEmpty) return;
+
+      final List<Map<String, dynamic>> newItems = [];
+      for (var path in paths) {
+        newItems.add({
+          'type': type,
+          'name': path.split('/').last,
+          'path': path,
+          'isLocal': true,
+          'isLocked': true,
+        });
       }
-   }
 
-   Future<void> _processAutoThumbnails(List<Map<String, dynamic>> items) async {
-      for (var item in items) {
-          if (item['type'] == 'video' && item['path'] != null) {
-              try {
-                  final thumb = await VideoThumbnail.thumbnailFile(
-                      video: item['path'],
-                      thumbnailPath: (await path_provider.getTemporaryDirectory()).path,
-                      imageFormat: ImageFormat.JPEG,
-                      quality: 50,
-                  );
-                  if (thumb != null && mounted) {
-                      setState(() {
-                          item['thumbnail'] = thumb;
-                      });
-                  }
-              } catch (e) {
-                  debugPrint("Thumbnail Error: $e");
-              }
+      setState(() {
+        _courseContents.insertAll(0, newItems);
+      });
+
+      // Auto generate thumbnails if video
+      if (type == 'video') {
+        unawaited(_processAutoThumbnails(newItems));
+      }
+    }
+  }
+
+  Future<void> _processAutoThumbnails(List<Map<String, dynamic>> items) async {
+    for (var item in items) {
+      if (item['type'] == 'video' && item['path'] != null) {
+        try {
+          final thumb = await VideoThumbnail.thumbnailFile(
+            video: item['path'],
+            thumbnailPath: (await path_provider.getTemporaryDirectory()).path,
+            imageFormat: ImageFormat.JPEG,
+            quality: 50,
+          );
+          if (thumb != null && mounted) {
+            setState(() {
+              item['thumbnail'] = thumb;
+            });
           }
+        } catch (e) {
+          debugPrint("Thumbnail Error: $e");
+        }
       }
-   }
+    }
+  }
 
   void _handleContentTap(Map<String, dynamic> item, int index) async {
     if (_isSelectionMode) {
@@ -2280,7 +2615,8 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
         MaterialPageRoute(
           builder: (_) => FolderDetailScreen(
             folderName: item['name'],
-            contentList: (item['contents'] as List?)?.cast<Map<String, dynamic>>() ?? [],
+            contentList:
+                (item['contents'] as List?)?.cast<Map<String, dynamic>>() ?? [],
             isReadOnly: false,
           ),
         ),
@@ -2292,40 +2628,66 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
         });
       }
     } else {
-        final path = item['path'] ?? item['url'];
-        if (path == null) return;
-        final bool isNetwork = !path.startsWith('/'); 
+      final path = item['path'] ?? item['url'];
+      if (path == null) return;
+      final bool isNetwork = !path.startsWith('/');
 
-        if (item['type'] == 'image') {
-             Navigator.push(context, MaterialPageRoute(builder: (_) => ImageViewerScreen(filePath: path, title: item['name'], isNetwork: isNetwork)));
-        } else if (item['type'] == 'video') {
-             Navigator.push(context, MaterialPageRoute(builder: (_) => VideoPlayerScreen(playlist: [_courseContents[index]], initialIndex: 0)));
-        } else if (item['type'] == 'pdf') {
-             Navigator.push(context, MaterialPageRoute(builder: (_) => PDFViewerScreen(filePath: path, title: item['name'], isNetwork: isNetwork)));
-        }
+      if (item['type'] == 'image') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ImageViewerScreen(
+              filePath: path,
+              title: item['name'],
+              isNetwork: isNetwork,
+            ),
+          ),
+        );
+      } else if (item['type'] == 'video') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => VideoPlayerScreen(
+              playlist: [_courseContents[index]],
+              initialIndex: 0,
+            ),
+          ),
+        );
+      } else if (item['type'] == 'pdf') {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PDFViewerScreen(
+              filePath: path,
+              title: item['name'],
+              isNetwork: isNetwork,
+            ),
+          ),
+        );
+      }
     }
   }
 
   void _toggleSelection(int index) {
-      if (!_isSelectionMode) return;
-      HapticFeedback.heavyImpact();
-      setState(() {
-         if (_selectedIndices.contains(index)) {
-            _selectedIndices.remove(index);
-         } else {
-            _selectedIndices.add(index);
-         }
-      });
+    if (!_isSelectionMode) return;
+    HapticFeedback.heavyImpact();
+    setState(() {
+      if (_selectedIndices.contains(index)) {
+        _selectedIndices.remove(index);
+      } else {
+        _selectedIndices.add(index);
+      }
+    });
   }
 
   void _enterSelectionMode(int index) {
-      _holdTimer?.cancel();
-      HapticFeedback.heavyImpact();
-      setState(() {
-        _isSelectionMode = true;
-        _selectedIndices.clear();
-        _selectedIndices.add(index);
-      });
+    _holdTimer?.cancel();
+    HapticFeedback.heavyImpact();
+    setState(() {
+      _isSelectionMode = true;
+      _selectedIndices.clear();
+      _selectedIndices.add(index);
+    });
   }
 
   void _startHoldTimer() {
@@ -2342,141 +2704,174 @@ class _EditCourseInfoScreenState extends State<EditCourseInfoScreen> {
   void _cancelHoldTimer() => _holdTimer?.cancel();
 
   void _renameContent(int index) {
-      final text = _courseContents[index]['name'];
-      final ctrl = TextEditingController(text: text);
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Rename'),
-          content: TextField(controller: ctrl),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-            TextButton(onPressed: () {
-                if (ctrl.text.isNotEmpty) {
-                    setState(() { _courseContents[index]['name'] = ctrl.text.trim(); });
-                    Navigator.pop(context);
-                }
-            }, child: const Text('Rename')),
-          ],
-        ),
-      );
+    final text = _courseContents[index]['name'];
+    final ctrl = TextEditingController(text: text);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Rename'),
+        content: TextField(controller: ctrl),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              if (ctrl.text.isNotEmpty) {
+                setState(() {
+                  _courseContents[index]['name'] = ctrl.text.trim();
+                });
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Rename'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _confirmRemoveContent(int? index) {
-      final isBulk = index == null;
-      final count = isBulk ? _selectedIndices.length : 1;
+    final isBulk = index == null;
+    final count = isBulk ? _selectedIndices.length : 1;
 
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(isBulk ? 'Remove $count Items?' : 'Remove Content?'),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-            TextButton(onPressed: () {
-                setState(() {
-                   if (isBulk) {
-                      final sortedIndices = _selectedIndices.toList()..sort((a, b) => b.compareTo(a)); // Descending
-                      for (var i in sortedIndices) {
-                         if (i < _courseContents.length) _courseContents.removeAt(i);
-                      }
-                      _selectedIndices.clear();
-                      _isSelectionMode = false;
-                   } else {
-                      _courseContents.removeAt(index);
-                   }
-                });
-                Navigator.pop(context);
-            }, child: const Text('Remove', style: TextStyle(color: Colors.red))),
-          ],
-        ),
-      );
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isBulk ? 'Remove $count Items?' : 'Remove Content?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              setState(() {
+                if (isBulk) {
+                  final sortedIndices = _selectedIndices.toList()
+                    ..sort((a, b) => b.compareTo(a)); // Descending
+                  for (var i in sortedIndices) {
+                    if (i < _courseContents.length) _courseContents.removeAt(i);
+                  }
+                  _selectedIndices.clear();
+                  _isSelectionMode = false;
+                } else {
+                  _courseContents.removeAt(index);
+                }
+              });
+              Navigator.pop(context);
+            },
+            child: const Text('Remove', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _pasteContent() {
-     if (ContentClipboard.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Clipboard is empty')));
-        return;
-     }
+    if (ContentClipboard.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Clipboard is empty')));
+      return;
+    }
 
-     final items = ContentClipboard.items!;
-     setState(() {
-         for (var item in items) {
-             final newItem = Map<String, dynamic>.from(item);
-             newItem['isLocal'] = true; 
-             _courseContents.insert(0, newItem);
-         }
-         if (ContentClipboard.action == 'cut') ContentClipboard.clear();
-     });
+    final items = ContentClipboard.items!;
+    setState(() {
+      for (var item in items) {
+        final newItem = Map<String, dynamic>.from(item);
+        newItem['isLocal'] = true;
+        _courseContents.insert(0, newItem);
+      }
+      if (ContentClipboard.action == 'cut') ContentClipboard.clear();
+    });
   }
 
+  List<Map<String, dynamic>> _collectLocalFiles(
+    Map<String, dynamic> updateData,
+  ) {
+    final List<Map<String, dynamic>> localFiles = [];
 
+    // 1. Top Level Images
+    if (_thumbnailChanged && _thumbnailImage != null) {
+      updateData['thumbnailUrl'] =
+          _thumbnailImage!.path; // Store Local Path temporarily
+      localFiles.add({
+        'filePath': _thumbnailImage!.path,
+        'remotePath':
+            'course_thumbnails/${path.basename(_thumbnailImage!.path)}',
+        'type': 'image',
+      });
+    }
 
-
-  List<Map<String, dynamic>> _collectLocalFiles(Map<String, dynamic> updateData) {
-     final List<Map<String, dynamic>> localFiles = [];
-     
-     // 1. Top Level Images
-     if (_thumbnailChanged && _thumbnailImage != null) {
-        updateData['thumbnailUrl'] = _thumbnailImage!.path; // Store Local Path temporarily
+    if (_hasCertificate) {
+      if (_cert1Changed && _certificate1Image != null) {
+        updateData['certificateUrl1'] = _certificate1Image!.path;
         localFiles.add({
-           'filePath': _thumbnailImage!.path,
-           'remotePath': 'course_thumbnails/${path.basename(_thumbnailImage!.path)}',
-           'type': 'image'
+          'filePath': _certificate1Image!.path,
+          'remotePath':
+              'certificates/${path.basename(_certificate1Image!.path)}',
+          'type': 'image',
         });
-     }
+      }
+      if (_cert2Changed && _certificate2Image != null) {
+        updateData['certificateUrl2'] = _certificate2Image!.path;
+        localFiles.add({
+          'filePath': _certificate2Image!.path,
+          'remotePath':
+              'certificates/${path.basename(_certificate2Image!.path)}',
+          'type': 'image',
+        });
+      }
+    }
 
-     if (_hasCertificate) {
-         if (_cert1Changed && _certificate1Image != null) {
-            updateData['certificateUrl1'] = _certificate1Image!.path;
+    // 3. Contents
+    void traverse(List<dynamic> items) {
+      for (var item in items) {
+        if (item['isLocal'] == true && item['path'] != null) {
+          final String p = item['path'];
+          if (item['type'] == 'video') {
+            localFiles.add({'filePath': p, 'type': 'video'});
+            // Check for local thumbnail
+            if (item['thumbnail'] != null &&
+                !item['thumbnail'].toString().startsWith('http')) {
+              localFiles.add({
+                'filePath': item['thumbnail'],
+                'remotePath':
+                    'course_thumbnails/${path.basename(item['thumbnail'])}',
+                'type': 'image',
+              });
+            }
+          } else if (item['type'] == 'pdf') {
             localFiles.add({
-               'filePath': _certificate1Image!.path,
-               'remotePath': 'certificates/${path.basename(_certificate1Image!.path)}',
-               'type': 'image'
+              'filePath': p,
+              'remotePath': 'files/${widget.course.id}/${path.basename(p)}',
+              'type': 'pdf',
             });
-         }
-         if (_cert2Changed && _certificate2Image != null) {
-            updateData['certificateUrl2'] = _certificate2Image!.path;
+          } else if (item['type'] == 'zip') {
             localFiles.add({
-               'filePath': _certificate2Image!.path,
-               'remotePath': 'certificates/${path.basename(_certificate2Image!.path)}',
-               'type': 'image'
+              'filePath': p,
+              'remotePath': 'files/${widget.course.id}/${path.basename(p)}',
+              'type': 'zip',
             });
-         }
-     }
-
-
-
-     // 3. Contents
-     void traverse(List<dynamic> items) {
-       for (var item in items) {
-          if (item['isLocal'] == true && item['path'] != null) {
-             final String p = item['path'];
-             if (item['type'] == 'video') {
-                localFiles.add({'filePath': p, 'type': 'video'});
-                // Check for local thumbnail
-                if (item['thumbnail'] != null && !item['thumbnail'].toString().startsWith('http')) {
-                   localFiles.add({
-                      'filePath': item['thumbnail'],
-                      'remotePath': 'course_thumbnails/${path.basename(item['thumbnail'])}',
-                      'type': 'image'
-                   });
-                }
-             } else if (item['type'] == 'pdf') {
-                localFiles.add({'filePath': p, 'remotePath': 'files/${widget.course.id}/${path.basename(p)}', 'type': 'pdf'});
-             } else if (item['type'] == 'zip') {
-                localFiles.add({'filePath': p, 'remotePath': 'files/${widget.course.id}/${path.basename(p)}', 'type': 'zip'});
-             } else if (item['type'] == 'image') {
-                localFiles.add({'filePath': p, 'remotePath': 'course_content/${path.basename(p)}', 'type': 'image'});
-             }
+          } else if (item['type'] == 'image') {
+            localFiles.add({
+              'filePath': p,
+              'remotePath': 'course_content/${path.basename(p)}',
+              'type': 'image',
+            });
           }
-          if (item['type'] == 'folder' && item['contents'] != null) {
-             traverse(item['contents']);
-          }
-       }
-     }
-     traverse(_courseContents);
+        }
+        if (item['type'] == 'folder' && item['contents'] != null) {
+          traverse(item['contents']);
+        }
+      }
+    }
 
-     return localFiles;
+    traverse(_courseContents);
+
+    return localFiles;
   }
 }
 
@@ -2498,4 +2893,3 @@ class _KeepAliveWrapperState extends State<KeepAliveWrapper>
     return widget.child;
   }
 }
-

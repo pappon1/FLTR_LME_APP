@@ -13,7 +13,8 @@ class MediaKitVideoEngine implements BaseVideoEngine {
       configuration: const PlayerConfiguration(
         title: 'Mobile Engineer Player',
         ready: null,
-        pitch: true, // Explicitly enable pitch correction for smooth audio at all speeds
+        pitch:
+            true, // Explicitly enable pitch correction for smooth audio at all speeds
       ),
     );
     controller = VideoController(player);
@@ -43,11 +44,14 @@ class MediaKitVideoEngine implements BaseVideoEngine {
   Future<void> setVideoTrack(String quality) async {
     final tracks = player.state.tracks.video;
     if (quality.toLowerCase() == "auto") {
-      await player.setVideoTrack(tracks.first); // Usually the first is auto/default
+      await player.setVideoTrack(
+        tracks.first,
+      ); // Usually the first is auto/default
       return;
     }
 
-    final int targetHeight = int.tryParse(quality.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+    final int targetHeight =
+        int.tryParse(quality.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
     if (targetHeight == 0) return;
 
     VideoTrack? bestMatch;

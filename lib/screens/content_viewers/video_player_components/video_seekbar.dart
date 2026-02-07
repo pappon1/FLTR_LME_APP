@@ -8,7 +8,7 @@ class VideoSeekbar extends StatefulWidget {
   final Function(double) onChangeEnd;
   final bool isLocked;
   final bool isLandscape;
-  
+
   const VideoSeekbar({
     super.key,
     required this.position,
@@ -31,13 +31,16 @@ class _VideoSeekbarState extends State<VideoSeekbar> {
   @override
   Widget build(BuildContext context) {
     final maxSeconds = widget.duration.inMilliseconds.toDouble() / 1000.0;
-    final currentSeconds = _dragValue ?? (widget.position.inMilliseconds.toDouble() / 1000.0);
+    final currentSeconds =
+        _dragValue ?? (widget.position.inMilliseconds.toDouble() / 1000.0);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final forceWhite = widget.isLandscape || isDark;
-    
+
     final textColor = forceWhite ? Colors.white : Colors.black87;
-    final inactiveColor = isDark ? Colors.grey[800] : (widget.isLandscape ? Colors.white30 : Colors.grey[300]);
+    final inactiveColor = isDark
+        ? Colors.grey[800]
+        : (widget.isLandscape ? Colors.white30 : Colors.grey[300]);
     final thumbColor = forceWhite ? Colors.white : const Color(0xFF22C55E);
 
     return Column(
@@ -62,11 +65,18 @@ class _VideoSeekbarState extends State<VideoSeekbar> {
                     activeTrackColor: const Color(0xFF22C55E),
                     inactiveTrackColor: inactiveColor,
                     thumbColor: thumbColor,
-                    overlayColor: const Color(0xFF22C55E).withValues(alpha: 0.1),
-                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 20.0),
+                    overlayColor: const Color(
+                      0xFF22C55E,
+                    ).withValues(alpha: 0.1),
+                    overlayShape: const RoundSliderOverlayShape(
+                      overlayRadius: 20.0,
+                    ),
                   ),
                   child: Slider(
-                    value: currentSeconds.clamp(0.0, maxSeconds > 0 ? maxSeconds : 1.0),
+                    value: currentSeconds.clamp(
+                      0.0,
+                      maxSeconds > 0 ? maxSeconds : 1.0,
+                    ),
                     min: 0,
                     max: maxSeconds > 0 ? maxSeconds : 1.0,
                     onChangeStart: (v) {
@@ -91,7 +101,7 @@ class _VideoSeekbarState extends State<VideoSeekbar> {
                     },
                   ),
                 ),
-                
+
                 // Point 2: Precise Scrubbing Tooltip
                 if (_isDragging)
                   Positioned(
@@ -100,18 +110,33 @@ class _VideoSeekbarState extends State<VideoSeekbar> {
                     right: 0,
                     child: Align(
                       alignment: Alignment(
-                        ((currentSeconds / (maxSeconds > 0 ? maxSeconds : 1)) * 2) - 1,
-                        0.0
+                        ((currentSeconds / (maxSeconds > 0 ? maxSeconds : 1)) *
+                                2) -
+                            1,
+                        0.0,
                       ),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF22C55E),
                           borderRadius: BorderRadius.circular(3.0),
-                          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))],
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 4,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: Text(
-                          _formatDuration(Duration(milliseconds: (currentSeconds * 1000).toInt())),
+                          _formatDuration(
+                            Duration(
+                              milliseconds: (currentSeconds * 1000).toInt(),
+                            ),
+                          ),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 12,
@@ -135,7 +160,9 @@ class _VideoSeekbarState extends State<VideoSeekbar> {
                 FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
-                    _formatDuration(Duration(milliseconds: (currentSeconds * 1000).toInt())),
+                    _formatDuration(
+                      Duration(milliseconds: (currentSeconds * 1000).toInt()),
+                    ),
                     style: TextStyle(
                       color: textColor,
                       fontSize: 12,
@@ -148,7 +175,9 @@ class _VideoSeekbarState extends State<VideoSeekbar> {
                   child: Text(
                     _formatDuration(widget.duration),
                     style: TextStyle(
-                      color: forceWhite ? (isDark ? const Color(0xFF22C55E) : Colors.white) : Colors.black87,
+                      color: forceWhite
+                          ? (isDark ? const Color(0xFF22C55E) : Colors.white)
+                          : Colors.black87,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -170,4 +199,3 @@ class _VideoSeekbarState extends State<VideoSeekbar> {
     return "${two(d.inMinutes)}:${two(d.inSeconds % 60)}";
   }
 }
-

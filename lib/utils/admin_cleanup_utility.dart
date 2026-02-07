@@ -26,7 +26,7 @@ class AdminCleanupUtility {
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             const SizedBox(height: 16),
-            
+
             _buildCleanupOption(
               context,
               icon: Icons.delete_outline,
@@ -38,9 +38,9 @@ class AdminCleanupUtility {
                 _deleteAllCourses(context, deleteFiles: false);
               },
             ),
-            
+
             const SizedBox(height: 12),
-            
+
             _buildCleanupOption(
               context,
               icon: Icons.delete_forever,
@@ -52,9 +52,9 @@ class AdminCleanupUtility {
                 _deleteAllCourses(context, deleteFiles: true);
               },
             ),
-            
+
             const SizedBox(height: 12),
-            
+
             _buildCleanupOption(
               context,
               icon: Icons.restart_alt,
@@ -114,10 +114,7 @@ class AdminCleanupUtility {
                   ),
                   Text(
                     subtitle,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey.shade600,
-                    ),
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
                 ],
               ),
@@ -145,7 +142,10 @@ class AdminCleanupUtility {
             const Expanded(
               child: Text(
                 '⚠️ DANGEROUS OPERATION',
-                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],
@@ -286,9 +286,7 @@ class AdminCleanupUtility {
               ),
               const SizedBox(height: 8),
               Text(
-                deleteFiles 
-                  ? 'This may take a while...'
-                  : 'Almost done...',
+                deleteFiles ? 'This may take a while...' : 'Almost done...',
                 style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
               ),
             ],
@@ -299,32 +297,40 @@ class AdminCleanupUtility {
 
     try {
       final firestore = FirebaseFirestore.instance;
-      
+
       // Step 1: Get all courses
       final coursesSnapshot = await firestore.collection('courses').get();
-      LoggerService.info('Found ${coursesSnapshot.docs.length} courses to delete', tag: 'CLEANUP');
+      LoggerService.info(
+        'Found ${coursesSnapshot.docs.length} courses to delete',
+        tag: 'CLEANUP',
+      );
 
       // Step 2: Delete files from BunnyCDN (if requested)
       if (deleteFiles) {
         final bunnyService = BunnyCDNService();
-        
+
         for (var doc in coursesSnapshot.docs) {
           try {
             final data = doc.data();
             final List<String> filesToDelete = [];
 
             // Collect all file URLs
-            if (data['thumbnailUrl'] != null) filesToDelete.add(data['thumbnailUrl']);
-            if (data['certificateUrl1'] != null) filesToDelete.add(data['certificateUrl1']);
-            if (data['certificateUrl2'] != null) filesToDelete.add(data['certificateUrl2']);
+            if (data['thumbnailUrl'] != null)
+              filesToDelete.add(data['thumbnailUrl']);
+            if (data['certificateUrl1'] != null)
+              filesToDelete.add(data['certificateUrl1']);
+            if (data['certificateUrl2'] != null)
+              filesToDelete.add(data['certificateUrl2']);
 
             // Recursively collect content files
             void collectFiles(List<dynamic> items) {
               for (var item in items) {
-                if (item['path'] != null && item['path'].toString().contains('b-cdn.net')) {
+                if (item['path'] != null &&
+                    item['path'].toString().contains('b-cdn.net')) {
                   filesToDelete.add(item['path']);
                 }
-                if (item['thumbnail'] != null && item['thumbnail'].toString().contains('b-cdn.net')) {
+                if (item['thumbnail'] != null &&
+                    item['thumbnail'].toString().contains('b-cdn.net')) {
                   filesToDelete.add(item['thumbnail']);
                 }
                 if (item['type'] == 'folder' && item['contents'] != null) {
@@ -335,18 +341,23 @@ class AdminCleanupUtility {
 
             if (data['contents'] != null) collectFiles(data['contents']);
 
-
             // Delete each file
             for (var fileUrl in filesToDelete) {
               try {
                 await bunnyService.deleteFile(fileUrl);
                 LoggerService.success('Deleted: $fileUrl', tag: 'CLEANUP');
               } catch (e) {
-                LoggerService.warning('Failed to delete $fileUrl: $e', tag: 'CLEANUP');
+                LoggerService.warning(
+                  'Failed to delete $fileUrl: $e',
+                  tag: 'CLEANUP',
+                );
               }
             }
           } catch (e) {
-            LoggerService.error('Error processing course ${doc.id}: $e', tag: 'CLEANUP');
+            LoggerService.error(
+              'Error processing course ${doc.id}: $e',
+              tag: 'CLEANUP',
+            );
           }
         }
       }
@@ -358,12 +369,15 @@ class AdminCleanupUtility {
       }
       await batch.commit();
 
-      LoggerService.success('Deleted ${coursesSnapshot.docs.length} courses from Firestore', tag: 'CLEANUP');
+      LoggerService.success(
+        'Deleted ${coursesSnapshot.docs.length} courses from Firestore',
+        tag: 'CLEANUP',
+      );
 
       // Close progress dialog
       if (context.mounted) {
         Navigator.pop(context);
-        
+
         // Show success
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -399,7 +413,7 @@ class AdminCleanupUtility {
       final prefs = await SharedPreferences.getInstance();
       await prefs.clear();
       LoggerService.success('Cleared all local storage', tag: 'CLEANUP');
-      
+
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -421,15 +435,9 @@ class AdminCleanupUtility {
         children: [
           const Icon(Icons.close, color: Colors.red, size: 16),
           const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              style: const TextStyle(fontSize: 13),
-            ),
-          ),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 13))),
         ],
       ),
     );
   }
 }
-

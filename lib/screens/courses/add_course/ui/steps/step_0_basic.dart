@@ -38,7 +38,9 @@ class Step0BasicWidget extends StatelessWidget {
               pinned: true,
             ),
             SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: UIConstants.screenPadding),
+              padding: const EdgeInsets.symmetric(
+                horizontal: UIConstants.screenPadding,
+              ),
               sliver: SliverToBoxAdapter(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -148,20 +150,34 @@ class Step0BasicWidget extends StatelessWidget {
                           width: double.infinity,
                           decoration: BoxDecoration(
                             color: Colors.transparent,
-                            borderRadius: BorderRadius.circular(UIConstants.globalRadius),
+                            borderRadius: BorderRadius.circular(
+                              UIConstants.globalRadius,
+                            ),
                             border: Border.all(
                               color: state.thumbnailImage == null
                                   ? (state.thumbnailError
-                                      ? Colors.red.withValues(alpha: 0.8)
-                                      : Theme.of(context).dividerColor.withValues(alpha: UIConstants.borderOpacity))
-                                  : AppTheme.primaryColor.withValues(alpha: 0.5),
-                              width: (state.thumbnailImage == null && state.thumbnailError) ? 2 : (state.thumbnailImage == null ? 1 : 2),
+                                        ? Colors.red.withValues(alpha: 0.8)
+                                        : Theme.of(
+                                            context,
+                                          ).dividerColor.withValues(
+                                            alpha: UIConstants.borderOpacity,
+                                          ))
+                                  : AppTheme.primaryColor.withValues(
+                                      alpha: 0.5,
+                                    ),
+                              width:
+                                  (state.thumbnailImage == null &&
+                                      state.thumbnailError)
+                                  ? 2
+                                  : (state.thumbnailImage == null ? 1 : 2),
                               style: BorderStyle.solid,
                             ),
                             boxShadow: state.thumbnailImage == null
                                 ? [
                                     BoxShadow(
-                                      color: Colors.black.withValues(alpha: 0.03),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.03,
+                                      ),
                                       blurRadius: 10,
                                       offset: const Offset(0, 4),
                                     ),
@@ -181,7 +197,9 @@ class Step0BasicWidget extends StatelessWidget {
                                     Icon(
                                       Icons.add_photo_alternate_rounded,
                                       size: 48,
-                                      color: AppTheme.primaryColor.withValues(alpha: 0.8),
+                                      color: AppTheme.primaryColor.withValues(
+                                        alpha: 0.8,
+                                      ),
                                     ),
                                     const SizedBox(height: 8),
                                     Text(
@@ -199,7 +217,7 @@ class Step0BasicWidget extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: UIConstants.s1ImageSpace),
-    
+
                     // 2. Title
                     Container(
                       key: state.titleKey,
@@ -213,7 +231,7 @@ class Step0BasicWidget extends StatelessWidget {
                         hasError: state.titleError,
                       ),
                     ),
-    
+
                     // 3. Description
                     Container(
                       key: state.descKey,
@@ -227,82 +245,56 @@ class Step0BasicWidget extends StatelessWidget {
                         hasError: state.descError,
                       ),
                     ),
-    
+
                     // 5. Category & Type
                     Container(
                       key: state.categoryKey,
                       child: Row(
                         children: [
-                        Expanded(
-                          child: _buildDropdown(
-                            context,
-                            label: 'Category',
-                            value: state.selectedCategory,
-                            items: CourseStateManager.categories,
-                            hasError: state.categoryError,
-                            onChanged: (v) {
-                              if (state.selectedCategory == v) {
-                                state.selectedCategory = null;
-                              } else {
-                                state.selectedCategory = v;
-                                state.categoryError = false;
-                              }
-                              logic.draftManager.saveCourseDraft();
-                            },
+                          Expanded(
+                            child: _buildDropdown(
+                              context,
+                              label: 'Category',
+                              value: state.selectedCategory,
+                              items: CourseStateManager.categories,
+                              hasError: state.categoryError,
+                              onChanged: (v) {
+                                if (state.selectedCategory == v) {
+                                  state.selectedCategory = null;
+                                } else {
+                                  state.selectedCategory = v;
+                                  state.categoryError = false;
+                                }
+                                logic.draftManager.saveCourseDraft();
+                              },
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: _buildDropdown(
-                            context,
-                            label: 'Course Type',
-                            hint: 'Select Type',
-                            value: state.difficulty,
-                            items: CourseStateManager.difficultyLevels,
-                            hasError: state.difficultyError,
-                            onChanged: (v) {
-                              if (state.difficulty == v) {
-                                state.difficulty = null;
-                              } else {
-                                state.difficulty = v;
-                                state.difficultyError = false;
-                              }
-                              state.updateState();
-                              logic.draftManager.saveCourseDraft();
-                            },
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: _buildDropdown(
+                              context,
+                              label: 'Course Type',
+                              hint: 'Select Type',
+                              value: state.difficulty,
+                              items: CourseStateManager.difficultyLevels,
+                              hasError: state.difficultyError,
+                              onChanged: (v) {
+                                if (state.difficulty == v) {
+                                  state.difficulty = null;
+                                } else {
+                                  state.difficulty = v;
+                                  state.difficultyError = false;
+                                }
+                                state.updateState();
+                                logic.draftManager.saveCourseDraft();
+                              },
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
+                        ],
+                      ),
                     ),
                     const SizedBox(height: 20),
-    
-                    const SizedBox(height: 20),
-    
-                    Container(
-                      key: state.batchDurationKey,
-                      child: _buildDropdownInt(
-                        context,
-                        label: 'New Badge Duration',
-                      hint: 'Select Duration',
-                      value: state.newBatchDurationDays,
-                      items: {30: '1 Month', 60: '2 Months', 90: '3 Months'},
-                      hasError: state.batchDurationError,
-                      prefixIcon: Icons.timer_outlined,
-                      onChanged: (v) {
-                        if (state.newBatchDurationDays == v) {
-                          state.newBatchDurationDays = null;
-                        } else {
-                          state.newBatchDurationDays = v;
-                          state.batchDurationError = false;
-                        }
-                        logic.draftManager.saveCourseDraft();
-                      },
-                    ),
-                    ),
-    
-                    const SizedBox(height: 20),
-    
+
                     // 6. Highlights Section
                     Container(
                       key: state.highlightsKey,
@@ -311,13 +303,21 @@ class Step0BasicWidget extends StatelessWidget {
                         children: [
                           const Text(
                             'Highlights',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                           ),
                           TextButton.icon(
                             onPressed: logic.addHighlight,
-                            icon: const Icon(Icons.add_circle_outline, size: 18),
+                            icon: const Icon(
+                              Icons.add_circle_outline,
+                              size: 18,
+                            ),
                             label: const Text('Add'),
-                            style: TextButton.styleFrom(foregroundColor: AppTheme.primaryColor),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppTheme.primaryColor,
+                            ),
                           ),
                         ],
                       ),
@@ -327,24 +327,36 @@ class Step0BasicWidget extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 20),
                         child: Text(
-                          state.highlightsError ? 'Please add at least one highlight *' : 'No highlights added.',
+                          state.highlightsError
+                              ? 'Please add at least one highlight *'
+                              : 'No highlights added.',
                           style: TextStyle(
-                            color: state.highlightsError ? Colors.red : Colors.grey,
+                            color: state.highlightsError
+                                ? Colors.red
+                                : Colors.grey,
                             fontSize: 13,
                             fontStyle: FontStyle.italic,
-                            fontWeight: state.highlightsError ? FontWeight.bold : FontWeight.normal,
+                            fontWeight: state.highlightsError
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                           ),
                         ),
                       )
                     else
-                      ...state.highlightControllers.asMap().entries.map((entry) {
+                      ...state.highlightControllers.asMap().entries.map((
+                        entry,
+                      ) {
                         final index = entry.key;
                         final controller = entry.value;
-                          return Row(
+                        return Row(
                           children: [
                             const Padding(
                               padding: EdgeInsets.only(bottom: 20),
-                              child: Icon(Icons.check_circle_outline, color: Colors.green, size: 20),
+                              child: Icon(
+                                Icons.check_circle_outline,
+                                color: Colors.green,
+                                size: 20,
+                              ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
@@ -352,15 +364,22 @@ class Step0BasicWidget extends StatelessWidget {
                                 controller: controller,
                                 label: 'Highlight',
                                 hint: 'Practical Chip Level Training',
-                                hasError: state.highlightsError && controller.text.trim().isEmpty,
-                                onChanged: (_) => logic.draftManager.saveCourseDraft(),
+                                hasError:
+                                    state.highlightsError &&
+                                    controller.text.trim().isEmpty,
+                                onChanged: (_) =>
+                                    logic.draftManager.saveCourseDraft(),
                               ),
                             ),
                             const SizedBox(width: 4),
                             Padding(
                               padding: const EdgeInsets.only(bottom: 20),
                               child: IconButton(
-                                icon: const Icon(Icons.remove_circle_outline, color: Colors.red, size: 20),
+                                icon: const Icon(
+                                  Icons.remove_circle_outline,
+                                  color: Colors.red,
+                                  size: 20,
+                                ),
                                 onPressed: () => logic.removeHighlight(index),
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(),
@@ -369,7 +388,7 @@ class Step0BasicWidget extends StatelessWidget {
                           ],
                         );
                       }),
-    
+
                     // 7. FAQs Section
                     Container(
                       key: state.faqsKey,
@@ -378,13 +397,21 @@ class Step0BasicWidget extends StatelessWidget {
                         children: [
                           const Text(
                             'FAQs',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                           ),
                           TextButton.icon(
                             onPressed: logic.addFAQ,
-                            icon: const Icon(Icons.add_circle_outline, size: 18),
+                            icon: const Icon(
+                              Icons.add_circle_outline,
+                              size: 18,
+                            ),
                             label: const Text('Add'),
-                            style: TextButton.styleFrom(foregroundColor: AppTheme.primaryColor),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppTheme.primaryColor,
+                            ),
                           ),
                         ],
                       ),
@@ -394,12 +421,16 @@ class Step0BasicWidget extends StatelessWidget {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 20),
                         child: Text(
-                          state.faqsError ? 'Please add at least one FAQ *' : 'No FAQs added.',
+                          state.faqsError
+                              ? 'Please add at least one FAQ *'
+                              : 'No FAQs added.',
                           style: TextStyle(
                             color: state.faqsError ? Colors.red : Colors.grey,
                             fontSize: 13,
                             fontStyle: FontStyle.italic,
-                            fontWeight: state.faqsError ? FontWeight.bold : FontWeight.normal,
+                            fontWeight: state.faqsError
+                                ? FontWeight.bold
+                                : FontWeight.normal,
                           ),
                         ),
                       )
@@ -413,9 +444,13 @@ class Step0BasicWidget extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: Colors.transparent,
                             border: Border.all(
-                              color: Theme.of(context).dividerColor.withValues(alpha: UIConstants.borderOpacity),
+                              color: Theme.of(context).dividerColor.withValues(
+                                alpha: UIConstants.borderOpacity,
+                              ),
                             ),
-                            borderRadius: BorderRadius.circular(UIConstants.globalRadius),
+                            borderRadius: BorderRadius.circular(
+                              UIConstants.globalRadius,
+                            ),
                           ),
                           child: Column(
                             children: [
@@ -427,15 +462,22 @@ class Step0BasicWidget extends StatelessWidget {
                                       controller: faq['q']!,
                                       label: 'Question',
                                       hint: 'e.g. Who can join this course?',
-                                      hasError: state.faqsError && faq['q']!.text.trim().isEmpty,
-                                      onChanged: (_) => logic.draftManager.saveCourseDraft(),
+                                      hasError:
+                                          state.faqsError &&
+                                          faq['q']!.text.trim().isEmpty,
+                                      onChanged: (_) =>
+                                          logic.draftManager.saveCourseDraft(),
                                     ),
                                   ),
                                   const SizedBox(width: 8),
                                   Padding(
                                     padding: const EdgeInsets.only(top: 4),
                                     child: IconButton(
-                                      icon: const Icon(Icons.delete_outline, color: Colors.red, size: 20),
+                                      icon: const Icon(
+                                        Icons.delete_outline,
+                                        color: Colors.red,
+                                        size: 20,
+                                      ),
                                       onPressed: () => logic.removeFAQ(index),
                                       padding: EdgeInsets.zero,
                                       constraints: const BoxConstraints(),
@@ -448,8 +490,11 @@ class Step0BasicWidget extends StatelessWidget {
                                 label: 'Answer',
                                 hint: 'Anyone with basic mobile knowledge...',
                                 bottomPadding: 0.0,
-                                hasError: state.faqsError && faq['a']!.text.trim().isEmpty,
-                                onChanged: (_) => logic.draftManager.saveCourseDraft(),
+                                hasError:
+                                    state.faqsError &&
+                                    faq['a']!.text.trim().isEmpty,
+                                onChanged: (_) =>
+                                    logic.draftManager.saveCourseDraft(),
                               ),
                             ],
                           ),
@@ -477,7 +522,7 @@ class Step0BasicWidget extends StatelessWidget {
             ),
           ],
         );
-      }
+      },
     );
   }
 
@@ -492,24 +537,36 @@ class Step0BasicWidget extends StatelessWidget {
   }) {
     return DropdownButtonFormField<String>(
       isExpanded: true,
-      style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 16),
+      style: TextStyle(
+        color: Theme.of(context).textTheme.bodyLarge?.color,
+        fontSize: 16,
+      ),
       initialValue: value,
       hint: Text(
         hint ?? 'Select $label',
         style: TextStyle(
-          color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.4),
+          color: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.color?.withValues(alpha: 0.4),
           fontSize: 11,
           fontWeight: FontWeight.normal,
         ),
       ),
       decoration: InputDecoration(
-        contentPadding: const EdgeInsets.symmetric(vertical: UIConstants.inputVerticalPadding, horizontal: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: UIConstants.inputVerticalPadding,
+          horizontal: 16,
+        ),
         labelText: label,
         floatingLabelBehavior: FloatingLabelBehavior.always,
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(UIConstants.globalRadius),
           borderSide: BorderSide(
-            color: hasError ? Colors.red : Theme.of(context).dividerColor.withValues(alpha: UIConstants.borderOpacity),
+            color: hasError
+                ? Colors.red
+                : Theme.of(
+                    context,
+                  ).dividerColor.withValues(alpha: UIConstants.borderOpacity),
           ),
         ),
         focusedBorder: OutlineInputBorder(
@@ -523,9 +580,18 @@ class Step0BasicWidget extends StatelessWidget {
           borderRadius: BorderRadius.circular(UIConstants.globalRadius),
         ),
         filled: true,
-        fillColor: AppTheme.primaryColor.withValues(alpha: UIConstants.fillOpacity),
+        fillColor: AppTheme.primaryColor.withValues(
+          alpha: UIConstants.fillOpacity,
+        ),
       ),
-      items: items.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))).toList(),
+      items: items
+          .map(
+            (c) => DropdownMenuItem(
+              value: c,
+              child: Text(c, overflow: TextOverflow.ellipsis),
+            ),
+          )
+          .toList(),
       onChanged: onChanged,
     );
   }
@@ -541,25 +607,37 @@ class Step0BasicWidget extends StatelessWidget {
     required void Function(int?) onChanged,
   }) {
     return DropdownButtonFormField<int>(
-      style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 16),
+      style: TextStyle(
+        color: Theme.of(context).textTheme.bodyLarge?.color,
+        fontSize: 16,
+      ),
       initialValue: value,
       hint: Text(
         hint ?? 'Select $label',
         style: TextStyle(
-          color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.4),
+          color: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.color?.withValues(alpha: 0.4),
           fontSize: 13,
           fontWeight: FontWeight.normal,
         ),
       ),
       decoration: InputDecoration(
-        contentPadding: const EdgeInsets.symmetric(vertical: UIConstants.inputVerticalPadding, horizontal: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          vertical: UIConstants.inputVerticalPadding,
+          horizontal: 16,
+        ),
         labelText: label,
         floatingLabelBehavior: FloatingLabelBehavior.always,
         prefixIcon: prefixIcon != null ? Icon(prefixIcon, size: 20) : null,
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(UIConstants.globalRadius),
           borderSide: BorderSide(
-            color: hasError ? Colors.red : Theme.of(context).dividerColor.withValues(alpha: UIConstants.borderOpacity),
+            color: hasError
+                ? Colors.red
+                : Theme.of(
+                    context,
+                  ).dividerColor.withValues(alpha: UIConstants.borderOpacity),
           ),
         ),
         focusedBorder: OutlineInputBorder(
@@ -573,9 +651,13 @@ class Step0BasicWidget extends StatelessWidget {
           borderRadius: BorderRadius.circular(UIConstants.globalRadius),
         ),
         filled: true,
-        fillColor: AppTheme.primaryColor.withValues(alpha: UIConstants.fillOpacity),
+        fillColor: AppTheme.primaryColor.withValues(
+          alpha: UIConstants.fillOpacity,
+        ),
       ),
-      items: items.entries.map((e) => DropdownMenuItem(value: e.key, child: Text(e.value))).toList(),
+      items: items.entries
+          .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+          .toList(),
       onChanged: onChanged,
     );
   }

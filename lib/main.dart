@@ -16,33 +16,32 @@ import 'services/logger_service.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'dart:async';
 
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize MediaKit
   MediaKit.ensureInitialized();
-  
+
   // 1. Initialize Background Upload Service (Ready but silent)
   try {
-     LoggerService.info("Initialising Background Service...", tag: 'INIT');
-     await initializeUploadService();
-     // Force start for debugging
-     unawaited(FlutterBackgroundService().startService());
-     LoggerService.success("Service Initialized & Started.", tag: 'INIT');
+    LoggerService.info("Initialising Background Service...", tag: 'INIT');
+    await initializeUploadService();
+    // Force start for debugging
+    unawaited(FlutterBackgroundService().startService());
+    LoggerService.success("Service Initialized & Started.", tag: 'INIT');
   } catch (e) {
-     LoggerService.error('Service Init Failed: $e', tag: 'INIT');
+    LoggerService.error('Service Init Failed: $e', tag: 'INIT');
   }
-  
+
   // Initialize Firebase
   await Firebase.initializeApp();
-  
+
   // 🔥 Optimization: Enable Offline Persistence (Caching)
   FirebaseFirestore.instance.settings = const Settings(
     persistenceEnabled: true,
     cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
   );
-  
+
   // Pass all uncaught errors from the framework to Crashlytics.
   FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
 
@@ -51,15 +50,18 @@ void main() async {
     FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
     return true;
   };
-  
+
   // Configure System UI
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
 
-  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.manual, overlays: SystemUiOverlay.values);
-  
+  await SystemChrome.setEnabledSystemUIMode(
+    SystemUiMode.manual,
+    overlays: SystemUiOverlay.values,
+  );
+
   runApp(const MyApp());
 }
 
@@ -75,23 +77,35 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => DashboardProvider()),
-        ChangeNotifierProvider(create: (_) => AdminNotificationProvider()..init()),
+        ChangeNotifierProvider(
+          create: (_) => AdminNotificationProvider()..init(),
+        ),
       ],
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
           // Correctly determine if we should render dark mode
-          final isSystemDark = View.of(context).platformDispatcher.platformBrightness == Brightness.dark;
+          final isSystemDark =
+              View.of(context).platformDispatcher.platformBrightness ==
+              Brightness.dark;
           final bool isDark = themeProvider.themeMode == ThemeMode.system
               ? isSystemDark
               : themeProvider.themeMode == ThemeMode.dark;
-          
+
           return AnnotatedRegion<SystemUiOverlayStyle>(
             value: SystemUiOverlayStyle(
               statusBarColor: Colors.transparent,
-              statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-              systemNavigationBarColor: isDark ? AppTheme.darkCard : AppTheme.lightCard,
-              systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-              systemNavigationBarDividerColor: isDark ? AppTheme.darkBorder : null,
+              statusBarIconBrightness: isDark
+                  ? Brightness.light
+                  : Brightness.dark,
+              systemNavigationBarColor: isDark
+                  ? AppTheme.darkCard
+                  : AppTheme.lightCard,
+              systemNavigationBarIconBrightness: isDark
+                  ? Brightness.light
+                  : Brightness.dark,
+              systemNavigationBarDividerColor: isDark
+                  ? AppTheme.darkBorder
+                  : null,
               systemNavigationBarContrastEnforced: true,
             ),
             child: MaterialApp(
@@ -111,7 +125,6 @@ class MyApp extends StatelessWidget {
 
               home: const AuthWrapper(),
             ),
-
           );
         },
       ),

@@ -17,7 +17,7 @@ class _AppControlScreenState extends State<AppControlScreen> {
   // Controllers
   late TextEditingController _minVersionController;
   late TextEditingController _maintenanceMessageController;
-  
+
   // State variables
   bool _isMaintenanceMode = false;
   bool _isLoading = true;
@@ -40,28 +40,34 @@ class _AppControlScreenState extends State<AppControlScreen> {
   // Fetch current settings from Firestore
   Future<void> _fetchSettings() async {
     try {
-      final doc = await _firestore.collection('config').doc('app_settings').get();
-      
+      final doc = await _firestore
+          .collection('config')
+          .doc('app_settings')
+          .get();
+
       if (doc.exists && doc.data() != null) {
         final data = doc.data()!;
         setState(() {
           _minVersionController.text = data['min_version'] ?? '1.0.0';
-          _maintenanceMessageController.text = data['maintenance_message'] ?? 'Server is under maintenance. Please try again later.';
+          _maintenanceMessageController.text =
+              data['maintenance_message'] ??
+              'Server is under maintenance. Please try again later.';
           _isMaintenanceMode = data['is_maintenance_mode'] ?? false;
         });
       } else {
         // Set defaults if document doesn't exist
         setState(() {
           _minVersionController.text = '1.0.0';
-          _maintenanceMessageController.text = 'Server is under maintenance. Please try again later.';
+          _maintenanceMessageController.text =
+              'Server is under maintenance. Please try again later.';
           _isMaintenanceMode = false;
         });
       }
     } catch (e) {
       debugPrint('Error fetching settings: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading settings: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error loading settings: $e')));
     } finally {
       setState(() {
         _isLoading = false;
@@ -132,12 +138,18 @@ class _AppControlScreenState extends State<AppControlScreen> {
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: Colors.deepOrange.withOpacity(0.1),
-                        border: Border.all(color: Colors.deepOrange.withOpacity(0.3)),
+                        border: Border.all(
+                          color: Colors.deepOrange.withOpacity(0.3),
+                        ),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.warning_amber_rounded, color: Colors.deepOrange, size: 24),
+                          const Icon(
+                            Icons.warning_amber_rounded,
+                            color: Colors.deepOrange,
+                            size: 24,
+                          ),
                           const SizedBox(width: 12),
                           Expanded(
                             child: Column(
@@ -170,10 +182,9 @@ class _AppControlScreenState extends State<AppControlScreen> {
                     // Version Control Section
                     Text(
                       'VERSION CONTROL',
-                      style: AppTheme.bodySmall(context).copyWith(
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1,
-                      ),
+                      style: AppTheme.bodySmall(
+                        context,
+                      ).copyWith(fontWeight: FontWeight.bold, letterSpacing: 1),
                     ),
                     const SizedBox(height: 12),
                     Card(
@@ -187,17 +198,20 @@ class _AppControlScreenState extends State<AppControlScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                             _buildTextField(
+                            _buildTextField(
                               controller: _minVersionController,
                               label: 'Minimum Supported Version',
                               icon: Icons.numbers,
                               helperText: 'e.g. 1.0.2',
                               validator: (value) {
-                                 if (value == null || value.isEmpty) return 'Required';
-                                 if (!RegExp(r'^\d+\.\d+\.\d+$').hasMatch(value)) {
-                                   return 'Format: x.x.x';
-                                 }
-                                 return null;
+                                if (value == null || value.isEmpty)
+                                  return 'Required';
+                                if (!RegExp(
+                                  r'^\d+\.\d+\.\d+$',
+                                ).hasMatch(value)) {
+                                  return 'Format: x.x.x';
+                                }
+                                return null;
                               },
                             ),
                             const SizedBox(height: 8),
@@ -215,10 +229,9 @@ class _AppControlScreenState extends State<AppControlScreen> {
                     // Maintenance Section
                     Text(
                       'MAINTENANCE',
-                      style: AppTheme.bodySmall(context).copyWith(
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 1,
-                      ),
+                      style: AppTheme.bodySmall(
+                        context,
+                      ).copyWith(fontWeight: FontWeight.bold, letterSpacing: 1),
                     ),
                     const SizedBox(height: 12),
                     Card(
@@ -230,18 +243,28 @@ class _AppControlScreenState extends State<AppControlScreen> {
                       child: Column(
                         children: [
                           SwitchListTile(
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 8,
+                            ),
                             value: _isMaintenanceMode,
                             onChanged: (val) {
                               setState(() {
                                 _isMaintenanceMode = val;
                               });
                             },
-                            title: const Text('Maintenance Mode', style: TextStyle(fontWeight: FontWeight.bold)),
+                            title: const Text(
+                              'Maintenance Mode',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
                             subtitle: Text(
-                              _isMaintenanceMode ? 'App is currently locked for users' : 'App is active',
+                              _isMaintenanceMode
+                                  ? 'App is currently locked for users'
+                                  : 'App is active',
                               style: TextStyle(
-                                color: _isMaintenanceMode ? Colors.red : Colors.green,
+                                color: _isMaintenanceMode
+                                    ? Colors.red
+                                    : Colors.green,
                                 fontSize: 13,
                               ),
                             ),
@@ -249,17 +272,21 @@ class _AppControlScreenState extends State<AppControlScreen> {
                             secondary: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: _isMaintenanceMode ? Colors.red.withOpacity(0.1) : Colors.green.withOpacity(0.1),
+                                color: _isMaintenanceMode
+                                    ? Colors.red.withOpacity(0.1)
+                                    : Colors.green.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Icon(
                                 Icons.construction,
-                                color: _isMaintenanceMode ? Colors.red : Colors.green,
+                                color: _isMaintenanceMode
+                                    ? Colors.red
+                                    : Colors.green,
                                 size: 20,
                               ),
                             ),
                           ),
-                          
+
                           if (_isMaintenanceMode) ...[
                             const Divider(height: 1),
                             Padding(
@@ -285,14 +312,22 @@ class _AppControlScreenState extends State<AppControlScreen> {
                       height: 50,
                       child: ElevatedButton(
                         onPressed: _saveSettings,
-                        style: Theme.of(context).elevatedButtonTheme.style?.copyWith(
-                          backgroundColor: WidgetStateProperty.all(AppTheme.primaryColor),
-                          foregroundColor: WidgetStateProperty.all(Colors.white),
-                          elevation: WidgetStateProperty.all(2),
-                        ),
+                        style: Theme.of(context).elevatedButtonTheme.style
+                            ?.copyWith(
+                              backgroundColor: WidgetStateProperty.all(
+                                AppTheme.primaryColor,
+                              ),
+                              foregroundColor: WidgetStateProperty.all(
+                                Colors.white,
+                              ),
+                              elevation: WidgetStateProperty.all(2),
+                            ),
                         child: const Text(
                           'Save Configuration',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
@@ -338,12 +373,14 @@ class _AppControlScreenState extends State<AppControlScreen> {
         filled: true,
         fillColor: Theme.of(context).cardColor,
       ),
-      validator: validator ?? (value) {
-        if (value == null || value.isEmpty) {
-          return 'Please enter $label';
-        }
-        return null;
-      },
+      validator:
+          validator ??
+          (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please enter $label';
+            }
+            return null;
+          },
     );
   }
 }

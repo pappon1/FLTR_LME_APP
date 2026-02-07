@@ -13,16 +13,18 @@ class RazorpayDashboardCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    
+
     // Razorpay Brand Colors
     const rzpBlue = Color(0xFF3395FF);
     const rzpDark = Color(0xFF0F264A);
-    
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: isDark ? rzpDark : const Color(0xFF1E293B), // Dark Navy for Techy feel
+        color: isDark
+            ? rzpDark
+            : const Color(0xFF1E293B), // Dark Navy for Techy feel
         borderRadius: BorderRadius.circular(3.0),
         boxShadow: [
           BoxShadow(
@@ -33,13 +35,10 @@ class RazorpayDashboardCard extends StatelessWidget {
         ],
         border: Border.all(color: rzpBlue.withValues(alpha: 0.3), width: 1),
         gradient: const LinearGradient(
-          colors: [
-            Color(0xFF1E293B), 
-            Color(0xFF0F172A)
-          ],
+          colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-        )
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -53,81 +52,124 @@ class RazorpayDashboardCard extends StatelessWidget {
                   children: [
                     Container(
                       padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(3.0)),
-                      child: const FaIcon(FontAwesomeIcons.registered, color: Color(0xFF0C2444), size: 16), // Fake R logo
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(3.0),
+                      ),
+                      child: const FaIcon(
+                        FontAwesomeIcons.registered,
+                        color: Color(0xFF0C2444),
+                        size: 16,
+                      ), // Fake R logo
                     ),
                     const SizedBox(width: 12),
-                      Expanded(
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            'Razorpay Gateway',
-                            style: GoogleFonts.outfit(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                    Expanded(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Razorpay Gateway',
+                          style: GoogleFonts.outfit(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                    ),
                   ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(3.0),
-                  border: Border.all(color: Colors.green.withValues(alpha: 0.5))
-                ),
-                child: Row(
-                  children: [
-                    Container(width: 6, height: 6, decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle)),
-                    const SizedBox(width: 6),
-                    Text('LIVE', style: GoogleFonts.inter(color: Colors.green, fontSize: 10, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              ).animate(onPlay: (c) => c.repeat(reverse: true)).fade(begin: 0.5, end: 1.0, duration: 1.seconds),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(3.0),
+                      border: Border.all(
+                        color: Colors.green.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            color: Colors.green,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'LIVE',
+                          style: GoogleFonts.inter(
+                            color: Colors.green,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                  .animate(onPlay: (c) => c.repeat(reverse: true))
+                  .fade(begin: 0.5, end: 1.0, duration: 1.seconds),
             ],
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // Main Stats Row
           Row(
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Next Settlement',
-                          style: GoogleFonts.inter(color: Colors.white60, fontSize: 12),
+                  children: [
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Next Settlement',
+                        style: GoogleFonts.inter(
+                          color: Colors.white60,
+                          fontSize: 12,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          '₹ 12,450.00', // Dummy dynamic look
-                          style: GoogleFonts.outfit(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '₹ 12,450.00', // Dummy dynamic look
+                        style: GoogleFonts.outfit(
+                          color: Colors.white,
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Due by Tomorrow, 10 AM',
-                          style: GoogleFonts.inter(color: rzpBlue, fontSize: 11, fontWeight: FontWeight.w500),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Due by Tomorrow, 10 AM',
+                        style: GoogleFonts.inter(
+                          color: rzpBlue,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    ],
+                    ),
+                  ],
                 ),
               ),
               Container(width: 1, height: 50, color: Colors.white10),
@@ -137,14 +179,17 @@ class RazorpayDashboardCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                       FittedBox(
-                         fit: BoxFit.scaleDown,
-                         alignment: Alignment.centerLeft,
-                         child: Text(
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
                           'Today\'s Collection',
-                          style: GoogleFonts.inter(color: Colors.white60, fontSize: 12),
+                          style: GoogleFonts.inter(
+                            color: Colors.white60,
+                            fontSize: 12,
+                          ),
                         ),
-                       ),
+                      ),
                       const SizedBox(height: 4),
                       FittedBox(
                         fit: BoxFit.scaleDown,
@@ -154,10 +199,18 @@ class RazorpayDashboardCard extends StatelessWidget {
                           children: [
                             Text(
                               '₹ 4,200',
-                              style: GoogleFonts.outfit(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                              style: GoogleFonts.outfit(
+                                color: Colors.white,
+                                fontSize: 24,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             const SizedBox(width: 4),
-                            const Icon(Icons.trending_up, color: Colors.greenAccent, size: 16),
+                            const Icon(
+                              Icons.trending_up,
+                              color: Colors.greenAccent,
+                              size: 16,
+                            ),
                           ],
                         ),
                       ),
@@ -167,7 +220,10 @@ class RazorpayDashboardCard extends StatelessWidget {
                         alignment: Alignment.centerLeft,
                         child: Text(
                           '12 Successful Payments',
-                          style: GoogleFonts.inter(color: Colors.white54, fontSize: 11),
+                          style: GoogleFonts.inter(
+                            color: Colors.white54,
+                            fontSize: 11,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -178,31 +234,66 @@ class RazorpayDashboardCard extends StatelessWidget {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 24),
           Container(height: 1, color: Colors.white10),
           const SizedBox(height: 16),
-          
+
           // Actions
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.start,
               children: [
-                _buildAction(context, Icons.history, 'Settlements', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RazorpaySettlementsScreen()))),
+                _buildAction(
+                  context,
+                  Icons.history,
+                  'Settlements',
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const RazorpaySettlementsScreen(),
+                    ),
+                  ),
+                ),
                 const SizedBox(width: 8),
-                _buildAction(context, Icons.receipt_long, 'Reports', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RazorpayReportsScreen()))),
+                _buildAction(
+                  context,
+                  Icons.receipt_long,
+                  'Reports',
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const RazorpayReportsScreen(),
+                    ),
+                  ),
+                ),
                 const SizedBox(width: 8),
-                _buildAction(context, Icons.settings, 'Settings', () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RazorpayConfigScreen()))),
+                _buildAction(
+                  context,
+                  Icons.settings,
+                  'Settings',
+                  () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const RazorpayConfigScreen(),
+                    ),
+                  ),
+                ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );
   }
-  
-  Widget _buildAction(BuildContext context, IconData icon, String label, VoidCallback onTap) {
+
+  Widget _buildAction(
+    BuildContext context,
+    IconData icon,
+    String label,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -210,17 +301,19 @@ class RazorpayDashboardCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(3.0),
-          border: Border.all(color: Colors.white10)
+          border: Border.all(color: Colors.white10),
         ),
         child: Row(
           children: [
             Icon(icon, color: Colors.white70, size: 13),
             const SizedBox(width: 6),
-            Text(label, style: GoogleFonts.inter(color: Colors.white70, fontSize: 11)),
+            Text(
+              label,
+              style: GoogleFonts.inter(color: Colors.white70, fontSize: 11),
+            ),
           ],
         ),
       ),
     );
   }
 }
-

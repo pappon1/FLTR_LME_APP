@@ -21,8 +21,6 @@ class StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
-    
     return Container(
       decoration: BoxDecoration(
         gradient: gradient,
@@ -39,9 +37,7 @@ class StatCard extends StatelessWidget {
         elevation: 0,
         color: Colors.transparent,
         margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(3.0),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -56,11 +52,7 @@ class StatCard extends StatelessWidget {
                       color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(3.0),
                     ),
-                    child: FaIcon(
-                      icon,
-                      color: Colors.white,
-                      size: 18,
-                    ),
+                    child: FaIcon(icon, color: Colors.white, size: 18),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -103,9 +95,9 @@ class StatCard extends StatelessWidget {
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 12),
-              
+
               FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
@@ -118,9 +110,9 @@ class StatCard extends StatelessWidget {
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 2),
-              
+
               Text(
                 title,
                 style: TextStyle(
@@ -131,9 +123,9 @@ class StatCard extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              
+
               const SizedBox(height: 4),
-              
+
               Text(
                 trend,
                 style: TextStyle(
@@ -150,4 +142,3 @@ class StatCard extends StatelessWidget {
     );
   }
 }
-

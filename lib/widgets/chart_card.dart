@@ -19,15 +19,9 @@ class ChartCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const FaIcon(
-                      FontAwesomeIcons.chartArea,
-                      size: 18,
-                    ),
+                    const FaIcon(FontAwesomeIcons.chartArea, size: 18),
                     const SizedBox(width: 8),
-                    Text(
-                      'Revenue Overview',
-                      style: AppTheme.heading3(context),
-                    ),
+                    Text('Revenue Overview', style: AppTheme.heading3(context)),
                   ],
                 ),
                 Container(
@@ -84,8 +78,17 @@ class ChartCard extends StatelessWidget {
                             fontSize: 10,
                             color: Colors.grey,
                           );
-                          final days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-                          if (value.toInt() >= 0 && value.toInt() < days.length) {
+                          final days = [
+                            'Mon',
+                            'Tue',
+                            'Wed',
+                            'Thu',
+                            'Fri',
+                            'Sat',
+                            'Sun',
+                          ];
+                          if (value.toInt() >= 0 &&
+                              value.toInt() < days.length) {
                             return Padding(
                               padding: const EdgeInsets.only(top: 8.0),
                               child: Text(days[value.toInt()], style: style),
@@ -165,4 +168,3 @@ class ChartCard extends StatelessWidget {
     );
   }
 }
-

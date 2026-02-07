@@ -7,11 +7,15 @@ import '../../backend_service/models/course_upload_task.dart';
 class CourseUploadingOverlay extends StatelessWidget {
   final double totalProgress;
   final List<CourseUploadTask> uploadTasks;
+  final String? preparationMessage;
+  final double? preparationProgress;
 
   const CourseUploadingOverlay({
     super.key,
     required this.totalProgress,
     required this.uploadTasks,
+    this.preparationMessage,
+    this.preparationProgress,
   });
 
   @override
@@ -48,7 +52,9 @@ class CourseUploadingOverlay extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                'Upload will continue even if you switch apps',
+                preparationMessage?.isNotEmpty == true
+                    ? preparationMessage!
+                    : 'Upload will continue even if you switch apps',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.6),
                   fontSize: 12,
@@ -64,13 +70,21 @@ class CourseUploadingOverlay extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Overall Progress',
-                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        Text(
+                          uploadTasks.isEmpty
+                              ? 'Preparing Materials...'
+                              : 'Overall Progress',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         Text(
-                          '${(totalProgress * 100).toInt()}%',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          '${((uploadTasks.isEmpty ? (preparationProgress ?? 0) : totalProgress) * 100).toInt()}%',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ],
                     ),
@@ -78,10 +92,14 @@ class CourseUploadingOverlay extends StatelessWidget {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(3.0),
                       child: LinearProgressIndicator(
-                        value: totalProgress,
+                        value: uploadTasks.isEmpty
+                            ? (preparationProgress ?? 0.0)
+                            : totalProgress,
                         minHeight: 12,
                         backgroundColor: Colors.white.withValues(alpha: 0.1),
-                        valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primaryColor),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          AppTheme.primaryColor,
+                        ),
                       ),
                     ),
                   ],
@@ -126,8 +144,12 @@ class CourseUploadingOverlay extends StatelessWidget {
                           Row(
                             children: [
                               Icon(
-                                task.progress == 1.0 ? Icons.check_circle : Icons.upload_file,
-                                color: task.progress == 1.0 ? Colors.green : Colors.blue,
+                                task.progress == 1.0
+                                    ? Icons.check_circle
+                                    : Icons.upload_file,
+                                color: task.progress == 1.0
+                                    ? Colors.green
+                                    : Colors.blue,
                                 size: 20,
                               ),
                               const SizedBox(width: 12),
@@ -144,7 +166,9 @@ class CourseUploadingOverlay extends StatelessWidget {
                               Text(
                                 '${(task.progress * 100).toInt()}%',
                                 style: TextStyle(
-                                  color: task.progress == 1.0 ? Colors.green : Colors.grey,
+                                  color: task.progress == 1.0
+                                      ? Colors.green
+                                      : Colors.grey,
                                   fontSize: 11,
                                 ),
                               ),
@@ -157,7 +181,9 @@ class CourseUploadingOverlay extends StatelessWidget {
                               minHeight: 4,
                               backgroundColor: Colors.white12,
                               valueColor: AlwaysStoppedAnimation<Color>(
-                                task.progress == 1.0 ? Colors.green : Colors.blue,
+                                task.progress == 1.0
+                                    ? Colors.green
+                                    : Colors.blue,
                               ),
                             ),
                           ],
@@ -171,10 +197,16 @@ class CourseUploadingOverlay extends StatelessWidget {
               // Warning Footer
               Container(
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1)),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.1),
+                ),
                 child: const Row(
                   children: [
-                    Icon( Icons.warning_amber_rounded, color: Colors.orange, size: 18),
+                    Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.orange,
+                      size: 18,
+                    ),
                     SizedBox(width: 12),
                     Expanded(
                       child: Text(

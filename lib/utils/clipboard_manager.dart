@@ -5,12 +5,16 @@ class ContentClipboard {
   static String action = '';
 
   static void copy(List<Map<String, dynamic>> newItems) {
-    items = newItems.map((e) => Map<String, dynamic>.from(jsonDecode(jsonEncode(e)))).toList();
+    items = newItems
+        .map((e) => Map<String, dynamic>.from(jsonDecode(jsonEncode(e))))
+        .toList();
     action = 'copy';
   }
 
   static void cut(List<Map<String, dynamic>> newItems) {
-    items = newItems.map((e) => Map<String, dynamic>.from(jsonDecode(jsonEncode(e)))).toList();
+    items = newItems
+        .map((e) => Map<String, dynamic>.from(jsonDecode(jsonEncode(e))))
+        .toList();
     action = 'cut';
   }
 

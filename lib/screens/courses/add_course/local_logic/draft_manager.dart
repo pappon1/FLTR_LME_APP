@@ -45,7 +45,9 @@ class DraftManager {
         state.hasCertificate = draft['certificate'] ?? false;
         state.isOfflineDownloadEnabled = draft['offlineDownload'] ?? true;
         state.isPublished = draft['isPublished'] ?? false;
-        state.newBatchDurationDays = draft['newBatchDuration'];
+        state.specialTagColor = draft['specialTagColor'] ?? 'Blue';
+        state.isSpecialTagVisible = draft['isSpecialTagVisible'] ?? true;
+        state.specialTagDurationDays = draft['specialTagDurationDays'] ?? 30;
 
         if (draft['customDays'] != null) {
           state.customValidityController.text = draft['customDays'].toString();
@@ -71,7 +73,10 @@ class DraftManager {
         }
 
         if (missingFiles) {
-          LoggerService.warning('Some draft files were missing and could not be restored.', tag: 'DRAFT');
+          LoggerService.warning(
+            'Some draft files were missing and could not be restored.',
+            tag: 'DRAFT',
+          );
         }
 
         // Restore Highlights
@@ -140,7 +145,9 @@ class DraftManager {
         'websiteUrl': state.websiteUrlController.text.trim(),
         'customDays': int.tryParse(state.customValidityController.text),
         'thumbnailPath': state.thumbnailImage?.path,
-        'newBatchDuration': state.newBatchDurationDays,
+        'specialTagColor': state.specialTagColor,
+        'isSpecialTagVisible': state.isSpecialTagVisible,
+        'specialTagDurationDays': state.specialTagDurationDays,
         'cert1Path': state.certificate1File?.path,
         'highlights': state.highlightControllers.map((c) => c.text).toList(),
         'faqs': state.faqControllers

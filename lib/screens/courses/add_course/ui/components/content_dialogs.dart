@@ -84,7 +84,8 @@ class ContentDialogs {
                   final double ratio = decodedImage.width / decodedImage.height;
                   if (ratio < 1.7 || ratio > 1.85) {
                     setDialogState(() {
-                      errorMessage = "Invalid Ratio: ${ratio.toStringAsFixed(2)}\n\n"
+                      errorMessage =
+                          "Invalid Ratio: ${ratio.toStringAsFixed(2)}\n\n"
                           "Required: 16:9 (YouTube Standard)\n"
                           "Please crop your image to 1920x1080.";
                       isProcessing = false;
@@ -118,7 +119,9 @@ class ContentDialogs {
                       decoration: BoxDecoration(
                         color: Colors.red.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(3.0),
-                        border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
+                        border: Border.all(
+                          color: Colors.red.withValues(alpha: 0.5),
+                        ),
                       ),
                       child: Row(
                         children: [
@@ -127,7 +130,10 @@ class ContentDialogs {
                           Expanded(
                             child: Text(
                               errorMessage!,
-                              style: const TextStyle(color: Colors.red, fontSize: 13),
+                              style: const TextStyle(
+                                color: Colors.red,
+                                fontSize: 13,
+                              ),
                             ),
                           ),
                         ],
@@ -167,9 +173,16 @@ class ContentDialogs {
                       child: const Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.image_not_supported_outlined, size: 40, color: Colors.grey),
+                          Icon(
+                            Icons.image_not_supported_outlined,
+                            size: 40,
+                            color: Colors.grey,
+                          ),
                           SizedBox(height: 8),
-                          Text('No Thumbnail', style: TextStyle(color: Colors.grey)),
+                          Text(
+                            'No Thumbnail',
+                            style: TextStyle(color: Colors.grey),
+                          ),
                         ],
                       ),
                     ),
@@ -197,7 +210,10 @@ class ContentDialogs {
                               setDialogState(() => currentThumbnail = null);
                             },
                             icon: const Icon(Icons.delete, color: Colors.red),
-                            label: const Text('Remove', style: TextStyle(color: Colors.red)),
+                            label: const Text(
+                              'Remove',
+                              style: TextStyle(color: Colors.red),
+                            ),
                           ),
                       ],
                     ),
@@ -207,10 +223,11 @@ class ContentDialogs {
                 TextButton(
                   onPressed: () {
                     if (currentThumbnail == null) {
-                       setDialogState(() {
-                          errorMessage = "Please add a thumbnail image or close dialog.";
-                       });
-                       return;
+                      setDialogState(() {
+                        errorMessage =
+                            "Please add a thumbnail image or close dialog.";
+                      });
+                      return;
                     }
                     onSave(currentThumbnail);
                     Navigator.pop(context);
@@ -218,7 +235,10 @@ class ContentDialogs {
                       const SnackBar(content: Text('Thumbnail Saved!')),
                     );
                   },
-                  child: const Text('Save', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: const Text(
+                    'Save',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
                 TextButton(
                   onPressed: () => Navigator.pop(context),

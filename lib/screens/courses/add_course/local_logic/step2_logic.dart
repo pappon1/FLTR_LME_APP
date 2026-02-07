@@ -36,7 +36,8 @@ class Step2Logic {
   }
 
   void toggleLock(int index) {
-    state.courseContents[index]['isLocked'] = !(state.courseContents[index]['isLocked'] ?? true);
+    state.courseContents[index]['isLocked'] =
+        !(state.courseContents[index]['isLocked'] ?? true);
     state.updateState();
     draftManager.saveCourseDraft();
   }

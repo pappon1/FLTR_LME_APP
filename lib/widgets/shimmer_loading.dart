@@ -10,7 +10,9 @@ class ShimmerLoading extends StatelessWidget {
     super.key,
     this.width = double.infinity,
     required this.height,
-  }) : shapeBorder = const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(3.0)));
+  }) : shapeBorder = const RoundedRectangleBorder(
+         borderRadius: BorderRadius.all(Radius.circular(3.0)),
+       );
 
   const ShimmerLoading.circular({
     super.key,
@@ -21,7 +23,7 @@ class ShimmerLoading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Shimmer.fromColors(
       baseColor: isDark ? const Color(0xFF2C2C2C) : Colors.grey[300]!,
       highlightColor: isDark ? const Color(0xFF3D3D3D) : Colors.grey[100]!,
@@ -36,7 +38,6 @@ class ShimmerLoading extends StatelessWidget {
       ),
     );
   }
-
 }
 
 class NotificationShimmerItem extends StatelessWidget {
@@ -128,15 +129,13 @@ class StudentShimmerItem extends StatelessWidget {
                 ],
               ),
               SizedBox(height: 6),
-               // WhatsApp Row
+              // WhatsApp Row
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                   _SkeletonBox(height: 11, width: 11, borderRadius: 3),
+                  _SkeletonBox(height: 11, width: 11, borderRadius: 3),
                   SizedBox(width: 8),
-                  Expanded(
-                    child: _SkeletonBox(height: 12, width: 100),
-                  ),
+                  Expanded(child: _SkeletonBox(height: 12, width: 100)),
                 ],
               ),
               SizedBox(height: 10),
@@ -180,8 +179,8 @@ class _SkeletonBox extends StatelessWidget {
   final double borderRadius;
 
   const _SkeletonBox({
-    required this.height, 
-    required this.width, 
+    required this.height,
+    required this.width,
     this.borderRadius = 4.0,
   });
 
@@ -257,7 +256,7 @@ class UploadShimmerItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: Container(
@@ -265,7 +264,11 @@ class UploadShimmerItem extends StatelessWidget {
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
           borderRadius: BorderRadius.circular(3.0),
-          border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.05)
+                : Colors.black.withValues(alpha: 0.05),
+          ),
         ),
         child: const Padding(
           padding: EdgeInsets.all(12.0),
@@ -274,7 +277,7 @@ class UploadShimmerItem extends StatelessWidget {
               Row(
                 children: [
                   // Leading Thumbnail placeholder
-                  ShimmerLoading.rectangular(width: 60, height: 34), 
+                  ShimmerLoading.rectangular(width: 60, height: 34),
                   SizedBox(width: 12),
                   // Content area
                   Expanded(

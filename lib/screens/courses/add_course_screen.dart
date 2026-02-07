@@ -15,7 +15,6 @@ import 'add_course/local_logic/step1_logic.dart';
 import 'add_course/local_logic/step2_logic.dart';
 import 'add_course/backend_service/submit_handler.dart';
 
-
 // UI Components
 import 'add_course/ui/components/course_app_bar.dart';
 import 'add_course/ui/components/uploading_overlay.dart';
@@ -38,7 +37,8 @@ class AddCourseScreen extends StatefulWidget {
   State<AddCourseScreen> createState() => _AddCourseScreenState();
 }
 
-class _AddCourseScreenState extends State<AddCourseScreen> with WidgetsBindingObserver {
+class _AddCourseScreenState extends State<AddCourseScreen>
+    with WidgetsBindingObserver {
   late CourseStateManager state;
   late DraftManager draftManager;
   late ValidationLogic validation;
@@ -55,12 +55,18 @@ class _AddCourseScreenState extends State<AddCourseScreen> with WidgetsBindingOb
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    
+
     state = CourseStateManager();
     draftManager = DraftManager(state);
     validation = ValidationLogic(state);
     contentManager = ContentManager(state, draftManager);
-    navigation = NavigationLogic(state, state.pageController, validation, draftManager, context);
+    navigation = NavigationLogic(
+      state,
+      state.pageController,
+      validation,
+      draftManager,
+      context,
+    );
     step0Logic = Step0Logic(state, draftManager);
     step1Logic = Step1Logic(state, draftManager);
     step2Logic = Step2Logic(state, draftManager);
@@ -78,7 +84,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> with WidgetsBindingOb
       }
       draftManager.saveCourseDraft();
     });
-    
+
     state.descController.addListener(() {
       if (state.descError && state.descController.text.trim().isNotEmpty) {
         state.descError = false;
@@ -96,11 +102,16 @@ class _AddCourseScreenState extends State<AddCourseScreen> with WidgetsBindingOb
       state.calculateFinalPrice();
       _handleFieldChange(() => state.discountError = false);
     });
-    
-    state.whatsappController.addListener(() => _handleFieldChange(() => state.wpGroupLinkError = false));
-    state.websiteUrlController.addListener(() => _handleFieldChange(() => state.bigScreenUrlError = false));
-    state.specialTagController.addListener(() => draftManager.saveCourseDraft());
 
+    state.whatsappController.addListener(
+      () => _handleFieldChange(() => state.wpGroupLinkError = false),
+    );
+    state.websiteUrlController.addListener(
+      () => _handleFieldChange(() => state.bigScreenUrlError = false),
+    );
+    state.specialTagController.addListener(
+      () => draftManager.saveCourseDraft(),
+    );
 
     // Background Service Progress Listener
     _initBackgroundService();
@@ -169,7 +180,9 @@ class _AddCourseScreenState extends State<AddCourseScreen> with WidgetsBindingOb
         MaterialPageRoute(
           builder: (_) => FolderDetailScreen(
             folderName: item['name'] ?? 'Folder',
-            contentList: List<Map<String, dynamic>>.from(item['contents'] ?? []),
+            contentList: List<Map<String, dynamic>>.from(
+              item['contents'] ?? [],
+            ),
           ),
         ),
       );
@@ -178,8 +191,10 @@ class _AddCourseScreenState extends State<AddCourseScreen> with WidgetsBindingOb
         state.courseContents[index]['contents'] = result;
         unawaited(draftManager.saveCourseDraft());
       }
-    } else if (item['type'] == 'video' || item['type'] == 'image' || item['type'] == 'pdf') {
-       _openViewer(item, index);
+    } else if (item['type'] == 'video' ||
+        item['type'] == 'image' ||
+        item['type'] == 'pdf') {
+      _openViewer(item, index);
     }
   }
 
@@ -194,7 +209,8 @@ class _AddCourseScreenState extends State<AddCourseScreen> with WidgetsBindingOb
           .where((c) => c['type'] == 'video')
           .toList();
       final int videoIndex = videoPlaylist.indexWhere(
-          (v) => v['path'] == item['path'] || v['name'] == item['name']);
+        (v) => v['path'] == item['path'] || v['name'] == item['name'],
+      );
       viewer = VideoPlayerScreen(
         playlist: videoPlaylist,
         initialIndex: videoIndex >= 0 ? videoIndex : 0,
@@ -212,8 +228,8 @@ class _AddCourseScreenState extends State<AddCourseScreen> with WidgetsBindingOb
         title: item['name'],
       );
     }
-      Navigator.push(context, MaterialPageRoute(builder: (_) => viewer));
-    }
+    Navigator.push(context, MaterialPageRoute(builder: (_) => viewer));
+  }
 
   void _showAddContentMenu() {
     showModalBottomSheet(
@@ -241,7 +257,7 @@ class _AddCourseScreenState extends State<AddCourseScreen> with WidgetsBindingOb
                 mainAxisSpacing: 20,
                 physics: const NeverScrollableScrollPhysics(),
                 children: [
-                   _buildOptionItem(
+                  _buildOptionItem(
                     Icons.create_new_folder,
                     'Folder',
                     Colors.orange,
@@ -251,19 +267,29 @@ class _AddCourseScreenState extends State<AddCourseScreen> with WidgetsBindingOb
                     Icons.video_library,
                     'Video',
                     Colors.red,
-                    () => contentManager.pickContentFile(context, 'video', ['mp4', 'mkv', 'avi']),
+                    () => contentManager.pickContentFile(context, 'video', [
+                      'mp4',
+                      'mkv',
+                      'avi',
+                    ]),
                   ),
                   _buildOptionItem(
                     Icons.picture_as_pdf,
                     'PDF',
                     Colors.redAccent,
-                    () => contentManager.pickContentFile(context, 'pdf', ['pdf']),
+                    () =>
+                        contentManager.pickContentFile(context, 'pdf', ['pdf']),
                   ),
                   _buildOptionItem(
                     Icons.image,
                     'Image',
                     Colors.purple,
-                    () => contentManager.pickContentFile(context, 'image', ['jpg', 'jpeg', 'png', 'webp']),
+                    () => contentManager.pickContentFile(context, 'image', [
+                      'jpg',
+                      'jpeg',
+                      'png',
+                      'webp',
+                    ]),
                   ),
                   _buildOptionItem(
                     Icons.content_paste,
@@ -319,107 +345,109 @@ class _AddCourseScreenState extends State<AddCourseScreen> with WidgetsBindingOb
       listenable: state,
       builder: (context, _) {
         return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: CourseAppBar(
-        state: state,
-        currentStep: state.currentStep,
-        onCancelSelection: () {
-          state.isSelectionMode = false;
-          state.selectedIndices.clear();
-        },
-        onSelectAll: () {
-          if (state.selectedIndices.length == state.courseContents.length) {
-            state.selectedIndices.clear();
-          } else {
-            state.selectedIndices.clear();
-            for (int i = 0; i < state.courseContents.length; i++) {
-              state.selectedIndices.add(i);
-            }
-          }
-          state.updateState();
-        },
-        onBulkCopy: () => contentManager.handleBulkCopyCut(context, false),
-        onBulkDelete: () => contentManager.handleBulkDelete(context),
-        onAddContent: _showAddContentMenu,
-        onCancelDrag: () {
-          state.isDragModeActive = false;
-        },
-      ),
-      body: Form(
-        key: state.formKey,
-        child: Stack(
-          children: [
-            PageView(
-              controller: state.pageController,
-              physics: const NeverScrollableScrollPhysics(),
-              onPageChanged: (idx) {
-                FocusScope.of(context).unfocus();
-                state.currentStep = idx;
-              },
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          appBar: CourseAppBar(
+            state: state,
+            currentStep: state.currentStep,
+            onCancelSelection: () {
+              state.isSelectionMode = false;
+              state.selectedIndices.clear();
+            },
+            onSelectAll: () {
+              if (state.selectedIndices.length == state.courseContents.length) {
+                state.selectedIndices.clear();
+              } else {
+                state.selectedIndices.clear();
+                for (int i = 0; i < state.courseContents.length; i++) {
+                  state.selectedIndices.add(i);
+                }
+              }
+              state.updateState();
+            },
+            onBulkCopy: () => contentManager.handleBulkCopyCut(context, false),
+            onBulkDelete: () => contentManager.handleBulkDelete(context),
+            onAddContent: _showAddContentMenu,
+            onCancelDrag: () {
+              state.isDragModeActive = false;
+            },
+          ),
+          body: Form(
+            key: state.formKey,
+            child: Stack(
               children: [
-                KeepAliveWrapper(
-                  child: Step0BasicWidget(
-                    state: state,
-                    logic: step0Logic,
-                    navButtons: _buildNavButtons(),
-                    showWarning: _showWarning,
-                  ),
+                PageView(
+                  controller: state.pageController,
+                  physics: const NeverScrollableScrollPhysics(),
+                  onPageChanged: (idx) {
+                    FocusScope.of(context).unfocus();
+                    state.currentStep = idx;
+                  },
+                  children: [
+                    KeepAliveWrapper(
+                      child: Step0BasicWidget(
+                        state: state,
+                        logic: step0Logic,
+                        navButtons: _buildNavButtons(),
+                        showWarning: _showWarning,
+                      ),
+                    ),
+                    KeepAliveWrapper(
+                      child: Step1SetupWidget(
+                        state: state,
+                        logic: step1Logic,
+                        navButtons: _buildNavButtons(),
+                        showWarning: _showWarning,
+                      ),
+                    ),
+                    KeepAliveWrapper(
+                      child: Step2ContentWidget(
+                        state: state,
+                        logic: step2Logic,
+                        contentManager: contentManager,
+                        navButtons: _buildNavButtons(),
+                        onContentTap: _handleContentTap,
+                      ),
+                    ),
+                    KeepAliveWrapper(
+                      child: Step3AdvanceWidget(
+                        state: state,
+                        draftManager: draftManager,
+                        navButtons: _buildNavButtons(),
+                        onEditStep: (step) => navigation.jumpToStep(step),
+                      ),
+                    ),
+                  ],
                 ),
-                KeepAliveWrapper(
-                  child: Step1SetupWidget(
-                    state: state,
-                    logic: step1Logic,
-                    navButtons: _buildNavButtons(),
-                    showWarning: _showWarning,
-                  ),
+                ValueListenableBuilder<double>(
+                  valueListenable: state.totalProgressNotifier,
+                  builder: (context, progress, _) {
+                    return ListenableBuilder(
+                      listenable: state, // For uploadTasks list changes
+                      builder: (context, _) {
+                        if (!state.isUploading) return const SizedBox.shrink();
+                        return CourseUploadingOverlay(
+                          totalProgress: progress,
+                          uploadTasks: state.uploadTasks,
+                          preparationMessage: state.preparationMessage,
+                          preparationProgress: state.preparationProgress,
+                        );
+                      },
+                    );
+                  },
                 ),
-                KeepAliveWrapper(
-                  child: Step2ContentWidget(
-                    state: state,
-                    logic: step2Logic,
-                    contentManager: contentManager,
-                    navButtons: _buildNavButtons(),
-                    onContentTap: _handleContentTap,
-                  ),
-                ),
-                KeepAliveWrapper(
-                  child: Step3AdvanceWidget(
-                    state: state,
-                    draftManager: draftManager,
-                    navButtons: _buildNavButtons(),
-                    onEditStep: (step) => navigation.jumpToStep(step),
-                  ),
+                ListenableBuilder(
+                  listenable: state,
+                  builder: (context, _) {
+                    if (state.isLoading && !state.isUploading) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    return const SizedBox.shrink();
+                  },
                 ),
               ],
             ),
-            ValueListenableBuilder<double>(
-              valueListenable: state.totalProgressNotifier,
-              builder: (context, progress, _) {
-                return ListenableBuilder(
-                  listenable: state, // For uploadTasks list changes
-                  builder: (context, _) {
-                    if (!state.isUploading) return const SizedBox.shrink();
-                    return CourseUploadingOverlay(
-                      totalProgress: progress,
-                      uploadTasks: state.uploadTasks,
-                    );
-                  },
-                );
-              },
-            ),
-            ListenableBuilder(
-              listenable: state,
-              builder: (context, _) {
-                if (state.isLoading && !state.isUploading) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                return const SizedBox.shrink();
-              },
-            ),
-          ],
-        ),
-      ),
-    );
+          ),
+        );
       },
     );
   }
@@ -486,7 +514,12 @@ class _AddCourseScreenState extends State<AddCourseScreen> with WidgetsBindingOb
               Expanded(
                 child: ElevatedButton(
                   onPressed: state.currentStep == 3
-                      ? (state.isLoading ? null : () => submitHandler.submitCourse(context, _showWarning))
+                      ? (state.isLoading
+                            ? null
+                            : () => submitHandler.submitCourse(
+                                context,
+                                _showWarning,
+                              ))
                       : () => navigation.nextStep(_showWarning),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppTheme.primaryColor,
@@ -507,7 +540,9 @@ class _AddCourseScreenState extends State<AddCourseScreen> with WidgetsBindingOb
                       : FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
-                            state.currentStep == 3 ? 'Create Course' : 'Next Step',
+                            state.currentStep == 3
+                                ? 'Create Course'
+                                : 'Next Step',
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 17,

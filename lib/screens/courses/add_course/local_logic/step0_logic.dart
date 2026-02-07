@@ -11,14 +11,19 @@ class Step0Logic {
 
   Step0Logic(this.state, this.draftManager);
 
-  Future<void> pickImage(BuildContext context, Function(String) showWarning) async {
+  Future<void> pickImage(
+    BuildContext context,
+    Function(String) showWarning,
+  ) async {
     try {
       final picker = ImagePicker();
       final pickedFile = await picker.pickImage(source: ImageSource.gallery);
 
       if (pickedFile != null) {
         final File file = File(pickedFile.path);
-        final decodedImage = await decodeImageFromList(await file.readAsBytes());
+        final decodedImage = await decodeImageFromList(
+          await file.readAsBytes(),
+        );
 
         final double ratio = decodedImage.width / decodedImage.height;
         if (ratio < 1.7 || ratio > 1.85) {
@@ -46,30 +51,30 @@ class Step0Logic {
     state.selectedCategory = null;
     state.difficulty = null;
     state.thumbnailImage = null;
-    state.newBatchDurationDays = null;
-    
+
+
     // Dispose and clear controllers
     for (var c in state.highlightControllers) {
       c.dispose();
     }
     state.highlightControllers.clear();
-    
+
     for (var f in state.faqControllers) {
       f['q']?.dispose();
       f['a']?.dispose();
     }
     state.faqControllers.clear();
-    
+
     // Reset error flags
     state.thumbnailError = false;
     state.titleError = false;
     state.descError = false;
     state.categoryError = false;
     state.difficultyError = false;
-    state.batchDurationError = false;
+
     state.highlightsError = false;
     state.faqsError = false;
-    
+
     state.updateState();
     draftManager.saveCourseDraft();
   }

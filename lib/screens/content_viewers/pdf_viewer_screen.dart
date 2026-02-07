@@ -30,12 +30,14 @@ class PDFViewerScreen extends StatefulWidget {
   State<PDFViewerScreen> createState() => _PDFViewerScreenState();
 }
 
-class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProviderStateMixin {
+class _PDFViewerScreenState extends State<PDFViewerScreen>
+    with SingleTickerProviderStateMixin {
   // State Management (Optimized for high-speed scrolling)
   final ValueNotifier<int> _currentPageNotifier = ValueNotifier(0);
   final ValueNotifier<int> _totalPagesNotifier = ValueNotifier(0);
-  final ValueNotifier<PdfTextSearchResult?> _searchResultNotifier = ValueNotifier(null);
-  
+  final ValueNotifier<PdfTextSearchResult?> _searchResultNotifier =
+      ValueNotifier(null);
+
   String? _localPath;
   bool _isLoading = true;
   bool _showControls = true;
@@ -46,7 +48,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
   final TextEditingController _searchController = TextEditingController();
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
-  
+
   String get _storageKey => 'pdf_last_page_${widget.filePath.hashCode}';
 
   @override
@@ -54,7 +56,10 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
     super.initState();
     WakelockPlus.enable();
     _fadeController = AnimationController(vsync: this, duration: 400.ms);
-    _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeIn);
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeIn,
+    );
     _prepareFile();
     _startHideTimer();
   }
@@ -72,10 +77,15 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
     _fadeController.dispose();
     // Memory optimization: Clear temp PDF files
     if (widget.isNetwork && _localPath != null) {
-      unawaited(File(_localPath!).delete().catchError((error) {
-        LoggerService.error('Error deleting local PDF: $error', tag: 'PDF_VIEWER');
-        return File(_localPath!);
-      }));
+      unawaited(
+        File(_localPath!).delete().catchError((error) {
+          LoggerService.error(
+            'Error deleting local PDF: $error',
+            tag: 'PDF_VIEWER',
+          );
+          return File(_localPath!);
+        }),
+      );
     }
     super.dispose();
   }
@@ -102,7 +112,9 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
         final response = await http.get(Uri.parse(widget.filePath));
         if (response.statusCode == 200) {
           final dir = await getTemporaryDirectory();
-          final file = File('${dir.path}/temp_pdf_${widget.filePath.hashCode}.pdf');
+          final file = File(
+            '${dir.path}/temp_pdf_${widget.filePath.hashCode}.pdf',
+          );
           await file.writeAsBytes(response.bodyBytes);
           _localPath = file.path;
         } else {
@@ -120,7 +132,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
         setState(() => _isLoading = false);
         unawaited(_fadeController.forward()); // Smooth fade-in animation
       }
-      
+
       // Jump to last page after delay to ensure viewer is ready
       Future.delayed(const Duration(milliseconds: 500), () {
         if (lastPage > 0) {
@@ -135,7 +147,9 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
   void _handleError(String error) {
     if (mounted) {
       setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $error')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $error')));
     }
   }
 
@@ -143,13 +157,13 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
     // No more setState here! The ValueListenableBuilder will handle UI updates
     // for the match counter and navigation buttons without rebuilding the TextField.
     // Changing the value automatically notifies listeners in ValueNotifier.
-    _searchResultNotifier.value = _searchResultNotifier.value; 
+    _searchResultNotifier.value = _searchResultNotifier.value;
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return PopScope(
       canPop: !_isSearching,
       onPopInvokedWithResult: (didPop, result) {
@@ -162,17 +176,25 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
         body: AnnotatedRegion<SystemUiOverlayStyle>(
           value: SystemUiOverlayStyle(
             statusBarColor: Colors.transparent,
-            statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-            systemNavigationBarColor: isDark ? AppTheme.darkCard : AppTheme.lightCard,
-            systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-            systemNavigationBarDividerColor: isDark ? AppTheme.darkBorder : null,
+            statusBarIconBrightness: isDark
+                ? Brightness.light
+                : Brightness.dark,
+            systemNavigationBarColor: isDark
+                ? AppTheme.darkCard
+                : AppTheme.lightCard,
+            systemNavigationBarIconBrightness: isDark
+                ? Brightness.light
+                : Brightness.dark,
+            systemNavigationBarDividerColor: isDark
+                ? AppTheme.darkBorder
+                : null,
             systemNavigationBarContrastEnforced: true,
           ),
           child: Column(
             children: [
               // Premium Header - Now part of the Column (Linear Layout)
               _buildHeader(isDark),
-              
+
               // PDF Content Area
               Expanded(
                 child: Stack(
@@ -185,45 +207,50 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
                               File(_localPath!),
                               key: _pdfViewerKey,
                               controller: _pdfViewerController,
-                                onPageChanged: (details) {
-                                  _currentPageNotifier.value = details.newPageNumber - 1;
-                                  unawaited(SharedPreferences.getInstance().then((prefs) {
-                                    prefs.setInt(_storageKey, details.newPageNumber - 1);
-                                  }));
-                                },
+                              onPageChanged: (details) {
+                                _currentPageNotifier.value =
+                                    details.newPageNumber - 1;
+                                unawaited(
+                                  SharedPreferences.getInstance().then((prefs) {
+                                    prefs.setInt(
+                                      _storageKey,
+                                      details.newPageNumber - 1,
+                                    );
+                                  }),
+                                );
+                              },
                               onDocumentLoaded: (details) {
-                                _totalPagesNotifier.value = details.document.pages.count;
+                                _totalPagesNotifier.value =
+                                    details.document.pages.count;
                               },
                               onTap: (details) {
                                 FocusManager.instance.primaryFocus?.unfocus();
                                 _toggleControls();
                               },
                               enableDoubleTapZooming: true,
-                              enableTextSelection: false, 
-                              otherSearchTextHighlightColor: Colors.red.withValues(alpha: 0.15),
-                              currentSearchTextHighlightColor: Colors.red.withValues(alpha: 0.4),
+                              enableTextSelection: false,
+                              otherSearchTextHighlightColor: Colors.red
+                                  .withValues(alpha: 0.15),
+                              currentSearchTextHighlightColor: Colors.red
+                                  .withValues(alpha: 0.4),
                               maxZoomLevel: 15.0,
-                              pageSpacing: 2, 
+                              pageSpacing: 2,
                               canShowScrollHead: true,
-                              canShowPaginationDialog: true, 
-                              enableHyperlinkNavigation: false, 
+                              canShowPaginationDialog: true,
+                              enableHyperlinkNavigation: false,
                               pageLayoutMode: PdfPageLayoutMode.continuous,
                               interactionMode: PdfInteractionMode.pan,
                             ),
                           ),
-
-
-                
-                    ],
-                  ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
+      ),
     );
   }
-
 
   Widget _buildLoader() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -284,203 +311,233 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
         decoration: BoxDecoration(
           color: Theme.of(context).canvasColor.withValues(alpha: 0.05),
           borderRadius: BorderRadius.circular(3.0),
-          border: Border.all(color: AppTheme.primaryColor.withValues(alpha: 0.1)),
+          border: Border.all(
+            color: AppTheme.primaryColor.withValues(alpha: 0.1),
+          ),
         ),
         child: Row(
           children: [
-          _buildGlassIconButton(
-            icon: Icons.arrow_back_ios_new_rounded,
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              Navigator.pop(context);
-            },
-            isDark: isDark,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _isSearching 
-                ? Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Live Match Badge (ValueListenable ensures it updates without rebuilding TextField)
-                        ValueListenableBuilder<PdfTextSearchResult?>(
-                          valueListenable: _searchResultNotifier,
-                          builder: (context, result, _) {
-                            if (result == null || result.totalInstanceCount == 0) return const SizedBox();
-                            return Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-                              margin: const EdgeInsets.only(right: 4),
-                              decoration: BoxDecoration(
-                                color: AppTheme.primaryColor,
-                                borderRadius: BorderRadius.circular(3.0),
-                              ),
-                              child: Text(
-                                "${result.currentInstanceIndex}/${result.totalInstanceCount}",
-                                style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w900, color: Colors.white),
-                              ),
-                            );
-                          },
-                        ),
-                        
-                        Expanded(
-                          child: TextField(
-                            controller: _searchController,
-                            autofocus: true,
-                            textAlign: TextAlign.center,
-                            textInputAction: TextInputAction.done,
-                            keyboardType: TextInputType.text,
-                            style: GoogleFonts.inter(
-                              fontSize: 16, 
-                              fontWeight: FontWeight.bold,
-                              color: isDark ? Colors.white : Colors.black87,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: "Search PDF...",
-                              border: InputBorder.none,
-                              hintStyle: GoogleFonts.inter(color: Colors.grey, fontSize: 13),
-                              isDense: true,
-                            ),
-                            onChanged: (text) {
-                              _hideControlsTimer?.cancel();
-                              // Performance: Update search result without full setState rebuild
-                              _searchResultNotifier.value?.removeListener(_onSearchResultChanged);
-                              
-                              if (text.isNotEmpty) {
-                                final result = _pdfViewerController.searchText(text);
-                                result.addListener(_onSearchResultChanged);
-                                _searchResultNotifier.value = result;
-                              } else {
-                                _searchResultNotifier.value?.clear();
-                                _searchResultNotifier.value = null;
-                              }
-                            },
-                            onSubmitted: (_) {
-                              // Keyboard 'Done' action triggers EXIT search
-                              setState(() {
-                                _isSearching = false;
-                                _searchResultNotifier.value?.clear();
-                                _searchResultNotifier.value = null;
-                                _searchController.clear();
-                                FocusScope.of(context).unfocus();
-                              });
+            _buildGlassIconButton(
+              icon: Icons.arrow_back_ios_new_rounded,
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                Navigator.pop(context);
+              },
+              isDark: isDark,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _isSearching
+                  ? Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Live Match Badge (ValueListenable ensures it updates without rebuilding TextField)
+                          ValueListenableBuilder<PdfTextSearchResult?>(
+                            valueListenable: _searchResultNotifier,
+                            builder: (context, result, _) {
+                              if (result == null ||
+                                  result.totalInstanceCount == 0)
+                                return const SizedBox();
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 3,
+                                ),
+                                margin: const EdgeInsets.only(right: 4),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primaryColor,
+                                  borderRadius: BorderRadius.circular(3.0),
+                                ),
+                                child: Text(
+                                  "${result.currentInstanceIndex}/${result.totalInstanceCount}",
+                                  style: GoogleFonts.inter(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w900,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              );
                             },
                           ),
-                        ),
-                      ],
+
+                          Expanded(
+                            child: TextField(
+                              controller: _searchController,
+                              autofocus: true,
+                              textAlign: TextAlign.center,
+                              textInputAction: TextInputAction.done,
+                              keyboardType: TextInputType.text,
+                              style: GoogleFonts.inter(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? Colors.white : Colors.black87,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: "Search PDF...",
+                                border: InputBorder.none,
+                                hintStyle: GoogleFonts.inter(
+                                  color: Colors.grey,
+                                  fontSize: 13,
+                                ),
+                                isDense: true,
+                              ),
+                              onChanged: (text) {
+                                _hideControlsTimer?.cancel();
+                                // Performance: Update search result without full setState rebuild
+                                _searchResultNotifier.value?.removeListener(
+                                  _onSearchResultChanged,
+                                );
+
+                                if (text.isNotEmpty) {
+                                  final result = _pdfViewerController
+                                      .searchText(text);
+                                  result.addListener(_onSearchResultChanged);
+                                  _searchResultNotifier.value = result;
+                                } else {
+                                  _searchResultNotifier.value?.clear();
+                                  _searchResultNotifier.value = null;
+                                }
+                              },
+                              onSubmitted: (_) {
+                                // Keyboard 'Done' action triggers EXIT search
+                                setState(() {
+                                  _isSearching = false;
+                                  _searchResultNotifier.value?.clear();
+                                  _searchResultNotifier.value = null;
+                                  _searchController.clear();
+                                  FocusScope.of(context).unfocus();
+                                });
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : Text(
+                      widget.title ?? "Reading...",
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      textAlign: TextAlign.center,
                     ),
-                  )
-                : Text(
-                    widget.title ?? "Reading...",
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                  ),
-          ),
-          
-          // Navigation & Page Counter
-          if (!_isSearching) ...[
-            ValueListenableBuilder2<int, int>(
-              first: _currentPageNotifier,
-              second: _totalPagesNotifier,
-              builder: (context, currentPage, totalPages, _) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryColor,
-                    borderRadius: BorderRadius.circular(3.0),
-                  ),
-                  child: Text(
-                    "${currentPage + 1} / $totalPages",
-                    style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.bold, 
-                      fontSize: 12,
-                      color: Colors.white,
-                    ),
-                  ),
-                );
-              },
             ),
-            const SizedBox(width: 8),
-            ValueListenableBuilder2<int, int>(
-              first: _currentPageNotifier,
-              second: _totalPagesNotifier,
-              builder: (context, currentPage, totalPages, _) {
-                return Row(
-                  children: [
-                    _buildGlassIconButton(
-                      icon: Icons.chevron_left_rounded,
-                      onPressed: currentPage > 0 ? () {
-                        HapticFeedback.selectionClick();
-                        _pdfViewerController.previousPage();
-                      } : null,
-                      isDark: isDark,
+
+            // Navigation & Page Counter
+            if (!_isSearching) ...[
+              ValueListenableBuilder2<int, int>(
+                first: _currentPageNotifier,
+                second: _totalPagesNotifier,
+                builder: (context, currentPage, totalPages, _) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
                     ),
-                    const SizedBox(width: 6),
-                    _buildGlassIconButton(
-                      icon: Icons.chevron_right_rounded,
-                      onPressed: currentPage < (totalPages - 1) ? () {
-                        HapticFeedback.selectionClick();
-                        _pdfViewerController.nextPage();
-                      } : null,
-                      isDark: isDark,
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryColor,
+                      borderRadius: BorderRadius.circular(3.0),
                     ),
-                  ],
-                );
+                    child: Text(
+                      "${currentPage + 1} / $totalPages",
+                      style: GoogleFonts.outfit(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        color: Colors.white,
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 8),
+              ValueListenableBuilder2<int, int>(
+                first: _currentPageNotifier,
+                second: _totalPagesNotifier,
+                builder: (context, currentPage, totalPages, _) {
+                  return Row(
+                    children: [
+                      _buildGlassIconButton(
+                        icon: Icons.chevron_left_rounded,
+                        onPressed: currentPage > 0
+                            ? () {
+                                HapticFeedback.selectionClick();
+                                _pdfViewerController.previousPage();
+                              }
+                            : null,
+                        isDark: isDark,
+                      ),
+                      const SizedBox(width: 6),
+                      _buildGlassIconButton(
+                        icon: Icons.chevron_right_rounded,
+                        onPressed: currentPage < (totalPages - 1)
+                            ? () {
+                                HapticFeedback.selectionClick();
+                                _pdfViewerController.nextPage();
+                              }
+                            : null,
+                        isDark: isDark,
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ] else ...[
+              // Wrap in Builder to reactive to search result instance changes
+              ValueListenableBuilder<PdfTextSearchResult?>(
+                valueListenable: _searchResultNotifier,
+                builder: (context, result, _) {
+                  return Row(
+                    children: [
+                      _buildGlassIconButton(
+                        icon: Icons.keyboard_arrow_up_rounded,
+                        onPressed: result != null && result.hasResult
+                            ? () {
+                                result.previousInstance();
+                                _hideControlsTimer?.cancel();
+                              }
+                            : null,
+                        isDark: isDark,
+                      ),
+                      const SizedBox(width: 6),
+                      _buildGlassIconButton(
+                        icon: Icons.keyboard_arrow_down_rounded,
+                        onPressed: result != null && result.hasResult
+                            ? () {
+                                result.nextInstance();
+                                _hideControlsTimer?.cancel();
+                              }
+                            : null,
+                        isDark: isDark,
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ],
+
+            const SizedBox(width: 6),
+
+            _buildGlassIconButton(
+              icon: _isSearching ? Icons.close_rounded : Icons.search_rounded,
+              onPressed: () {
+                HapticFeedback.mediumImpact();
+                if (_isSearching) {
+                  _closeSearch();
+                } else {
+                  setState(() => _isSearching = true);
+                }
               },
-            ),
-          ]
-          else ...[
-            // Wrap in Builder to reactive to search result instance changes
-            ValueListenableBuilder<PdfTextSearchResult?>(
-              valueListenable: _searchResultNotifier,
-              builder: (context, result, _) {
-                return Row(
-                  children: [
-                    _buildGlassIconButton(
-                      icon: Icons.keyboard_arrow_up_rounded,
-                      onPressed: result != null && result.hasResult ? () {
-                        result.previousInstance();
-                        _hideControlsTimer?.cancel();
-                      } : null,
-                      isDark: isDark,
-                    ),
-                    const SizedBox(width: 6),
-                    _buildGlassIconButton(
-                      icon: Icons.keyboard_arrow_down_rounded,
-                      onPressed: result != null && result.hasResult ? () {
-                        result.nextInstance();
-                        _hideControlsTimer?.cancel();
-                      } : null,
-                      isDark: isDark,
-                    ),
-                  ],
-                );
-              },
+              isDark: isDark,
             ),
           ],
-          
-          const SizedBox(width: 6),
-          
-          _buildGlassIconButton(
-            icon: _isSearching ? Icons.close_rounded : Icons.search_rounded,
-            onPressed: () {
-              HapticFeedback.mediumImpact();
-              if (_isSearching) {
-                _closeSearch();
-              } else {
-                setState(() => _isSearching = true);
-              }
-            },
-            isDark: isDark,
-          ),
-        ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   void _closeSearch() {
     setState(() {
@@ -493,7 +550,11 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
     });
   }
 
-  Widget _buildGlassIconButton({required IconData icon, required VoidCallback? onPressed, required bool isDark}) {
+  Widget _buildGlassIconButton({
+    required IconData icon,
+    required VoidCallback? onPressed,
+    required bool isDark,
+  }) {
     return GestureDetector(
       onTap: onPressed,
       child: AnimatedContainer(
@@ -501,7 +562,9 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           // Solid Theme Card look
-          color: Theme.of(context).cardColor.withValues(alpha: onPressed == null ? 0.5 : 1.0),
+          color: Theme.of(
+            context,
+          ).cardColor.withValues(alpha: onPressed == null ? 0.5 : 1.0),
           borderRadius: BorderRadius.circular(3.0),
           border: Border.all(
             color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
@@ -517,14 +580,15 @@ class _PDFViewerScreenState extends State<PDFViewerScreen> with SingleTickerProv
           ],
         ),
         child: Icon(
-          icon, 
-          size: 20, 
-          color: Theme.of(context).iconTheme.color?.withValues(alpha: onPressed == null ? 0.3 : 1.0)
+          icon,
+          size: 20,
+          color: Theme.of(
+            context,
+          ).iconTheme.color?.withValues(alpha: onPressed == null ? 0.3 : 1.0),
         ),
       ),
     );
   }
-
 }
 
 /// A helper class to listen to two ValueListenables simultaneously.
@@ -544,11 +608,10 @@ class ValueListenableBuilder2<A, B> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ValueListenableBuilder<A>(
-        valueListenable: first,
-        builder: (_, a, _ ) => ValueListenableBuilder<B>(
-          valueListenable: second,
-          builder: (context, b, _ ) => builder(context, a, b, child),
-        ),
-      );
+    valueListenable: first,
+    builder: (_, a, _) => ValueListenableBuilder<B>(
+      valueListenable: second,
+      builder: (context, b, _) => builder(context, a, b, child),
+    ),
+  );
 }
-

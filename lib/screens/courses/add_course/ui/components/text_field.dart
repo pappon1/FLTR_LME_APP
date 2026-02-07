@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Added for TextInputFormatter
 import '../../../../../utils/app_theme.dart';
 import '../ui_constants.dart';
 
@@ -18,6 +19,7 @@ class CustomTextField extends StatelessWidget {
   final bool hasError;
   final double? verticalPadding;
   final Widget? suffixWidget;
+  final List<TextInputFormatter>? inputFormatters; // Added
 
   const CustomTextField({
     super.key,
@@ -36,6 +38,7 @@ class CustomTextField extends StatelessWidget {
     this.hasError = false,
     this.verticalPadding,
     this.suffixWidget,
+    this.inputFormatters, // Added to constructor
   });
 
   @override
@@ -50,6 +53,7 @@ class CustomTextField extends StatelessWidget {
         maxLength: maxLength,
         readOnly: readOnly,
         onChanged: onChanged,
+        inputFormatters: inputFormatters, // Passed to TextFormField
         textAlignVertical: alignTop
             ? TextAlignVertical.top
             : TextAlignVertical.center,
@@ -72,20 +76,20 @@ class CustomTextField extends StatelessWidget {
           alignLabelWithHint: alignTop,
           prefixIcon: icon != null
               ? (alignTop
-                  ? Column(
-                      mainAxisAlignment: MainAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 12,
+                    ? Column(
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 12,
+                            ),
+                            child: Icon(icon, color: Colors.grey),
                           ),
-                          child: Icon(icon, color: Colors.grey),
-                        ),
-                      ],
-                    )
-                  : Icon(icon, color: Colors.grey))
+                        ],
+                      )
+                    : Icon(icon, color: Colors.grey))
               : null,
           contentPadding: EdgeInsets.symmetric(
             vertical: verticalPadding ?? UIConstants.inputVerticalPadding,
@@ -112,7 +116,9 @@ class CustomTextField extends StatelessWidget {
             borderRadius: BorderRadius.circular(UIConstants.globalRadius),
           ),
           filled: true,
-          fillColor: AppTheme.primaryColor.withValues(alpha: UIConstants.fillOpacity),
+          fillColor: AppTheme.primaryColor.withValues(
+            alpha: UIConstants.fillOpacity,
+          ),
           counterText: maxLength != null ? null : '',
         ),
       ),

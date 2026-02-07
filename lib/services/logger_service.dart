@@ -2,7 +2,12 @@ import 'dart:developer' as developer;
 import 'package:flutter/foundation.dart';
 
 class LoggerService {
-  static void log(String message, {String? name, Object? error, StackTrace? stackTrace}) {
+  static void log(
+    String message, {
+    String? name,
+    Object? error,
+    StackTrace? stackTrace,
+  }) {
     if (kDebugMode) {
       developer.log(
         message,
@@ -26,7 +31,17 @@ class LoggerService {
     log('⚠️ $message', name: tag ?? 'WARNING', error: error);
   }
 
-  static void error(String message, {String? tag, Object? error, StackTrace? stackTrace}) {
-    log('❌ $message', name: tag ?? 'ERROR', error: error, stackTrace: stackTrace);
+  static void error(
+    String message, {
+    String? tag,
+    Object? error,
+    StackTrace? stackTrace,
+  }) {
+    log(
+      '❌ $message',
+      name: tag ?? 'ERROR',
+      error: error,
+      stackTrace: stackTrace,
+    );
   }
 }

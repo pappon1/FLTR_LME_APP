@@ -1,4 +1,3 @@
-
 class EnrollmentDetail {
   final String enrollmentId;
   final String courseId;

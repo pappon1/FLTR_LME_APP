@@ -58,10 +58,10 @@ class ContentManager {
       state.updateState();
 
       if (type == 'video') {
-         // Background scan for metadata
-         unawaited(_processVideos(newItems));
+        // Background scan for metadata
+        unawaited(_processVideos(newItems));
       }
-      
+
       unawaited(draftManager.saveCourseDraft());
     }
   }
@@ -72,7 +72,9 @@ class ContentManager {
         final duration = await _getVideoDuration(item['path']);
         if (duration > 0) {
           // Find the item in the list and update it
-          final index = state.courseContents.indexWhere((e) => e['path'] == item['path']);
+          final index = state.courseContents.indexWhere(
+            (e) => e['path'] == item['path'],
+          );
           if (index != -1) {
             state.courseContents[index]['duration'] = duration;
             state.updateState();
@@ -88,7 +90,7 @@ class ContentManager {
     try {
       final completer = Completer<void>();
       late final StreamSubscription sub;
-      
+
       sub = player.stream.duration.listen((d) {
         if (d.inSeconds > 0) {
           if (!completer.isCompleted) completer.complete();
@@ -96,12 +98,15 @@ class ContentManager {
       });
 
       await player.open(Media(path), play: false);
-      await completer.future.timeout(const Duration(seconds: 5), onTimeout: () {});
-      
+      await completer.future.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {},
+      );
+
       final dur = player.state.duration;
       await sub.cancel();
       await player.dispose();
-      
+
       return dur.inSeconds;
     } catch (e) {
       await player.dispose();
@@ -111,23 +116,25 @@ class ContentManager {
 
   void pasteContent(BuildContext context) {
     if (ContentClipboard.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Clipboard is empty')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Clipboard is empty')));
       return;
     }
 
     final List<Map<String, dynamic>> itemsToPaste = [];
     final List<String> skippedNames = [];
-    final Set<String> existingNames =
-        state.courseContents.map((e) => e['name'].toString()).toSet();
+    final Set<String> existingNames = state.courseContents
+        .map((e) => e['name'].toString())
+        .toSet();
 
     for (var item in ContentClipboard.items!) {
       if (existingNames.contains(item['name'])) {
         skippedNames.add(item['name']);
       } else {
         itemsToPaste.add(
-            Map<String, dynamic>.from(jsonDecode(jsonEncode(item))));
+          Map<String, dynamic>.from(jsonDecode(jsonEncode(item))),
+        );
       }
     }
 
@@ -135,7 +142,8 @@ class ContentManager {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-              'Conflict: "${skippedNames.join(', ')}" already exists in this root.'),
+            'Conflict: "${skippedNames.join(', ')}" already exists in this root.',
+          ),
           backgroundColor: Colors.red.shade700,
         ),
       );
@@ -152,9 +160,7 @@ class ContentManager {
     unawaited(draftManager.saveCourseDraft());
 
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${ContentClipboard.items!.length} items pasted'),
-      ),
+      SnackBar(content: Text('${ContentClipboard.items!.length} items pasted')),
     );
   }
 
@@ -164,7 +170,8 @@ class ContentManager {
       builder: (ctx) => AlertDialog(
         title: const Text('Remove Content'),
         content: Text(
-            'Are you sure you want to remove "${state.courseContents[index]['name']}"?'),
+          'Are you sure you want to remove "${state.courseContents[index]['name']}"?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -209,7 +216,9 @@ class ContentManager {
           decoration: InputDecoration(
             labelText: 'Folder Name',
             counterText: "",
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(3.0)),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(3.0),
+            ),
             filled: true,
           ),
         ),
@@ -236,7 +245,9 @@ class ContentManager {
             },
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(3.0),
+              ),
             ),
             child: const Text('Create'),
           ),
@@ -273,7 +284,8 @@ class ContentManager {
 
               if (isCut) {
                 ContentClipboard.cut(itemsToCopy);
-                final List<int> sortedIndices = state.selectedIndices.toList()..sort((a, b) => b.compareTo(a));
+                final List<int> sortedIndices = state.selectedIndices.toList()
+                  ..sort((a, b) => b.compareTo(a));
                 for (var index in sortedIndices) {
                   state.courseContents.removeAt(index);
                 }
@@ -288,7 +300,11 @@ class ContentManager {
 
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('${itemsToCopy.length} items ${isCut ? 'cut' : 'copied'}')),
+                SnackBar(
+                  content: Text(
+                    '${itemsToCopy.length} items ${isCut ? 'cut' : 'copied'}',
+                  ),
+                ),
               );
             },
             child: Text(isCut ? 'Cut' : 'Copy'),
@@ -305,9 +321,14 @@ class ContentManager {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text('Delete ${state.selectedIndices.length} items?'),
-        content: const Text('Are you sure you want to delete all selected items?'),
+        content: const Text(
+          'Are you sure you want to delete all selected items?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             child: const Text('Delete', style: TextStyle(color: Colors.red)),
@@ -317,7 +338,8 @@ class ContentManager {
     );
 
     if (confirm == true) {
-      final List<int> sortedIndices = state.selectedIndices.toList()..sort((a, b) => b.compareTo(a));
+      final List<int> sortedIndices = state.selectedIndices.toList()
+        ..sort((a, b) => b.compareTo(a));
       for (var index in sortedIndices) {
         // Free up cache space logic from original
         final item = state.courseContents[index];
@@ -364,7 +386,8 @@ class ContentManager {
           ElevatedButton(
             onPressed: () {
               if (renameController.text.trim().isNotEmpty) {
-                state.courseContents[index]['name'] = renameController.text.trim();
+                state.courseContents[index]['name'] = renameController.text
+                    .trim();
                 state.updateState();
                 unawaited(draftManager.saveCourseDraft());
                 Navigator.pop(ctx);
@@ -449,7 +472,9 @@ class ContentManager {
                       decoration: BoxDecoration(
                         color: Colors.red.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(3.0),
-                        border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
+                        border: Border.all(
+                          color: Colors.red.withValues(alpha: 0.5),
+                        ),
                       ),
                       child: Row(
                         children: [

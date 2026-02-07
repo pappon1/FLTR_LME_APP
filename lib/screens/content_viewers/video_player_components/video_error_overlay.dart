@@ -28,7 +28,11 @@ class VideoErrorOverlay extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               "Playback Error",
-              style: TextStyle(color: titleColor, fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: titleColor,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 8),
             Text(
@@ -44,7 +48,9 @@ class VideoErrorOverlay extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF22C55E),
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(3.0),
+                ),
               ),
             ),
           ],
@@ -53,4 +59,3 @@ class VideoErrorOverlay extends StatelessWidget {
     );
   }
 }
-

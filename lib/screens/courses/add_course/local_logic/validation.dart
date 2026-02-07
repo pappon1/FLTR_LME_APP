@@ -19,7 +19,6 @@ class ValidationLogic {
     state.descError = false;
     state.categoryError = false;
     state.difficultyError = false;
-    state.batchDurationError = false;
     state.highlightsError = false;
     state.faqsError = false;
 
@@ -83,19 +82,10 @@ class ValidationLogic {
       isValid = false;
     }
 
-    // 6. Check Duration
-    if (state.newBatchDurationDays == null) {
-      state.batchDurationError = true;
-      if (isValid) {
-        firstError = 'Please select new badge duration';
-        firstErrorKey = state.batchDurationKey; // Use specific key for duration
-        errorType = 'duration';
-      }
-      isValid = false;
-    }
-
     // 7. Check Highlights
-    final bool hasEmptyHighlight = state.highlightControllers.any((c) => c.text.trim().isEmpty);
+    final bool hasEmptyHighlight = state.highlightControllers.any(
+      (c) => c.text.trim().isEmpty,
+    );
     if (state.highlightControllers.isEmpty || hasEmptyHighlight) {
       state.highlightsError = true;
       if (isValid) {
@@ -107,9 +97,10 @@ class ValidationLogic {
     }
 
     // 8. Check FAQs
-    final bool hasEmptyFaq = state.faqControllers.any((f) =>
-        (f['q']?.text.trim().isEmpty ?? true) ||
-        (f['a']?.text.trim().isEmpty ?? true)
+    final bool hasEmptyFaq = state.faqControllers.any(
+      (f) =>
+          (f['q']?.text.trim().isEmpty ?? true) ||
+          (f['a']?.text.trim().isEmpty ?? true),
     );
     if (state.faqControllers.isEmpty || hasEmptyFaq) {
       state.faqsError = true;
@@ -123,7 +114,7 @@ class ValidationLogic {
 
     if (!isValid) {
       state.updateState();
-      
+
       // Handle focuses
       if (errorType == 'title') {
         state.titleFocus.requestFocus();
@@ -238,7 +229,8 @@ class ValidationLogic {
         // NEW: Validate WhatsApp link format
         state.wpGroupLinkError = true;
         if (isValid) {
-          firstError = 'Invalid WhatsApp Group Link format\nExample: https://chat.whatsapp.com/xxxxx';
+          firstError =
+              'Invalid WhatsApp Group Link format\nExample: https://chat.whatsapp.com/xxxxx';
           firstErrorKey = state.whatsappKey;
         }
         isValid = false;
@@ -277,7 +269,8 @@ class ValidationLogic {
         // NEW: Validate URL format
         state.bigScreenUrlError = true;
         if (isValid) {
-          firstError = 'Invalid URL format\nExample: https://yourwebsite.com/login';
+          firstError =
+              'Invalid URL format\nExample: https://yourwebsite.com/login';
           firstErrorKey = state.bigScreenKey;
         }
         isValid = false;
@@ -286,7 +279,7 @@ class ValidationLogic {
 
     if (!isValid) {
       state.updateState();
-      
+
       if (firstErrorKey != null && firstErrorKey.currentContext != null) {
         Scrollable.ensureVisible(
           firstErrorKey.currentContext!,
@@ -301,7 +294,7 @@ class ValidationLogic {
           curve: Curves.easeOut,
         );
       }
-      
+
       if (onValidationError != null && firstError != null) {
         onValidationError(firstError);
       }
@@ -325,39 +318,39 @@ class ValidationLogic {
   }
 
   // ==================== URL VALIDATION HELPERS ====================
-  
+
   /// Validates WhatsApp Group invite link format
   /// Accepts: https://chat.whatsapp.com/XXXXX or http://chat.whatsapp.com/XXXXX
   bool _isValidWhatsAppGroupLink(String link) {
     if (link.isEmpty) return false;
-    
+
     // WhatsApp group link pattern
     final whatsappPattern = RegExp(
       r'^https?://chat\.whatsapp\.com/[a-zA-Z0-9]+$',
       caseSensitive: false,
     );
-    
+
     return whatsappPattern.hasMatch(link);
   }
-  
+
   /// Validates general web URL format
   /// Accepts: http://example.com, https://example.com, https://www.example.com/path
   bool _isValidWebUrl(String url) {
     if (url.isEmpty) return false;
-    
+
     try {
       final uri = Uri.parse(url);
-      
+
       // Must have http or https scheme
       if (uri.scheme != 'http' && uri.scheme != 'https') {
         return false;
       }
-      
+
       // Must have a valid host
       if (uri.host.isEmpty || !uri.host.contains('.')) {
         return false;
       }
-      
+
       return true;
     } catch (e) {
       return false;

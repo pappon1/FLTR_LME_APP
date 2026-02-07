@@ -22,18 +22,20 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final userCredential = await _authService.signInWithGoogle();
-      
+
       if (userCredential != null && mounted) {
         // Check if user is admin
         final isAdmin = await _authService.isAdmin();
-        
+
         if (!mounted) return;
-        
+
         if (isAdmin) {
           // Navigate to dashboard
-          unawaited(Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => const HomeScreen()),
-          ));
+          unawaited(
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const HomeScreen()),
+            ),
+          );
         } else {
           // Not an admin - show error
           if (mounted) {
@@ -87,24 +89,24 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   // Logo
                   Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(3.0),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 20,
-                          offset: const Offset(0, 10),
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(3.0),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.1),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.admin_panel_settings_rounded,
-                      size: 80,
-                      color: AppTheme.primaryColor,
-                    ),
-                  )
+                        child: const Icon(
+                          Icons.admin_panel_settings_rounded,
+                          size: 80,
+                          color: AppTheme.primaryColor,
+                        ),
+                      )
                       .animate()
                       .scale(duration: 600.ms, curve: Curves.easeOutBack)
                       .fadeIn(duration: 400.ms),
@@ -113,15 +115,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // Title
                   FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
-                      'Admin Dashboard',
-                      style: AppTheme.heading1(context).copyWith(
-                        color: Colors.white,
-                        fontSize: 32,
-                      ),
-                    ),
-                  )
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          'Admin Dashboard',
+                          style: AppTheme.heading1(
+                            context,
+                          ).copyWith(color: Colors.white, fontSize: 32),
+                        ),
+                      )
                       .animate()
                       .fadeIn(delay: 200.ms, duration: 600.ms)
                       .slideY(begin: 0.3, end: 0),
@@ -130,13 +131,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // Subtitle
                   Text(
-                    'Local Mobile Engineer Official',
-                    style: AppTheme.bodyLarge(context).copyWith(
-                      color: Colors.white.withValues(alpha: 0.9),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  )
+                        'Local Mobile Engineer Official',
+                        style: AppTheme.bodyLarge(
+                          context,
+                        ).copyWith(color: Colors.white.withValues(alpha: 0.9)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      )
                       .animate()
                       .fadeIn(delay: 400.ms, duration: 600.ms)
                       .slideY(begin: 0.3, end: 0),
@@ -147,43 +148,43 @@ class _LoginScreenState extends State<LoginScreen> {
                   _isLoading
                       ? const CircularProgressIndicator(color: Colors.white)
                       : ElevatedButton.icon(
-                          onPressed: _signInWithGoogle,
-                          icon: const FaIcon(
-                            FontAwesomeIcons.google,
-                            size: 20,
-                          ),
-                          label: const FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Text(
-                              'Sign in with Google',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
+                              onPressed: _signInWithGoogle,
+                              icon: const FaIcon(
+                                FontAwesomeIcons.google,
+                                size: 20,
                               ),
+                              label: const FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  'Sign in with Google',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: AppTheme.primaryColor,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 32,
+                                  vertical: 16,
+                                ),
+                                minimumSize: const Size(double.infinity, 56),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(3.0),
+                                ),
+                                elevation: 8,
+                              ),
+                            )
+                            .animate()
+                            .fadeIn(delay: 600.ms, duration: 600.ms)
+                            .slideY(begin: 0.3, end: 0)
+                            .shimmer(
+                              delay: 1000.ms,
+                              duration: 1500.ms,
+                              color: Colors.white.withValues(alpha: 0.3),
                             ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: AppTheme.primaryColor,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 32,
-                              vertical: 16,
-                            ),
-                            minimumSize: const Size(double.infinity, 56),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(3.0),
-                            ),
-                            elevation: 8,
-                          ),
-                        )
-                      .animate()
-                      .fadeIn(delay: 600.ms, duration: 600.ms)
-                      .slideY(begin: 0.3, end: 0)
-                      .shimmer(
-                        delay: 1000.ms,
-                        duration: 1500.ms,
-                        color: Colors.white.withValues(alpha: 0.3),
-                      ),
 
                   const SizedBox(height: 24),
 
@@ -216,21 +217,17 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ],
                     ),
-                  )
-                      .animate()
-                      .fadeIn(delay: 800.ms, duration: 600.ms),
+                  ).animate().fadeIn(delay: 800.ms, duration: 600.ms),
 
                   const SizedBox(height: 40),
 
                   // Footer
                   Text(
                     'Powered by Firebase & Bunny.net CDN',
-                    style: AppTheme.bodySmall(context).copyWith(
-                      color: Colors.white.withValues(alpha: 0.6),
-                    ),
-                  )
-                      .animate()
-                      .fadeIn(delay: 1000.ms, duration: 600.ms),
+                    style: AppTheme.bodySmall(
+                      context,
+                    ).copyWith(color: Colors.white.withValues(alpha: 0.6)),
+                  ).animate().fadeIn(delay: 1000.ms, duration: 600.ms),
                 ],
               ),
             ),
@@ -240,4 +237,3 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-

@@ -22,7 +22,8 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
 
   final _titleController = TextEditingController();
   final _descController = TextEditingController();
-  final _durationController = TextEditingController(); // In minutes, ideally parsed from video
+  final _durationController =
+      TextEditingController(); // In minutes, ideally parsed from video
   final _orderController = TextEditingController(text: '1');
 
   File? _thumbnailFile;
@@ -62,7 +63,9 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
   Future<void> _uploadAndSave() async {
     if (!_formKey.currentState!.validate()) return;
     if (_videoFile == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please select a video file')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please select a video file')),
+      );
       return;
     }
 
@@ -107,7 +110,9 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
         description: _descController.text.trim(),
         videoUrl: videoUrl,
         thumbnailUrl: thumbnailUrl,
-        duration: _durationController.text.trim().isEmpty ? '5:00' : '${_durationController.text.trim()}:00',
+        duration: _durationController.text.trim().isEmpty
+            ? '5:00'
+            : '${_durationController.text.trim()}:00',
         orderIndex: int.tryParse(_orderController.text) ?? 0,
         isFree: _isFree,
         isPublished: true,
@@ -117,12 +122,16 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
       await _firestoreService.addVideo(video);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Video uploaded successfully!')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Video uploaded successfully!')),
+        );
         Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -132,7 +141,9 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const FittedBox(fit: BoxFit.scaleDown, child: Text('Add Video'))),
+      appBar: AppBar(
+        title: const FittedBox(fit: BoxFit.scaleDown, child: Text('Add Video')),
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
@@ -154,13 +165,19 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.video_file, size: 50, color: _videoFile != null ? Colors.green : Colors.grey),
+                      Icon(
+                        Icons.video_file,
+                        size: 50,
+                        color: _videoFile != null ? Colors.green : Colors.grey,
+                      ),
                       const SizedBox(height: 8),
                       Flexible(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 8),
                           child: Text(
-                            _videoFile != null ? _videoFile!.path.split('/').last : 'Tap to select Video',
+                            _videoFile != null
+                                ? _videoFile!.path.split('/').last
+                                : 'Tap to select Video',
                             textAlign: TextAlign.center,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -192,7 +209,9 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
                               )
                             : null,
                       ),
-                      child: _thumbnailFile == null ? const Icon(Icons.image) : null,
+                      child: _thumbnailFile == null
+                          ? const Icon(Icons.image)
+                          : null,
                     ),
                     const SizedBox(width: 16),
                     const Expanded(
@@ -210,17 +229,23 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
               // Fields
               TextFormField(
                 controller: _titleController,
-                decoration: const InputDecoration(labelText: 'Video Title', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Video Title',
+                  border: OutlineInputBorder(),
+                ),
                 validator: (v) => v!.isEmpty ? 'Required' : null,
               ),
               const SizedBox(height: 16),
-              
+
               Row(
                 children: [
                   Expanded(
                     child: TextFormField(
                       controller: _durationController,
-                      decoration: const InputDecoration(labelText: 'Duration (mins)', border: OutlineInputBorder()),
+                      decoration: const InputDecoration(
+                        labelText: 'Duration (mins)',
+                        border: OutlineInputBorder(),
+                      ),
                       keyboardType: TextInputType.number,
                       validator: (v) => v!.isEmpty ? 'Required' : null,
                     ),
@@ -229,14 +254,17 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
                   Expanded(
                     child: TextFormField(
                       controller: _orderController,
-                      decoration: const InputDecoration(labelText: 'Order Index', border: OutlineInputBorder()),
+                      decoration: const InputDecoration(
+                        labelText: 'Order Index',
+                        border: OutlineInputBorder(),
+                      ),
                       keyboardType: TextInputType.number,
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 16),
-              
+
               SwitchListTile(
                 title: const Text('Is this a Free Preview?'),
                 value: _isFree,
@@ -246,7 +274,10 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
 
               TextFormField(
                 controller: _descController,
-                decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Description',
+                  border: OutlineInputBorder(),
+                ),
                 maxLines: 3,
               ),
 
@@ -276,4 +307,3 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
     );
   }
 }
-

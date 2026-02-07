@@ -72,7 +72,9 @@ class VideoGestureOverlay extends StatelessWidget {
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(3.0),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4),
+        ],
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.end,
@@ -87,15 +89,14 @@ class VideoGestureOverlay extends StatelessWidget {
               child: SliderTheme(
                 data: SliderThemeData(
                   trackHeight: 4,
-                  thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 0),
+                  thumbShape: const RoundSliderThumbShape(
+                    enabledThumbRadius: 0,
+                  ),
                   overlayShape: const RoundSliderOverlayShape(overlayRadius: 0),
                   activeTrackColor: activeColor,
                   inactiveTrackColor: contentColor.withValues(alpha: 0.2),
                 ),
-                child: Slider(
-                  value: value.clamp(0.0, 1.0),
-                  onChanged: (v) {},
-                ),
+                child: Slider(value: value.clamp(0.0, 1.0), onChanged: (v) {}),
               ),
             ),
           ),
@@ -104,4 +105,3 @@ class VideoGestureOverlay extends StatelessWidget {
     );
   }
 }
-

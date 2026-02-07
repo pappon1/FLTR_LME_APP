@@ -29,7 +29,9 @@ class PdfUploader extends StatelessWidget {
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(UIConstants.globalRadius),
           border: Border.all(
-            color: Theme.of(context).dividerColor.withValues(alpha: UIConstants.borderOpacity),
+            color: Theme.of(
+              context,
+            ).dividerColor.withValues(alpha: UIConstants.borderOpacity),
             style: BorderStyle.solid,
           ),
         ),
@@ -37,7 +39,11 @@ class PdfUploader extends StatelessWidget {
             ? Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.picture_as_pdf, color: Colors.grey, size: 30),
+                  const Icon(
+                    Icons.picture_as_pdf,
+                    color: Colors.grey,
+                    size: 30,
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     label,
@@ -48,51 +54,66 @@ class PdfUploader extends StatelessWidget {
               )
             : Stack(
                 children: [
-                   Center(
+                  Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const Icon(Icons.picture_as_pdf, color: Colors.red, size: 32),
+                        const Icon(
+                          Icons.picture_as_pdf,
+                          color: Colors.red,
+                          size: 32,
+                        ),
                         const SizedBox(height: 8),
-                         Flexible(
-                           child: Text(
+                        Flexible(
+                          child: Text(
                             file!.path.split('/').last,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 10, color: Colors.grey),
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: Colors.grey,
+                            ),
                           ),
-                         ),
-                         const SizedBox(height: 2),
-                         const Text(
-                           '(Tap to Change)',
-                           style: TextStyle(fontSize: 9, color: Colors.grey),
-                         )
+                        ),
+                        const SizedBox(height: 2),
+                        const Text(
+                          '(Tap to Change)',
+                          style: TextStyle(fontSize: 9, color: Colors.grey),
+                        ),
                       ],
                     ),
                   ),
                   if (onRemove != null)
-                  Positioned(
-                    top: -4,
-                    right: -4,
-                    child: IconButton(
-                      icon: const Icon(Icons.close, color: Colors.red, size: 18),
-                      onPressed: onRemove,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
+                    Positioned(
+                      top: -4,
+                      right: -4,
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.close,
+                          color: Colors.red,
+                          size: 18,
+                        ),
+                        onPressed: onRemove,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                      ),
                     ),
-                  ),
                   if (onView != null)
-                  Positioned(
-                    top: -4,
-                    left: -4,
-                    child: IconButton(
-                      icon: const Icon(Icons.visibility, color: Colors.blue, size: 18),
-                      onPressed: onView,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      tooltip: 'View PDF details',
+                    Positioned(
+                      top: -4,
+                      left: -4,
+                      child: IconButton(
+                        icon: const Icon(
+                          Icons.visibility,
+                          color: Colors.blue,
+                          size: 18,
+                        ),
+                        onPressed: onView,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        tooltip: 'View PDF details',
+                      ),
                     ),
-                  )
                 ],
               ),
       ),

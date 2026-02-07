@@ -10,7 +10,7 @@ class DashboardProvider extends ChangeNotifier {
   int _selectedIndex = 0;
   bool _isLoading = false;
   final FirestoreService _firestoreService = FirestoreService();
-  
+
   DashboardStats _stats = DashboardStats(
     totalCourses: 0,
     totalVideos: 0,
@@ -27,7 +27,7 @@ class DashboardProvider extends ChangeNotifier {
   List<CourseModel> _popularCourses = [];
   final List<StudentModel> _students = [];
   final List<StudentModel> _buyers = [];
-  
+
   // Pagination State for Students
   DocumentSnapshot? _lastStudentDoc;
   DocumentSnapshot? _lastBuyerDoc;
@@ -35,7 +35,7 @@ class DashboardProvider extends ChangeNotifier {
   bool _hasMoreBuyers = true;
   bool _isLoadingMoreStudents = false;
   bool _isLoadingMoreBuyers = false;
-  
+
   StreamSubscription? _coursesSubscription;
   StreamSubscription? _studentsSubscription;
 
@@ -65,7 +65,7 @@ class DashboardProvider extends ChangeNotifier {
   /// Refresh all dashboard data
   Future<void> refreshData() async {
     if (_isLoading) return; // Prevent multiple simultaneous refreshes
-    
+
     _isLoading = true;
     notifyListeners();
 
@@ -79,12 +79,13 @@ class DashboardProvider extends ChangeNotifier {
       await Future.wait([
         _fetchStats(),
         _fetchPopularCourses(),
-        _fetchStudents(silent: true), // Silenced notification since we notify at end
+        _fetchStudents(
+          silent: true,
+        ), // Silenced notification since we notify at end
       ]);
-      
-      // Stream subscription for real-time courses (handled separately)
-      await _fetchCourses(silent: true); 
 
+      // Stream subscription for real-time courses (handled separately)
+      await _fetchCourses(silent: true);
     } catch (e) {
       debugPrint('❌ Error refreshing dashboard: $e');
     } finally {
@@ -131,10 +132,12 @@ class DashboardProvider extends ChangeNotifier {
     }
   }
 
-    Future<void> _fetchCourses({bool silent = false}) async {
+  Future<void> _fetchCourses({bool silent = false}) async {
     try {
       await _coursesSubscription?.cancel();
-      _coursesSubscription = _firestoreService.getCourses().listen((courseList) {
+      _coursesSubscription = _firestoreService.getCourses().listen((
+        courseList,
+      ) {
         _courses.clear();
         _courses.addAll(courseList);
         if (!silent) notifyListeners();
@@ -147,22 +150,29 @@ class DashboardProvider extends ChangeNotifier {
   Future<void> _fetchStudents({bool silent = false}) async {
     try {
       final snapshot = await _firestoreService.getStudentsPaginated(limit: 50);
-      
+
       if (snapshot.docs.isNotEmpty) {
         _lastStudentDoc = snapshot.docs.last;
         _students.clear();
-        _students.addAll(snapshot.docs.map((doc) => StudentModel.fromFirestore(doc)).toList());
+        _students.addAll(
+          snapshot.docs.map((doc) => StudentModel.fromFirestore(doc)).toList(),
+        );
         _hasMoreStudents = snapshot.docs.length == 50;
       } else {
         _hasMoreStudents = false;
       }
 
       // Parallel fetch for buyers
-      final buyerSnap = await _firestoreService.getStudentsPaginated(limit: 50, onlyBuyers: true);
+      final buyerSnap = await _firestoreService.getStudentsPaginated(
+        limit: 50,
+        onlyBuyers: true,
+      );
       if (buyerSnap.docs.isNotEmpty) {
         _lastBuyerDoc = buyerSnap.docs.last;
         _buyers.clear();
-        _buyers.addAll(buyerSnap.docs.map((doc) => StudentModel.fromFirestore(doc)).toList());
+        _buyers.addAll(
+          buyerSnap.docs.map((doc) => StudentModel.fromFirestore(doc)).toList(),
+        );
         _hasMoreBuyers = buyerSnap.docs.length == 50;
       } else {
         _hasMoreBuyers = false;
@@ -182,18 +192,20 @@ class DashboardProvider extends ChangeNotifier {
       if (_isLoadingMoreStudents || !_hasMoreStudents) return;
       _isLoadingMoreStudents = true;
     }
-    
+
     notifyListeners();
 
     try {
       final snapshot = await _firestoreService.getStudentsPaginated(
-        limit: 50, 
+        limit: 50,
         startAfter: onlyBuyers ? _lastBuyerDoc : _lastStudentDoc,
         onlyBuyers: onlyBuyers,
       );
 
       if (snapshot.docs.isNotEmpty) {
-        final newList = snapshot.docs.map((doc) => StudentModel.fromFirestore(doc)).toList();
+        final newList = snapshot.docs
+            .map((doc) => StudentModel.fromFirestore(doc))
+            .toList();
         if (onlyBuyers) {
           _lastBuyerDoc = snapshot.docs.last;
           _buyers.addAll(newList);
@@ -228,7 +240,7 @@ class DashboardProvider extends ChangeNotifier {
     try {
       await _firestoreService.addCourse(course);
       // Stats will update automatically via listeners/refresh
-      await _fetchStats(); 
+      await _fetchStats();
     } catch (e) {
       // print('Error adding course: $e');
       rethrow;

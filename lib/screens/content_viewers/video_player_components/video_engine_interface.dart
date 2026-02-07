@@ -22,6 +22,6 @@ abstract class BaseVideoEngine {
   Duration get duration;
   bool get isPlaying;
   bool get isBuffering;
-  
+
   Widget buildVideoWidget();
 }

@@ -14,7 +14,7 @@ class VideoTray extends StatelessWidget {
   final VoidCallback onInteraction;
 
   final bool isLandscape;
-  
+
   const VideoTray({
     super.key,
     required this.activeTray,
@@ -35,10 +35,14 @@ class VideoTray extends StatelessWidget {
     // Check theme manually since parent resets scaffold color
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final forceDark = isLandscape || isDark;
-    
-    final bgColor = forceDark ? Colors.black.withValues(alpha: 0.95) : Colors.white.withValues(alpha: 0.95);
+
+    final bgColor = forceDark
+        ? Colors.black.withValues(alpha: 0.95)
+        : Colors.white.withValues(alpha: 0.95);
     final borderColor = forceDark ? Colors.white12 : Colors.black12;
-    final closeBg = forceDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05);
+    final closeBg = forceDark
+        ? Colors.white10
+        : Colors.black.withValues(alpha: 0.05);
     final closeIcon = forceDark ? Colors.white : Colors.black87;
 
     return ClipRRect(
@@ -54,13 +58,15 @@ class VideoTray extends StatelessWidget {
               color: bgColor,
               borderRadius: BorderRadius.circular(3.0),
               border: Border.all(color: borderColor),
-              boxShadow: isDark ? [] : [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                )
-              ],
+              boxShadow: isDark
+                  ? []
+                  : [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
             ),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -79,7 +85,10 @@ class VideoTray extends StatelessWidget {
                       onTap: onClose,
                       child: Container(
                         padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(color: closeBg, shape: BoxShape.circle),
+                        decoration: BoxDecoration(
+                          color: closeBg,
+                          shape: BoxShape.circle,
+                        ),
                         child: Icon(Icons.close, color: closeIcon, size: 14),
                       ),
                     ),
@@ -106,7 +115,9 @@ class VideoTray extends StatelessWidget {
               inactiveTrackColor: isDark ? Colors.grey[800] : Colors.grey[300],
               thumbColor: isDark ? Colors.white : Colors.black87,
               trackHeight: 2,
-              thumbShape: RoundSliderThumbShape(enabledThumbRadius: isDraggingSpeedSlider ? 9 : 5),
+              thumbShape: RoundSliderThumbShape(
+                enabledThumbRadius: isDraggingSpeedSlider ? 9 : 5,
+              ),
               overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
             ),
             child: Slider(
@@ -135,16 +146,22 @@ class VideoTray extends StatelessWidget {
               margin: const EdgeInsets.symmetric(horizontal: 4),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: isSelected ? const Color(0xFF22C55E) : Colors.transparent,
+                color: isSelected
+                    ? const Color(0xFF22C55E)
+                    : Colors.transparent,
                 borderRadius: BorderRadius.circular(3.0),
-                border: Border.all(color: isSelected ? Colors.transparent : Colors.grey),
+                border: Border.all(
+                  color: isSelected ? Colors.transparent : Colors.grey,
+                ),
               ),
               child: Text(
                 item,
                 style: TextStyle(
-                  color: isSelected ? Colors.white : (forceDark ? Colors.white : Colors.black87),
+                  color: isSelected
+                      ? Colors.white
+                      : (forceDark ? Colors.white : Colors.black87),
                   fontSize: 11,
-                  fontWeight: FontWeight.w500
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
@@ -172,27 +189,37 @@ class VideoTray extends StatelessWidget {
               style: TextStyle(
                 color: forceDark ? Colors.white : Colors.black87,
                 fontSize: 13,
-                fontWeight: FontWeight.bold
+                fontWeight: FontWeight.bold,
               ),
             ),
-            Icon(Icons.arrow_drop_down, color: forceDark ? Colors.white : Colors.black87, size: 18),
+            Icon(
+              Icons.arrow_drop_down,
+              color: forceDark ? Colors.white : Colors.black87,
+              size: 18,
+            ),
           ],
         ),
       ),
       itemBuilder: (context) => [0.5, 1.0, 1.25, 1.5, 2.0, 3.0]
-          .map((s) => PopupMenuItem<double>(
-                value: s,
-                height: 32,
-                child: Text(
-                  "${s}x",
-                  style: TextStyle(
-                    color: playbackSpeed == s ? const Color(0xFF22C55E) : (forceDark ? Colors.white : Colors.black87),
-                    fontSize: 13,
-                    fontWeight: playbackSpeed == s ? FontWeight.bold : FontWeight.normal,
-                  ),
+          .map(
+            (s) => PopupMenuItem<double>(
+              value: s,
+              height: 32,
+              child: Text(
+                "${s}x",
+                style: TextStyle(
+                  color: playbackSpeed == s
+                      ? const Color(0xFF22C55E)
+                      : (forceDark ? Colors.white : Colors.black87),
+                  fontSize: 13,
+                  fontWeight: playbackSpeed == s
+                      ? FontWeight.bold
+                      : FontWeight.normal,
                 ),
-              )).toList(),
+              ),
+            ),
+          )
+          .toList(),
     );
   }
 }
-

@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:local_mobile_engineer_official/models/course_model.dart';
@@ -32,7 +31,6 @@ class _CourseContentTabState extends State<CourseContentTab> {
     _contents = List<Map<String, dynamic>>.from(widget.course.contents);
   }
 
-
   void _handleContentTap(Map<String, dynamic> item, int index) {
     if (item['type'] == 'folder') {
       Navigator.push(
@@ -40,7 +38,8 @@ class _CourseContentTabState extends State<CourseContentTab> {
         MaterialPageRoute(
           builder: (_) => FolderDetailScreen(
             folderName: item['name'],
-            contentList: (item['contents'] as List?)?.cast<Map<String, dynamic>>() ?? [],
+            contentList:
+                (item['contents'] as List?)?.cast<Map<String, dynamic>>() ?? [],
             isReadOnly: true, // Enable Read-Only
           ),
         ),
@@ -52,24 +51,29 @@ class _CourseContentTabState extends State<CourseContentTab> {
           .map((video) {
             final converted = Map<String, dynamic>.from(video);
             final path = video['path'];
-            
+
             // Convert iframe URL to actual video URL
-            if (path != null && path.toString().contains('iframe.mediadelivery.net')) {
+            if (path != null &&
+                path.toString().contains('iframe.mediadelivery.net')) {
               final videoId = path.toString().split('/').last;
-              converted['path'] = 'https://vz-583681.b-cdn.net/$videoId/playlist.m3u8';
-              
+              converted['path'] =
+                  'https://vz-583681.b-cdn.net/$videoId/playlist.m3u8';
+
               // Add thumbnail if missing
               if (converted['thumbnail'] == null) {
-                converted['thumbnail'] = 'https://vz-583681.b-cdn.net/$videoId/thumbnail.jpg';
+                converted['thumbnail'] =
+                    'https://vz-583681.b-cdn.net/$videoId/thumbnail.jpg';
               }
             }
-            
+
             return converted;
           })
           .toList();
-      
-      final initialIndex = videoList.indexWhere((e) => e['name'] == item['name']);
-      
+
+      final initialIndex = videoList.indexWhere(
+        (e) => e['name'] == item['name'],
+      );
+
       Navigator.push(
         context,
         MaterialPageRoute(
@@ -115,7 +119,11 @@ class _CourseContentTabState extends State<CourseContentTab> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.folder_open, size: 64, color: Colors.grey.withValues(alpha: 0.5)),
+            Icon(
+              Icons.folder_open,
+              size: 64,
+              color: Colors.grey.withValues(alpha: 0.5),
+            ),
             const SizedBox(height: 16),
             Text(
               "No content available for this course.",
@@ -131,29 +139,31 @@ class _CourseContentTabState extends State<CourseContentTab> {
       slivers: [
         // Using explicit padding instead of SliverOverlapInjector due to pinned header issue
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 175, 16, 80), // Increased to 175 to clear AppBar+TabBar
+          padding: const EdgeInsets.fromLTRB(
+            16,
+            175,
+            16,
+            80,
+          ), // Increased to 175 to clear AppBar+TabBar
           sliver: SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final item = _contents[index];
-                return CourseContentListItem(
-                  item: item,
-                  index: index,
-                  isSelected: false,
-                  isSelectionMode: false,
-                  isDragMode: false,
-                  onTap: () => _handleContentTap(item, index),
-                  onToggleSelection: () {},
-                  onEnterSelectionMode: () {},
-                  onStartHold: () {},
-                  onCancelHold: () {},
-                  onRename: () {},
-                  onRemove: () {},
-                  isReadOnly: true,
-                );
-              },
-              childCount: _contents.length,
-            ),
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final item = _contents[index];
+              return CourseContentListItem(
+                item: item,
+                index: index,
+                isSelected: false,
+                isSelectionMode: false,
+                isDragMode: false,
+                onTap: () => _handleContentTap(item, index),
+                onToggleSelection: () {},
+                onEnterSelectionMode: () {},
+                onStartHold: () {},
+                onCancelHold: () {},
+                onRename: () {},
+                onRemove: () {},
+                isReadOnly: true,
+              );
+            }, childCount: _contents.length),
           ),
         ),
       ],

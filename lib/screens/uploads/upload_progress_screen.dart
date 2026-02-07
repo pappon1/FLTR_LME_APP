@@ -20,14 +20,14 @@ class UploadProgressScreen extends StatefulWidget {
 class _UploadProgressScreenState extends State<UploadProgressScreen> {
   List<Map<String, dynamic>> _queue = [];
   bool _isLoading = true;
-  bool _isPaused = false; 
+  bool _isPaused = false;
   bool _isManualRefreshing = false;
   bool _isSelectionMode = false;
   final Set<String> _selectedTaskIds = {};
   Timer? _holdTimer;
   StreamSubscription? _statusSubscription;
   final Map<String, DateTime> _lastManualUpdates = {};
-  
+
   // UI State (Permanent Values)
   final double _cardCornerRadius = 3.0;
   final double _cardVerticalPadding = 2.0;
@@ -56,7 +56,6 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
     }
   }
 
-
   @override
   void dispose() {
     _holdTimer?.cancel();
@@ -73,16 +72,16 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
       _isLoading = true;
       _isManualRefreshing = true;
     });
-    
+
     // 1. Ask service for update
     _refreshStatus();
-    
+
     // 2. Also load from SharedPreferences for safety
     await _loadInitialState();
-    
+
     // FORCE shimmer to stay for 1.2s for a premium feel
     await Future.delayed(const Duration(milliseconds: 1200));
-    
+
     if (mounted) {
       setState(() {
         _isLoading = false;
@@ -91,23 +90,26 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
     }
   }
 
-
   Future<void> _loadInitialState() async {
     final prefs = await SharedPreferences.getInstance();
     final String? queueJson = prefs.getString('upload_queue_v1');
-    if (queueJson != null && mounted) {
+    final bool isPaused = prefs.getBool('service_state_paused') ?? false;
+
+    if (mounted) {
       setState(() {
-        _queue = List<Map<String, dynamic>>.from(jsonDecode(queueJson));
+        if (queueJson != null) {
+          _queue = List<Map<String, dynamic>>.from(jsonDecode(queueJson));
+        }
+        _isPaused = isPaused;
       });
     }
   }
 
-
-
-   void _setupListener() {
-    _statusSubscription = FlutterBackgroundService().on('update').listen((event) {
+  void _setupListener() {
+    _statusSubscription = FlutterBackgroundService().on('update').listen((
+      event,
+    ) {
       if (mounted && event != null) {
-
         setState(() {
           if (event['queue'] != null) {
             final List<dynamic> incomingQueue = event['queue'];
@@ -117,22 +119,27 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
             _queue = incomingQueue.map((t) {
               final taskId = t['taskId'] ?? t['id'];
               final taskMap = Map<String, dynamic>.from(t);
-              
+
               if (taskId != null && _lastManualUpdates.containsKey(taskId)) {
                 final diff = now.difference(_lastManualUpdates[taskId]!);
                 if (diff.inMilliseconds < 2500) {
-                   // Keep the local 'paused' state, ignore service for a moment
-                   final localTask = _queue.firstWhere((lt) => (lt['taskId'] ?? lt['id']) == taskId, orElse: () => {});
-                   if (localTask.isNotEmpty) {
-                      taskMap['paused'] = localTask['paused'];
-                      // Also keep the local status if it was just resumed from failed
-                      if (localTask['paused'] == false && localTask['status'] == 'pending' && t['status'] == 'failed') {
-                         taskMap['status'] = 'pending';
-                      }
-                   }
+                  // Keep the local 'paused' state, ignore service for a moment
+                  final localTask = _queue.firstWhere(
+                    (lt) => (lt['taskId'] ?? lt['id']) == taskId,
+                    orElse: () => {},
+                  );
+                  if (localTask.isNotEmpty) {
+                    taskMap['paused'] = localTask['paused'];
+                    // Also keep the local status if it was just resumed from failed
+                    if (localTask['paused'] == false &&
+                        localTask['status'] == 'pending' &&
+                        t['status'] == 'failed') {
+                      taskMap['status'] = 'pending';
+                    }
+                  }
                 } else {
-                   // Clean up map if too old
-                   _lastManualUpdates.remove(taskId);
+                  // Clean up map if too old
+                  _lastManualUpdates.remove(taskId);
                 }
               }
               return taskMap;
@@ -151,7 +158,7 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
     // Heartbeat Monitor removed
 
     FlutterBackgroundService().on('task_completed').listen((event) {
-       // Optional: Trigger specific animations
+      // Optional: Trigger specific animations
     });
   }
 
@@ -171,44 +178,55 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
 
   void _deleteSelectedTasks() {
     if (_selectedTaskIds.isEmpty) return;
-    
+
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
         title: Text('Delete ${_selectedTaskIds.length} Tasks?'),
-        content: const Text('This will permanently delete the selected files from the server and local storage. This cannot be undone.'),
+        content: const Text(
+          'This will permanently delete the selected files from the server and local storage. This cannot be undone.',
+        ),
         actions: [
-           TextButton(
-             onPressed: () {
-                final service = FlutterBackgroundService();
-                final idsToDelete = List<String>.from(_selectedTaskIds);
-                
-                service.startService().then((_) {
-                  for (final id in idsToDelete) {
-                    service.invoke('delete_task', {'taskId': id});
-                  }
-                });
+          TextButton(
+            onPressed: () {
+              final service = FlutterBackgroundService();
+              final idsToDelete = List<String>.from(_selectedTaskIds);
 
-                setState(() {
-                  _queue.removeWhere((t) => idsToDelete.contains(t['taskId'] ?? t['id']));
-                  _isSelectionMode = false;
-                  _selectedTaskIds.clear();
-                });
+              service.startService().then((_) {
+                for (final id in idsToDelete) {
+                  service.invoke('delete_task', {'taskId': id});
+                }
+              });
 
-                Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('${idsToDelete.length} tasks removed'), backgroundColor: Colors.red, duration: const Duration(seconds: 3)),
+              setState(() {
+                _queue.removeWhere(
+                  (t) => idsToDelete.contains(t['taskId'] ?? t['id']),
                 );
-             },
-             child: const Text('Delete Permanently', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-           ),
-           TextButton(
-             onPressed: () => Navigator.pop(ctx),
-             child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-           ),
+                _isSelectionMode = false;
+                _selectedTaskIds.clear();
+              });
+
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('${idsToDelete.length} tasks removed'),
+                  backgroundColor: Colors.red,
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+            },
+            child: const Text(
+              'Delete Permanently',
+              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
         ],
-      )
+      ),
     );
   }
 
@@ -231,17 +249,19 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
     () async {
       if (!await service.isRunning()) {
         await service.startService();
-        await Future.delayed(const Duration(milliseconds: 500)); 
+        await Future.delayed(const Duration(milliseconds: 500));
       }
       service.invoke(becomingPaused ? 'pause' : 'resume');
     }();
-    
+
     // 3. SNACKBAR
     if (mounted) {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(becomingPaused ? 'Queue Paused ⏸️' : 'Queue Resumed ▶️'), 
+          content: Text(
+            becomingPaused ? 'Queue Paused ⏸️' : 'Queue Resumed ▶️',
+          ),
           backgroundColor: becomingPaused ? Colors.orange : Colors.green,
           duration: const Duration(milliseconds: 800),
         ),
@@ -249,79 +269,41 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
     }
   }
 
-  void _cancelAll() async {
-    final service = FlutterBackgroundService();
-    final isRunning = await service.isRunning();
-    
-    if (!isRunning) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No active upload service found'), backgroundColor: Colors.orange),
-        );
-      }
-      return;
-    }
-    
-    if (!mounted) return;
-    
+  void _skipAndFinalize() {
     showDialog(
-      context: context, 
-      barrierDismissible: false,
-      builder: (ctx) {
-        int seconds = 4;
-        bool isCountingDown = false;
-        
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              title: const Text('Cancel All Uploads?'),
-              content: Text(isCountingDown 
-                  ? 'Deletion will start in $seconds seconds...' 
-                  : 'This will stop all ongoing uploads and clear the queue. This action cannot be undone.'),
-              actions: [
-                if (!isCountingDown)
-                  TextButton(
-                    onPressed: () {
-                      setDialogState(() => isCountingDown = true);
-                      Future.doWhile(() async {
-                        await Future.delayed(const Duration(seconds: 1));
-                        if (!ctx.mounted) return false;
-                        setDialogState(() => seconds--);
-                        if (seconds <= 0) {
-                          // Execute deletion
-                          service.invoke('cancel_all');
-                          await Future.delayed(const Duration(milliseconds: 500));
-                          service.invoke('stop');
-                          
-                          if (mounted) {
-                            setState(() => _queue.clear());
-                            Navigator.pop(ctx);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('All uploads deleted'), backgroundColor: Colors.red),
-                            );
-                          }
-                          return false;
-                        }
-                        return true;
-                      });
-                    }, 
-                    child: const Text('Delete All', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))
-                  ),
-                if (isCountingDown)
-                   TextButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: Text('STOP ($seconds)', style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold)),
-                  ),
-                if (!isCountingDown)
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-                  ),
-              ],
-            );
-          },
-        );
-      }
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Publish without failed items?"),
+        content: const Text(
+          "This will skip all failed files and publish the course with the items that uploaded correctly. "
+          "You can add the missing files later via 'Edit Course'.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              FlutterBackgroundService().invoke('skip_and_finalize');
+              Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Prublishing remaining items... 🚀"),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+            },
+            child: const Text(
+              "Skip & Publish",
+              style: TextStyle(
+                color: Colors.orange,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancel"),
+          ),
+        ],
+      ),
     );
   }
 
@@ -334,33 +316,53 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
     int completed = 0;
     int failed = 0;
 
+    double sumProgress = 0;
     for (final t in _queue) {
       final status = t['status'];
       if (status == 'pending') {
         pending++;
-      } else if (status == 'uploading') uploading++;
-      else if (status == 'completed') completed++;
-      else if (status == 'failed') failed++;
+      } else if (status == 'uploading') {
+        uploading++;
+      } else if (status == 'completed') {
+        completed++;
+      } else if (status == 'failed') {
+        failed++;
+      }
+
+      if (status == 'completed') {
+        sumProgress += 1.0;
+      } else {
+        sumProgress += (t['progress'] ?? 0.0);
+      }
     }
-    final double overallProgress = _queue.isEmpty ? 1.0 : completed / _queue.length;
+    final double overallProgress = _queue.isEmpty
+        ? 1.0
+        : sumProgress / _queue.length;
 
     return Scaffold(
       appBar: AppBar(
-        leading: _isSelectionMode 
-          ? IconButton(
-              icon: const Icon(Icons.close), 
-              onPressed: () => setState(() {
-                _isSelectionMode = false;
-                _selectedTaskIds.clear();
-              })
-            )
-          : null,
-        title: Text(_isSelectionMode ? '${_selectedTaskIds.length} Selected' : 'Uploads', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        leading: _isSelectionMode
+            ? IconButton(
+                icon: const Icon(Icons.close),
+                onPressed: () => setState(() {
+                  _isSelectionMode = false;
+                  _selectedTaskIds.clear();
+                }),
+              )
+            : null,
+        title: Text(
+          _isSelectionMode ? '${_selectedTaskIds.length} Selected' : 'Uploads',
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         titleSpacing: _isSelectionMode ? 0 : 20,
         actions: [
           if (_isSelectionMode)
             IconButton(
-              icon: const Icon(Icons.delete_sweep_rounded, color: Colors.redAccent, size: 26),
+              icon: const Icon(
+                Icons.delete_sweep_rounded,
+                color: Colors.redAccent,
+                size: 26,
+              ),
               onPressed: _deleteSelectedTasks,
               tooltip: 'Delete Selected',
             )
@@ -370,13 +372,22 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
                 padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                 child: TextButton.icon(
                   onPressed: _isLoading ? null : _togglePause,
-                  icon: Icon(_isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded, size: 18),
-                  label: Text(_isPaused ? 'Resume' : 'Pause', style: const TextStyle(fontSize: 12)),
+                  icon: Icon(
+                    _isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                    size: 18,
+                  ),
+                  label: Text(
+                    _isPaused ? 'Resume' : 'Pause',
+                    style: const TextStyle(fontSize: 12),
+                  ),
                   style: TextButton.styleFrom(
-                    backgroundColor: (_isPaused ? Colors.green : Colors.orange).withOpacity(0.1),
+                    backgroundColor: (_isPaused ? Colors.green : Colors.orange)
+                        .withOpacity(0.1),
                     foregroundColor: _isPaused ? Colors.green : Colors.orange,
                     padding: const EdgeInsets.symmetric(horizontal: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(3.0),
+                    ),
                   ),
                 ),
               ),
@@ -384,19 +395,15 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
               IconButton(
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
-                icon: const Icon(Icons.checklist_rounded, color: Colors.blueAccent, size: 24),
+                icon: const Icon(
+                  Icons.checklist_rounded,
+                  color: Colors.blueAccent,
+                  size: 24,
+                ),
                 onPressed: () => setState(() {
                   _isSelectionMode = true;
                 }),
                 tooltip: 'Selection Mode',
-              ),
-            if (_queue.isNotEmpty && !_isLoading)
-              IconButton(
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-                icon: const Icon(Icons.delete_forever_rounded, color: Colors.redAccent, size: 22), 
-                onPressed: _cancelAll,
-                tooltip: 'Cancel All',
               ),
           ],
           const SizedBox(width: 8),
@@ -406,91 +413,114 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
         children: [
           // Sticky Header (Always on top, even during loading)
           _buildHeaderStats(uploading, pending, failed, overallProgress),
-          
+
           Expanded(
             child: RefreshIndicator(
               onRefresh: _onRefresh,
               displacement: 20,
-              child: _isLoading 
+              child: _isLoading
                   ? _buildShimmerState()
-                  : _queue.isEmpty 
-                      ? LayoutBuilder(
-                          builder: (context, constraints) => SingleChildScrollView(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                              child: _buildEmptyState(),
-                            ),
+                  : _queue.isEmpty
+                  ? LayoutBuilder(
+                      builder: (context, constraints) => SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                            minHeight: constraints.maxHeight,
                           ),
-                        )
-                      : ListView.builder(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100), 
-                          itemCount: _queue.length,
-                          itemBuilder: (context, index) {
-                            final task = _queue[index];
-                            final taskId = (task['taskId'] ?? task['id']).toString();
-                            final isSelected = _selectedTaskIds.contains(taskId);
-
-                            return UploadTaskCard(
-                              task: task,
-                              isSelected: isSelected,
-                              isSelectionMode: _isSelectionMode,
-                              cornerRadius: _cardCornerRadius,
-                              verticalPadding: _cardVerticalPadding,
-                              onToggleSelection: () => _toggleSelection(taskId),
-                              onTogglePause: () => _toggleTaskPause(task),
-                              onDelete: () => _showDeleteTaskDialog(task),
-                            );
-                          },
+                          child: _buildEmptyState(),
                         ),
+                      ),
+                    )
+                  : ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(10, 16, 10, 140),
+                      itemCount: _queue.length,
+                      itemBuilder: (context, index) {
+                        final task = _queue[index];
+                        final taskId = (task['taskId'] ?? task['id'])
+                            .toString();
+                        final isSelected = _selectedTaskIds.contains(taskId);
+
+                        return RepaintBoundary(
+                          child: UploadTaskCard(
+                            task: task,
+                            isSelected: isSelected,
+                            isSelectionMode: _isSelectionMode,
+                            cornerRadius: _cardCornerRadius,
+                            verticalPadding: _cardVerticalPadding,
+                            onToggleSelection: () => _toggleSelection(taskId),
+                            onTogglePause: () => _toggleTaskPause(task),
+                            onDelete: () => _showDeleteTaskDialog(task),
+                          ),
+                        );
+                      },
+                    ),
             ),
           ),
         ],
       ),
-
     );
   }
-
 
   Widget _buildShimmerState() {
     return ListView.builder(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.fromLTRB(10, 16, 10, 140),
       itemCount: 6,
       itemBuilder: (context, index) => const UploadShimmerItem(),
     );
   }
-
-
-
-
 
   Widget _buildEmptyState() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.cloud_done, size: 80, color: Colors.green.withOpacity(0.5)),
+          Icon(
+            Icons.cloud_done,
+            size: 80,
+            color: Colors.green.withOpacity(0.5),
+          ),
           const SizedBox(height: 16),
-          const Text('No Active Uploads', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text(
+            'No Active Uploads',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
-          const Text('Your upload queue is clean.', style: TextStyle(color: Colors.grey)),
+          const Text(
+            'Your upload queue is clean.',
+            style: TextStyle(color: Colors.grey),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildHeaderStats(int uploading, int pending, int failed, double progress) {
+  Widget _buildHeaderStats(
+    int uploading,
+    int pending,
+    int failed,
+    double progress,
+  ) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 12), // Minimum padding
+      padding: const EdgeInsets.fromLTRB(
+        10,
+        8,
+        10,
+        12,
+      ), // Updated horizontal padding to 10
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(3.0)), 
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(3.0)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2)),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Column(
@@ -499,21 +529,53 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Flexible(child: _buildStat('Active', uploading.toString(), Colors.blue)),
-              Flexible(child: _buildStat('Pending', pending.toString(), Colors.orange)),
-              Flexible(child: _buildStat('Failed', failed.toString(), Colors.red)),
+              Flexible(
+                child: _buildStat('Active', uploading.toString(), Colors.blue),
+              ),
+              Flexible(
+                child: _buildStat('Pending', pending.toString(), Colors.orange),
+              ),
+              Flexible(
+                child: _buildStat('Failed', failed.toString(), Colors.red),
+              ),
+              if (failed > 0 && uploading == 0 && pending == 0)
+                Padding(
+                  padding: const EdgeInsets.only(left: 8.0),
+                  child: TextButton(
+                    onPressed: _skipAndFinalize,
+                    style: TextButton.styleFrom(
+                      backgroundColor: Colors.orange.withOpacity(0.1),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 0,
+                      ),
+                      minimumSize: const Size(0, 30),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
+                    child: const Text(
+                      'Skip Failed & Publish',
+                      style: TextStyle(
+                        color: Colors.orange,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
               const SizedBox(width: 8),
               Text(
-                '${(progress * 100).toInt()}%', 
+                '${(progress * 100).toInt()}%',
                 style: const TextStyle(
-                  color: AppTheme.primaryColor, 
-                  fontSize: 14, 
-                  fontWeight: FontWeight.bold
-                )
+                  color: AppTheme.primaryColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 8), 
+          const SizedBox(height: 8),
           TweenAnimationBuilder<double>(
             tween: Tween<double>(begin: 0, end: progress),
             duration: const Duration(milliseconds: 500),
@@ -522,7 +584,7 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
               borderRadius: BorderRadius.circular(3.0),
               child: LinearProgressIndicator(
                 value: value,
-                minHeight: 4, 
+                minHeight: 4,
                 backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
                 valueColor: const AlwaysStoppedAnimation(AppTheme.primaryColor),
               ),
@@ -545,11 +607,11 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
         const SizedBox(width: 4),
         Flexible(
           child: Text(
-            '$value $label', 
+            '$value $label',
             style: TextStyle(
-              color: color.withOpacity(0.8), 
-              fontSize: 10, 
-              fontWeight: FontWeight.bold
+              color: color.withOpacity(0.8),
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
             ),
             overflow: TextOverflow.ellipsis,
           ),
@@ -558,17 +620,15 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
     );
   }
 
-
-
   void _toggleTaskPause(Map<String, dynamic> task) async {
     final service = FlutterBackgroundService();
     final taskId = task['taskId'] ?? task['id']; // Safety fallback
     final isPaused = task['paused'] == true;
-    
+
     // 1. INSTANT UI UPDATE (Optimistic)
     HapticFeedback.lightImpact();
     if (taskId != null) _lastManualUpdates[taskId] = DateTime.now();
-    
+
     setState(() {
       task['paused'] = !isPaused;
       if (isPaused && task['status'] == 'failed') {
@@ -579,11 +639,11 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
     // 2. TRIGGER SERVICE (In background)
     () async {
       if (!await service.isRunning()) {
-         await service.startService();
-         // Wait longer for isolate to boot before sending command
-         await Future.delayed(const Duration(milliseconds: 1000));
+        await service.startService();
+        // Wait longer for isolate to boot before sending command
+        await Future.delayed(const Duration(milliseconds: 1000));
       }
-      
+
       if (isPaused) {
         service.invoke('resume_task', {'taskId': taskId});
       } else {
@@ -593,14 +653,14 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
 
     // 3. SHOW SNACKBAR (Non-blocking)
     if (mounted) {
-       ScaffoldMessenger.of(context).hideCurrentSnackBar();
-       ScaffoldMessenger.of(context).showSnackBar(
-         SnackBar(
-           content: Text(isPaused ? 'Resuming...' : 'Pausing...'), 
-           duration: const Duration(milliseconds: 600),
-           backgroundColor: isPaused ? Colors.green : Colors.orange
-         ),
-       );
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(isPaused ? 'Resuming...' : 'Pausing...'),
+          duration: const Duration(milliseconds: 600),
+          backgroundColor: isPaused ? Colors.green : Colors.orange,
+        ),
+      );
     }
   }
 
@@ -609,41 +669,54 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
     final service = FlutterBackgroundService();
 
     showDialog(
-      context: context, 
+      context: context,
       barrierDismissible: false,
       builder: (ctx) {
         return AlertDialog(
           title: Text('Delete $name?'),
-          content: const Text('This will stop the upload and permanently delete the file from the server. This cannot be undone.'),
+          content: const Text(
+            'This will stop the upload and permanently delete the file from the server. This cannot be undone.',
+          ),
           actions: [
-              TextButton(
-                onPressed: () {
-                      // Execute deletion
-                      // Optimistic UI Update + Start Service to handle command
-                      final taskId = task['taskId'] ?? task['id'];
-                      service.startService().then((_) {
-                        service.invoke('delete_task', {'taskId': taskId});
-                      });
-                      
-                      if (mounted) {
-                        setState(() {
-                          _queue.removeWhere((t) => (t['taskId'] ?? t['id']) == taskId);
-                        });
-                        Navigator.pop(ctx);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('$name removed'), backgroundColor: Colors.red),
-                        );
-                      }
-                }, 
-                child: const Text('Delete Permanently', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))
+            TextButton(
+              onPressed: () {
+                // Execute deletion
+                // Optimistic UI Update + Start Service to handle command
+                final taskId = task['taskId'] ?? task['id'];
+                service.startService().then((_) {
+                  service.invoke('delete_task', {'taskId': taskId});
+                });
+
+                if (mounted) {
+                  setState(() {
+                    _queue.removeWhere(
+                      (t) => (t['taskId'] ?? t['id']) == taskId,
+                    );
+                  });
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('$name removed'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              },
+              child: const Text(
+                'Delete Permanently',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
           ],
         );
-      }
+      },
     );
   }
 
@@ -694,7 +767,6 @@ class UploadTaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    
     final status = task['status'];
     Color statusColor = Colors.grey;
     IconData statusIcon = Icons.schedule;
@@ -715,7 +787,9 @@ class UploadTaskCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: isSelected ? 4 : 1,
-      shadowColor: isSelected ? AppTheme.primaryColor.withOpacity(0.4) : Colors.black12,
+      shadowColor: isSelected
+          ? AppTheme.primaryColor.withOpacity(0.4)
+          : Colors.black12,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(cornerRadius),
         side: BorderSide(
@@ -727,17 +801,20 @@ class UploadTaskCard extends StatelessWidget {
       child: InkWell(
         onTap: isSelectionMode ? onToggleSelection : null,
         onLongPress: () {
-            HapticFeedback.heavyImpact();
-            if (!isSelectionMode) {
-              onToggleSelection();
-            } else {
-              onDelete();
-            }
+          HapticFeedback.heavyImpact();
+          if (!isSelectionMode) {
+            onToggleSelection();
+          } else {
+            onDelete();
+          }
         },
         child: Container(
           color: isSelected ? AppTheme.primaryColor.withOpacity(0.05) : null,
           child: ListTile(
-            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: verticalPadding),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: verticalPadding,
+            ),
             leading: Stack(
               children: [
                 _buildLeading(task),
@@ -750,140 +827,231 @@ class UploadTaskCard extends StatelessWidget {
                         color: Colors.white,
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.check_circle_rounded, color: AppTheme.primaryColor, size: 20),
+                      child: const Icon(
+                        Icons.check_circle_rounded,
+                        color: AppTheme.primaryColor,
+                        size: 20,
+                      ),
                     ),
                   ),
               ],
             ),
-            title: Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Flexible(
-                    child: Text(
-                      (task['paused'] == true ? 'PAUSED' : status.toString().toUpperCase()), 
-                      style: TextStyle(
-                        fontSize: 10, 
-                        color: task['paused'] == true ? Colors.orange : statusColor, 
-                        fontWeight: FontWeight.bold
-                      ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if (task['totalBytes'] != null)
-                    Text(
-                      status == 'completed' 
-                        ? "Total: ${_formatBytes(task['totalBytes'], 1)}"
-                        : "${_formatBytes(task['uploadedBytes'] ?? 0, 1)} / ${_formatBytes(task['totalBytes'], 1)}",
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.w500
-                      ),
-                      textAlign: TextAlign.end,
-                    ),
-                ],
-              ),
-              if (status == 'failed' && task['error'] != null)
-                Text(task['error'], style: const TextStyle(fontSize: 10, color: Colors.red), maxLines: 1, overflow: TextOverflow.ellipsis),
-              
-              if (status == 'uploading' || (task['paused'] == true && (task['progress'] ?? 0) > 0))
-                Padding(
-                  padding: const EdgeInsets.only(top: 8.0),
-                  child: TweenAnimationBuilder<double>(
-                    tween: Tween<double>(begin: 0, end: (task['progress'] ?? 0).toDouble()),
-                    duration: const Duration(milliseconds: 400),
-                    curve: Curves.easeOutCubic,
-                    builder: (context, value, _) => ClipRRect(
-                      borderRadius: BorderRadius.circular(3.0),
-                      child: LinearProgressIndicator(
-                        value: value,
-                        backgroundColor: statusColor.withOpacity(0.1),
-                        valueColor: AlwaysStoppedAnimation<Color>(statusColor),
-                        minHeight: 3,
+            title: Text(
+              name,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        (task['paused'] == true
+                            ? 'PAUSED'
+                            : status.toString().toUpperCase()),
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: task['paused'] == true
+                              ? Colors.orange
+                              : statusColor,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                  ),
+                    if (task['totalBytes'] != null)
+                      Text(
+                        status == 'completed'
+                            ? "Total: ${_formatBytes(task['totalBytes'], 1)}"
+                            : "${_formatBytes(task['uploadedBytes'] ?? 0, 1)} / ${_formatBytes(task['totalBytes'], 1)}",
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.w500,
+                        ),
+                        textAlign: TextAlign.end,
+                      ),
+                  ],
                 ),
-            ],
-          ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // ACTION BUTTON (Pause/Resume/Retry)
-              if (status != 'completed')
-                Padding(
-                  padding: const EdgeInsets.only(right: 8.0),
-                  child: GestureDetector(
-                    onTap: onTogglePause,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (status == 'failed') ...[
-                          const Icon(Icons.refresh_rounded, color: Colors.blue, size: 22),
-                          const Text('Retry', style: TextStyle(fontSize: 8, color: Colors.blue, fontWeight: FontWeight.bold)),
-                        ] else if (task['paused'] == true) ...[
-                          const Icon(Icons.play_circle_filled_rounded, color: Colors.green, size: 22),
-                          const Text('Resume', style: TextStyle(fontSize: 8, color: Colors.green, fontWeight: FontWeight.bold)),
-                        ] else ...[
-                          const Icon(Icons.pause_circle_filled_rounded, color: Colors.orange, size: 22),
-                          const Text('Pause', style: TextStyle(fontSize: 8, color: Colors.orange, fontWeight: FontWeight.bold)),
+                if (status == 'failed' && task['error'] != null)
+                  Text(
+                    task['error'],
+                    style: const TextStyle(fontSize: 10, color: Colors.red),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+
+                if (status == 'uploading' ||
+                    (task['paused'] == true && (task['progress'] ?? 0) > 0))
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween<double>(
+                        begin: 0,
+                        end: (task['progress'] ?? 0).toDouble(),
+                      ),
+                      duration: const Duration(milliseconds: 400),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, value, _) => ClipRRect(
+                        borderRadius: BorderRadius.circular(3.0),
+                        child: RepaintBoundary(
+                          child: LinearProgressIndicator(
+                            value: value,
+                            backgroundColor: statusColor.withOpacity(0.1),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              statusColor,
+                            ),
+                            minHeight: 3,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // ACTION BUTTON (Pause/Resume/Retry)
+                if (status != 'completed')
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: GestureDetector(
+                      onTap: onTogglePause,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (status == 'failed') ...[
+                            const Icon(
+                              Icons.refresh_rounded,
+                              color: Colors.blue,
+                              size: 22,
+                            ),
+                            const Text(
+                              'Retry',
+                              style: TextStyle(
+                                fontSize: 8,
+                                color: Colors.blue,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ] else if (task['paused'] == true) ...[
+                            const Icon(
+                              Icons.play_circle_filled_rounded,
+                              color: Colors.green,
+                              size: 22,
+                            ),
+                            const Text(
+                              'Resume',
+                              style: TextStyle(
+                                fontSize: 8,
+                                color: Colors.green,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ] else ...[
+                            const Icon(
+                              Icons.pause_circle_filled_rounded,
+                              color: Colors.orange,
+                              size: 22,
+                            ),
+                            const Text(
+                              'Pause',
+                              style: TextStyle(
+                                fontSize: 8,
+                                color: Colors.orange,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ],
-                      ],
+                      ),
                     ),
                   ),
-                ),
-              // SPINNER (Only for active uploading)
-              if (status == 'uploading' && task['paused'] != true)
-                const SizedBox(
-                  width: 16, 
-                  height: 16, 
-                  child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.orange))
-                ),
-              if (status == 'completed')
-                const Icon(Icons.check_circle_rounded, color: Colors.green, size: 22),
-            ],
+                // SPINNER (Only for active uploading)
+                if (status == 'uploading' && task['paused'] != true)
+                  const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.orange),
+                    ),
+                  ),
+                if (status == 'completed')
+                  const Icon(
+                    Icons.check_circle_rounded,
+                    color: Colors.green,
+                    size: 22,
+                  ),
+              ],
+            ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildLeading(Map<String, dynamic> task) {
-    final String pathStr = (task['localPath'] ?? task['filePath'] ?? task['remotePath'] ?? '').toString().toLowerCase();
+    final String pathStr =
+        (task['localPath'] ?? task['filePath'] ?? task['remotePath'] ?? '')
+            .toString()
+            .toLowerCase();
     final String thumbnail = task['thumbnail'] ?? '';
     final String status = task['status'] ?? '';
-    final String? remoteUrl = task['url']; 
-    
-    final bool isVideo = pathStr.endsWith('.mp4') || pathStr.endsWith('.mkv') || pathStr.endsWith('.mov') || pathStr.endsWith('.avi') || pathStr.contains('video');
-    final bool isImage = pathStr.endsWith('.jpg') || pathStr.endsWith('.jpeg') || pathStr.endsWith('.png') || pathStr.endsWith('.webp') || pathStr.contains('image');
+    final String? remoteUrl = task['url'];
+
+    final bool isVideo =
+        pathStr.endsWith('.mp4') ||
+        pathStr.endsWith('.mkv') ||
+        pathStr.endsWith('.mov') ||
+        pathStr.endsWith('.avi') ||
+        pathStr.contains('video');
+    final bool isImage =
+        pathStr.endsWith('.jpg') ||
+        pathStr.endsWith('.jpeg') ||
+        pathStr.endsWith('.png') ||
+        pathStr.endsWith('.webp') ||
+        pathStr.contains('image');
     final bool isPdf = pathStr.endsWith('.pdf');
-    final bool isZip = pathStr.endsWith('.zip') || pathStr.endsWith('.rar') || pathStr.endsWith('.7z');
+    final bool isZip =
+        pathStr.endsWith('.zip') ||
+        pathStr.endsWith('.rar') ||
+        pathStr.endsWith('.7z');
 
     if (isVideo) {
-      final bool hasLocalThumb = thumbnail.isNotEmpty && File(thumbnail).existsSync();
+      final bool hasLocalThumb =
+          thumbnail.isNotEmpty && File(thumbnail).existsSync();
       final bool isTaskCompleted = status == 'completed';
-      final String? videoId = (remoteUrl != null && !remoteUrl.startsWith('http')) ? remoteUrl : null;
+      final String? videoId =
+          (remoteUrl != null && !remoteUrl.startsWith('http'))
+          ? remoteUrl
+          : null;
       const String libraryId = '583681';
 
       return Container(
-        width: 72, 
+        width: 72,
         height: 40,
         decoration: BoxDecoration(
           color: Colors.black,
           borderRadius: BorderRadius.circular(3.0),
           image: hasLocalThumb
-              ? DecorationImage(image: FileImage(File(thumbnail)), fit: BoxFit.cover)
+              ? DecorationImage(
+                  image: FileImage(File(thumbnail)),
+                  fit: BoxFit.cover,
+                )
               : (isTaskCompleted && videoId != null)
-                  ? DecorationImage(
-                      image: NetworkImage('https://video.bunnycdn.com/play/$libraryId/$videoId/thumbnail.jpg'), 
-                      fit: BoxFit.cover
-                    )
-                  : null,
+              ? DecorationImage(
+                  image: NetworkImage(
+                    'https://video.bunnycdn.com/play/$libraryId/$videoId/thumbnail.jpg',
+                  ),
+                  fit: BoxFit.cover,
+                )
+              : null,
         ),
         child: !hasLocalThumb && (!isTaskCompleted || videoId == null)
             ? ClipRRect(
@@ -899,21 +1067,26 @@ class UploadTaskCard extends StatelessWidget {
     }
 
     if (isImage) {
-      final String localImgPath = (task['localPath'] ?? task['filePath'] ?? '').toString();
-      final bool exists = localImgPath.isNotEmpty && File(localImgPath).existsSync();
+      final String localImgPath = (task['localPath'] ?? task['filePath'] ?? '')
+          .toString();
+      final bool exists =
+          localImgPath.isNotEmpty && File(localImgPath).existsSync();
 
       return Container(
-        width: 40, 
+        width: 40,
         height: 40,
         decoration: BoxDecoration(
           color: Colors.grey[200],
           borderRadius: BorderRadius.circular(3.0),
           image: exists
-              ? DecorationImage(image: FileImage(File(localImgPath)), fit: BoxFit.cover)
+              ? DecorationImage(
+                  image: FileImage(File(localImgPath)),
+                  fit: BoxFit.cover,
+                )
               : null,
         ),
-        child: !exists 
-            ? const Icon(Icons.image_outlined, color: Colors.grey, size: 18) 
+        child: !exists
+            ? const Icon(Icons.image_outlined, color: Colors.grey, size: 18)
             : null,
       );
     }
@@ -943,4 +1116,3 @@ class UploadTaskCard extends StatelessWidget {
     );
   }
 }
-

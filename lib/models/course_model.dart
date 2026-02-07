@@ -15,7 +15,6 @@ class CourseModel {
   final int totalVideos;
   final bool isPublished;
   final DateTime? createdAt;
-  final int newBatchDays;
   final int courseValidityDays;
   final bool hasCertificate;
   final String? certificateUrl1;
@@ -24,7 +23,8 @@ class CourseModel {
   final List<String> highlights;
   final List<Map<String, String>> faqs;
   final bool isOfflineDownloadEnabled;
-  final List<dynamic> contents; // Nested content structure (Folders, Videos, PDFs)
+  final List<dynamic>
+  contents; // Nested content structure (Folders, Videos, PDFs)
   final String language; // e.g. Hindi, English
   final String courseMode; // e.g. Recorded, Live
   final String supportType; // e.g. WhatsApp, Call
@@ -32,6 +32,9 @@ class CourseModel {
   final bool isBigScreenEnabled;
   final String websiteUrl;
   final String specialTag; // e.g. "Best Seller", "80% Off"
+  final String specialTagColor; // Blue, Red, Green, Pink
+  final bool isSpecialTagVisible;
+  final int specialTagDurationDays; // 0 = Always
 
   CourseModel({
     required this.id,
@@ -48,7 +51,6 @@ class CourseModel {
     required this.totalVideos,
     required this.isPublished,
     DateTime? createdAt,
-    this.newBatchDays = 90,
     this.courseValidityDays = 0, // 0 for Lifetime
     this.hasCertificate = false,
     this.certificateUrl1,
@@ -65,6 +67,9 @@ class CourseModel {
     this.isBigScreenEnabled = false,
     this.websiteUrl = '',
     this.specialTag = '',
+    this.specialTagColor = 'Blue',
+    this.isSpecialTagVisible = true,
+    this.specialTagDurationDays = 30,
   }) : createdAt = createdAt ?? DateTime.now();
 
   // Convert to Map for Firestore
@@ -82,8 +87,9 @@ class CourseModel {
       'rating': rating,
       'totalVideos': totalVideos,
       'isPublished': isPublished,
-      'createdAt': createdAt != null ? Timestamp.fromDate(createdAt!) : FieldValue.serverTimestamp(),
-      'newBatchDays': newBatchDays,
+      'createdAt': createdAt != null
+          ? Timestamp.fromDate(createdAt!)
+          : FieldValue.serverTimestamp(),
       'courseValidityDays': courseValidityDays,
       'hasCertificate': hasCertificate,
       'certificateUrl1': certificateUrl1,
@@ -100,6 +106,9 @@ class CourseModel {
       'isBigScreenEnabled': isBigScreenEnabled,
       'websiteUrl': websiteUrl,
       'specialTag': specialTag,
+      'specialTagColor': specialTagColor,
+      'isSpecialTagVisible': isSpecialTagVisible,
+      'specialTagDurationDays': specialTagDurationDays,
     };
   }
 
@@ -121,15 +130,20 @@ class CourseModel {
       rating: (data['rating'] ?? 0.0).toDouble(),
       totalVideos: data['totalVideos'] ?? 0,
       isPublished: data['isPublished'] ?? false,
-      createdAt: (data['createdAt'] is Timestamp) ? (data['createdAt'] as Timestamp).toDate() : null,
-      newBatchDays: _toInt(data['newBatchDays'], 90),
+      createdAt: (data['createdAt'] is Timestamp)
+          ? (data['createdAt'] as Timestamp).toDate()
+          : null,
       courseValidityDays: _toInt(data['courseValidityDays'], 0),
       hasCertificate: data['hasCertificate'] ?? false,
       certificateUrl1: data['certificateUrl1']?.toString(),
       certificateUrl2: data['certificateUrl2']?.toString(),
       selectedCertificateSlot: _toInt(data['selectedCertificateSlot'], 1),
       highlights: List<String>.from(data['highlights'] ?? []),
-      faqs: (data['faqs'] as List<dynamic>?)?.map((e) => Map<String, String>.from(e)).toList() ?? [],
+      faqs:
+          (data['faqs'] as List<dynamic>?)
+              ?.map((e) => Map<String, String>.from(e))
+              .toList() ??
+          [],
       isOfflineDownloadEnabled: data['isOfflineDownloadEnabled'] ?? true,
       contents: data['contents'] ?? [],
       language: data['language'] ?? 'Hindi',
@@ -138,6 +152,9 @@ class CourseModel {
       whatsappNumber: data['whatsappNumber'] ?? '',
       isBigScreenEnabled: data['isBigScreenEnabled'] ?? false,
       websiteUrl: data['websiteUrl'] ?? '',
+      specialTagColor: data['specialTagColor'] ?? 'Blue',
+      isSpecialTagVisible: data['isSpecialTagVisible'] ?? true,
+      specialTagDurationDays: _toInt(data['specialTagDurationDays'], 0),
     );
   }
 
@@ -169,14 +186,17 @@ class CourseModel {
       createdAt: map['createdAt'] is Timestamp
           ? (map['createdAt'] as Timestamp).toDate()
           : DateTime.now(),
-      newBatchDays: map['newBatchDays'] ?? 90,
       courseValidityDays: map['courseValidityDays'] ?? 0,
       hasCertificate: map['hasCertificate'] ?? false,
       certificateUrl1: map['certificateUrl1'],
       certificateUrl2: map['certificateUrl2'],
       selectedCertificateSlot: map['selectedCertificateSlot'] ?? 1,
       highlights: List<String>.from(map['highlights'] ?? []),
-      faqs: (map['faqs'] as List<dynamic>?)?.map((e) => Map<String, String>.from(e)).toList() ?? [],
+      faqs:
+          (map['faqs'] as List<dynamic>?)
+              ?.map((e) => Map<String, String>.from(e))
+              .toList() ??
+          [],
       isOfflineDownloadEnabled: map['isOfflineDownloadEnabled'] ?? true,
       contents: map['contents'] ?? [],
       language: map['language'] ?? 'Hindi',
@@ -185,6 +205,9 @@ class CourseModel {
       whatsappNumber: map['whatsappNumber'] ?? '',
       isBigScreenEnabled: map['isBigScreenEnabled'] ?? false,
       websiteUrl: map['websiteUrl'] ?? '',
+      specialTagColor: map['specialTagColor'] ?? 'Blue',
+      isSpecialTagVisible: map['isSpecialTagVisible'] ?? true,
+      specialTagDurationDays: map['specialTagDurationDays'] ?? 30,
     );
   }
 
@@ -203,7 +226,6 @@ class CourseModel {
     int? totalVideos,
     bool? isPublished,
     DateTime? createdAt,
-    int? newBatchDays,
     int? courseValidityDays,
     bool? hasCertificate,
     String? certificateUrl1,
@@ -220,6 +242,9 @@ class CourseModel {
     bool? isBigScreenEnabled,
     String? websiteUrl,
     String? specialTag,
+    String? specialTagColor,
+    bool? isSpecialTagVisible,
+    int? specialTagDurationDays,
   }) {
     return CourseModel(
       id: id ?? this.id,
@@ -236,15 +261,16 @@ class CourseModel {
       totalVideos: totalVideos ?? this.totalVideos,
       isPublished: isPublished ?? this.isPublished,
       createdAt: createdAt ?? this.createdAt,
-      newBatchDays: newBatchDays ?? this.newBatchDays,
       courseValidityDays: courseValidityDays ?? this.courseValidityDays,
       hasCertificate: hasCertificate ?? this.hasCertificate,
       certificateUrl1: certificateUrl1 ?? this.certificateUrl1,
       certificateUrl2: certificateUrl2 ?? this.certificateUrl2,
-      selectedCertificateSlot: selectedCertificateSlot ?? this.selectedCertificateSlot,
+      selectedCertificateSlot:
+          selectedCertificateSlot ?? this.selectedCertificateSlot,
       highlights: highlights ?? this.highlights,
       faqs: faqs ?? this.faqs,
-      isOfflineDownloadEnabled: isOfflineDownloadEnabled ?? this.isOfflineDownloadEnabled,
+      isOfflineDownloadEnabled:
+          isOfflineDownloadEnabled ?? this.isOfflineDownloadEnabled,
       contents: contents ?? this.contents,
       language: language ?? this.language,
       courseMode: courseMode ?? this.courseMode,
@@ -253,6 +279,10 @@ class CourseModel {
       isBigScreenEnabled: isBigScreenEnabled ?? this.isBigScreenEnabled,
       websiteUrl: websiteUrl ?? this.websiteUrl,
       specialTag: specialTag ?? this.specialTag,
+      specialTagColor: specialTagColor ?? this.specialTagColor,
+      isSpecialTagVisible: isSpecialTagVisible ?? this.isSpecialTagVisible,
+      specialTagDurationDays:
+          specialTagDurationDays ?? this.specialTagDurationDays,
     );
   }
 }

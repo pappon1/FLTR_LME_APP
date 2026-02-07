@@ -9,7 +9,11 @@ class EnrollmentDetailScreen extends StatelessWidget {
   final Map<String, dynamic> enrollment;
   final StudentModel student;
 
-  const EnrollmentDetailScreen({super.key, required this.enrollment, required this.student});
+  const EnrollmentDetailScreen({
+    super.key,
+    required this.enrollment,
+    required this.student,
+  });
 
   @override
   @override
@@ -22,9 +26,16 @@ class EnrollmentDetailScreen extends StatelessWidget {
     const Color neonRed = Color(0xFFFF5959);
 
     return Scaffold(
-      extendBodyBehindAppBar: true, 
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        title: Text('ENROLLMENT DETAILS', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1.5)),
+        title: Text(
+          'ENROLLMENT DETAILS',
+          style: GoogleFonts.poppins(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.5,
+          ),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
@@ -50,22 +61,43 @@ class EnrollmentDetailScreen extends StatelessWidget {
               // 1. Status Badge (Floating)
               Container(
                 margin: const EdgeInsets.only(bottom: 20),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
-                  color: enrollment['isActive'] ? neonGreen.withValues(alpha: 0.1) : neonRed.withValues(alpha: 0.1),
+                  color: enrollment['isActive']
+                      ? neonGreen.withValues(alpha: 0.1)
+                      : neonRed.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(3.0),
-                  border: Border.all(color: enrollment['isActive'] ? neonGreen : neonRed, width: 1.5),
+                  border: Border.all(
+                    color: enrollment['isActive'] ? neonGreen : neonRed,
+                    width: 1.5,
+                  ),
                   boxShadow: [
-                    BoxShadow(color: (enrollment['isActive'] ? neonGreen : neonRed).withValues(alpha: 0.2), blurRadius: 15, spreadRadius: 1)
-                  ]
+                    BoxShadow(
+                      color: (enrollment['isActive'] ? neonGreen : neonRed)
+                          .withValues(alpha: 0.2),
+                      blurRadius: 15,
+                      spreadRadius: 1,
+                    ),
+                  ],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(enrollment['isActive'] ? Icons.check_circle : Icons.cancel, color: enrollment['isActive'] ? neonGreen : neonRed, size: 16),
-                     const SizedBox(width: 8),
+                    Icon(
+                      enrollment['isActive']
+                          ? Icons.check_circle
+                          : Icons.cancel,
+                      color: enrollment['isActive'] ? neonGreen : neonRed,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 8),
                     Text(
-                      enrollment['isActive'] ? 'ACTIVE LICENSE' : 'LICENSE REVOKED/EXPIRED',
+                      enrollment['isActive']
+                          ? 'ACTIVE LICENSE'
+                          : 'LICENSE REVOKED/EXPIRED',
                       style: GoogleFonts.orbitron(
                         color: enrollment['isActive'] ? neonGreen : neonRed,
                         fontSize: 12,
@@ -83,9 +115,15 @@ class EnrollmentDetailScreen extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(3.0),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 10))
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
                   ],
                 ),
                 child: ClipRRect(
@@ -99,22 +137,40 @@ class EnrollmentDetailScreen extends StatelessWidget {
                           padding: const EdgeInsets.all(24),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.03),
-                            border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
+                            border: Border(
+                              bottom: BorderSide(
+                                color: Colors.white.withValues(alpha: 0.05),
+                              ),
+                            ),
                           ),
                           child: Row(
                             children: [
                               Container(
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: neonGreen.withValues(alpha: 0.5), width: 2),
-                                  boxShadow: [BoxShadow(color: neonGreen.withValues(alpha: 0.2), blurRadius: 10)]
+                                  border: Border.all(
+                                    color: neonGreen.withValues(alpha: 0.5),
+                                    width: 2,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: neonGreen.withValues(alpha: 0.2),
+                                      blurRadius: 10,
+                                    ),
+                                  ],
                                 ),
                                 child: CircleAvatar(
                                   radius: 30,
                                   backgroundColor: techAccent,
                                   child: Text(
-                                    student.name.isNotEmpty ? student.name[0].toUpperCase() : 'U',
-                                    style: GoogleFonts.orbitron(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                                    student.name.isNotEmpty
+                                        ? student.name[0].toUpperCase()
+                                        : 'U',
+                                    style: GoogleFonts.orbitron(
+                                      color: Colors.white,
+                                      fontSize: 24,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -123,24 +179,40 @@ class EnrollmentDetailScreen extends StatelessWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                      FittedBox(
-                                        fit: BoxFit.scaleDown,
-                                        alignment: Alignment.centerLeft,
-                                        child: Text(
-                                          student.name.toUpperCase(),
-                                          style: GoogleFonts.montserrat(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: 1.1),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
+                                    FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerLeft,
+                                      child: Text(
+                                        student.name.toUpperCase(),
+                                        style: GoogleFonts.montserrat(
+                                          color: Colors.white,
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          letterSpacing: 1.1,
                                         ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                      const SizedBox(height: 4),
+                                    ),
+                                    const SizedBox(height: 4),
                                     Row(
                                       children: [
-                                        Icon(Icons.message, size: 12, color: Colors.white.withValues(alpha: 0.6)),
+                                        Icon(
+                                          Icons.message,
+                                          size: 12,
+                                          color: Colors.white.withValues(
+                                            alpha: 0.6,
+                                          ),
+                                        ),
                                         const SizedBox(width: 6),
                                         Text(
-                                          student.phone.isNotEmpty ? student.phone : 'No WhatsApp No',
-                                          style: GoogleFonts.sourceCodePro(color: Colors.white70, fontSize: 12),
+                                          student.phone.isNotEmpty
+                                              ? student.phone
+                                              : 'No WhatsApp No',
+                                          style: GoogleFonts.sourceCodePro(
+                                            color: Colors.white70,
+                                            fontSize: 12,
+                                          ),
                                         ),
                                       ],
                                     ),
@@ -159,24 +231,57 @@ class EnrollmentDetailScreen extends StatelessWidget {
                             children: [
                               _buildSectionHeader('COURSE INFORMATION'),
                               const SizedBox(height: 16),
-                              _buildTechRow(Icons.laptop_chromebook, 'COURSE NAME', enrollment['courseTitle'] ?? 'Unknown', isHighlighted: true),
-                              const Padding(padding: EdgeInsets.symmetric(vertical: 20), child: Divider(color: Colors.white10)),
-                              
+                              _buildTechRow(
+                                Icons.laptop_chromebook,
+                                'COURSE NAME',
+                                enrollment['courseTitle'] ?? 'Unknown',
+                                isHighlighted: true,
+                              ),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 20),
+                                child: Divider(color: Colors.white10),
+                              ),
+
                               _buildSectionHeader('SUBSCRIPTION DETAILS'),
                               const SizedBox(height: 16),
                               Row(
                                 children: [
-                                  Expanded(child: _buildTechBox('START DATE', _formatDate(enrollment['enrolledAt']))),
+                                  Expanded(
+                                    child: _buildTechBox(
+                                      'START DATE',
+                                      _formatDate(enrollment['enrolledAt']),
+                                    ),
+                                  ),
                                   const SizedBox(width: 12),
-                                  Expanded(child: _buildTechBox('EXPIRY DATE', enrollment['expiryDate'] != null ? _formatDate(enrollment['expiryDate']) : 'LIFETIME ACCESS', isAlert: enrollment['expiryDate'] != null)),
+                                  Expanded(
+                                    child: _buildTechBox(
+                                      'EXPIRY DATE',
+                                      enrollment['expiryDate'] != null
+                                          ? _formatDate(
+                                              enrollment['expiryDate'],
+                                            )
+                                          : 'LIFETIME ACCESS',
+                                      isAlert: enrollment['expiryDate'] != null,
+                                    ),
+                                  ),
                                 ],
                               ),
                               const SizedBox(height: 12),
                               Row(
                                 children: [
-                                  Expanded(child: _buildTechBox('PRICE PAID', enrollment['price'] ?? '₹0.00')),
+                                  Expanded(
+                                    child: _buildTechBox(
+                                      'PRICE PAID',
+                                      enrollment['price'] ?? '₹0.00',
+                                    ),
+                                  ),
                                   const SizedBox(width: 12),
-                                  Expanded(child: _buildTechBox('PAYMENT MODE', enrollment['paymentDetail'] ?? 'Manual')),
+                                  Expanded(
+                                    child: _buildTechBox(
+                                      'PAYMENT MODE',
+                                      enrollment['paymentDetail'] ?? 'Manual',
+                                    ),
+                                  ),
                                 ],
                               ),
                             ],
@@ -192,7 +297,11 @@ class EnrollmentDetailScreen extends StatelessWidget {
               const SizedBox(height: 30),
               Text(
                 "SECURE DATABASE RECORD • VERIFIED",
-                style: GoogleFonts.robotoMono(color: Colors.white24, fontSize: 10, letterSpacing: 2),
+                style: GoogleFonts.robotoMono(
+                  color: Colors.white24,
+                  fontSize: 10,
+                  letterSpacing: 2,
+                ),
               ),
             ],
           ),
@@ -203,7 +312,8 @@ class EnrollmentDetailScreen extends StatelessWidget {
 
   String _formatDate(dynamic date) {
     if (date == null) return '-';
-    if (date is Timestamp) return DateFormat('dd MMM yyyy').format(date.toDate());
+    if (date is Timestamp)
+      return DateFormat('dd MMM yyyy').format(date.toDate());
     if (date is DateTime) return DateFormat('dd MMM yyyy').format(date);
     return date.toString();
   }
@@ -214,14 +324,24 @@ class EnrollmentDetailScreen extends StatelessWidget {
         const Icon(Icons.data_usage, size: 14, color: Colors.cyanAccent),
         const SizedBox(width: 8),
         Text(
-          title, 
-          style: GoogleFonts.orbitron(color: Colors.cyanAccent, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2)
+          title,
+          style: GoogleFonts.orbitron(
+            color: Colors.cyanAccent,
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.2,
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildTechRow(IconData icon, String label, String value, {bool isHighlighted = false}) {
+  Widget _buildTechRow(
+    IconData icon,
+    String label,
+    String value, {
+    bool isHighlighted = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16.0),
       child: Row(
@@ -229,7 +349,10 @@ class EnrollmentDetailScreen extends StatelessWidget {
         children: [
           Container(
             padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(3.0)),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(3.0),
+            ),
             child: Icon(icon, color: Colors.white70, size: 18),
           ),
           const SizedBox(width: 16),
@@ -237,14 +360,24 @@ class EnrollmentDetailScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: GoogleFonts.rubik(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                Text(
+                  label,
+                  style: GoogleFonts.rubik(
+                    color: Colors.white38,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Text(
-                  value, 
+                  value,
                   style: GoogleFonts.rubik(
-                    color: isHighlighted ? Colors.white : Colors.white70, 
-                    fontSize: isHighlighted ? 16 : 14, 
-                    fontWeight: isHighlighted ? FontWeight.bold : FontWeight.normal
+                    color: isHighlighted ? Colors.white : Colors.white70,
+                    fontSize: isHighlighted ? 16 : 14,
+                    fontWeight: isHighlighted
+                        ? FontWeight.bold
+                        : FontWeight.normal,
                   ),
                   overflow: TextOverflow.ellipsis,
                   maxLines: 2,
@@ -268,14 +401,22 @@ class EnrollmentDetailScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: GoogleFonts.rubik(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
+          Text(
+            label,
+            style: GoogleFonts.rubik(
+              color: Colors.white38,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1,
+            ),
+          ),
           const SizedBox(height: 6),
           Text(
             value,
             style: GoogleFonts.rubik(
               color: isAlert ? Colors.orangeAccent : Colors.white,
               fontSize: 14,
-              fontWeight: FontWeight.w500
+              fontWeight: FontWeight.w500,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
@@ -285,4 +426,3 @@ class EnrollmentDetailScreen extends StatelessWidget {
     );
   }
 }
-

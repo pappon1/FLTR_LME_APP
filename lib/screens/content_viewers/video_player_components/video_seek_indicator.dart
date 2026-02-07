@@ -18,7 +18,14 @@ class VideoSeekIndicator extends StatelessWidget {
         decoration: BoxDecoration(
           color: bgColor,
           shape: BoxShape.circle,
-          boxShadow: isDark ? null : [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 10)],
+          boxShadow: isDark
+              ? null
+              : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.1),
+                    blurRadius: 10,
+                  ),
+                ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

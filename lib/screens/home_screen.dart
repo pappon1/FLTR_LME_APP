@@ -27,17 +27,29 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<NavigationDestination> _destinations = const [
     NavigationDestination(
       icon: FaIcon(FontAwesomeIcons.chartPie, size: 20),
-      selectedIcon: FaIcon(FontAwesomeIcons.chartPie, size: 20, color: Colors.white),
+      selectedIcon: FaIcon(
+        FontAwesomeIcons.chartPie,
+        size: 20,
+        color: Colors.white,
+      ),
       label: 'Dashboard',
     ),
     NavigationDestination(
       icon: FaIcon(FontAwesomeIcons.graduationCap, size: 20),
-      selectedIcon: FaIcon(FontAwesomeIcons.graduationCap, size: 20, color: Colors.white),
+      selectedIcon: FaIcon(
+        FontAwesomeIcons.graduationCap,
+        size: 20,
+        color: Colors.white,
+      ),
       label: 'Courses',
     ),
     NavigationDestination(
       icon: FaIcon(FontAwesomeIcons.gear, size: 20),
-      selectedIcon: FaIcon(FontAwesomeIcons.gear, size: 20, color: Colors.white),
+      selectedIcon: FaIcon(
+        FontAwesomeIcons.gear,
+        size: 20,
+        color: Colors.white,
+      ),
       label: 'Settings',
     ),
   ];
@@ -47,8 +59,8 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
     // Check Notification Permission on First Load
     WidgetsBinding.instance.addPostFrameCallback((_) {
-       _checkNotificationPermission();
-       _checkPendingUploads(); // Auto-navigate if upload is in progress
+      _checkNotificationPermission();
+      _checkPendingUploads(); // Auto-navigate if upload is in progress
     });
   }
 
@@ -58,7 +70,7 @@ class _HomeScreenState extends State<HomeScreen> {
       // Don't auto-navigate! User should manually open upload screen if they want.
       // Background service runs always, but uploads might be idle.
       // We'll just let the badge in CoursesTab handle notification.
-      
+
       // Optional: You can add a one-time check here to show a toast/snackbar
       // if there are active uploads, but DON'T force navigation.
     }
@@ -68,7 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
     // We import permission_handler at the top
     // but using fully qualified name to avoid conflict with file pickers if any
     if (await Permission.notification.isDenied) {
-        _showPermissionDialog();
+      _showPermissionDialog();
     }
   }
 
@@ -90,20 +102,23 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Skip (Risk)', style: TextStyle(color: Colors.grey)),
+            child: const Text(
+              'Skip (Risk)',
+              style: TextStyle(color: Colors.grey),
+            ),
           ),
           FilledButton.icon(
             onPressed: () async {
-               await Permission.notification.request();
-               // Open Settings if permanently denied
-               if (await Permission.notification.isPermanentlyDenied) {
-                 openAppSettings();
-               }
-               if (context.mounted) Navigator.pop(context);
+              await Permission.notification.request();
+              // Open Settings if permanently denied
+              if (await Permission.notification.isPermanentlyDenied) {
+                openAppSettings();
+              }
+              if (context.mounted) Navigator.pop(context);
             },
             icon: const Icon(Icons.check),
             label: const Text('Allow Access'),
-          )
+          ),
         ],
       ),
     );
@@ -114,10 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Consumer<DashboardProvider>(
       builder: (context, provider, child) {
         return Scaffold(
-          body: IndexedStack(
-            index: provider.selectedIndex,
-            children: _screens,
-          ),
+          body: IndexedStack(index: provider.selectedIndex, children: _screens),
           bottomNavigationBar: Container(
             decoration: BoxDecoration(
               boxShadow: [
@@ -135,7 +147,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (states.contains(WidgetState.selected)) {
                     return const IconThemeData(color: Colors.white);
                   }
-                  return IconThemeData(color: Theme.of(context).textTheme.bodyMedium?.color);
+                  return IconThemeData(
+                    color: Theme.of(context).textTheme.bodyMedium?.color,
+                  );
                 }),
                 labelTextStyle: WidgetStateProperty.resolveWith((states) {
                   if (states.contains(WidgetState.selected)) {

@@ -32,16 +32,20 @@ class _RazorpayConfigScreenState extends State<RazorpayConfigScreen> {
 
   Future<void> _saveKeys() async {
     if (_keyIdController.text.isEmpty || _keySecretController.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Please fill both fields")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Please fill both fields")));
       return;
     }
 
     setState(() => _isLoading = true);
     await _service.saveKeys(_keyIdController.text, _keySecretController.text);
     setState(() => _isLoading = false);
-    
+
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Keys Saved Successfully!")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Keys Saved Successfully!")));
       Navigator.pop(context);
     }
   }
@@ -53,7 +57,13 @@ class _RazorpayConfigScreenState extends State<RazorpayConfigScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Razorpay Configuration", style: GoogleFonts.outfit(color: textColor, fontWeight: FontWeight.w600)),
+        title: Text(
+          "Razorpay Configuration",
+          style: GoogleFonts.outfit(
+            color: textColor,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
         centerTitle: true,
         backgroundColor: theme.scaffoldBackgroundColor,
         iconTheme: IconThemeData(color: textColor),
@@ -72,7 +82,9 @@ class _RazorpayConfigScreenState extends State<RazorpayConfigScreen> {
               controller: _keyIdController,
               decoration: InputDecoration(
                 labelText: "Key ID",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(3.0)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(3.0),
+                ),
                 prefixIcon: const Icon(Icons.vpn_key),
               ),
             ),
@@ -81,7 +93,9 @@ class _RazorpayConfigScreenState extends State<RazorpayConfigScreen> {
               controller: _keySecretController,
               decoration: InputDecoration(
                 labelText: "Key Secret",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(3.0)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(3.0),
+                ),
                 prefixIcon: const Icon(Icons.lock),
               ),
               obscureText: true,
@@ -94,11 +108,20 @@ class _RazorpayConfigScreenState extends State<RazorpayConfigScreen> {
                 onPressed: _isLoading ? null : _saveKeys,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(3.0),
+                  ),
                 ),
-                child: _isLoading 
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : Text("Save Configuration", style: GoogleFonts.outfit(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                child: _isLoading
+                    ? const CircularProgressIndicator(color: Colors.white)
+                    : Text(
+                        "Save Configuration",
+                        style: GoogleFonts.outfit(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
             ),
           ],
@@ -107,4 +130,3 @@ class _RazorpayConfigScreenState extends State<RazorpayConfigScreen> {
     );
   }
 }
-

@@ -8,7 +8,7 @@ class CourseStateManager extends ChangeNotifier {
   final bunnyService = BunnyCDNService();
   final pageController = PageController();
   final scrollController = ScrollController();
-  
+
   int _currentStep = 0;
   int get currentStep => _currentStep;
   set currentStep(int value) {
@@ -71,6 +71,21 @@ class CourseStateManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Point 1: Preparation Feedback
+  double _preparationProgress = 0.0;
+  double get preparationProgress => _preparationProgress;
+  set preparationProgress(double value) {
+    _preparationProgress = value;
+    notifyListeners();
+  }
+
+  String _preparationMessage = '';
+  String get preparationMessage => _preparationMessage;
+  set preparationMessage(String value) {
+    _preparationMessage = value;
+    notifyListeners();
+  }
+
   bool _isLoading = false;
   bool get isLoading => _isLoading;
   set isLoading(bool value) {
@@ -95,13 +110,7 @@ class CourseStateManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  int? _newBatchDurationDays;
-  int? get newBatchDurationDays => _newBatchDurationDays;
-  set newBatchDurationDays(int? value) {
-    if (_newBatchDurationDays == value) return;
-    _newBatchDurationDays = value;
-    notifyListeners();
-  }
+
 
   int? _courseValidityDays;
   int? get courseValidityDays => _courseValidityDays;
@@ -130,7 +139,6 @@ class CourseStateManager extends ChangeNotifier {
   // Removed Syllabus logic as per new requirement
   // Defaulting everything to a single slot logic.
 
-
   bool _isOfflineDownloadEnabled = true;
   bool get isOfflineDownloadEnabled => _isOfflineDownloadEnabled;
   set isOfflineDownloadEnabled(bool value) {
@@ -147,9 +155,28 @@ class CourseStateManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Screwdriver Tag Settings
+  bool _isSpecialTagVisible = true;
+  bool get isSpecialTagVisible => _isSpecialTagVisible;
+  set isSpecialTagVisible(bool value) {
+    if (_isSpecialTagVisible == value) return;
+    _isSpecialTagVisible = value;
+    notifyListeners();
+  }
+
+  String _specialTagColor = 'Blue';
+  String get specialTagColor => _specialTagColor;
+  set specialTagColor(String value) {
+    if (_specialTagColor == value) return;
+    _specialTagColor = value;
+    notifyListeners();
+  }
+
   // Granular Notifiers for local UI updates
   final ValueNotifier<bool> isSavingDraftNotifier = ValueNotifier<bool>(false);
-  final ValueNotifier<double> totalProgressNotifier = ValueNotifier<double>(0.0);
+  final ValueNotifier<double> totalProgressNotifier = ValueNotifier<double>(
+    0.0,
+  );
 
   bool _isSavingDraft = false;
   bool get isSavingDraft => _isSavingDraft;
@@ -158,7 +185,7 @@ class CourseStateManager extends ChangeNotifier {
     _isSavingDraft = value;
     isSavingDraftNotifier.value = value;
     // We still notify because some labels depend on this in the header
-    notifyListeners(); 
+    notifyListeners();
   }
 
   bool isRestoringDraft = false;
@@ -242,11 +269,25 @@ class CourseStateManager extends ChangeNotifier {
   }
 
   // Lists for UI (Modern Optimization: static const)
-  static const List<String> difficultyLevels = ['Beginner', 'Intermediate', 'Advanced'];
+  static const List<String> difficultyLevels = [
+    'Beginner',
+    'Intermediate',
+    'Advanced',
+  ];
   static const List<String> categories = ['Hardware', 'Software'];
   static const List<String> languages = ['Hindi', 'English', 'Bengali'];
   static const List<String> courseModes = ['Recorded', 'Live Session'];
   static const List<String> supportTypes = ['WhatsApp Group', 'No Support'];
+  static const List<String> tagColors = ['Blue', 'Red', 'Green', 'Pink'];
+
+  // 30, 60, 90, or 0 (Always Visible)
+  int _specialTagDurationDays = 30;
+  int get specialTagDurationDays => _specialTagDurationDays;
+  set specialTagDurationDays(int value) {
+    if (_specialTagDurationDays == value) return;
+    _specialTagDurationDays = value;
+    notifyListeners();
+  }
 
   // Highlights & FAQs
   final List<TextEditingController> highlightControllers = [];
@@ -258,7 +299,6 @@ class CourseStateManager extends ChangeNotifier {
   bool descError = false;
   bool categoryError = false;
   bool difficultyError = false;
-  bool batchDurationError = false;
   bool highlightsError = false;
   bool faqsError = false;
   bool mrpError = false;
@@ -291,7 +331,6 @@ class CourseStateManager extends ChangeNotifier {
   final descKey = GlobalKey();
   final categoryKey = GlobalKey();
   final difficultyKey = GlobalKey(); // Also for duration
-  final batchDurationKey = GlobalKey();
   final highlightsKey = GlobalKey();
   final faqsKey = GlobalKey();
 
@@ -313,11 +352,14 @@ class CourseStateManager extends ChangeNotifier {
       descController.text.trim().isNotEmpty ||
       selectedCategory != null ||
       difficulty != null ||
-      newBatchDurationDays != null ||
+      selectedCategory != null ||
+      difficulty != null ||
       highlightControllers.any((c) => c.text.trim().isNotEmpty) ||
-      faqControllers.any((f) =>
-          (f['q']?.text.trim().isNotEmpty ?? false) ||
-          (f['a']?.text.trim().isNotEmpty ?? false));
+      faqControllers.any(
+        (f) =>
+            (f['q']?.text.trim().isNotEmpty ?? false) ||
+            (f['a']?.text.trim().isNotEmpty ?? false),
+      );
 
   bool get hasSetupContent =>
       mrpController.text.trim().isNotEmpty ||
@@ -336,7 +378,8 @@ class CourseStateManager extends ChangeNotifier {
 
   void calculateFinalPrice() {
     final double mrp = double.tryParse(mrpController.text) ?? 0;
-    final double discountAmt = double.tryParse(discountAmountController.text) ?? 0;
+    final double discountAmt =
+        double.tryParse(discountAmountController.text) ?? 0;
 
     if (mrp > 0) {
       // 50% Discount Warning Logic (No auto-correction, just warning)

@@ -8,7 +8,11 @@ class GhostHomeScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
   final String userId;
 
-  const GhostHomeScreen({super.key, required this.userId, required this.userData});
+  const GhostHomeScreen({
+    super.key,
+    required this.userId,
+    required this.userData,
+  });
 
   @override
   State<GhostHomeScreen> createState() => _GhostHomeScreenState();
@@ -37,7 +41,10 @@ class _GhostHomeScreenState extends State<GhostHomeScreen> {
       for (var doc in enrollments.docs) {
         final courseId = doc.data()['courseId'];
         // Fetch course details
-        final courseDoc = await FirebaseFirestore.instance.collection('courses').doc(courseId).get();
+        final courseDoc = await FirebaseFirestore.instance
+            .collection('courses')
+            .doc(courseId)
+            .get();
         if (courseDoc.exists) {
           loadedCourses.add({
             'id': courseDoc.id,
@@ -62,7 +69,7 @@ class _GhostHomeScreenState extends State<GhostHomeScreen> {
     return Theme(
       data: ThemeData.light(),
       child: Scaffold(
-        backgroundColor: Colors.grey[50], 
+        backgroundColor: Colors.grey[50],
         appBar: AppBar(
           backgroundColor: Colors.white,
           elevation: 0,
@@ -75,25 +82,44 @@ class _GhostHomeScreenState extends State<GhostHomeScreen> {
             children: [
               Text(
                 "Viewing as: ${widget.userData['name']}",
-                style: GoogleFonts.outfit(color: Colors.black, fontSize: 16, fontWeight: FontWeight.bold),
+                style: GoogleFonts.outfit(
+                  color: Colors.black,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              Text("Ghost Mode Active 👻", style: GoogleFonts.inter(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold)),
+              Text(
+                "Ghost Mode Active 👻",
+                style: GoogleFonts.inter(
+                  color: Colors.red,
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
           actions: [
-            const CircleAvatar(
-              backgroundColor: Colors.red,
-              radius: 4,
-            ),
+            const CircleAvatar(backgroundColor: Colors.red, radius: 4),
             const SizedBox(width: 8),
-            Center(child: Text("LIVE POPULATION ", style: GoogleFonts.inter(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 10))),
+            Center(
+              child: Text(
+                "LIVE POPULATION ",
+                style: GoogleFonts.inter(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 10,
+                ),
+              ),
+            ),
             const SizedBox(width: 16),
           ],
         ),
-        body: _isLoading 
-            ? const SafeArea(child: SimpleShimmerList(itemCount: 3, itemHeight: 200.0))
+        body: _isLoading
+            ? const SafeArea(
+                child: SimpleShimmerList(itemCount: 3, itemHeight: 200.0),
+              )
             : SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -106,27 +132,52 @@ class _GhostHomeScreenState extends State<GhostHomeScreen> {
                       decoration: BoxDecoration(
                         color: Colors.blueAccent,
                         borderRadius: BorderRadius.circular(3.0),
-                        gradient: const LinearGradient(colors: [Colors.blue, Colors.purple])
+                        gradient: const LinearGradient(
+                          colors: [Colors.blue, Colors.purple],
+                        ),
                       ),
                       child: Center(
-                        child: Text("User's Home Banner", style: GoogleFonts.outfit(color: Colors.white, fontSize: 18)),
+                        child: Text(
+                          "User's Home Banner",
+                          style: GoogleFonts.outfit(
+                            color: Colors.white,
+                            fontSize: 18,
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 24),
-                    
-                    Text("My Enrolled Courses (${_myCourses.length})", style: GoogleFonts.outfit(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+
+                    Text(
+                      "My Enrolled Courses (${_myCourses.length})",
+                      style: GoogleFonts.outfit(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black87,
+                      ),
+                    ),
                     const SizedBox(height: 16),
-                    
+
                     if (_myCourses.isEmpty)
                       Container(
                         padding: const EdgeInsets.all(20),
                         width: double.infinity,
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(3.0)),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(3.0),
+                        ),
                         child: Column(
                           children: [
-                            const Icon(Icons.sentiment_dissatisfied, color: Colors.grey, size: 40),
+                            const Icon(
+                              Icons.sentiment_dissatisfied,
+                              color: Colors.grey,
+                              size: 40,
+                            ),
                             const SizedBox(height: 10),
-                            Text("This user has no active courses.", style: GoogleFonts.inter(color: Colors.grey)),
+                            Text(
+                              "This user has no active courses.",
+                              style: GoogleFonts.inter(color: Colors.grey),
+                            ),
                           ],
                         ),
                       )
@@ -142,23 +193,39 @@ class _GhostHomeScreenState extends State<GhostHomeScreen> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(3.0),
-                              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10)]
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.05),
+                                  blurRadius: 10,
+                                ),
+                              ],
                             ),
                             child: ListTile(
                               contentPadding: const EdgeInsets.all(10),
                               leading: ClipRRect(
                                 borderRadius: BorderRadius.circular(3.0),
                                 child: Container(
-                                  width: 60, height: 60,
+                                  width: 60,
+                                  height: 60,
                                   color: Colors.grey[200],
-                                  child: course['thumbnailUrl'] != null 
-                                    ? CachedNetworkImage(imageUrl: course['thumbnailUrl'], fit: BoxFit.cover, errorWidget: (context, url, error) => const Icon(Icons.image))
-                                    : const Icon(Icons.movie, color: Colors.grey),
+                                  child: course['thumbnailUrl'] != null
+                                      ? CachedNetworkImage(
+                                          imageUrl: course['thumbnailUrl'],
+                                          fit: BoxFit.cover,
+                                          errorWidget: (context, url, error) =>
+                                              const Icon(Icons.image),
+                                        )
+                                      : const Icon(
+                                          Icons.movie,
+                                          color: Colors.grey,
+                                        ),
                                 ),
                               ),
                               title: Text(
-                                course['title'] ?? 'Untitled', 
-                                style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+                                course['title'] ?? 'Untitled',
+                                style: GoogleFonts.outfit(
+                                  fontWeight: FontWeight.bold,
+                                ),
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                               ),
@@ -166,16 +233,32 @@ class _GhostHomeScreenState extends State<GhostHomeScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const SizedBox(height: 4),
-                                  LinearProgressIndicator(value: 0.0, backgroundColor: Colors.grey[100], color: Colors.blue, minHeight: 4),
+                                  LinearProgressIndicator(
+                                    value: 0.0,
+                                    backgroundColor: Colors.grey[100],
+                                    color: Colors.blue,
+                                    minHeight: 4,
+                                  ),
                                   const SizedBox(height: 4),
-                                  Text("Start Learning", style: GoogleFonts.inter(color: Colors.blue, fontSize: 10, fontWeight: FontWeight.bold)),
+                                  Text(
+                                    "Start Learning",
+                                    style: GoogleFonts.inter(
+                                      color: Colors.blue,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ],
                               ),
-                              trailing: const Icon(Icons.play_circle_fill, color: Colors.blue, size: 30),
+                              trailing: const Icon(
+                                Icons.play_circle_fill,
+                                color: Colors.blue,
+                                size: 30,
+                              ),
                             ),
                           );
                         },
-                      )
+                      ),
                   ],
                 ),
               ),
@@ -183,4 +266,3 @@ class _GhostHomeScreenState extends State<GhostHomeScreen> {
     );
   }
 }
-

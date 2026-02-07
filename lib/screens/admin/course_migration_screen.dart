@@ -18,7 +18,10 @@ class _CourseMigrationScreenState extends State<CourseMigrationScreen> {
 
   void _addLog(String message) {
     setState(() {
-      _logs.insert(0, '[${DateTime.now().toString().substring(11, 19)}] $message');
+      _logs.insert(
+        0,
+        '[${DateTime.now().toString().substring(11, 19)}] $message',
+      );
       if (_logs.length > 100) _logs.removeLast();
     });
   }
@@ -41,22 +44,22 @@ class _CourseMigrationScreenState extends State<CourseMigrationScreen> {
         final courseId = doc.id;
         final data = doc.data();
         final courseName = data['title'] ?? 'Unknown';
-        
+
         _addLog('Processing: $courseName');
-        
+
         final List<dynamic> contents = data['contents'] ?? [];
         bool hasChanges = false;
 
         // Recursive function to fix durations
         List<dynamic> fixContents(List<dynamic> items) {
           final fixed = <Map<String, dynamic>>[];
-          
+
           for (var item in items) {
             final fixedItem = Map<String, dynamic>.from(item);
-            
+
             if (fixedItem['type'] == 'video') {
               final duration = fixedItem['duration'];
-              
+
               if (duration is String && duration.contains(':')) {
                 // Convert string duration to integer seconds
                 final converted = _convertDurationToSeconds(duration);
@@ -64,21 +67,26 @@ class _CourseMigrationScreenState extends State<CourseMigrationScreen> {
                   fixedItem['duration'] = converted;
                   hasChanges = true;
                   _videosFixed++;
-                  _addLog('  ✅ Fixed: ${fixedItem['name']} ($duration → ${converted}s)');
+                  _addLog(
+                    '  ✅ Fixed: ${fixedItem['name']} ($duration → ${converted}s)',
+                  );
                 }
               } else if (duration == null) {
                 _addLog('  ⚠️ Missing duration: ${fixedItem['name']}');
               }
             }
-            
+
             // Recursively fix nested folder contents
-            if (fixedItem['type'] == 'folder' && fixedItem['contents'] != null) {
-              fixedItem['contents'] = fixContents(List<dynamic>.from(fixedItem['contents']));
+            if (fixedItem['type'] == 'folder' &&
+                fixedItem['contents'] != null) {
+              fixedItem['contents'] = fixContents(
+                List<dynamic>.from(fixedItem['contents']),
+              );
             }
-            
+
             fixed.add(fixedItem);
           }
-          
+
           return fixed;
         }
 
@@ -93,18 +101,19 @@ class _CourseMigrationScreenState extends State<CourseMigrationScreen> {
 
         _coursesProcessed++;
         setState(() {
-          _status = 'Processed $_coursesProcessed/${snapshot.docs.length} courses';
+          _status =
+              'Processed $_coursesProcessed/${snapshot.docs.length} courses';
         });
       }
 
       _addLog('✅ Migration completed!');
       _addLog('Total courses: $_coursesProcessed');
       _addLog('Videos fixed: $_videosFixed');
-      
-      setState(() {
-        _status = 'Migration completed! Fixed $_videosFixed videos across $_coursesProcessed courses';
-      });
 
+      setState(() {
+        _status =
+            'Migration completed! Fixed $_videosFixed videos across $_coursesProcessed courses';
+      });
     } catch (e) {
       _addLog('❌ Error: $e');
       setState(() {
@@ -158,7 +167,10 @@ class _CourseMigrationScreenState extends State<CourseMigrationScreen> {
                   children: [
                     const Text(
                       'Duration Format Migration',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     const Text(
@@ -172,8 +184,20 @@ class _CourseMigrationScreenState extends State<CourseMigrationScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Courses Processed', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                              Text('$_coursesProcessed', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
+                              const Text(
+                                'Courses Processed',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              Text(
+                                '$_coursesProcessed',
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -181,8 +205,21 @@ class _CourseMigrationScreenState extends State<CourseMigrationScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('Videos Fixed', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                              Text('$_videosFixed', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.green)),
+                              const Text(
+                                'Videos Fixed',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                              Text(
+                                '$_videosFixed',
+                                style: const TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.green,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -214,7 +251,9 @@ class _CourseMigrationScreenState extends State<CourseMigrationScreen> {
                             style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
-                              color: _isProcessing ? Colors.blue : Colors.black87,
+                              color: _isProcessing
+                                  ? Colors.blue
+                                  : Colors.black87,
                             ),
                           ),
                         ),
@@ -234,11 +273,17 @@ class _CourseMigrationScreenState extends State<CourseMigrationScreen> {
               ),
               child: Text(
                 _isProcessing ? 'Processing...' : 'Start Migration',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             const SizedBox(height: 16),
-            const Text('Migration Logs:', style: TextStyle(fontWeight: FontWeight.bold)),
+            const Text(
+              'Migration Logs:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 8),
             Expanded(
               child: Container(
@@ -256,7 +301,7 @@ class _CourseMigrationScreenState extends State<CourseMigrationScreen> {
                     if (log.contains('✅')) logColor = Colors.greenAccent;
                     if (log.contains('❌')) logColor = Colors.redAccent;
                     if (log.contains('⚠️')) logColor = Colors.orangeAccent;
-                    
+
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 4),
                       child: Text(

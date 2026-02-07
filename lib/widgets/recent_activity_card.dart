@@ -49,21 +49,12 @@ class RecentActivityCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const FaIcon(
-                      FontAwesomeIcons.clock,
-                      size: 18,
-                    ),
+                    const FaIcon(FontAwesomeIcons.clock, size: 18),
                     const SizedBox(width: 8),
-                    Text(
-                      'Recent Activity',
-                      style: AppTheme.heading3(context),
-                    ),
+                    Text('Recent Activity', style: AppTheme.heading3(context)),
                   ],
                 ),
-                TextButton(
-                  onPressed: () {},
-                  child: const Text('View All'),
-                ),
+                TextButton(onPressed: () {}, child: const Text('View All')),
               ],
             ),
             const SizedBox(height: 12),
@@ -96,9 +87,9 @@ class RecentActivityCard extends StatelessWidget {
                         children: [
                           Text(
                             activity['title'] as String,
-                            style: AppTheme.bodyMedium(context).copyWith(
-                              fontWeight: FontWeight.w500,
-                            ),
+                            style: AppTheme.bodyMedium(
+                              context,
+                            ).copyWith(fontWeight: FontWeight.w500),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -120,4 +111,3 @@ class RecentActivityCard extends StatelessWidget {
     );
   }
 }
-

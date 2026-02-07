@@ -6,15 +6,19 @@ import 'logger_service.dart';
 class BunnyCDNService {
   // Bunny.net Storage Zone Configuration
   static const String storageZoneName = 'lme-media-storage';
-  static const String hostname = 'sg.storage.bunnycdn.com'; // Verified Region: Singapore
-  static const String apiKey = 'eae59342-6952-4d56-bb2fb8745da1-adf7-402d'; // Admin Storage Key
+  static const String hostname =
+      'sg.storage.bunnycdn.com'; // Verified Region: Singapore
+  static const String apiKey =
+      '47d150e7-c234-4267-85a4018657d5-afa6-4d5c'; // Admin Storage Key for lme-media-storage
   static const String cdnUrl = 'https://lme-media-storage.b-cdn.net';
-  
-  final Dio _dio = Dio(BaseOptions(
-    connectTimeout: const Duration(seconds: 30),
-    receiveTimeout: const Duration(minutes: 60),
-    sendTimeout: const Duration(minutes: 60),
-  ));
+
+  final Dio _dio = Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 30),
+      receiveTimeout: const Duration(minutes: 60),
+      sendTimeout: const Duration(minutes: 60),
+    ),
+  );
 
   /// Upload file to Bunny.net CDN
   Future<String> uploadFile({
@@ -36,13 +40,13 @@ class BunnyCDNService {
 
         final fileSize = await file.length();
         final fileName = path.basename(filePath);
-        
+
         final apiUrl = 'https://$hostname/$storageZoneName/$remotePath';
         final stream = file.openRead();
 
         final response = await _dio.put(
           apiUrl,
-          data: stream, 
+          data: stream,
           options: Options(
             validateStatus: (status) => status! < 500,
             headers: {
@@ -56,17 +60,19 @@ class BunnyCDNService {
         );
 
         if (response.statusCode != 201 && response.statusCode != 200) {
-           throw Exception('Upload failed (${response.statusCode}): ${response.data}');
+          throw Exception(
+            'Upload failed (${response.statusCode}): ${response.data}',
+          );
         }
 
         final publicUrl = '$cdnUrl/$remotePath';
         return Uri.encodeFull(publicUrl);
       } catch (e) {
         if (e is DioException && e.type == DioExceptionType.cancel) {
-           rethrow;
+          rethrow;
         }
         if (attempts >= maxRetries) {
-           rethrow;
+          rethrow;
         }
         await Future.delayed(Duration(seconds: attempts * 2));
       }
@@ -80,11 +86,7 @@ class BunnyCDNService {
       final apiUrl = 'https://$hostname/$storageZoneName/$remotePath';
       final response = await _dio.delete(
         apiUrl,
-        options: Options(
-          headers: {
-            'AccessKey': apiKey,
-          },
-        ),
+        options: Options(headers: {'AccessKey': apiKey}),
       );
       return response.statusCode == 200 || response.statusCode == 204;
     } catch (e) {
@@ -100,14 +102,12 @@ class BunnyCDNService {
     required String apiKey,
   }) async {
     try {
-      final apiUrl = 'https://video.bunnycdn.com/library/$libraryId/videos/$videoId';
+      final apiUrl =
+          'https://video.bunnycdn.com/library/$libraryId/videos/$videoId';
       final response = await _dio.delete(
         apiUrl,
         options: Options(
-          headers: {
-            'AccessKey': apiKey,
-            'accept': 'application/json',
-          },
+          headers: {'AccessKey': apiKey, 'accept': 'application/json'},
         ),
       );
       return response.statusCode == 200;
@@ -120,14 +120,21 @@ class BunnyCDNService {
   String _getContentType(String fileName) {
     final extension = path.extension(fileName).toLowerCase();
     switch (extension) {
-      case '.mp4': return 'video/mp4';
+      case '.mp4':
+        return 'video/mp4';
       case '.jpg':
-      case '.jpeg': return 'image/jpeg';
-      case '.png': return 'image/png';
-      case '.webp': return 'image/webp';
-      case '.pdf': return 'application/pdf';
-      case '.zip': return 'application/zip';
-      default: return 'application/octet-stream';
+      case '.jpeg':
+        return 'image/jpeg';
+      case '.png':
+        return 'image/png';
+      case '.webp':
+        return 'image/webp';
+      case '.pdf':
+        return 'application/pdf';
+      case '.zip':
+        return 'application/zip';
+      default:
+        return 'application/octet-stream';
     }
   }
 
@@ -181,28 +188,33 @@ class BunnyCDNService {
   String getAuthenticatedUrl(String publicUrl) {
     return signUrl(publicUrl);
   }
-  
+
   static String signUrl(String publicUrl) {
     if (publicUrl.isEmpty) return publicUrl;
-    
+
     // Only transform if it's our specific Storage Zone CDN
     // This prevents breaking Bunny Stream thumbnails (which also use b-cdn.net but different host)
     if (publicUrl.startsWith(cdnUrl)) {
       try {
         String pathPart = publicUrl.split(cdnUrl).last;
         if (pathPart.startsWith('/')) pathPart = pathPart.substring(1);
-        
+
         final decoded = Uri.decodeFull(pathPart);
         final segments = decoded.split('/');
-        final encodedSegments = segments.map((s) => Uri.encodeComponent(s)).toList();
+        final encodedSegments = segments
+            .map((s) => Uri.encodeComponent(s))
+            .toList();
         final targetPath = encodedSegments.join('/');
-        
+
         return 'https://sg.storage.bunnycdn.com/lme-media-storage/$targetPath';
       } catch (e) {
-        return publicUrl.replaceFirst(cdnUrl, 'https://sg.storage.bunnycdn.com/lme-media-storage');
+        return publicUrl.replaceFirst(
+          cdnUrl,
+          'https://sg.storage.bunnycdn.com/lme-media-storage',
+        );
       }
     }
-    
-    return publicUrl; 
+
+    return publicUrl;
   }
 }

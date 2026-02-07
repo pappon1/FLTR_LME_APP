@@ -26,15 +26,19 @@ class _CoursesTabState extends State<CoursesTab> {
       category: 'Hardware',
       price: 25000,
       discountPrice: 19999,
-      description: 'Master mobile hardware repairing from basics to advanced chip level.',
+      description:
+          'Master mobile hardware repairing from basics to advanced chip level.',
       thumbnailUrl: 'https://picsum.photos/id/1/800/450',
       duration: '3 Months',
       difficulty: 'Advanced',
       enrolledStudents: 1540,
       rating: 4.8,
       totalVideos: 120,
-      isPublished: true,
+      isPublished: false,
       hasCertificate: true,
+      isOfflineDownloadEnabled: true,
+      isBigScreenEnabled: true,
+      specialTag: 'Best Seller',
     ),
   ];
 
@@ -55,10 +59,7 @@ class _CoursesTabState extends State<CoursesTab> {
         title: FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
-          child: Text(
-            'Courses',
-            style: AppTheme.heading2(context),
-          ),
+          child: Text('Courses', style: AppTheme.heading2(context)),
         ),
         actions: [
           // Upload Monitor Button - ALWAYS VISIBLE (For UI Access)
@@ -66,9 +67,17 @@ class _CoursesTabState extends State<CoursesTab> {
             padding: const EdgeInsets.only(right: 8.0),
             child: IconButton(
               onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => const UploadProgressScreen()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const UploadProgressScreen(),
+                  ),
+                );
               },
-              icon: const Icon(Icons.cloud_upload_outlined, color: AppTheme.primaryColor),
+              icon: const Icon(
+                Icons.cloud_upload_outlined,
+                color: AppTheme.primaryColor,
+              ),
               tooltip: 'Upload Manager',
             ),
           ),
@@ -78,7 +87,9 @@ class _CoursesTabState extends State<CoursesTab> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const AddCourseScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => const AddCourseScreen(),
+                  ),
                 );
               },
               icon: const FaIcon(FontAwesomeIcons.plus, size: 16),
@@ -97,7 +108,10 @@ class _CoursesTabState extends State<CoursesTab> {
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          await Provider.of<DashboardProvider>(context, listen: false).refreshData();
+          await Provider.of<DashboardProvider>(
+            context,
+            listen: false,
+          ).refreshData();
         },
         child: Consumer<DashboardProvider>(
           builder: (context, provider, child) {
@@ -110,8 +124,8 @@ class _CoursesTabState extends State<CoursesTab> {
             if (displayCourses.isEmpty) {
               return Stack(
                 children: [
-                   ListView(), // Always scrollable for RefreshIndicator
-                   Center(
+                  ListView(), // Always scrollable for RefreshIndicator
+                  Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -123,12 +137,16 @@ class _CoursesTabState extends State<CoursesTab> {
                         const SizedBox(height: 16),
                         Text(
                           'No courses yet',
-                          style: AppTheme.heading3(context).copyWith(color: Colors.grey[500]),
+                          style: AppTheme.heading3(
+                            context,
+                          ).copyWith(color: Colors.grey[500]),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           'Tap "Add Course" above to start',
-                          style: AppTheme.bodyMedium(context).copyWith(color: Colors.grey[400]),
+                          style: AppTheme.bodyMedium(
+                            context,
+                          ).copyWith(color: Colors.grey[400]),
                         ),
                       ],
                     ),
@@ -136,7 +154,7 @@ class _CoursesTabState extends State<CoursesTab> {
                 ],
               );
             }
- 
+
             return ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -144,13 +162,13 @@ class _CoursesTabState extends State<CoursesTab> {
               itemBuilder: (context, index) {
                 final course = _dummyCourses.first;
                 return CourseCard(
-                  course: course,
-                  isEdgeToEdge: true,
-                  customHorizontalMargin: 6,
-                  bottomMargin: 14,
-                  cornerRadius: 3,
-                  showBorder: true,
-                )
+                      course: course,
+                      isEdgeToEdge: true,
+                      customHorizontalMargin: 6,
+                      bottomMargin: 14,
+                      cornerRadius: 3,
+                      showBorder: true,
+                    )
                     .animate()
                     .fadeIn(duration: 400.ms, delay: (index * 100).ms)
                     .slideX(begin: -0.1, end: 0);
@@ -172,7 +190,7 @@ class _CoursesTabState extends State<CoursesTab> {
           customHorizontalMargin: 6,
           bottomMargin: 14,
           cornerRadius: 3,
-        ); 
+        );
       },
     );
   }

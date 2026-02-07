@@ -43,9 +43,14 @@ class StudentModel {
       email: data['email'] ?? '',
       phone: data['phone'] ?? '',
       enrolledCourses: data['enrolledCourses'] ?? 0,
-      joinedDate: (data['joinedDate'] ?? data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      joinedDate:
+          (data['joinedDate'] ?? data['createdAt'] as Timestamp?)?.toDate() ??
+          DateTime.now(),
       isActive: data['isActive'] ?? true,
-      avatarUrl: data['avatarUrl'] ?? data['photoURL'] ?? 'https://ui-avatars.com/api/?name=${data['name'] ?? 'User'}&background=6366f1&color=fff',
+      avatarUrl:
+          data['avatarUrl'] ??
+          data['photoURL'] ??
+          'https://ui-avatars.com/api/?name=${data['name'] ?? 'User'}&background=6366f1&color=fff',
     );
   }
 

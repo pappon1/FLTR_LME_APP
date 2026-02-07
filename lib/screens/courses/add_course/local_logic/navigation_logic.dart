@@ -10,7 +10,13 @@ class NavigationLogic {
   final DraftManager draftManager;
   final BuildContext context;
 
-  NavigationLogic(this.state, this.pageController, this.validation, this.draftManager, this.context);
+  NavigationLogic(
+    this.state,
+    this.pageController,
+    this.validation,
+    this.draftManager,
+    this.context,
+  );
 
   void nextStep(Function(String) showWarning) {
     if (state.currentStep == 0) {
@@ -48,7 +54,7 @@ class NavigationLogic {
   Future<void> _animateToPage(int page) async {
     // Unfocus immediately
     FocusScope.of(context).unfocus();
-    
+
     // Jump instantly without animation
     pageController.jumpToPage(page);
     state.currentStep = page;

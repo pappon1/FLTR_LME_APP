@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:math' as math;
+import 'dart:convert';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -10,6 +12,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../../models/course_model.dart';
 import '../local_logic/state_manager.dart';
 import '../local_logic/validation.dart';
+import 'package:disk_space_2/disk_space_2.dart';
 import '../../../../screens/uploads/upload_progress_screen.dart';
 
 class SubmitHandler {
@@ -18,7 +21,10 @@ class SubmitHandler {
 
   SubmitHandler(this.state, this.validation);
 
-  Future<void> submitCourse(BuildContext context, Function(String) showWarning) async {
+  Future<void> submitCourse(
+    BuildContext context,
+    Function(String) showWarning,
+  ) async {
     if (!validation.validateAllFields(onValidationError: showWarning)) return;
     if (state.courseContents.isEmpty) {
       state.courseContentError = true;
@@ -54,50 +60,145 @@ class SubmitHandler {
 
       final Map<String, String> copiedPathMap = {};
 
-      Future<String> copyToSafe(String rawPath) async {
-        if (copiedPathMap.containsKey(rawPath)) return copiedPathMap[rawPath]!;
-        final f = File(rawPath);
-        if (!f.existsSync()) return rawPath;
-        final filename =
-            '${DateTime.now().millisecondsSinceEpoch}_${path.basename(rawPath)}';
-        final newPath = '${safeDir.path}/$filename';
-        await f.copy(newPath);
-        copiedPathMap[rawPath] = newPath;
-        return newPath;
-      }
+      // --- Point 7: Disk Space Check ---
+      double totalSizeNeeded = 0;
+      final List<File> filesToCopy = [];
 
-      if (state.thumbnailImage != null) {
-        state.thumbnailImage = File(await copyToSafe(state.thumbnailImage!.path));
-      }
-      if (state.certificate1File != null) {
-        state.certificate1File = File(await copyToSafe(state.certificate1File!.path));
-      }
-
-      Future<void> safeCopyAllContent(List<dynamic> items) async {
+      void calculateSizeRecursive(dynamic items) {
         for (var item in items) {
           final String type = item['type'];
           if ((type == 'video' || type == 'pdf' || type == 'image') &&
               item['isLocal'] == true) {
             final String? fPath = item['path'];
             if (fPath != null && fPath.isNotEmpty) {
-              item['path'] = await copyToSafe(fPath);
+              final file = File(fPath);
+              if (file.existsSync()) {
+                totalSizeNeeded += file.lengthSync();
+                filesToCopy.add(file);
+              }
             }
           }
           if (item['thumbnail'] != null && item['thumbnail'] is String) {
             final String tPath = item['thumbnail'];
             if (tPath.isNotEmpty && !tPath.startsWith('http')) {
-              item['thumbnail'] = await copyToSafe(tPath);
+              final file = File(tPath);
+              if (file.existsSync()) {
+                totalSizeNeeded += file.lengthSync();
+                filesToCopy.add(file);
+              }
             }
           }
           if (type == 'folder' && item['contents'] != null) {
-            await safeCopyAllContent(item['contents']);
+            calculateSizeRecursive(item['contents']);
           }
         }
       }
 
-      await safeCopyAllContent(state.courseContents);
+      calculateSizeRecursive(state.courseContents);
+      if (state.thumbnailImage != null)
+        totalSizeNeeded += state.thumbnailImage!.lengthSync();
+      if (state.certificate1File != null)
+        totalSizeNeeded += state.certificate1File!.lengthSync();
 
-      final newDocId = FirebaseFirestore.instance.collection('courses').doc().id;
+      // Get free space (MB to Bytes)
+      final double? freeSpaceMb = await DiskSpace.getFreeDiskSpace;
+      if (freeSpaceMb != null) {
+        final double freeSpaceBytes = freeSpaceMb * 1024 * 1024;
+        if (freeSpaceBytes < (totalSizeNeeded * 1.2)) {
+          // 20% buffer
+          state.isLoading = false;
+          state.isUploading = false;
+          state.updateState();
+          showWarning(
+            'Low Disk Space! Need approx ${_formatBytes(totalSizeNeeded.toInt())} free.',
+          );
+          return;
+        }
+      }
+
+      // --- Point 1: Preparation Progress ---
+      int totalFiles = filesToCopy.length;
+      if (state.thumbnailImage != null) totalFiles++;
+      if (state.certificate1File != null) totalFiles++;
+
+      int copiedCount = 0;
+      void updatePrep(String msg) {
+        state.preparationMessage = msg;
+        state.preparationProgress = totalFiles > 0
+            ? copiedCount / totalFiles
+            : 1.0;
+        state.updateState();
+      }
+
+      updatePrep("Preparing files...");
+
+      Future<String> copyToSafe(String rawPath, String label) async {
+        if (copiedPathMap.containsKey(rawPath)) return copiedPathMap[rawPath]!;
+        final f = File(rawPath);
+        if (!f.existsSync()) return rawPath;
+
+        final filename =
+            '${DateTime.now().millisecondsSinceEpoch}_${path.basename(rawPath)}';
+        final newPath = '${safeDir.path}/$filename';
+
+        updatePrep("Copying $label...");
+        await f.copy(newPath);
+
+        copiedCount++;
+        updatePrep("Copying $label...");
+
+        copiedPathMap[rawPath] = newPath;
+        return newPath;
+      }
+
+      // Processing Contents with sequence for better feedback
+      // (Even if we use Future.wait, we can update UI as they finish)
+
+      Future<void> processContentsRecursive(List<dynamic> items) async {
+        for (var item in items) {
+          final String type = item['type'];
+          final String itemName = item['name'] ?? 'File';
+
+          if ((type == 'video' || type == 'pdf' || type == 'image') &&
+              item['isLocal'] == true) {
+            final String? fPath = item['path'];
+            if (fPath != null && fPath.isNotEmpty) {
+              item['path'] = await copyToSafe(fPath, itemName);
+            }
+          }
+          if (item['thumbnail'] != null && item['thumbnail'] is String) {
+            final String tPath = item['thumbnail'];
+            if (tPath.isNotEmpty && !tPath.startsWith('http')) {
+              item['thumbnail'] = await copyToSafe(tPath, 'Thumbnail');
+            }
+          }
+          if (type == 'folder' && item['contents'] != null) {
+            await processContentsRecursive(item['contents']);
+          }
+        }
+      }
+
+      await processContentsRecursive(state.courseContents);
+
+      if (state.thumbnailImage != null) {
+        final newPath = await copyToSafe(
+          state.thumbnailImage!.path,
+          "Course Thumbnail",
+        );
+        state.thumbnailImage = File(newPath);
+      }
+      if (state.certificate1File != null) {
+        final newPath = await copyToSafe(
+          state.certificate1File!.path,
+          "Certificate",
+        );
+        state.certificate1File = File(newPath);
+      }
+
+      final newDocId = FirebaseFirestore.instance
+          .collection('courses')
+          .doc()
+          .id;
 
       final draftCourse = CourseModel(
         id: newDocId,
@@ -107,14 +208,15 @@ class SubmitHandler {
         discountPrice: int.tryParse(state.finalPriceController.text) ?? 0,
         description: finalDesc,
         thumbnailUrl: state.thumbnailImage?.path ?? '',
-        duration: finalValidity == 0 ? 'Lifetime Access' : '$finalValidity Days',
+        duration: finalValidity == 0
+            ? 'Lifetime Access'
+            : '$finalValidity Days',
         difficulty: state.difficulty!,
         enrolledStudents: 0,
         rating: 0.0,
         totalVideos: _countVideos(state.courseContents),
         isPublished: state.isPublished,
         createdAt: DateTime.now(),
-        newBatchDays: state.newBatchDurationDays!,
         courseValidityDays: finalValidity,
         hasCertificate: state.hasCertificate,
         certificateUrl1: state.certificate1File?.path,
@@ -127,16 +229,21 @@ class SubmitHandler {
         isBigScreenEnabled: state.isBigScreenEnabled,
         websiteUrl: state.websiteUrlController.text.trim(),
         specialTag: state.specialTagController.text.trim(),
+        specialTagColor: state.specialTagColor,
+        isSpecialTagVisible: state.isSpecialTagVisible,
+        specialTagDurationDays: state.specialTagDurationDays,
         contents: state.courseContents,
         highlights: state.highlightControllers
             .map((c) => c.text.trim())
             .where((t) => t.isNotEmpty)
             .toList(),
         faqs: state.faqControllers
-            .map((f) => {
-                  'question': f['q']!.text.trim(),
-                  'answer': f['a']!.text.trim(),
-                })
+            .map(
+              (f) => {
+                'question': f['q']!.text.trim(),
+                'answer': f['a']!.text.trim(),
+              },
+            )
             .where((f) => f['question']!.isNotEmpty && f['answer']!.isNotEmpty)
             .toList(),
       );
@@ -145,7 +252,12 @@ class SubmitHandler {
       final List<Map<String, dynamic>> fileTasks = [];
       final Set<String> processedFilePaths = {};
 
-      void addTask(String filePath, String remotePath, String id, {String? thumbnail}) {
+      void addTask(
+        String filePath,
+        String remotePath,
+        String id, {
+        String? thumbnail,
+      }) {
         if (processedFilePaths.contains(filePath)) return;
         processedFilePaths.add(filePath);
         fileTasks.add({
@@ -196,7 +308,9 @@ class SubmitHandler {
               filePath,
               'courses/$sessionId/$folder/$uniqueName',
               filePath,
-              thumbnail: (type == 'video' && item['thumbnail'] != null) ? item['thumbnail'] : null,
+              thumbnail: (type == 'video' && item['thumbnail'] != null)
+                  ? item['thumbnail']
+                  : null,
             );
           }
         }
@@ -225,25 +339,38 @@ class SubmitHandler {
       courseMap['createdAt'] = DateTime.now().toIso8601String();
 
       final service = FlutterBackgroundService();
+
+      // --- NEW: Reliable Command Delivery ---
+      bool commandDelivered = false;
+      int retryCount = 0;
+      const int maxRetries = 15; // Wait up to 15 seconds for slow device bootup
+
+      // 1. Start the service
       if (!await service.isRunning()) {
         await service.startService();
-        await Future.delayed(const Duration(seconds: 4));
       }
 
-      service.invoke('submit_course', {
-        'course': courseMap,
-        'files': fileTasks,
-      });
+      // 2. Persistent retry loop for "Double Tap" until status is confirmed
+      // 3. Optimized Metadata Transfer (File-based instead of String-based)
+      final String metadataFileName = 'course_metadata_${sessionId}.json';
+      final File metadataFile = File('${safeDir.path}/$metadataFileName');
+      await metadataFile.writeAsString(
+        jsonEncode({'course': courseMap, 'files': fileTasks}),
+      );
 
-      Timer(const Duration(milliseconds: 1500), () {
-        service.invoke('submit_course', {
-          'course': courseMap,
-          'files': fileTasks,
-        });
+      while (!commandDelivered && retryCount < maxRetries) {
+        service.invoke('submit_course', {'metadataPath': metadataFile.path});
         service.invoke('get_status');
-      });
 
-      service.invoke('get_status');
+        await Future.delayed(const Duration(seconds: 1));
+
+        final checkPrefs = await SharedPreferences.getInstance();
+        if (checkPrefs.containsKey('pending_course_v1')) {
+          commandDelivered = true;
+          debugPrint("✅ SubmitHandler: Command delivered (via Metadata File)");
+        }
+        retryCount++;
+      }
 
       await prefs.remove('course_creation_draft');
 
@@ -285,12 +412,19 @@ class SubmitHandler {
         }
       }
     }
+
     for (var item in items) {
       countRecursive(item);
     }
     return count;
   }
 
+  String _formatBytes(int bytes) {
+    if (bytes <= 0) return "0 B";
+    const suffixes = ["B", "KB", "MB", "GB", "TB"];
+    var i = (math.log(bytes) / math.log(1024)).floor();
+    return '${(bytes / math.pow(1024, i)).toStringAsFixed(1)} ${suffixes[i]}';
+  }
 
   void _jumpToStep(int step) {
     FocusManager.instance.primaryFocus?.unfocus();
@@ -306,7 +440,10 @@ class SubmitHandler {
           "Another course is currently being uploaded in the background.",
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("OK")),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("OK"),
+          ),
         ],
       ),
     );

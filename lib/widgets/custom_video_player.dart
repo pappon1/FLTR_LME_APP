@@ -30,13 +30,13 @@ class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
   Future<void> _initPlayer() async {
     player = Player();
     controller = VideoController(player);
-    
+
     try {
       await player.open(Media(widget.videoUrl));
       if (widget.autoPlay) {
         await player.play();
       }
-      
+
       if (mounted) {
         setState(() {
           _isInit = true;
@@ -62,7 +62,7 @@ class _CustomVideoPlayerState extends State<CustomVideoPlayer> {
         child: const Center(child: CircularProgressIndicator()),
       );
     }
-    
+
     return Container(
       color: Colors.black,
       height: 220,

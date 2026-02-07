@@ -40,18 +40,18 @@ class Step1Logic {
       if (!url.startsWith('http')) {
         url = 'https://$url';
       }
-      
+
       final uri = Uri.tryParse(url);
       if (uri == null) throw Exception('Invalid URL Format');
 
       if (isWhatsapp) {
         if (!uri.host.contains('chat.whatsapp.com')) {
-           throw Exception('Invalid Domain');
+          throw Exception('Invalid Domain');
         }
       }
 
       final response = await http.head(uri).timeout(const Duration(seconds: 5));
-      
+
       if (response.statusCode >= 200 && response.statusCode < 400) {
         if (isWhatsapp) {
           state.isWpValid = true;
@@ -94,7 +94,7 @@ class Step1Logic {
     state.certificate1File = null;
     state.isBigScreenEnabled = false;
     state.websiteUrlController.clear();
-    
+
     // Reset status flags
     state.isWpValid = false;
     state.isWebValid = false;
@@ -137,7 +137,10 @@ class Step1Logic {
     );
   }
 
-  Future<void> pickCertificatePdf(BuildContext context, Function(String) showWarning) async {
+  Future<void> pickCertificatePdf(
+    BuildContext context,
+    Function(String) showWarning,
+  ) async {
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
@@ -150,10 +153,10 @@ class Step1Logic {
         final int sizeInBytes = file.lengthSync();
         final double sizeInMb = sizeInBytes / (1024 * 1024);
         if (sizeInMb > 10) {
-           if (context.mounted) {
-             showWarning('PDF size should be less than 10MB');
-           }
-           return;
+          if (context.mounted) {
+            showWarning('PDF size should be less than 10MB');
+          }
+          return;
         }
 
         state.certificate1File = file;

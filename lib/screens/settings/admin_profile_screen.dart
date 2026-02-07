@@ -15,14 +15,16 @@ class AdminProfileScreen extends StatefulWidget {
 
 class _AdminProfileScreenState extends State<AdminProfileScreen> {
   final _formKey = GlobalKey<FormState>();
-  
+
   // Image Picking
   File? _image;
   final ImagePicker _picker = ImagePicker();
 
   Future<void> _pickImage() async {
     try {
-      final XFile? pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+      final XFile? pickedFile = await _picker.pickImage(
+        source: ImageSource.gallery,
+      );
       if (pickedFile != null) {
         setState(() {
           _image = File(pickedFile.path);
@@ -30,16 +32,22 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
       }
     } catch (e) {
       debugPrint('Error picking image: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to pick image: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to pick image: $e')));
     }
   }
-  
+
   // Dummy data for now - will be replaced with Firebase data later
-  final TextEditingController _nameController = TextEditingController(text: 'Admin User');
-  final TextEditingController _phoneController = TextEditingController(text: '9876543210');
-  final TextEditingController _emailController = TextEditingController(text: 'admin@example.com'); // Read-only
+  final TextEditingController _nameController = TextEditingController(
+    text: 'Admin User',
+  );
+  final TextEditingController _phoneController = TextEditingController(
+    text: '9876543210',
+  );
+  final TextEditingController _emailController = TextEditingController(
+    text: 'admin@example.com',
+  ); // Read-only
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +71,9 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                     CircleAvatar(
                       radius: 50,
                       backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
-                      backgroundImage: _image != null ? FileImage(_image!) : null,
+                      backgroundImage: _image != null
+                          ? FileImage(_image!)
+                          : null,
                       child: _image == null
                           ? Text(
                               'A',
@@ -83,9 +93,16 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                         decoration: BoxDecoration(
                           color: AppTheme.primaryColor,
                           shape: BoxShape.circle,
-                          border: Border.all(color: Theme.of(context).scaffoldBackgroundColor, width: 2),
+                          border: Border.all(
+                            color: Theme.of(context).scaffoldBackgroundColor,
+                            width: 2,
+                          ),
                         ),
-                        child: const Icon(Icons.camera_alt, color: Colors.white, size: 16),
+                        child: const Icon(
+                          Icons.camera_alt,
+                          color: Colors.white,
+                          size: 16,
+                        ),
                       ),
                     ),
                   ],
@@ -133,14 +150,18 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                   onPressed: () {
                     // Logic to update profile will go here
                     if (_formKey.currentState!.validate()) {
-                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Profile Updated Locally!')),
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Profile Updated Locally!'),
+                        ),
                       );
                       Navigator.pop(context);
                     }
                   },
                   style: Theme.of(context).elevatedButtonTheme.style?.copyWith(
-                    backgroundColor: WidgetStateProperty.all(AppTheme.primaryColor),
+                    backgroundColor: WidgetStateProperty.all(
+                      AppTheme.primaryColor,
+                    ),
                     foregroundColor: WidgetStateProperty.all(Colors.white),
                   ),
                   child: const Text('Save Changes'),
@@ -195,7 +216,9 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
           borderSide: const BorderSide(color: AppTheme.primaryColor),
         ),
         filled: true,
-        fillColor: readOnly ? Theme.of(context).dividerColor.withOpacity(0.05) : Theme.of(context).cardColor,
+        fillColor: readOnly
+            ? Theme.of(context).dividerColor.withOpacity(0.05)
+            : Theme.of(context).cardColor,
       ),
       validator: (value) {
         if (value == null || value.isEmpty) {

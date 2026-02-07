@@ -16,10 +16,7 @@ class SettingsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          'Settings',
-          style: AppTheme.heading2(context),
-        ),
+        title: Text('Settings', style: AppTheme.heading2(context)),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
@@ -27,10 +24,9 @@ class SettingsTab extends StatelessWidget {
           // General Section
           Text(
             'GENERAL',
-            style: AppTheme.bodySmall(context).copyWith(
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1,
-            ),
+            style: AppTheme.bodySmall(
+              context,
+            ).copyWith(fontWeight: FontWeight.bold, letterSpacing: 1),
           ),
           const SizedBox(height: 8),
           Card(
@@ -49,8 +45,16 @@ class SettingsTab extends StatelessWidget {
                       color: Colors.white,
                     ),
                   ),
-                  title: const Text('Profile', maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle: const Text('Edit your profile information', maxLines: 1, overflow: TextOverflow.ellipsis),
+                  title: const Text(
+                    'Profile',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  subtitle: const Text(
+                    'Edit your profile information',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   trailing: const FaIcon(
                     FontAwesomeIcons.chevronRight,
                     size: 14,
@@ -78,8 +82,24 @@ class SettingsTab extends StatelessWidget {
                       color: Colors.white,
                     ),
                   ),
-                  title: const FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('App Control Center', maxLines: 1, overflow: TextOverflow.ellipsis)),
-                  subtitle: const FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('Version, Maintenance & Global Config', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                  title: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'App Control Center',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  subtitle: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Version, Maintenance & Global Config',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                   trailing: const FaIcon(
                     FontAwesomeIcons.chevronRight,
                     size: 14,
@@ -96,17 +116,15 @@ class SettingsTab extends StatelessWidget {
               ],
             ),
           ),
-          
+
           const SizedBox(height: 24),
-          
-          
+
           // About Section
           Text(
             'ABOUT',
-            style: AppTheme.bodySmall(context).copyWith(
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1,
-            ),
+            style: AppTheme.bodySmall(
+              context,
+            ).copyWith(fontWeight: FontWeight.bold, letterSpacing: 1),
           ),
           const SizedBox(height: 8),
           Card(
@@ -125,18 +143,33 @@ class SettingsTab extends StatelessWidget {
                       color: Colors.white,
                     ),
                   ),
-                  title: const FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('App Version', maxLines: 1, overflow: TextOverflow.ellipsis)),
-                  subtitle: const FittedBox(fit: BoxFit.scaleDown, alignment: Alignment.centerLeft, child: Text('1.0.0', maxLines: 1, overflow: TextOverflow.ellipsis)),
+                  title: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'App Version',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  subtitle: const FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      '1.0.0',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                   trailing: null,
                   onTap: null,
                 ),
               ],
             ),
           ),
-          
-          
+
           const SizedBox(height: 24),
-          
+
           // 🔥 DEVELOPER ZONE Section
           Text(
             '🔥 DEVELOPER ZONE',
@@ -160,7 +193,11 @@ class SettingsTab extends StatelessWidget {
                   ),
                   child: const Row(
                     children: [
-                      Icon(Icons.warning_amber_rounded, color: Colors.deepOrange, size: 24),
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        color: Colors.deepOrange,
+                        size: 24,
+                      ),
                       SizedBox(width: 12),
                       Expanded(
                         child: Text(
@@ -192,7 +229,10 @@ class SettingsTab extends StatelessWidget {
                   ),
                   title: const Text(
                     'Course Migration Tool',
-                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
                   ),
                   subtitle: const Text(
                     'Fix duration format in old courses',
@@ -230,7 +270,10 @@ class SettingsTab extends StatelessWidget {
                   ),
                   title: const Text(
                     'Database Cleanup',
-                    style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red,
+                    ),
                   ),
                   subtitle: const Text(
                     'Delete all courses & files from server',
@@ -248,9 +291,9 @@ class SettingsTab extends StatelessWidget {
               ],
             ),
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // Logout Button
           ElevatedButton.icon(
             onPressed: () {
@@ -266,12 +309,14 @@ class SettingsTab extends StatelessWidget {
                     ),
                     FilledButton(
                       onPressed: () {
-                         Navigator.pop(context);
-                         unawaited(FirebaseAuthService().signOut());
-                         Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(builder: (_) => const LoginScreen()),
-                            (route) => false,
-                         );
+                        Navigator.pop(context);
+                        unawaited(FirebaseAuthService().signOut());
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(
+                            builder: (_) => const LoginScreen(),
+                          ),
+                          (route) => false,
+                        );
                       },
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.red,
@@ -291,11 +336,10 @@ class SettingsTab extends StatelessWidget {
               minimumSize: const Size(double.infinity, 50),
             ),
           ),
-          
+
           const SizedBox(height: 32),
         ],
       ),
     );
   }
 }
-

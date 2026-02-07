@@ -47,7 +47,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       canPop: true,
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) {
-          await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+          await SystemChrome.setPreferredOrientations([
+            DeviceOrientation.portraitUp,
+          ]);
           await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
         }
       },
@@ -69,39 +71,39 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                   scaffoldBackgroundColor: Colors.black,
                 ),
                 child: SafeArea(
-                top: !_logic.isLandscape, 
-                bottom: !_logic.isLandscape,
-                child: ValueListenableBuilder<bool>(
-                  valueListenable: _logic.isReadyNotifier,
-                  builder: (context, isReady, child) {
-                    return AnimatedOpacity(
-                      duration: const Duration(milliseconds: 400),
-                      opacity: isReady ? 1.0 : 0.0,
-                      child: child,
-                    );
-                  },
-                  child: ListenableBuilder(
-                    listenable: _logic,
-                    // We only listen for structural changes (orientation) here
-                    builder: (context, _) {
-                      if (_logic.isLandscape) {
-                        return VideoPlayerLandscapeLayout(logic: _logic);
-                      }
-  
-                      return VideoPlayerPortraitLayout(
-                        logic: _logic,
-                        size: size,
-                        videoHeight: videoHeight,
+                  top: !_logic.isLandscape,
+                  bottom: !_logic.isLandscape,
+                  child: ValueListenableBuilder<bool>(
+                    valueListenable: _logic.isReadyNotifier,
+                    builder: (context, isReady, child) {
+                      return AnimatedOpacity(
+                        duration: const Duration(milliseconds: 400),
+                        opacity: isReady ? 1.0 : 0.0,
+                        child: child,
                       );
                     },
+                    child: ListenableBuilder(
+                      listenable: _logic,
+                      // We only listen for structural changes (orientation) here
+                      builder: (context, _) {
+                        if (_logic.isLandscape) {
+                          return VideoPlayerLandscapeLayout(logic: _logic);
+                        }
+
+                        return VideoPlayerPortraitLayout(
+                          logic: _logic,
+                          size: size,
+                          videoHeight: videoHeight,
+                        );
+                      },
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        );
-      },
-    ),
-  );
+          );
+        },
+      ),
+    );
   }
 }

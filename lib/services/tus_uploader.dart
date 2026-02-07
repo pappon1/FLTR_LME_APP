@@ -10,8 +10,8 @@ class TusUploader {
   final Dio _dio = Dio();
   final String apiKey;
   final String libraryId;
-  final String videoId; 
-  
+  final String videoId;
+
   // Bunny Stream TUS Endpoint
   static const String _baseUrl = 'https://video.bunnycdn.com/tusupload';
 
@@ -22,121 +22,132 @@ class TusUploader {
   });
 
   /// Uploads a file using TUS protocol with Resume capability
-  Future<String> upload(File file, {
+  Future<String> upload(
+    File file, {
     Function(int sent, int total)? onProgress,
     CancelToken? cancelToken,
+    int? chunkSize, // Optional chunk size
   }) async {
     final int fileSize = await file.length();
-    // Unique ID for cache (Fingerprint)
-    final String fingerprint = "${file.path}-$fileSize-$libraryId"; 
-    
+    final String filename = path.basename(file.path);
+    // Include videoId and libraryId in fingerprint to ensure we always get the RIGHT session
+    final String fingerprint = "$filename-$fileSize-$libraryId-$videoId";
+
     // 1. Check for existing upload URL (Resume)
+    LoggerService.info("Checking session for fingerprint: $fingerprint", tag: 'TUS');
     final session = await _getSession(fingerprint);
     String? uploadUrl = session?['url'];
-    String? currentVideoId = session?['videoId']; 
+    String? currentVideoId = session?['videoId'];
     int offset = 0;
 
     if (uploadUrl != null) {
       // Fix Relative Path if saved in old format
       if (uploadUrl.startsWith('/')) {
-          uploadUrl = "https://video.bunnycdn.com$uploadUrl";
+        uploadUrl = "https://video.bunnycdn.com$uploadUrl";
       }
 
-      // Check current offset from server (HEAD)
       try {
+        LoggerService.info("Verifying session: $uploadUrl", tag: 'TUS');
         final headResponse = await _dio.head(
           uploadUrl,
           options: Options(
             headers: {
               'Tus-Resumable': '1.0.0',
               'AccessKey': apiKey,
-              'LibraryId': libraryId, // ADDED
-            }, 
-          )
+              'LibraryId': libraryId,
+            },
+            validateStatus: (status) => status == 200 || status == 204,
+          ),
         );
+
         final serverOffset = headResponse.headers.value('Upload-Offset');
         if (serverOffset != null) {
           offset = int.parse(serverOffset);
-          LoggerService.info("Resuming upload from byte $offset", tag: 'TUS');
+          LoggerService.success(
+              "Resuming from Server Offset: $offset bytes", tag: 'TUS');
+          if (onProgress != null) onProgress(offset, fileSize);
+        } else {
+          LoggerService.warning(
+              "No Upload-Offset found in HEAD response.", tag: 'TUS');
+          uploadUrl = null; // Force fresh POST if session is invalid
         }
       } catch (e) {
-        // If HEAD fails (e.g. 404), restart upload
-        LoggerService.warning("Resume failed, starting fresh. Error: $e", tag: 'TUS');
-        uploadUrl = null;
-        offset = 0;
-        currentVideoId = null;
+        if (e is DioException &&
+            (e.response?.statusCode == 404 || e.response?.statusCode == 410)) {
+          LoggerService.warning(
+              "TUS Session Expired (404). Starting fresh.", tag: 'TUS');
+          uploadUrl = null;
+          await _clearSession(fingerprint);
+        } else {
+          LoggerService.error(
+              "Network error during Handshake: $e. Cannot resume safely.",
+              tag: 'TUS');
+          rethrow; // Don't fall back to 0% if it's just a network error!
+        }
       }
     }
 
-    // 2. Create new Upload (POST) if not resuming
+    // 2. Create new Upload (POST) ONLY if we don't have a valid resume URL
     if (uploadUrl == null) {
+      LoggerService.info(
+          "No valid session found for $filename. Creating new POST.",
+          tag: 'TUS');
       try {
-        // Prepare Metadata (Bunny Stream TUS)
         final metadata = {
-           'libraryid': base64Encode(utf8.encode(libraryId)), // Redundant but safer
-           'title': base64EnFilename(file.path),
-           'filetype': base64EnFiletype(file.path),
+          'libraryid': base64Encode(utf8.encode(libraryId)),
+          'title': base64EnFilename(file.path),
+          'filetype': base64EnFiletype(file.path),
         };
-        
-        // If we have a specific videoId (e.g. for replacing an existing video)
+
         if (videoId.isNotEmpty) {
-           metadata['video_id'] = base64Encode(utf8.encode(videoId));
+          metadata['video_id'] = base64Encode(utf8.encode(videoId));
         }
 
-        final metadataStr = metadata.entries.map((e) => "${e.key} ${e.value}").join(",");
-        
+        final metadataStr =
+            metadata.entries.map((e) => "${e.key} ${e.value}").join(",");
         final headers = {
           'Tus-Resumable': '1.0.0',
           'Upload-Length': fileSize.toString(),
           'Upload-Metadata': metadataStr,
           'AccessKey': apiKey,
-          'LibraryId': libraryId, // Restore as Header since it worked in Step 589
+          'LibraryId': libraryId,
         };
-
-        LoggerService.info("Creating Upload...", tag: 'TUS');
-        LoggerService.info("Metadata: $metadataStr", tag: 'TUS');
 
         final response = await _dio.post(
           _baseUrl,
           options: Options(
-            validateStatus: (status) => status! < 500,
+            validateStatus: (status) => status == 200 || status == 201,
             headers: headers,
           ),
         );
 
-        if (response.statusCode != 201 && response.statusCode != 200) {
-           throw Exception("TUS POST Error (${response.statusCode}): ${response.data}");
-        }
-        
         uploadUrl = response.headers.value('Location');
         currentVideoId = response.headers.value('Stream-Media-Id');
 
         if (uploadUrl == null) {
-            throw Exception("TUS Error: Server did not return a Location header.");
+          throw Exception("Server did not return a Location header.");
+        }
+        if (uploadUrl.startsWith('/')) {
+          uploadUrl = "https://video.bunnycdn.com$uploadUrl";
+        }
+        if (currentVideoId == null || currentVideoId.isEmpty) {
+          currentVideoId = uploadUrl.split('/').last;
         }
 
-        // Fix Relative Path (Bunny returns /tusupload/...)
-        if (uploadUrl.startsWith('/')) {
-            uploadUrl = "https://video.bunnycdn.com$uploadUrl";
-        }
-        
-        // Extract Video ID from URL if header was missing
-        if (currentVideoId == null || currentVideoId.isEmpty) {
-            currentVideoId = uploadUrl.split('/').last;
-        }
-        
         await _saveSession(fingerprint, uploadUrl, currentVideoId);
-        LoggerService.success("Created session: $uploadUrl | VideoID: $currentVideoId", tag: 'TUS');
+        LoggerService.success("New Session Created: $uploadUrl", tag: 'TUS');
       } on DioException catch (e) {
         final errorData = e.response?.data;
-        LoggerService.error("Creation Error Status: ${e.response?.statusCode}", tag: 'TUS');
+        LoggerService.error("Creation Error Status: ${e.response?.statusCode}",
+            tag: 'TUS');
         LoggerService.error("Creation Error Body: $errorData", tag: 'TUS');
-        
+
         String errorMsg = "Upload Creation Failed (${e.response?.statusCode})";
         if (errorData != null) {
           errorMsg += ": $errorData";
-        } else if (e.message != null) errorMsg += ": ${e.message}";
-        
+        } else if (e.message != null) {
+          errorMsg += ": ${e.message}";
+        }
         throw Exception(errorMsg);
       } catch (e) {
         LoggerService.error("Creation Error (General): $e", tag: 'TUS');
@@ -145,22 +156,27 @@ class TusUploader {
     }
 
     // 3. Upload Chunks (PATCH)
-    const int chunkSize = 1 * 1024 * 1024; // 1MB for reliability
+    final int actualChunkSize =
+        chunkSize ?? (1 * 1024 * 1024); // Use passed size or default 1MB
     final RandomAccessFile raf = await file.open(mode: FileMode.read);
-    
+
     try {
       while (offset < fileSize) {
         if (cancelToken?.isCancelled == true) {
-          throw DioException(requestOptions: RequestOptions(path: uploadUrl), type: DioExceptionType.cancel, error: "User paused upload");
+          throw DioException(
+            requestOptions: RequestOptions(path: uploadUrl),
+            type: DioExceptionType.cancel,
+            error: "User paused upload",
+          );
         }
 
         // Read chunk
         await raf.setPosition(offset);
-        int sizeToRead = chunkSize;
+        int sizeToRead = actualChunkSize;
         if (offset + sizeToRead > fileSize) {
-           sizeToRead = fileSize - offset;
+          sizeToRead = fileSize - offset;
         }
-        
+
         final List<int> chunkData = await raf.read(sizeToRead);
 
         // Upload chunk
@@ -179,26 +195,43 @@ class TusUploader {
                 'LibraryId': libraryId,
               },
             ),
+            onSendProgress: (chunkSent, chunkTotal) {
+              if (onProgress != null) {
+                // Real-time calculation: completed chunks + current chunk progress
+                onProgress(offset + chunkSent, fileSize);
+              }
+            },
             cancelToken: cancelToken,
           );
 
           if (response.statusCode != 204 && response.statusCode != 200) {
-              throw Exception("TUS PATCH Error (${response.statusCode}): ${response.data}");
+            throw Exception(
+              "TUS PATCH Error (${response.statusCode}): ${response.data}",
+            );
           }
 
-          LoggerService.success("Chunk Uploaded: $sizeToRead bytes at offset $offset", tag: 'TUS');
+          LoggerService.success(
+            "Chunk Uploaded: $sizeToRead bytes at offset $offset",
+            tag: 'TUS',
+          );
         } on DioException catch (e) {
-           LoggerService.error("Chunk Patch Error: ${e.type} | ${e.error} | ${e.message}", tag: 'TUS');
-           LoggerService.error("Context: Offset $offset, URL: $uploadUrl", tag: 'TUS');
-           rethrow;
+          LoggerService.error(
+            "Chunk Patch Error: ${e.type} | ${e.error} | ${e.message}",
+            tag: 'TUS',
+          );
+          LoggerService.error(
+            "Context: Offset $offset, URL: $uploadUrl",
+            tag: 'TUS',
+          );
+          rethrow;
         } catch (e) {
-           LoggerService.error("Chunk General Error: $e", tag: 'TUS');
-           rethrow;
+          LoggerService.error("Chunk General Error: $e", tag: 'TUS');
+          rethrow;
         }
 
         offset += sizeToRead;
         if (onProgress != null) {
-           onProgress(offset, fileSize);
+          onProgress(offset, fileSize);
         }
       }
     } catch (e) {
@@ -206,7 +239,7 @@ class TusUploader {
     } finally {
       await raf.close();
     }
-    
+
     // Clear cache on success
     await _clearSession(fingerprint);
     return currentVideoId ?? videoId;
@@ -217,7 +250,7 @@ class TusUploader {
     final name = path.basename(filePath);
     return base64Encode(utf8.encode(name));
   }
-  
+
   String base64EnFiletype(String filePath) {
     // Basic mapping, can be improved
     final ext = path.extension(filePath).toLowerCase();
@@ -230,9 +263,9 @@ class TusUploader {
     return base64Encode(utf8.encode(type));
   }
 
-  // Persistence for Resume (SharedPreferences)
   Future<Map<String, String>?> _getSession(String fingerprint) async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.reload(); // 🔥 Force sync across isolates/restarts
     final url = prefs.getString('tus_url_$fingerprint');
     final vid = prefs.getString('tus_vid_$fingerprint');
     if (url != null) {

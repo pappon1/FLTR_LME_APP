@@ -11,7 +11,8 @@ class UploadAnnouncementScreen extends StatefulWidget {
   const UploadAnnouncementScreen({super.key});
 
   @override
-  State<UploadAnnouncementScreen> createState() => _UploadAnnouncementScreenState();
+  State<UploadAnnouncementScreen> createState() =>
+      _UploadAnnouncementScreenState();
 }
 
 class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
@@ -24,11 +25,10 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
   String? _successMessage;
   bool _isUploading = false;
   double _uploadProgress = 0.0;
-  
+
   // Existing Announcement (For Preview/Delete)
   String? _existingImageUrl;
   String? _existingId;
-
 
   @override
   void initState() {
@@ -51,7 +51,6 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
       setState(() {
         _existingId = snapshot.docs.first.id;
         _existingImageUrl = data['imageUrl'];
-
       });
     }
   }
@@ -59,16 +58,16 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
   Future<void> _pickImage() async {
     final ImagePicker picker = ImagePicker();
     final XFile? image = await picker.pickImage(source: ImageSource.gallery);
-    
+
     if (image != null) {
       // Validate Aspect Ratio
       final file = File(image.path);
       final decodedImage = await decodeImageFromList(await file.readAsBytes());
-      
+
       final width = decodedImage.width;
       final height = decodedImage.height;
       final aspectRatio = width / height;
-      
+
       final diff = (aspectRatio - targetAspectRatio).abs() / targetAspectRatio;
 
       if (diff <= tolerance) {
@@ -80,7 +79,8 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
       } else {
         setState(() {
           _selectedImage = null;
-          _errorMessage = "⚠️ Invalid poster size! Required aspect ratio: 16:9 (e.g., 1280x720px)";
+          _errorMessage =
+              "⚠️ Invalid poster size! Required aspect ratio: 16:9 (e.g., 1280x720px)";
         });
       }
     }
@@ -96,7 +96,8 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
       final imageUrl = await BunnyCDNService().uploadImage(
         filePath: _selectedImage!.path,
         folder: 'announcements',
-        onProgress: (sent, total) => setState(() => _uploadProgress = sent / total),
+        onProgress: (sent, total) =>
+            setState(() => _uploadProgress = sent / total),
       );
 
       // 2. Save to Firestore
@@ -115,9 +116,8 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
         _isUploading = false;
         _errorMessage = null;
       });
-      
-      await _fetchExistingAnnouncement(); // Refresh preview
 
+      await _fetchExistingAnnouncement(); // Refresh preview
     } catch (e) {
       setState(() {
         _errorMessage = "Error uploading: $e";
@@ -125,24 +125,35 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
       });
     }
   }
-  
+
   Future<void> _deleteAnnouncement() async {
     if (_existingId == null) return;
-    
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Announcement?'),
-        content: const Text('This will remove the current active poster. Are you sure?'),
+        content: const Text(
+          'This will remove the current active poster. Are you sure?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
         ],
-      )
+      ),
     );
 
     if (confirm == true) {
-      await FirebaseFirestore.instance.collection('announcements').doc(_existingId).delete();
+      await FirebaseFirestore.instance
+          .collection('announcements')
+          .doc(_existingId)
+          .delete();
       setState(() {
         _existingId = null;
         _existingImageUrl = null;
@@ -155,7 +166,7 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const FittedBox(
@@ -169,16 +180,16 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
         child: Column(
           children: [
             const SizedBox(height: 20),
-            
+
             // Header Text
             Text(
               "Upload Poster",
               style: AppTheme.heading2(context),
               textAlign: TextAlign.center,
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Info Banner
             Container(
               width: double.infinity,
@@ -190,13 +201,16 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
               ),
               child: const Text(
                 "Poster Size: 1280x720px (16:9 aspect ratio)",
-                style: TextStyle(color: Colors.blue, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  color: Colors.blue,
+                  fontWeight: FontWeight.bold,
+                ),
                 textAlign: TextAlign.center,
               ),
             ),
-            
+
             const SizedBox(height: 32),
-            
+
             // Upload Area (Card)
             GestureDetector(
               onTap: _isUploading ? null : _pickImage,
@@ -208,16 +222,25 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
                   borderRadius: BorderRadius.circular(3.0),
                   border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
                   ],
                 ),
-                child: _isUploading 
+                child: _isUploading
                     ? Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           CircularProgressIndicator(value: _uploadProgress),
                           const SizedBox(height: 16),
-                          Text('${(_uploadProgress * 100).toInt()}%', style: TextStyle(color: isDark ? Colors.white : Colors.black))
+                          Text(
+                            '${(_uploadProgress * 100).toInt()}%',
+                            style: TextStyle(
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
+                          ),
                         ],
                       )
                     : Stack(
@@ -226,19 +249,35 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
                           if (_selectedImage != null)
                             ClipRRect(
                               borderRadius: BorderRadius.circular(3.0),
-                              child: Image.file(_selectedImage!, fit: BoxFit.cover, width: double.infinity, height: double.infinity),
+                              child: Image.file(
+                                _selectedImage!,
+                                fit: BoxFit.cover,
+                                width: double.infinity,
+                                height: double.infinity,
+                              ),
                             )
                           else if (_existingImageUrl != null)
                             ClipRRect(
                               borderRadius: BorderRadius.circular(3.0),
                               child: CachedNetworkImage(
-                                imageUrl: BunnyCDNService().getAuthenticatedUrl(_existingImageUrl!),
-                                httpHeaders: const {'AccessKey': BunnyCDNService.apiKey},
+                                imageUrl: BunnyCDNService().getAuthenticatedUrl(
+                                  _existingImageUrl!,
+                                ),
+                                httpHeaders: const {
+                                  'AccessKey': BunnyCDNService.apiKey,
+                                },
                                 width: double.infinity,
                                 height: double.infinity,
                                 fit: BoxFit.cover,
-                                placeholder: (c, u) => Container(color: Colors.grey[200], child: const Center(child: CircularProgressIndicator())),
-                                errorWidget: (c, u, e) => const Center(child: Icon(Icons.broken_image)),
+                                placeholder: (c, u) => Container(
+                                  color: Colors.grey[200],
+                                  child: const Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                ),
+                                errorWidget: (c, u, e) => const Center(
+                                  child: Icon(Icons.broken_image),
+                                ),
                               ),
                             )
                           else
@@ -248,15 +287,26 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  const FaIcon(FontAwesomeIcons.image, size: 48, color: Colors.blue),
+                                  const FaIcon(
+                                    FontAwesomeIcons.image,
+                                    size: 48,
+                                    color: Colors.blue,
+                                  ),
                                   const SizedBox(height: 12),
-                                  Text("Tap to select poster", style: TextStyle(color: Colors.grey[600], fontWeight: FontWeight.bold)),
+                                  Text(
+                                    "Tap to select poster",
+                                    style: TextStyle(
+                                      color: Colors.grey[600],
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                                 ],
                               ),
                             ),
 
                           // Delete Button (Only for Existing Image)
-                          if (_existingImageUrl != null && _selectedImage == null)
+                          if (_existingImageUrl != null &&
+                              _selectedImage == null)
                             Positioned(
                               top: 8,
                               right: 8,
@@ -271,25 +321,34 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
                                     color: Colors.red,
                                     shape: BoxShape.circle,
                                   ),
-                                  child: const Icon(Icons.delete, color: Colors.white, size: 20),
+                                  child: const Icon(
+                                    Icons.delete,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
                                 ),
                               ),
                             ),
-                            
-                           // Cancel Selection Button (For New Image)
+
+                          // Cancel Selection Button (For New Image)
                           if (_selectedImage != null)
-                             Positioned(
+                            Positioned(
                               top: 8,
                               right: 8,
                               child: GestureDetector(
-                                onTap: () => setState(() => _selectedImage = null),
+                                onTap: () =>
+                                    setState(() => _selectedImage = null),
                                 child: Container(
                                   padding: const EdgeInsets.all(8),
                                   decoration: const BoxDecoration(
                                     color: Colors.black54,
                                     shape: BoxShape.circle,
                                   ),
-                                  child: const Icon(Icons.close, color: Colors.white, size: 20),
+                                  child: const Icon(
+                                    Icons.close,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
                                 ),
                               ),
                             ),
@@ -297,26 +356,46 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
                       ),
               ),
             ),
-            
+
             const SizedBox(height: 32),
-            
+
             // Messages
             if (_errorMessage != null)
               Container(
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.all(12),
                 width: double.infinity,
-                decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(3.0)),
-                child: Text(_errorMessage!, style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(3.0),
+                ),
+                child: Text(
+                  _errorMessage!,
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
-              
+
             if (_successMessage != null)
               Container(
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.all(12),
                 width: double.infinity,
-                decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(3.0)),
-                child: Text(_successMessage!, style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                decoration: BoxDecoration(
+                  color: Colors.green.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(3.0),
+                ),
+                child: Text(
+                  _successMessage!,
+                  style: const TextStyle(
+                    color: Colors.green,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
 
             // Upload Button
@@ -324,19 +403,23 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
               width: double.infinity,
               height: 50,
               child: ElevatedButton.icon(
-                onPressed: (_selectedImage != null && !_isUploading) ? _uploadPoster : null,
+                onPressed: (_selectedImage != null && !_isUploading)
+                    ? _uploadPoster
+                    : null,
                 icon: const Icon(Icons.cloud_upload),
                 label: Text(_isUploading ? "Uploading..." : "Upload Poster"),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primaryColor,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(3.0),
+                  ),
                   disabledBackgroundColor: Colors.grey[300],
                   disabledForegroundColor: Colors.grey[500],
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 20),
           ],
         ),
@@ -344,4 +427,3 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
     );
   }
 }
-

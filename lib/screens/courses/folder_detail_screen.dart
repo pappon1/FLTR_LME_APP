@@ -94,88 +94,94 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
   }
 
   void _cancelHoldTimer() => _holdTimer?.cancel();
-  
+
   void _enterSelectionMode(int index) {
-      _cancelHoldTimer(); // Cancel drag timer immediately
-      HapticFeedback.heavyImpact();
-      setState(() {
-        _isSelectionMode = true;
-        _selectedIndices.clear();
-        _selectedIndices.add(index);
-      });
+    _cancelHoldTimer(); // Cancel drag timer immediately
+    HapticFeedback.heavyImpact();
+    setState(() {
+      _isSelectionMode = true;
+      _selectedIndices.clear();
+      _selectedIndices.add(index);
+    });
   }
+
   @override
   void didUpdateWidget(FolderDetailScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.contentList != oldWidget.contentList) {
-       setState(() {
-         _contents = List.from(widget.contentList);
-       });
-       _loadPersistentContent();
+      setState(() {
+        _contents = List.from(widget.contentList);
+      });
+      _loadPersistentContent();
     }
   }
-  
+
   // --- Persistence Logic ---
   Future<void> _loadPersistentContent() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.reload(); // Ensure we have the latest data from disk
-      
+
       // Sanitizing key: Removing spaces and symbols just in case
-      final sanitizedName = widget.folderName.replaceAll(RegExp('[^a-zA-Z0-9]'), '_');
-      final key = 'draft_final_$sanitizedName'; 
-      
+      final sanitizedName = widget.folderName.replaceAll(
+        RegExp('[^a-zA-Z0-9]'),
+        '_',
+      );
+      final key = 'draft_final_$sanitizedName';
+
       final String? jsonString = prefs.getString(key);
       // debugPrint("Attempting to load draft from key: $key");
-      
+
       if (jsonString != null && jsonString.isNotEmpty) {
-          final List<dynamic> decoded = jsonDecode(jsonString);
-          if (decoded.isEmpty) {
-             // debugPrint("Draft is empty for key: $key");
-             return;
-          }
+        final List<dynamic> decoded = jsonDecode(jsonString);
+        if (decoded.isEmpty) {
+          // debugPrint("Draft is empty for key: $key");
+          return;
+        }
 
-          // We only want to restore items that ARE NOT already in the list (from server)
-          // Identify items by path
-          final Set<String> existingPaths = _contents
-              .where((e) => e['path'] != null)
-              .map((e) => e['path'].toString())
-              .toSet();
-          
-          bool hasChanges = false;
-          int loadedCount = 0;
+        // We only want to restore items that ARE NOT already in the list (from server)
+        // Identify items by path
+        final Set<String> existingPaths = _contents
+            .where((e) => e['path'] != null)
+            .map((e) => e['path'].toString())
+            .toSet();
 
-          for (var item in decoded) {
-             final mapItem = Map<String, dynamic>.from(item);
-             final path = mapItem['path'];
-             
-             // Ensure it's marked as local so it stays in future saves
-             mapItem['isLocal'] = true;
+        bool hasChanges = false;
+        int loadedCount = 0;
 
-             if (path != null) {
-                if (!existingPaths.contains(path)) {
-                   _contents.add(mapItem);
-                   existingPaths.add(path); 
-                   hasChanges = true;
-                   loadedCount++;
-                }
-             } else if (mapItem['type'] == 'folder') {
-                // For local folders, check by name
-                final bool exists = _contents.any((e) => e['type'] == 'folder' && e['name'] == mapItem['name']);
-                if (!exists) {
-                    _contents.add(mapItem);
-                    hasChanges = true;
-                    loadedCount++;
-                }
-             }
+        for (var item in decoded) {
+          final mapItem = Map<String, dynamic>.from(item);
+          final path = mapItem['path'];
+
+          // Ensure it's marked as local so it stays in future saves
+          mapItem['isLocal'] = true;
+
+          if (path != null) {
+            if (!existingPaths.contains(path)) {
+              _contents.add(mapItem);
+              existingPaths.add(path);
+              hasChanges = true;
+              loadedCount++;
+            }
+          } else if (mapItem['type'] == 'folder') {
+            // For local folders, check by name
+            final bool exists = _contents.any(
+              (e) => e['type'] == 'folder' && e['name'] == mapItem['name'],
+            );
+            if (!exists) {
+              _contents.add(mapItem);
+              hasChanges = true;
+              loadedCount++;
+            }
           }
-          
-          if (hasChanges && mounted) {
-             setState(() {});
-             // Silent restoration, no SnackBar
-          }
+        }
+
+        if (hasChanges && mounted) {
+          setState(() {});
+          // Silent restoration, no SnackBar
+        }
       } else {
-         // debugPrint("No draft found for key: $key");
+        // debugPrint("No draft found for key: $key");
       }
     } catch (e) {
       // debugPrint("Error loading saved content: $e");
@@ -185,43 +191,53 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
   Future<void> _savePersistentContent({bool showFeedback = false}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final sanitizedName = widget.folderName.replaceAll(RegExp('[^a-zA-Z0-9]'), '_');
+      final sanitizedName = widget.folderName.replaceAll(
+        RegExp('[^a-zA-Z0-9]'),
+        '_',
+      );
       final key = 'draft_final_$sanitizedName';
-      
+
       // We ONLY save items that are local additions (marked by us)
       // This prevents saving server-side items into local shared_prefs
       final localItems = _contents.where((e) {
         return e['isLocal'] == true;
       }).toList();
-      
+
       if (localItems.isEmpty) {
-         // If no local items, clear the key to avoid loading stale data
-         await prefs.remove(key);
-         if (showFeedback && mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No local items to save.')));
-         }
-         return;
+        // If no local items, clear the key to avoid loading stale data
+        await prefs.remove(key);
+        if (showFeedback && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No local items to save.')),
+          );
+        }
+        return;
       }
 
       final String jsonString = jsonEncode(localItems);
       final bool success = await prefs.setString(key, jsonString);
-      
+
       if (success && mounted && showFeedback) {
-         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('💾 Draft Saved (${localItems.length} items)'), 
-              duration: const Duration(seconds: 1),
-              backgroundColor: Colors.green.shade700,
-              behavior: SnackBarBehavior.floating,
-            )
-         );
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('💾 Draft Saved (${localItems.length} items)'),
+            duration: const Duration(seconds: 1),
+            backgroundColor: Colors.green.shade700,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
       }
       // debugPrint("Saved ${localItems.length} items to $key. Success: $success");
     } catch (e) {
-       // debugPrint("Save error: $e");
-       if (showFeedback && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error saving: $e'), backgroundColor: Colors.red));
-       }
+      // debugPrint("Save error: $e");
+      if (showFeedback && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -241,121 +257,147 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
   // Duplicate removed
 
   void _toggleSelection(int index) {
-      if (!_isSelectionMode) return;
-      HapticFeedback.heavyImpact();
-      setState(() {
-         if (_selectedIndices.contains(index)) {
-            _selectedIndices.remove(index);
-            // Removed auto-close logic to match AddCourseScreen
-         } else {
-            _selectedIndices.add(index);
-         }
-      });
+    if (!_isSelectionMode) return;
+    HapticFeedback.heavyImpact();
+    setState(() {
+      if (_selectedIndices.contains(index)) {
+        _selectedIndices.remove(index);
+        // Removed auto-close logic to match AddCourseScreen
+      } else {
+        _selectedIndices.add(index);
+      }
+    });
   }
 
   void _selectAll() {
     setState(() {
       _selectedIndices.clear();
-      for(int i=0; i<_contents.length; i++) {
+      for (int i = 0; i < _contents.length; i++) {
         _selectedIndices.add(i);
       }
     });
   }
 
   void _handleBulkDelete() {
-     if (_selectedIndices.isEmpty) return;
-     showDialog(
-       context: context,
-       builder: (context) => AlertDialog(
-         title: const Text('Delete Items?'),
-         content: Text('Are you sure you want to delete ${_selectedIndices.length} items?'),
-         actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-            TextButton(
-              onPressed: () {
-                 final List<int> indices = _selectedIndices.toList()..sort((a, b) => b.compareTo(a));
-                 setState(() {
-                    for (int i in indices) {
-                       if (i < _contents.length) {
-                          // Free up cache space
-                          final item = _contents[i];
-                          final path = item['path'];
-                          if (path != null && path.contains('/cache/')) {
-                            try {
-                              final file = File(path);
-                              if (file.existsSync()) file.deleteSync();
-                            } catch (_) {}
-                          }
-                          _contents.removeAt(i);
-                       }
+    if (_selectedIndices.isEmpty) return;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Items?'),
+        content: Text(
+          'Are you sure you want to delete ${_selectedIndices.length} items?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              final List<int> indices = _selectedIndices.toList()
+                ..sort((a, b) => b.compareTo(a));
+              setState(() {
+                for (int i in indices) {
+                  if (i < _contents.length) {
+                    // Free up cache space
+                    final item = _contents[i];
+                    final path = item['path'];
+                    if (path != null && path.contains('/cache/')) {
+                      try {
+                        final file = File(path);
+                        if (file.existsSync()) file.deleteSync();
+                      } catch (_) {}
                     }
-                     _isSelectionMode = false;
-                    _selectedIndices.clear();
-                 });
-                 _savePersistentContent();
-                 Navigator.pop(context);
-              },
-              child: const Text('Delete', style: TextStyle(color: Colors.red)),
-            )
-         ],
-       )
-     );
+                    _contents.removeAt(i);
+                  }
+                }
+                _isSelectionMode = false;
+                _selectedIndices.clear();
+              });
+              _savePersistentContent();
+              Navigator.pop(context);
+            },
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _handleBulkCopyCut(bool isCut) {
-      if (_selectedIndices.isEmpty) return;
-      
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: Text(isCut ? 'Cut Items?' : 'Copy Items?'),
-          content: Text('${isCut ? 'Cut' : 'Copy'} ${_selectedIndices.length} items to clipboard?'),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-            TextButton(onPressed: () {
-                _performCopyCut(isCut);
-                Navigator.pop(context);
-            }, child: Text(isCut ? 'Cut' : 'Copy'))
-          ]
-        )
-      );
+    if (_selectedIndices.isEmpty) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(isCut ? 'Cut Items?' : 'Copy Items?'),
+        content: Text(
+          '${isCut ? 'Cut' : 'Copy'} ${_selectedIndices.length} items to clipboard?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              _performCopyCut(isCut);
+              Navigator.pop(context);
+            },
+            child: Text(isCut ? 'Cut' : 'Copy'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _performCopyCut(bool isCut) {
-      final List<int> indices = _selectedIndices.toList()..sort((a, b) => a.compareTo(b));
-      final List<Map<String, dynamic>> itemsToCopy = [];
-      for (int i in indices) {
-         if (i < _contents.length) itemsToCopy.add(_contents[i]);
+    final List<int> indices = _selectedIndices.toList()
+      ..sort((a, b) => a.compareTo(b));
+    final List<Map<String, dynamic>> itemsToCopy = [];
+    for (int i in indices) {
+      if (i < _contents.length) itemsToCopy.add(_contents[i]);
+    }
+
+    setState(() {
+      if (isCut) {
+        ContentClipboard.cut(itemsToCopy);
+        final List<int> revIndices = indices.reversed.toList();
+        for (int i in revIndices) {
+          _contents.removeAt(i);
+        }
+        _isSelectionMode = false;
+        _selectedIndices.clear();
+      } else {
+        ContentClipboard.copy(itemsToCopy);
+        _isSelectionMode = false;
+        _selectedIndices.clear();
       }
-      
-      setState(() {
-         if (isCut) {
-            ContentClipboard.cut(itemsToCopy);
-            final List<int> revIndices = indices.reversed.toList();
-            for (int i in revIndices) {
-               _contents.removeAt(i);
-            }
-            _isSelectionMode = false;
-            _selectedIndices.clear();
-         } else {
-            ContentClipboard.copy(itemsToCopy);
-            _isSelectionMode = false;
-            _selectedIndices.clear();
-         }
-      });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${itemsToCopy.length} items ${isCut ? 'Cut' : 'Copied'}')));
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '${itemsToCopy.length} items ${isCut ? 'Cut' : 'Copied'}',
+        ),
+      ),
+    );
   }
 
   void _pasteContent() {
     if (ContentClipboard.isEmpty) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Clipboard is empty')));
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Clipboard is empty')));
       return;
     }
 
     final List<Map<String, dynamic>> itemsToPaste = [];
     final List<String> skippedNames = [];
     final List<String> selfPasteNames = [];
-    final Set<String> existingNames = _contents.map((e) => e['name'].toString()).toSet();
+    final Set<String> existingNames = _contents
+        .map((e) => e['name'].toString())
+        .toSet();
 
     for (var item in ContentClipboard.items!) {
       // 1. Circular Reference Check (Direct self-nesting)
@@ -368,7 +410,9 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       if (existingNames.contains(item['name'])) {
         skippedNames.add(item['name']);
       } else {
-        itemsToPaste.add(Map<String, dynamic>.from(jsonDecode(jsonEncode(item))));
+        itemsToPaste.add(
+          Map<String, dynamic>.from(jsonDecode(jsonEncode(item))),
+        );
       }
     }
 
@@ -377,7 +421,9 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Action Blocked: Cannot paste folder "${selfPasteNames.join(', ')}" into itself!'),
+            content: Text(
+              'Action Blocked: Cannot paste folder "${selfPasteNames.join(', ')}" into itself!',
+            ),
             backgroundColor: Colors.red.shade900,
           ),
         );
@@ -390,7 +436,9 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Conflict: "${skippedNames.join(', ')}" is already present in this location.'),
+            content: Text(
+              'Conflict: "${skippedNames.join(', ')}" is already present in this location.',
+            ),
             backgroundColor: Colors.red.shade700,
           ),
         );
@@ -400,8 +448,8 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
 
     setState(() {
       for (var newItem in itemsToPaste) {
-         newItem['isLocal'] = true;
-         _contents.insert(0, newItem);
+        newItem['isLocal'] = true;
+        _contents.insert(0, newItem);
       }
 
       if (ContentClipboard.action == 'cut') {
@@ -412,14 +460,21 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
     if (skippedNames.isNotEmpty && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Pasted ${itemsToPaste.length} items. Skipped ${skippedNames.length} duplicates.'),
+          content: Text(
+            'Pasted ${itemsToPaste.length} items. Skipped ${skippedNames.length} duplicates.',
+          ),
           backgroundColor: Colors.orange.shade800,
         ),
       );
     }
     _savePersistentContent();
-    
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${ContentClipboard.items!.length} items pasted')));
+
+    if (mounted)
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${ContentClipboard.items!.length} items pasted'),
+        ),
+      );
   }
 
   void _renameContent(int index) {
@@ -440,9 +495,14 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Remove Content'),
-        content: Text('Are you sure you want to remove "${_contents[index]['name']}"?'),
+        content: Text(
+          'Are you sure you want to remove "${_contents[index]['name']}"?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () {
               final item = _contents[index];
@@ -453,7 +513,9 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                   if (file.existsSync()) file.deleteSync();
                 } catch (_) {}
               }
-              setState(() { _contents.removeAt(index); });
+              setState(() {
+                _contents.removeAt(index);
+              });
               _savePersistentContent();
               Navigator.pop(context);
             },
@@ -483,24 +545,60 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 10),
-        decoration: BoxDecoration(color: Theme.of(context).cardColor, borderRadius: const BorderRadius.vertical(top: Radius.circular(3.0))),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(3.0)),
+        ),
         child: SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Add to Folder', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                'Add to Folder',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 24),
               Wrap(
                 spacing: 24,
                 runSpacing: 24,
                 alignment: WrapAlignment.center,
                 children: [
-   _buildOptionItem(Icons.create_new_folder, 'Folder', Colors.orange, () => _showCreateFolderDialog()),
-   _buildOptionItem(Icons.video_library, 'Video', Colors.red, () => _pickContentFile('video', ['mp4', 'mkv', 'avi'])),
-   _buildOptionItem(Icons.picture_as_pdf, 'PDF', Colors.redAccent, () => _pickContentFile('pdf', ['pdf'])),
-   _buildOptionItem(Icons.image, 'Image', Colors.purple, () => _pickContentFile('image', ['jpg', 'jpeg', 'png', 'webp'])),
-   
-   _buildOptionItem(Icons.content_paste, 'Paste', Colors.grey, _pasteContent),
+                  _buildOptionItem(
+                    Icons.create_new_folder,
+                    'Folder',
+                    Colors.orange,
+                    () => _showCreateFolderDialog(),
+                  ),
+                  _buildOptionItem(
+                    Icons.video_library,
+                    'Video',
+                    Colors.red,
+                    () => _pickContentFile('video', ['mp4', 'mkv', 'avi']),
+                  ),
+                  _buildOptionItem(
+                    Icons.picture_as_pdf,
+                    'PDF',
+                    Colors.redAccent,
+                    () => _pickContentFile('pdf', ['pdf']),
+                  ),
+                  _buildOptionItem(
+                    Icons.image,
+                    'Image',
+                    Colors.purple,
+                    () => _pickContentFile('image', [
+                      'jpg',
+                      'jpeg',
+                      'png',
+                      'webp',
+                    ]),
+                  ),
+
+                  _buildOptionItem(
+                    Icons.content_paste,
+                    'Paste',
+                    Colors.grey,
+                    _pasteContent,
+                  ),
                 ],
               ),
               const SizedBox(height: 16),
@@ -511,19 +609,33 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
     );
   }
 
-  Widget _buildOptionItem(IconData icon, String label, Color color, VoidCallback onTap) {
+  Widget _buildOptionItem(
+    IconData icon,
+    String label,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return InkWell(
-      onTap: () { Navigator.pop(context); onTap(); },
+      onTap: () {
+        Navigator.pop(context);
+        onTap();
+      },
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
             child: Icon(icon, color: color, size: 28),
           ),
           const SizedBox(height: 8),
-          Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+          ),
         ],
       ),
     );
@@ -535,13 +647,31 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('New Folder'),
-        content: TextField(controller: folderNameController, autofocus: true, decoration: const InputDecoration(labelText: 'Folder Name', border: OutlineInputBorder())),
+        content: TextField(
+          controller: folderNameController,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Folder Name',
+            border: OutlineInputBorder(),
+          ),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             onPressed: () {
               if (folderNameController.text.trim().isNotEmpty) {
-                setState(() { _contents.insert(0, {'type': 'folder', 'name': folderNameController.text.trim(), 'contents': <Map<String, dynamic>>[], 'isLocal': true, 'isLocked': true}); });
+                setState(() {
+                  _contents.insert(0, {
+                    'type': 'folder',
+                    'name': folderNameController.text.trim(),
+                    'contents': <Map<String, dynamic>>[],
+                    'isLocal': true,
+                    'isLocked': true,
+                  });
+                });
                 _savePersistentContent();
                 Navigator.pop(context);
               }
@@ -554,57 +684,58 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
   }
 
   Future<void> _pickContentFile(String type, [List<String>? extensions]) async {
-      // Use Custom Explorer for ALL types to prevent Cache Bloat
-      final result = await Navigator.push(
-        context, 
-        MaterialPageRoute(builder: (_) => SimpleFileExplorer(
-          allowedExtensions: extensions ?? [],
-        ))
-      );
-      
-      if (result != null && result is List) {
-         final List<String> paths = result.cast<String>();
-         if (paths.isEmpty) return;
-         
-         final List<Map<String, dynamic>> newItems = [];
-         for (var path in paths) {
-           newItems.add({
-             'type': type, 
-             'name': path.split('/').last, 
-             'path': path, 
-             'duration': null, // Will be filled by _fixMissingData
-             'thumbnail': null,
-             'isLocal': true,
-             'isLocked': true
-           });
-         }
-         
-         setState(() {
-           _contents.insertAll(0, newItems);
-         });
-         
-          // Only process video if needed (currently disabled for cache safety)
-          if (type == 'video') {
-             unawaited(_processVideosInParallel(newItems));
-          } else {
-             unawaited(_savePersistentContent());
-          }
+    // Use Custom Explorer for ALL types to prevent Cache Bloat
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SimpleFileExplorer(allowedExtensions: extensions ?? []),
+      ),
+    );
+
+    if (result != null && result is List) {
+      final List<String> paths = result.cast<String>();
+      if (paths.isEmpty) return;
+
+      final List<Map<String, dynamic>> newItems = [];
+      for (var path in paths) {
+        newItems.add({
+          'type': type,
+          'name': path.split('/').last,
+          'path': path,
+          'duration': null, // Will be filled by _fixMissingData
+          'thumbnail': null,
+          'isLocal': true,
+          'isLocked': true,
+        });
       }
+
+      setState(() {
+        _contents.insertAll(0, newItems);
+      });
+
+      // Only process video if needed (currently disabled for cache safety)
+      if (type == 'video') {
+        unawaited(_processVideosInParallel(newItems));
+      } else {
+        unawaited(_savePersistentContent());
+      }
+    }
   }
 
-  Future<void> _processVideosInParallel(List<Map<String, dynamic>> items) async {
-      await _savePersistentContent();
-      // Start background processing
-      Future.delayed(const Duration(milliseconds: 500), () => _fixMissingData());
+  Future<void> _processVideosInParallel(
+    List<Map<String, dynamic>> items,
+  ) async {
+    await _savePersistentContent();
+    // Start background processing
+    Future.delayed(const Duration(milliseconds: 500), () => _fixMissingData());
   }
-
 
   Future<int> _getVideoDuration(String path) async {
     final player = Player();
     try {
       final completer = Completer<void>();
       late final StreamSubscription sub;
-      
+
       sub = player.stream.duration.listen((d) {
         if (d.inSeconds > 0) {
           if (!completer.isCompleted) completer.complete();
@@ -612,14 +743,17 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
       });
 
       await player.open(Media(path), play: false);
-      
+
       // Wait for duration or timeout
-      await completer.future.timeout(const Duration(seconds: 5), onTimeout: () {});
-      
+      await completer.future.timeout(
+        const Duration(seconds: 5),
+        onTimeout: () {},
+      );
+
       final dur = player.state.duration;
       await sub.cancel();
       await player.dispose();
-      
+
       return dur.inSeconds; // Return as integer seconds
     } catch (e) {
       await player.dispose();
@@ -627,18 +761,17 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
     }
   }
 
-
   Future<void> _fixMissingData() async {
     bool hasChanges = false;
     for (int i = 0; i < _contents.length; i++) {
       if (_contents[i]['type'] == 'video' && _contents[i]['duration'] == null) {
-        
         final path = _contents[i]['path'];
         if (path != null && File(path).existsSync()) {
           final durationInSeconds = await _getVideoDuration(path);
           if (mounted && durationInSeconds > 0) {
             setState(() {
-              _contents[i]['duration'] = durationInSeconds; // Store as integer seconds
+              _contents[i]['duration'] =
+                  durationInSeconds; // Store as integer seconds
             });
             hasChanges = true;
           }
@@ -651,73 +784,111 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
   }
 
   void _handleContentTap(Map<String, dynamic> item, int index) async {
-      if (_isSelectionMode) { _toggleSelection(index); return; }
-      final String? path = item['path'] ?? item['url'];
-      if (item['type'] == 'folder') {
-          final result = await Navigator.push(
-            context, 
-            MaterialPageRoute(
-              builder: (_) => FolderDetailScreen(
-                folderName: item['name'], 
-                // Recursion: Pass isReadOnly state
-                contentList: (item['contents'] as List?)?.cast<Map<String, dynamic>>() ?? [],
-                isReadOnly: widget.isReadOnly, 
-              )
-            )
-          );
-          
-          if (!widget.isReadOnly && result != null && result is List<Map<String, dynamic>>) {
-             setState(() {
-                _contents[index]['contents'] = result;
-             });
-             unawaited(_savePersistentContent());
-          }
-      } else if (item['type'] == 'image' && path != null) {
-          final bool isNetwork = path.startsWith('http');
-          unawaited(Navigator.push(context, MaterialPageRoute(builder: (_) => ImageViewerScreen(
-            filePath: path,
-            title: item['name'],
-            isNetwork: isNetwork,
-          ))));
-      } else if (item['type'] == 'video' && path != null) {
-          // CREATE PLAYLIST: Filter only video items
-          final videoList = _contents
-              .where((element) => element['type'] == 'video' && (element['path'] != null || element['url'] != null))
-              .map((video) {
-                final converted = Map<String, dynamic>.from(video);
-                final videoPath = video['path'] ?? video['url'];
-                converted['path'] = videoPath; // Normalize to path
-                converted['thumbnail'] = video['thumbnail']; // Ensure custom thumbnail is passed
-                
-                // Convert iframe URL to actual video URL in read-only mode
-                if (widget.isReadOnly && videoPath != null && videoPath.toString().contains('iframe.mediadelivery.net')) {
-                  final videoId = videoPath.toString().split('/').last;
-                  converted['path'] = 'https://vz-583681.b-cdn.net/$videoId/playlist.m3u8';
-                  
-                  // Add network thumbnail if manual one is missing
-                  if (converted['thumbnail'] == null) {
-                    converted['thumbnail'] = 'https://vz-583681.b-cdn.net/$videoId/thumbnail.jpg';
-                  }
-                }
-                
-                return converted;
-              })
-              .toList();
-          
-          final initialIndex = videoList.indexWhere((e) => e['name'] == item['name']);
-          
-          unawaited(Navigator.push(context, MaterialPageRoute(builder: (_) => VideoPlayerScreen(
-            playlist: videoList, 
-            initialIndex: initialIndex >= 0 ? initialIndex : 0,
-          ))));
-      } else if (item['type'] == 'pdf' && path != null) {
-          final bool isNetwork = path.startsWith('http');
-          unawaited(Navigator.push(context, MaterialPageRoute(builder: (_) => PDFViewerScreen(
-            filePath: path,
-            title: item['name'],
-            isNetwork: isNetwork,
-          ))));
+    if (_isSelectionMode) {
+      _toggleSelection(index);
+      return;
+    }
+    final String? path = item['path'] ?? item['url'];
+    if (item['type'] == 'folder') {
+      final result = await Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => FolderDetailScreen(
+            folderName: item['name'],
+            // Recursion: Pass isReadOnly state
+            contentList:
+                (item['contents'] as List?)?.cast<Map<String, dynamic>>() ?? [],
+            isReadOnly: widget.isReadOnly,
+          ),
+        ),
+      );
+
+      if (!widget.isReadOnly &&
+          result != null &&
+          result is List<Map<String, dynamic>>) {
+        setState(() {
+          _contents[index]['contents'] = result;
+        });
+        unawaited(_savePersistentContent());
       }
+    } else if (item['type'] == 'image' && path != null) {
+      final bool isNetwork = path.startsWith('http');
+      unawaited(
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ImageViewerScreen(
+              filePath: path,
+              title: item['name'],
+              isNetwork: isNetwork,
+            ),
+          ),
+        ),
+      );
+    } else if (item['type'] == 'video' && path != null) {
+      // CREATE PLAYLIST: Filter only video items
+      final videoList = _contents
+          .where(
+            (element) =>
+                element['type'] == 'video' &&
+                (element['path'] != null || element['url'] != null),
+          )
+          .map((video) {
+            final converted = Map<String, dynamic>.from(video);
+            final videoPath = video['path'] ?? video['url'];
+            converted['path'] = videoPath; // Normalize to path
+            converted['thumbnail'] =
+                video['thumbnail']; // Ensure custom thumbnail is passed
+
+            // Convert iframe URL to actual video URL in read-only mode
+            if (widget.isReadOnly &&
+                videoPath != null &&
+                videoPath.toString().contains('iframe.mediadelivery.net')) {
+              final videoId = videoPath.toString().split('/').last;
+              converted['path'] =
+                  'https://vz-583681.b-cdn.net/$videoId/playlist.m3u8';
+
+              // Add network thumbnail if manual one is missing
+              if (converted['thumbnail'] == null) {
+                converted['thumbnail'] =
+                    'https://vz-583681.b-cdn.net/$videoId/thumbnail.jpg';
+              }
+            }
+
+            return converted;
+          })
+          .toList();
+
+      final initialIndex = videoList.indexWhere(
+        (e) => e['name'] == item['name'],
+      );
+
+      unawaited(
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => VideoPlayerScreen(
+              playlist: videoList,
+              initialIndex: initialIndex >= 0 ? initialIndex : 0,
+            ),
+          ),
+        ),
+      );
+    } else if (item['type'] == 'pdf' && path != null) {
+      final bool isNetwork = path.startsWith('http');
+      unawaited(
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => PDFViewerScreen(
+              filePath: path,
+              title: item['name'],
+              isNetwork: isNetwork,
+            ),
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -725,20 +896,19 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
-         if (didPop) return;
-         if (!widget.isReadOnly) await _savePersistentContent();
-         // Pass data back just in case parent supports it
-         if (context.mounted) Navigator.pop(context, _contents);
+        if (didPop) return;
+        if (!widget.isReadOnly) await _savePersistentContent();
+        // Pass data back just in case parent supports it
+        if (context.mounted) Navigator.pop(context, _contents);
       },
       child: Scaffold(
         appBar: _buildAppBar(),
-      body: CustomScrollView(
-        slivers: [
-          // Removed plus button from body
-
-          _isInitialLoading
-             ? SliverToBoxAdapter(child: _buildShimmerList())
-             : _contents.isEmpty
+        body: CustomScrollView(
+          slivers: [
+            // Removed plus button from body
+            _isInitialLoading
+                ? SliverToBoxAdapter(child: _buildShimmerList())
+                : _contents.isEmpty
                 ? SliverFillRemaining(
                     hasScrollBody: false,
                     child: Container(
@@ -762,11 +932,17 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                     ),
                   )
                 : SliverPadding(
-                    padding: EdgeInsets.fromLTRB(10.0, 16.0, 10.0, 24.0 + MediaQuery.of(context).padding.bottom),
+                    padding: EdgeInsets.fromLTRB(
+                      10.0,
+                      16.0,
+                      10.0,
+                      24.0 + MediaQuery.of(context).padding.bottom,
+                    ),
                     sliver: SliverReorderableList(
                       itemCount: _contents.length,
                       onReorder: (oldIndex, newIndex) {
-                        if (widget.isReadOnly) return; // Disable reorder in read-only
+                        if (widget.isReadOnly)
+                          return; // Disable reorder in read-only
                         setState(() {
                           if (oldIndex < newIndex) newIndex -= 1;
                           final item = _contents.removeAt(oldIndex);
@@ -775,56 +951,59 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                         _savePersistentContent();
                       },
                       itemBuilder: (context, index) {
-                         final item = _contents[index];
-                         final isSelected = _selectedIndices.contains(index);
-                         
-                         return CourseContentListItem(
-                           key: ObjectKey(item),
-                           item: item,
-                           index: index,
-                           isSelected: isSelected,
-                           isSelectionMode: _isSelectionMode,
-                           isDragMode: _isDragModeActive,
-                           leftOffset: _contentItemLeftOffset,
-                           videoThumbTop: _videoThumbTop,
-                           videoThumbBottom: _videoThumbBottom,
-                           imageThumbTop: _imageThumbTop,
-                           imageThumbBottom: _imageThumbBottom,
-                           bottomSpacing: _itemBottomSpacing,
-                           menuOffset: _menuOffset,
-                           lockLeftOffset: _lockLeftOffset,
-                           lockTopOffset: _lockTopOffset,
-                           lockSize: _lockSize,
-                           videoLabelOffset: _videoLabelOffset,
-                           imageLabelOffset: _imageLabelOffset,
-                           pdfLabelOffset: _pdfLabelOffset,
-                           folderLabelOffset: _folderLabelOffset,
-                           tagLabelFontSize: _tagLabelFontSize,
-                           menuPanelOffsetDX: _menuPanelDX,
-                           menuPanelOffsetDY: _menuPanelDY,
-                           menuPanelWidth: _menuPanelWidth,
-                           menuPanelHeight: _menuPanelHeight,
-                           onTap: () => _handleContentTap(item, index),
-                           onToggleSelection: () => _toggleSelection(index),
-                           onEnterSelectionMode: () => _enterSelectionMode(index),
-                           onStartHold: _startHoldTimer,
-                           onCancelHold: _cancelHoldTimer,
-                           onRename: () => _renameContent(index), 
-                            onToggleLock: () { 
-                              setState(() { 
-                                _contents[index]['isLocked'] = !(_contents[index]['isLocked'] ?? true); 
-                              }); 
-                              _savePersistentContent(); 
-                            },
-                           onRemove: () => _confirmRemoveContent(index),
-                           onAddThumbnail: () => _showThumbnailManagerDialog(index),
-                           isReadOnly: widget.isReadOnly, // Pass Read-Only state
-                         );
+                        final item = _contents[index];
+                        final isSelected = _selectedIndices.contains(index);
+
+                        return CourseContentListItem(
+                          key: ObjectKey(item),
+                          item: item,
+                          index: index,
+                          isSelected: isSelected,
+                          isSelectionMode: _isSelectionMode,
+                          isDragMode: _isDragModeActive,
+                          leftOffset: _contentItemLeftOffset,
+                          videoThumbTop: _videoThumbTop,
+                          videoThumbBottom: _videoThumbBottom,
+                          imageThumbTop: _imageThumbTop,
+                          imageThumbBottom: _imageThumbBottom,
+                          bottomSpacing: _itemBottomSpacing,
+                          menuOffset: _menuOffset,
+                          lockLeftOffset: _lockLeftOffset,
+                          lockTopOffset: _lockTopOffset,
+                          lockSize: _lockSize,
+                          videoLabelOffset: _videoLabelOffset,
+                          imageLabelOffset: _imageLabelOffset,
+                          pdfLabelOffset: _pdfLabelOffset,
+                          folderLabelOffset: _folderLabelOffset,
+                          tagLabelFontSize: _tagLabelFontSize,
+                          menuPanelOffsetDX: _menuPanelDX,
+                          menuPanelOffsetDY: _menuPanelDY,
+                          menuPanelWidth: _menuPanelWidth,
+                          menuPanelHeight: _menuPanelHeight,
+                          onTap: () => _handleContentTap(item, index),
+                          onToggleSelection: () => _toggleSelection(index),
+                          onEnterSelectionMode: () =>
+                              _enterSelectionMode(index),
+                          onStartHold: _startHoldTimer,
+                          onCancelHold: _cancelHoldTimer,
+                          onRename: () => _renameContent(index),
+                          onToggleLock: () {
+                            setState(() {
+                              _contents[index]['isLocked'] =
+                                  !(_contents[index]['isLocked'] ?? true);
+                            });
+                            _savePersistentContent();
+                          },
+                          onRemove: () => _confirmRemoveContent(index),
+                          onAddThumbnail: () =>
+                              _showThumbnailManagerDialog(index),
+                          isReadOnly: widget.isReadOnly, // Pass Read-Only state
+                        );
                       },
                     ),
                   ),
-        ],
-      ),
+          ],
+        ),
       ),
     );
   }
@@ -833,8 +1012,9 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
     return Padding(
       padding: const EdgeInsets.all(24),
       child: Column(
-        children: List.generate(5, (index) => 
-          Shimmer.fromColors(
+        children: List.generate(
+          5,
+          (index) => Shimmer.fromColors(
             baseColor: Colors.grey[300]!,
             highlightColor: Colors.grey[100]!,
             child: Container(
@@ -853,49 +1033,79 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
 
   PreferredSizeWidget _buildAppBar() {
     if (_isDragModeActive) {
-       return AppBar(
-         backgroundColor: AppTheme.primaryColor,
-         iconTheme: const IconThemeData(color: Colors.white),
-         leading: IconButton(
-           icon: const Icon(Icons.close),
-           onPressed: () => setState(() => _isDragModeActive = false),
-         ),
-          title: const FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text('Drag and Drop Mode', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+      return AppBar(
+        backgroundColor: AppTheme.primaryColor,
+        iconTheme: const IconThemeData(color: Colors.white),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => setState(() => _isDragModeActive = false),
+        ),
+        title: const FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            'Drag and Drop Mode',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-          centerTitle: true,
-          elevation: 2,
-       );
+        ),
+        centerTitle: true,
+        elevation: 2,
+      );
     }
     if (_isSelectionMode) {
-       return AppBar(
-          backgroundColor: AppTheme.primaryColor,
-          iconTheme: const IconThemeData(color: Colors.white),
-          leading: IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () => setState(() {
-               _isSelectionMode = false;
-               _selectedIndices.clear();
-            }),
+      return AppBar(
+        backgroundColor: AppTheme.primaryColor,
+        iconTheme: const IconThemeData(color: Colors.white),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => setState(() {
+            _isSelectionMode = false;
+            _selectedIndices.clear();
+          }),
+        ),
+        title: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            '${_selectedIndices.length} Selected',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-          title: FittedBox(
+        ),
+        actions: [
+          FittedBox(
             fit: BoxFit.scaleDown,
-            child: Text('${_selectedIndices.length} Selected', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold))
-          ),
-          actions: [
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: TextButton(
-                  onPressed: _contents.length == _selectedIndices.length ? () => setState(() => _selectedIndices.clear()) : _selectAll,
-                  child: Text(_contents.length == _selectedIndices.length ? 'Unselect' : 'All', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white))
+            child: TextButton(
+              onPressed: _contents.length == _selectedIndices.length
+                  ? () => setState(() => _selectedIndices.clear())
+                  : _selectAll,
+              child: Text(
+                _contents.length == _selectedIndices.length
+                    ? 'Unselect'
+                    : 'All',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
             ),
-            IconButton(icon: const Icon(Icons.copy), onPressed: () => _handleBulkCopyCut(false)),
-            IconButton(icon: const Icon(Icons.delete, color: Colors.redAccent), onPressed: _handleBulkDelete),
-          ],
-          elevation: 2,
-       );
+          ),
+          IconButton(
+            icon: const Icon(Icons.copy),
+            onPressed: () => _handleBulkCopyCut(false),
+          ),
+          IconButton(
+            icon: const Icon(Icons.delete, color: Colors.redAccent),
+            onPressed: _handleBulkDelete,
+          ),
+        ],
+        elevation: 2,
+      );
     }
     return AppBar(
       titleSpacing: 10, // 10px gap from back icon
@@ -916,31 +1126,26 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
               child: InkWell(
                 onTap: _showAddContentMenu,
                 borderRadius: BorderRadius.circular(25),
-              child: Container(
-                height: 40,
-                width: 40,
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryColor,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppTheme.primaryColor.withValues(alpha: 0.4),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.add,
-                  color: Colors.white,
-                  size: 24,
+                child: Container(
+                  height: 40,
+                  width: 40,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryColor,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppTheme.primaryColor.withValues(alpha: 0.4),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.add, color: Colors.white, size: 24),
                 ),
               ),
             ),
           ),
-        ),
       ],
     );
   }
 }
-

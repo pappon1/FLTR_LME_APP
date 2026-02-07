@@ -17,7 +17,7 @@ class CourseReviewCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final String title = state.titleController.text;
     final String? category = state.selectedCategory;
-    final int? batchDuration = state.newBatchDurationDays;
+
     final String? language = state.selectedLanguage;
     final String? courseMode = state.selectedCourseMode;
     final String? supportType = state.selectedSupportType;
@@ -47,9 +47,17 @@ class CourseReviewCard extends StatelessWidget {
             ],
           ),
           const Divider(height: 24),
-          
+
           // --- Step 1: Basic Info ---
-          Text('BASIC INFO', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.withValues(alpha: 0.7), letterSpacing: 1.1)),
+          Text(
+            'BASIC INFO',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.withValues(alpha: 0.7),
+              letterSpacing: 1.1,
+            ),
+          ),
           const SizedBox(height: 12),
           ReviewItem(
             icon: Icons.title,
@@ -63,18 +71,21 @@ class CourseReviewCard extends StatelessWidget {
             value: category ?? 'Not Selected',
             onEdit: () => onEditStep(0),
           ),
-          ReviewItem(
-            icon: Icons.new_releases_outlined,
-            label: 'Badge',
-            value: batchDuration != null ? '$batchDuration Days' : 'Not Set',
-            onEdit: () => onEditStep(0),
-          ),
-          
+
+
           const SizedBox(height: 8),
           const Divider(height: 24),
-          
+
           // --- Step 1.5: Setup ---
-          Text('SETUP & PRICING', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.withValues(alpha: 0.7), letterSpacing: 1.1)),
+          Text(
+            'SETUP & PRICING',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.withValues(alpha: 0.7),
+              letterSpacing: 1.1,
+            ),
+          ),
           const SizedBox(height: 12),
           ReviewItem(
             icon: Icons.payments_outlined,
@@ -117,7 +128,15 @@ class CourseReviewCard extends StatelessWidget {
           const Divider(height: 24),
 
           // --- Step 3: Advance ---
-          Text('ADVANCE & CONTENT', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey.withValues(alpha: 0.7), letterSpacing: 1.1)),
+          Text(
+            'ADVANCE & CONTENT',
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey.withValues(alpha: 0.7),
+              letterSpacing: 1.1,
+            ),
+          ),
           const SizedBox(height: 12),
           ReviewItem(
             icon: Icons.download_for_offline_outlined,
@@ -135,29 +154,31 @@ class CourseReviewCard extends StatelessWidget {
           ReviewItem(
             icon: Icons.video_collection_outlined,
             label: 'Videos',
-            value: '${_countItemsRecursively(state.courseContents, 'video')} Videos Added',
+            value:
+                '${_countItemsRecursively(state.courseContents, 'video')} Videos Added',
             onEdit: () => onEditStep(2),
           ),
           ReviewItem(
             icon: Icons.picture_as_pdf_outlined,
             label: 'Resources',
-            value: '${_countItemsRecursively(state.courseContents, 'pdf')} PDFs Added',
+            value:
+                '${_countItemsRecursively(state.courseContents, 'pdf')} PDFs Added',
             onEdit: () => onEditStep(2),
           ),
         ],
       ),
     );
   }
-  
+
   String _buildPricingText() {
     final mrp = state.mrpController.text;
     final discount = state.discountAmountController.text;
     final finalPrice = state.finalPriceController.text;
-    
+
     if (mrp.isEmpty && finalPrice.isEmpty) {
       return 'Not Set';
     }
-    
+
     return '₹$mrp (MRP) - ₹$discount (Disc) = ₹$finalPrice';
   }
 

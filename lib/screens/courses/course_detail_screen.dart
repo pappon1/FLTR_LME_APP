@@ -7,7 +7,7 @@ import '../../models/course_model.dart';
 import '../../services/firestore_service.dart';
 import '../../services/bunny_cdn_service.dart';
 import '../../utils/app_theme.dart';
-import 'tabs/course_content_tab.dart'; 
+import 'tabs/course_content_tab.dart';
 import 'edit_course_info_screen.dart';
 import '../../data/dummy_course_data.dart'; // Import dummy data file
 
@@ -23,12 +23,14 @@ class CourseDetailScreen extends StatefulWidget {
   State<CourseDetailScreen> createState() => _CourseDetailScreenState();
 }
 
-class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTickerProviderStateMixin {
+class _CourseDetailScreenState extends State<CourseDetailScreen>
+    with SingleTickerProviderStateMixin {
   final FirestoreService _firestoreService = FirestoreService();
   int _selectedTabIndex = 0; // 0: Overview, 1: Content, 2: Students
   bool _isDescriptionExpanded = false;
-  
-  final TextEditingController _studentSearchController = TextEditingController();
+
+  final TextEditingController _studentSearchController =
+      TextEditingController();
   String _studentSearchQuery = '';
 
   @override
@@ -103,39 +105,47 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
     // Strict Dark Mode: Deep Black to match OLED/Reference
-    final Color bgColor = isDark ? const Color(0xFF050505) : Colors.white; 
-    
+    final Color bgColor = isDark ? const Color(0xFF050505) : Colors.white;
+
     return StreamBuilder<CourseModel>(
       // 🔥 TO UI DESIGN: Switch back to _firestoreService.getCourseStream(widget.course.id) for real data
-      stream: DummyCourseData.fetchCourseDetails(), 
+      stream: DummyCourseData.fetchCourseDetails(),
       initialData: DummyCourseData.sampleCourse,
       builder: (context, snapshot) {
         final course = snapshot.data ?? widget.course;
-        
+
         return Scaffold(
           backgroundColor: bgColor,
           body: NestedScrollView(
             headerSliverBuilder: (context, innerBoxIsScrolled) {
               return [
                 SliverOverlapAbsorber(
-                  handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+                  handle: NestedScrollView.sliverOverlapAbsorberHandleFor(
+                    context,
+                  ),
                   sliver: _buildSliverAppBar(isDark, bgColor, course),
                 ),
               ];
             },
-            body: _selectedTabIndex == 0 
+            body: _selectedTabIndex == 0
                 ? _buildOverviewTab(isDark, course)
-                : _selectedTabIndex == 1 
-                    ? _buildContentTab(course)
-                    : _buildStudentsTab(),
+                : _selectedTabIndex == 1
+                ? _buildContentTab(course)
+                : _buildStudentsTab(),
           ),
-          bottomNavigationBar: _selectedTabIndex == 0 ? _buildBottomBar(isDark, course) : null,
+          bottomNavigationBar: _selectedTabIndex == 0
+              ? _buildBottomBar(isDark, course)
+              : null,
         );
-      }
+      },
     );
   }
 
-  SliverAppBar _buildSliverAppBar(bool isDark, Color bgColor, CourseModel course) {
+  SliverAppBar _buildSliverAppBar(
+    bool isDark,
+    Color bgColor,
+    CourseModel course,
+  ) {
     return SliverAppBar(
       backgroundColor: bgColor,
       elevation: 0,
@@ -145,7 +155,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
       leading: Transform.translate(
         offset: const Offset(_fHBackShiftX, 0),
         child: IconButton(
-          icon: Icon(Icons.arrow_back, color: isDark ? Colors.white : _textDark, size: _fHBackIconSize),
+          icon: Icon(
+            Icons.arrow_back,
+            color: isDark ? Colors.white : _textDark,
+            size: _fHBackIconSize,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
       ),
@@ -169,11 +183,17 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
               IconButton(
                 constraints: const BoxConstraints(),
                 padding: const EdgeInsets.all(8),
-                icon: Icon(Icons.mode_edit_outlined, color: isDark ? Colors.white70 : _textDark, size: _fHActionIconSize),
+                icon: Icon(
+                  Icons.mode_edit_outlined,
+                  color: isDark ? Colors.white70 : _textDark,
+                  size: _fHActionIconSize,
+                ),
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => EditCourseInfoScreen(course: course)),
+                    MaterialPageRoute(
+                      builder: (_) => EditCourseInfoScreen(course: course),
+                    ),
                   );
                 },
               ),
@@ -183,17 +203,26 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
                   child: Center(
                     child: Container(
                       margin: const EdgeInsets.symmetric(horizontal: 2),
-                      padding: const EdgeInsets.symmetric(horizontal: _fHBadgeHPadding, vertical: _fHBadgeVPadding),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: _fHBadgeHPadding,
+                        vertical: _fHBadgeVPadding,
+                      ),
                       decoration: BoxDecoration(
-                        color: _fHShowBadgeBg 
-                            ? (isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF3E8FF))
+                        color: _fHShowBadgeBg
+                            ? (isDark
+                                  ? const Color(0xFF1C1C1E)
+                                  : const Color(0xFFF3E8FF))
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(3.0),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.favorite, color: Color(0xFFFF3B30), size: _fHHeartIconSize),
+                          const Icon(
+                            Icons.favorite,
+                            color: Color(0xFFFF3B30),
+                            size: _fHHeartIconSize,
+                          ),
                           const SizedBox(width: 4),
                           Text(
                             '4',
@@ -211,7 +240,11 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
               IconButton(
                 constraints: const BoxConstraints(),
                 padding: const EdgeInsets.all(8),
-                icon: Icon(Icons.share_outlined, color: isDark ? Colors.white70 : _textDark, size: _fHActionIconSize),
+                icon: Icon(
+                  Icons.share_outlined,
+                  color: isDark ? Colors.white70 : _textDark,
+                  size: _fHActionIconSize,
+                ),
                 onPressed: () {},
               ),
               const SizedBox(width: 4),
@@ -221,10 +254,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
       ],
       bottom: PreferredSize(
         preferredSize: const Size.fromHeight(64),
-        child: Container(
-          color: bgColor,
-          child: _buildCustomTabBar(isDark),
-        ),
+        child: Container(color: bgColor, child: _buildCustomTabBar(isDark)),
       ),
     );
   }
@@ -235,7 +265,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
       height: 44,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF3F4F6), 
+        color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF3F4F6),
         borderRadius: BorderRadius.circular(3.0),
       ),
       child: Row(
@@ -257,22 +287,34 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
           duration: const Duration(milliseconds: 200),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            gradient: isSelected 
+            gradient: isSelected
                 ? const LinearGradient(
                     colors: [Color(0xFF6C5DD3), Color(0xFF8E81E8)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                  ) 
+                  )
                 : null,
             borderRadius: BorderRadius.circular(3.0),
-            boxShadow: isSelected ? [BoxShadow(color: const Color(0xFF6C5DD3).withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4))] : null,
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: const Color(0xFF6C5DD3).withOpacity(0.3),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
           ),
           child: Text(
             label,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: GoogleFonts.manrope(
-              color: isSelected ? Colors.white : (isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280)),
+              color: isSelected
+                  ? Colors.white
+                  : (isDark
+                        ? const Color(0xFF9CA3AF)
+                        : const Color(0xFF6B7280)),
               fontSize: 13,
               fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
             ),
@@ -294,170 +336,195 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
             SliverPadding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               sliver: SliverList(
-                delegate: SliverChildListDelegate(
-                  [
-                    const SizedBox(height: 12),
-                    // Thumbnail
-                    AspectRatio(
-                      aspectRatio: 16 / 9, // Standard YouTube Aspect Ratio
-                      child: Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(3.0),
-                          color: isDark ? Colors.grey[900] : Colors.grey[200],
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: CachedNetworkImage(
-                          imageUrl: BunnyCDNService.signUrl(course.thumbnailUrl),
-                          httpHeaders: BunnyCDNService.signUrl(course.thumbnailUrl).contains('storage.bunnycdn.com') 
-                              ? {'AccessKey': BunnyCDNService.apiKey} 
-                              : null,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Center(child: CircularProgressIndicator(color: _primaryPurple)),
-                          errorWidget: (context, url, error) => const Icon(Icons.broken_image, size: 50),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: _fOvGapThumbTitle),
-         
-                    // Title
-                    Text(
-                      course.title.isNotEmpty ? course.title : "Advance Mobile Repairing Trainings",
-                      style: GoogleFonts.poppins(
-                        fontSize: _fOvTitleSize,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.white : _textDark,
-                        height: 1.3,
-                      ),
-                    ),
-                    const SizedBox(height: _fOvGapTitleDesc),
-         
-                    // Description Section - Prompt: 2 line preview
-                    _buildSectionHeader("Description", showEdit: false),
-                    const SizedBox(height: 8),
-                    Text(
-                      course.description.isNotEmpty 
-                          ? course.description 
-                          : "Iss advanced course mein aap seekhenge mobile hardware repair, chip-level soldering, IC reballing aur latest techniques...",
-                      maxLines: _isDescriptionExpanded ? null : 2, 
-                      overflow: _isDescriptionExpanded ? TextOverflow.visible : TextOverflow.ellipsis,
-                      style: GoogleFonts.poppins(
-                        fontSize: _fOvDescSize,
-                        fontWeight: FontWeight.w500,
-                        color: isDark ? Colors.white : const Color(0xFF6B7280),
-                        height: 1.5,
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () => setState(() => _isDescriptionExpanded = !_isDescriptionExpanded),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 4),
-                        child: Row(
-                          children: [
-                            Text(
-                              _isDescriptionExpanded ? 'See less' : 'See more',
-                              style: GoogleFonts.poppins(
-                                fontSize: _fOvSeeMoreSize,
-                                fontWeight: FontWeight.w500,
-                                color: _fOvSeeMoreColor,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Icon(
-                              _isDescriptionExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
-                              color: _fOvSeeMoreColor,
-                              size: _fOvSeeMoreSize + 3,
-                            )
-                          ],
-                        ),
-                      ),
-                    ),
-         
-                    const SizedBox(height: _fOvGapSeeMoreHigh),
-         
-                    // Highlights Section
-                    if (course.highlights.isNotEmpty) ...[
-                      _buildSectionHeader("Course Highlights", showEdit: false),
-                      const SizedBox(height: 16),
-                      ...course.highlights.asMap().entries.map((entry) {
-                        return _buildHighlightItem(
-                          entry.value, 
-                          isDark, 
-                          isFirst: entry.key == 0,
-                          isLast: entry.key == course.highlights.length - 1
-                        );
-                      }),
-                      const SizedBox(height: _fOvGapHighFaq),
-                    ],
-         
-                    // FAQs
-                    if (course.faqs.isNotEmpty) ...[
-                      _buildSectionHeader("FAQs", showEdit: false),
-                      const SizedBox(height: 16),
-                      ...course.faqs.map((faq) => _buildFAQItem(
-                        faq['question'] ?? '', 
-                        faq['answer'] ?? '', 
-                        isDark
-                      )),
-                    ],
-                    
-                    const SizedBox(height: 24),
-                    
-                    // Chat Banner - One Line Fix
-                    Container(
-                      padding: const EdgeInsets.all(_fWaPadding),
+                delegate: SliverChildListDelegate([
+                  const SizedBox(height: 12),
+                  // Thumbnail
+                  AspectRatio(
+                    aspectRatio: 16 / 9, // Standard YouTube Aspect Ratio
+                    child: Container(
+                      width: double.infinity,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF2C254D), // Deep Reference Purple
-                        borderRadius: BorderRadius.circular(_fWaRadius),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.08),
-                          width: 1,
-                        ),
+                        borderRadius: BorderRadius.circular(3.0),
+                        color: isDark ? Colors.grey[900] : Colors.grey[200],
                       ),
+                      clipBehavior: Clip.antiAlias,
+                      child: CachedNetworkImage(
+                        imageUrl: BunnyCDNService.signUrl(course.thumbnailUrl),
+                        httpHeaders:
+                            BunnyCDNService.signUrl(
+                              course.thumbnailUrl,
+                            ).contains('storage.bunnycdn.com')
+                            ? {'AccessKey': BunnyCDNService.apiKey}
+                            : null,
+                        fit: BoxFit.cover,
+                        placeholder: (context, url) => Center(
+                          child: CircularProgressIndicator(
+                            color: _primaryPurple,
+                          ),
+                        ),
+                        errorWidget: (context, url, error) =>
+                            const Icon(Icons.broken_image, size: 50),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: _fOvGapThumbTitle),
+
+                  // Title
+                  Text(
+                    course.title.isNotEmpty
+                        ? course.title
+                        : "Advance Mobile Repairing Trainings",
+                    style: GoogleFonts.poppins(
+                      fontSize: _fOvTitleSize,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? Colors.white : _textDark,
+                      height: 1.3,
+                    ),
+                  ),
+                  const SizedBox(height: _fOvGapTitleDesc),
+
+                  // Description Section - Prompt: 2 line preview
+                  _buildSectionHeader("Description", showEdit: false),
+                  const SizedBox(height: 8),
+                  Text(
+                    course.description.isNotEmpty
+                        ? course.description
+                        : "Iss advanced course mein aap seekhenge mobile hardware repair, chip-level soldering, IC reballing aur latest techniques...",
+                    maxLines: _isDescriptionExpanded ? null : 2,
+                    overflow: _isDescriptionExpanded
+                        ? TextOverflow.visible
+                        : TextOverflow.ellipsis,
+                    style: GoogleFonts.poppins(
+                      fontSize: _fOvDescSize,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? Colors.white : const Color(0xFF6B7280),
+                      height: 1.5,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => setState(
+                      () => _isDescriptionExpanded = !_isDescriptionExpanded,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
                       child: Row(
                         children: [
-                          Transform.translate(
-                            offset: const Offset(_fWaIconShiftX, 0),
-                            child: Container(
-                              padding: const EdgeInsets.all(_fWaIconPadding),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF25D366),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const FaIcon(FontAwesomeIcons.whatsapp, color: Colors.white, size: _fWaIconSize),
+                          Text(
+                            _isDescriptionExpanded ? 'See less' : 'See more',
+                            style: GoogleFonts.poppins(
+                              fontSize: _fOvSeeMoreSize,
+                              fontWeight: FontWeight.w500,
+                              color: _fOvSeeMoreColor,
                             ),
                           ),
-                          const SizedBox(width: _fWaGap),
-                          Expanded(
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              alignment: Alignment.centerLeft,
-                              child: Text(
-                                'Chat With LME Sir For More Course Details.',
-                                style: GoogleFonts.poppins(
-                                  fontSize: _fWaTextSize,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
+                          const SizedBox(width: 4),
+                          Icon(
+                            _isDescriptionExpanded
+                                ? Icons.keyboard_arrow_up
+                                : Icons.keyboard_arrow_down,
+                            color: _fOvSeeMoreColor,
+                            size: _fOvSeeMoreSize + 3,
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 40),
-                    const SizedBox(height: 40), 
-                  ]
-                ),
+                  ),
+
+                  const SizedBox(height: _fOvGapSeeMoreHigh),
+
+                  // Highlights Section
+                  if (course.highlights.isNotEmpty) ...[
+                    _buildSectionHeader("Course Highlights", showEdit: false),
+                    const SizedBox(height: 16),
+                    ...course.highlights.asMap().entries.map((entry) {
+                      return _buildHighlightItem(
+                        entry.value,
+                        isDark,
+                        isFirst: entry.key == 0,
+                        isLast: entry.key == course.highlights.length - 1,
+                      );
+                    }),
+                    const SizedBox(height: _fOvGapHighFaq),
+                  ],
+
+                  // FAQs
+                  if (course.faqs.isNotEmpty) ...[
+                    _buildSectionHeader("FAQs", showEdit: false),
+                    const SizedBox(height: 16),
+                    ...course.faqs.map(
+                      (faq) => _buildFAQItem(
+                        faq['question'] ?? '',
+                        faq['answer'] ?? '',
+                        isDark,
+                      ),
+                    ),
+                  ],
+
+                  const SizedBox(height: 24),
+
+                  // Chat Banner - One Line Fix
+                  Container(
+                    padding: const EdgeInsets.all(_fWaPadding),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2C254D), // Deep Reference Purple
+                      borderRadius: BorderRadius.circular(_fWaRadius),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.08),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Transform.translate(
+                          offset: const Offset(_fWaIconShiftX, 0),
+                          child: Container(
+                            padding: const EdgeInsets.all(_fWaIconPadding),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF25D366),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const FaIcon(
+                              FontAwesomeIcons.whatsapp,
+                              color: Colors.white,
+                              size: _fWaIconSize,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: _fWaGap),
+                        Expanded(
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              'Chat With LME Sir For More Course Details.',
+                              style: GoogleFonts.poppins(
+                                fontSize: _fWaTextSize,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  const SizedBox(height: 40),
+                ]),
               ),
             ),
           ],
         );
-      }
+      },
     );
   }
 
-  Widget _buildHighlightItem(String text, bool isDark, {bool isFirst = false, bool isLast = false}) {
+  Widget _buildHighlightItem(
+    String text,
+    bool isDark, {
+    bool isFirst = false,
+    bool isLast = false,
+  }) {
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -478,32 +545,41 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
                       height: double.infinity,
                       alignment: Alignment.topCenter,
                       child: Container(
-                         width: 1.5,
-                         height: 12, // Gap to dot center
-                         color: isDark ? const Color(0xFF333344) : const Color(0xFFE5E7EB),
+                        width: 1.5,
+                        height: 12, // Gap to dot center
+                        color: isDark
+                            ? const Color(0xFF333344)
+                            : const Color(0xFFE5E7EB),
                       ),
                     ),
                   ),
                 // Bottom Connector
                 if (!isLast)
-                   Positioned(
+                  Positioned(
                     top: 10, // From dot center
                     bottom: 0,
                     child: Container(
                       width: 1.5,
-                      color: isDark ? const Color(0xFF333344) : const Color(0xFFE5E7EB),
+                      color: isDark
+                          ? const Color(0xFF333344)
+                          : const Color(0xFFE5E7EB),
                     ),
                   ),
                 // The Dot
                 Positioned(
-                   top: 10, // Center with first line of text
-                   child: Container(
+                  top: 10, // Center with first line of text
+                  child: Container(
                     width: _fHighDotSize,
                     height: _fHighDotSize,
                     decoration: BoxDecoration(
                       color: _primaryPurple,
                       shape: BoxShape.circle,
-                      boxShadow: [BoxShadow(color: _primaryPurple.withOpacity(0.5), blurRadius: 4)],
+                      boxShadow: [
+                        BoxShadow(
+                          color: _primaryPurple.withOpacity(0.5),
+                          blurRadius: 4,
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -513,12 +589,17 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
           // Highlight Text
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(bottom: _fHighSpaceB, top: 2), // Perfectly aligned with dot
+              padding: const EdgeInsets.only(
+                bottom: _fHighSpaceB,
+                top: 2,
+              ), // Perfectly aligned with dot
               child: Text(
                 text,
                 style: GoogleFonts.manrope(
                   fontSize: _fHighTextSize,
-                  color: isDark ? const Color(0xFFD1D5DB) : const Color(0xFF4B5563),
+                  color: isDark
+                      ? const Color(0xFFD1D5DB)
+                      : const Color(0xFF4B5563),
                   height: 1.5,
                   fontWeight: FontWeight.w500,
                 ),
@@ -535,11 +616,15 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
       margin: const EdgeInsets.only(bottom: _fFaqMarginB),
       padding: const EdgeInsets.all(_fFaqPadding),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF111111) : Colors.white, // Very Dark Card
+        color: isDark
+            ? const Color(0xFF111111)
+            : Colors.white, // Very Dark Card
         borderRadius: BorderRadius.circular(_fFaqRadius),
         border: Border.all(
-           color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey.withOpacity(0.15), 
-           width: 1
+          color: isDark
+              ? Colors.white.withOpacity(0.08)
+              : Colors.grey.withOpacity(0.15),
+          width: 1,
         ),
       ),
       child: Column(
@@ -570,12 +655,15 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
             ],
           ),
           if (answer.isNotEmpty) ...[
-             if (_fShowFaqDivider) ...[
-                const SizedBox(height: _fFaqDivSpace),
-                Divider(color: isDark ? Colors.white10 : Colors.black12, thickness: 1),
-             ],
-             const SizedBox(height: _fFaqDivSpace),
-             Row(
+            if (_fShowFaqDivider) ...[
+              const SizedBox(height: _fFaqDivSpace),
+              Divider(
+                color: isDark ? Colors.white10 : Colors.black12,
+                thickness: 1,
+              ),
+            ],
+            const SizedBox(height: _fFaqDivSpace),
+            Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
@@ -591,7 +679,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
                     answer,
                     style: GoogleFonts.manrope(
                       fontWeight: FontWeight.w500,
-                      color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B),
+                      color: isDark
+                          ? const Color(0xFF94A3B8)
+                          : const Color(0xFF64748B),
                       fontSize: _fFaqASize,
                       height: 1.5,
                     ),
@@ -628,16 +718,24 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
     // Correct Pricing Logic: price = MRP, discountPrice = Selling Price
     final double sellingPrice = course.discountPrice.toDouble();
     final double originalPrice = course.price.toDouble();
-    
-    final int discountPercent = (originalPrice > sellingPrice && originalPrice > 0)
+
+    final int discountPercent =
+        (originalPrice > sellingPrice && originalPrice > 0)
         ? ((originalPrice - sellingPrice) / originalPrice * 100).round()
-        : 0; 
+        : 0;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: _fBarPaddingV),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 16,
+        vertical: _fBarPaddingV,
+      ),
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF0D0D0D) : Colors.white,
-        border: Border(top: BorderSide(color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey[200]!)),
+        border: Border(
+          top: BorderSide(
+            color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey[200]!,
+          ),
+        ),
       ),
       child: SafeArea(
         top: false,
@@ -668,7 +766,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
                           fontSize: _fOldPriceSize,
                           decoration: TextDecoration.lineThrough,
                           decorationColor: const Color(0xFFF05151),
-                          color: const Color(0xFFF05151), 
+                          color: const Color(0xFFF05151),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -686,7 +784,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
                 ),
               ),
             ),
-            
+
             const SizedBox(width: 8),
 
             // BUY NOW Pill Button
@@ -748,25 +846,25 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
       firestoreService: _firestoreService,
     );
   }
-  
+
   Widget _buildStudentsTab() {
     return Builder(
       builder: (context) {
         final bool isDark = Theme.of(context).brightness == Brightness.dark;
-        
+
         // Dummy data for students
         final List<Map<String, String?>> allStudents = [
           {
             'name': 'Rahul Sharma',
             'email': 'rahul.sharma@example.com',
             'phone': '+91 98765 43210',
-            'image': 'https://i.pravatar.cc/150?u=rahul'
+            'image': 'https://i.pravatar.cc/150?u=rahul',
           },
           {
             'name': 'Amit Verma',
             'email': 'amit.verma@example.com',
             'phone': '+91 98765 00000',
-            'image': null
+            'image': null,
           },
         ];
 
@@ -774,12 +872,14 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
         final filteredStudents = allStudents.where((student) {
           final query = _studentSearchQuery.toLowerCase().trim();
           if (query.isEmpty) return true;
-          
+
           final name = (student['name'] ?? '').toLowerCase();
           final email = (student['email'] ?? '').toLowerCase();
           final phone = (student['phone'] ?? '').toLowerCase();
-          
-          return name.contains(query) || email.contains(query) || phone.contains(query);
+
+          return name.contains(query) ||
+              email.contains(query) ||
+              phone.contains(query);
         }).toList();
 
         return CustomScrollView(
@@ -788,7 +888,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
             SliverOverlapInjector(
               handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
             ),
-            
+
             // Search Bar
             SliverToBoxAdapter(
               child: Padding(
@@ -809,20 +909,30 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
                       color: isDark ? Colors.grey[600] : Colors.grey[400],
                       fontSize: 14,
                     ),
-                    prefixIcon: Icon(Icons.search, color: isDark ? Colors.grey[500] : Colors.grey[400]),
+                    prefixIcon: Icon(
+                      Icons.search,
+                      color: isDark ? Colors.grey[500] : Colors.grey[400],
+                    ),
                     filled: true,
                     fillColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(3.0),
                       borderSide: BorderSide(
-                        color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.withValues(alpha: 0.2),
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : Colors.grey.withValues(alpha: 0.2),
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(3.0),
                       borderSide: BorderSide(
-                        color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.withValues(alpha: 0.2),
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : Colors.grey.withValues(alpha: 0.2),
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(
@@ -840,8 +950,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
               SliverFillRemaining(
                 child: Center(
                   child: Text(
-                    "No students found", 
-                    style: GoogleFonts.manrope(color: Colors.grey)
+                    "No students found",
+                    style: GoogleFonts.manrope(color: Colors.grey),
                   ),
                 ),
               )
@@ -849,134 +959,168 @@ class _CourseDetailScreenState extends State<CourseDetailScreen> with SingleTick
               SliverPadding(
                 padding: const EdgeInsets.all(16),
                 sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final student = filteredStudents[index];
-                      final hasImage = student['image'] != null && student['image']!.isNotEmpty;
-                      
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-                          borderRadius: BorderRadius.circular(3.0),
-                          border: Border.all(
-                            color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.withValues(alpha: 0.15),
-                            width: 1
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            )
-                          ],
+                  delegate: SliverChildBuilderDelegate((context, index) {
+                    final student = filteredStudents[index];
+                    final hasImage =
+                        student['image'] != null &&
+                        student['image']!.isNotEmpty;
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                        borderRadius: BorderRadius.circular(3.0),
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : Colors.grey.withValues(alpha: 0.15),
+                          width: 1,
                         ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(3.0),
-                            onTap: () {
-                              final dummyStudent = StudentModel(
-                                id: 'dummy_id_$index',
-                                name: student['name'] ?? 'Unknown',
-                                email: student['email'] ?? '',
-                                phone: student['phone'] ?? '',
-                                enrolledCourses: 1,
-                                joinedDate: DateTime.now().subtract(const Duration(days: 30)),
-                                isActive: true,
-                                avatarUrl: student['image'] ?? '',
-                              );
-                              unawaited(Navigator.push(
-                                context, 
-                                MaterialPageRoute(builder: (_) => UserProfileScreen(student: dummyStudent))
-                              ));
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.all(12),
-                              child: Row(
-                                children: [
-                                  // Profile Placeholder
-                                  Container(
-                                    width: 50,
-                                    height: 50,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      color: isDark ? Colors.grey[800] : Colors.grey[200],
-                                      image: hasImage ? DecorationImage(
-                                        image: NetworkImage(student['image']!),
-                                        fit: BoxFit.cover,
-                                      ) : null,
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: !hasImage 
-                                        ? const Icon(Icons.person, color: Colors.grey, size: 24) 
-                                        : null, 
-                                  ),
-                                  const SizedBox(width: 16),
-                                  
-                                  // Info
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          student['name']!,
-                                          style: GoogleFonts.manrope(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w700,
-                                            color: isDark ? Colors.white : const Color(0xFF1F1F39),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Row(
-                                          children: [
-                                            Icon(Icons.email_outlined, size: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              student['email']!,
-                                              style: GoogleFonts.manrope(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w500,
-                                                color: isDark ? Colors.grey[400] : Colors.grey[600],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Row(
-                                          children: [
-                                            Icon(Icons.phone_outlined, size: 12, color: isDark ? Colors.grey[400] : Colors.grey[600]),
-                                            const SizedBox(width: 6),
-                                            Text(
-                                              student['phone']!,
-                                              style: GoogleFonts.manrope(
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w500,
-                                                color: isDark ? Colors.grey[400] : Colors.grey[600],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(3.0),
+                          onTap: () {
+                            final dummyStudent = StudentModel(
+                              id: 'dummy_id_$index',
+                              name: student['name'] ?? 'Unknown',
+                              email: student['email'] ?? '',
+                              phone: student['phone'] ?? '',
+                              enrolledCourses: 1,
+                              joinedDate: DateTime.now().subtract(
+                                const Duration(days: 30),
                               ),
+                              isActive: true,
+                              avatarUrl: student['image'] ?? '',
+                            );
+                            unawaited(
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      UserProfileScreen(student: dummyStudent),
+                                ),
+                              ),
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Row(
+                              children: [
+                                // Profile Placeholder
+                                Container(
+                                  width: 50,
+                                  height: 50,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: isDark
+                                        ? Colors.grey[800]
+                                        : Colors.grey[200],
+                                    image: hasImage
+                                        ? DecorationImage(
+                                            image: NetworkImage(
+                                              student['image']!,
+                                            ),
+                                            fit: BoxFit.cover,
+                                          )
+                                        : null,
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: !hasImage
+                                      ? const Icon(
+                                          Icons.person,
+                                          color: Colors.grey,
+                                          size: 24,
+                                        )
+                                      : null,
+                                ),
+                                const SizedBox(width: 16),
+
+                                // Info
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        student['name']!,
+                                        style: GoogleFonts.manrope(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w700,
+                                          color: isDark
+                                              ? Colors.white
+                                              : const Color(0xFF1F1F39),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.email_outlined,
+                                            size: 12,
+                                            color: isDark
+                                                ? Colors.grey[400]
+                                                : Colors.grey[600],
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            student['email']!,
+                                            style: GoogleFonts.manrope(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
+                                              color: isDark
+                                                  ? Colors.grey[400]
+                                                  : Colors.grey[600],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.phone_outlined,
+                                            size: 12,
+                                            color: isDark
+                                                ? Colors.grey[400]
+                                                : Colors.grey[600],
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            student['phone']!,
+                                            style: GoogleFonts.manrope(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
+                                              color: isDark
+                                                  ? Colors.grey[400]
+                                                  : Colors.grey[600],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                      );
-                    },
-                    childCount: filteredStudents.length,
-                  ),
+                      ),
+                    );
+                  }, childCount: filteredStudents.length),
                 ),
               ),
           ],
         );
-      }
+      },
     );
   }
 }
-
-
-

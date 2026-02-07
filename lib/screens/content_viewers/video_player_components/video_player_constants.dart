@@ -7,8 +7,12 @@ class VideoPlayerConstants {
   static const Duration lockAutoHideDuration = Duration(seconds: 1);
   static const Duration labelHideDuration = Duration(seconds: 2);
   static const Duration seekAfterDragDelay = Duration(milliseconds: 700);
-  static const Duration orientationChangeOverlayDelay = Duration(milliseconds: 50);
-  static const Duration orientationRotationDuration = Duration(milliseconds: 600);
+  static const Duration orientationChangeOverlayDelay = Duration(
+    milliseconds: 50,
+  );
+  static const Duration orientationRotationDuration = Duration(
+    milliseconds: 600,
+  );
   static const Duration scrollAnimationDuration = Duration(milliseconds: 300);
 
   // Values & Thresholds

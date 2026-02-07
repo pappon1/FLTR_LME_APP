@@ -3,16 +3,14 @@ import 'package:flutter/foundation.dart';
 class VideoPlaylistManager extends ChangeNotifier {
   final List<Map<String, dynamic>> playlist;
   final ValueNotifier<int> currentIndexNotifier = ValueNotifier(0);
-  
-  VideoPlaylistManager({
-    required this.playlist,
-    required int initialIndex,
-  }) {
+
+  VideoPlaylistManager({required this.playlist, required int initialIndex}) {
     currentIndexNotifier.value = initialIndex;
   }
 
   Map<String, dynamic>? get currentItem {
-    if (playlist.isEmpty || currentIndexNotifier.value >= playlist.length) return null;
+    if (playlist.isEmpty || currentIndexNotifier.value >= playlist.length)
+      return null;
     return playlist[currentIndexNotifier.value];
   }
 

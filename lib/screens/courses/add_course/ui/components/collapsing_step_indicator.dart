@@ -19,15 +19,23 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
   });
 
   @override
-  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
     if (isSelectionMode || isDragMode) return const SizedBox(height: 0.1);
 
     // Calculate collapse progress (0.0 to 1.0)
-    final double progress = (shrinkOffset / (maxExtent - minExtent + 0.01)).clamp(0.0, 1.0);
-    
+    final double progress = (shrinkOffset / (maxExtent - minExtent + 0.01))
+        .clamp(0.0, 1.0);
+
     return Container(
-      color: Theme.of(context).scaffoldBackgroundColor, 
-      padding: EdgeInsets.symmetric(horizontal: cardPaddingH, vertical: 2), // Dynamic Padding
+      color: Theme.of(context).scaffoldBackgroundColor,
+      padding: EdgeInsets.symmetric(
+        horizontal: cardPaddingH,
+        vertical: 2,
+      ), // Dynamic Padding
       child: Center(
         child: Container(
           decoration: BoxDecoration(
@@ -38,17 +46,20 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
                 color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
-              )
+              ),
             ],
           ),
           padding: EdgeInsets.symmetric(
-            horizontal: 16, 
-            vertical: 10 - (progress * 5) 
-          ), 
+            horizontal: 16,
+            vertical: 10 - (progress * 5),
+          ),
           child: FittedBox(
             fit: BoxFit.scaleDown,
             child: SizedBox(
-              width: MediaQuery.of(context).size.width - (cardPaddingH * 2) - 32, // Dynamic Width Calc
+              width:
+                  MediaQuery.of(context).size.width -
+                  (cardPaddingH * 2) -
+                  32, // Dynamic Width Calc
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -71,7 +82,7 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
   Widget _buildStepCircle(int step, String label, double progress) {
     final bool isActive = currentStep >= step;
     final bool isCurrent = currentStep == step;
-    
+
     // Scale ranges
     final double size = 32.0 - (progress * 14); // 32 -> 18
     final double iconScale = 16.0 - (progress * 6); // 16 -> 10
@@ -86,34 +97,55 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
           height: size,
           width: size,
           decoration: BoxDecoration(
-            color: isActive ? AppTheme.primaryColor : Colors.grey.withValues(alpha: 0.2),
+            color: isActive
+                ? AppTheme.primaryColor
+                : Colors.grey.withValues(alpha: 0.2),
             shape: BoxShape.circle,
-            boxShadow: isActive ? [BoxShadow(color: AppTheme.primaryColor.withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 4))] : [],
+            boxShadow: isActive
+                ? [
+                    BoxShadow(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.4),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : [],
           ),
           child: Center(
-            child: isCurrent 
-              ? Icon(Icons.edit, size: iconScale, color: Colors.white)
-              : isActive ? Icon(Icons.check, size: iconScale, color: Colors.white) : Text('${step + 1}', style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.bold, color: Colors.grey.shade400)),
+            child: isCurrent
+                ? Icon(Icons.edit, size: iconScale, color: Colors.white)
+                : isActive
+                ? Icon(Icons.check, size: iconScale, color: Colors.white)
+                : Text(
+                    '${step + 1}',
+                    style: TextStyle(
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey.shade400,
+                    ),
+                  ),
           ),
         ),
-        if (progress < 0.8) ...[ 
+        if (progress < 0.8) ...[
           SizedBox(height: 6 - (progress * 6)),
           Opacity(
-              opacity: (1.0 - progress * 2.0).clamp(0.0, 1.0), 
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  label, 
-                  maxLines: 1,
-                  style: TextStyle(
-                    fontSize: fontSize, 
-                    color: isActive ? AppTheme.primaryColor : Colors.grey.shade500,
-                    fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
-                  ),
+            opacity: (1.0 - progress * 2.0).clamp(0.0, 1.0),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                label,
+                maxLines: 1,
+                style: TextStyle(
+                  fontSize: fontSize,
+                  color: isActive
+                      ? AppTheme.primaryColor
+                      : Colors.grey.shade500,
+                  fontWeight: isActive ? FontWeight.bold : FontWeight.w500,
                 ),
               ),
+            ),
           ),
-        ]
+        ],
       ],
     );
   }
@@ -122,7 +154,9 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
     return Expanded(
       child: Container(
         height: 2,
-        color: currentStep > step ? AppTheme.primaryColor : Colors.grey.withValues(alpha: 0.2),
+        color: currentStep > step
+            ? AppTheme.primaryColor
+            : Colors.grey.withValues(alpha: 0.2),
         margin: EdgeInsets.symmetric(horizontal: lineMargin), // Dynamic Margin
       ),
     );
@@ -136,12 +170,11 @@ class CollapsingStepIndicator extends SliverPersistentHeaderDelegate {
 
   @override
   bool shouldRebuild(covariant CollapsingStepIndicator oldDelegate) {
-    return oldDelegate.currentStep != currentStep || 
-           oldDelegate.isSelectionMode != isSelectionMode ||
-           oldDelegate.isDragMode != isDragMode ||
-           oldDelegate.cardPaddingH != cardPaddingH || 
-           oldDelegate.brightness != brightness ||       
-           oldDelegate.lineMargin != lineMargin;       
+    return oldDelegate.currentStep != currentStep ||
+        oldDelegate.isSelectionMode != isSelectionMode ||
+        oldDelegate.isDragMode != isDragMode ||
+        oldDelegate.cardPaddingH != cardPaddingH ||
+        oldDelegate.brightness != brightness ||
+        oldDelegate.lineMargin != lineMargin;
   }
 }
-

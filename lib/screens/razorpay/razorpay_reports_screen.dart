@@ -42,60 +42,99 @@ class _RazorpayReportsScreenState extends State<RazorpayReportsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("Recent Payments (Reports)", style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
+        title: Text(
+          "Recent Payments (Reports)",
+          style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+        ),
       ),
       body: _isLoading
           ? const SimpleShimmerList(itemHeight: 90.0)
           : _error != null
-              ? Center(child: Padding(padding: const EdgeInsets.all(20), child: Text("Error: $_error\n\nPlease check your API Keys in Config.", textAlign: TextAlign.center)))
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: _payments.length,
-                  itemBuilder: (context, index) {
-                    final item = _payments[index];
-                    final amount = (item['amount'] ?? 0) / 100;
-                    final date = DateTime.fromMillisecondsSinceEpoch((item['created_at'] ?? 0) * 1000);
-                    final status = item['status'] ?? 'unknown';
-                    final email = item['email'] ?? 'No Email';
-                    final contact = item['contact'] ?? 'No Contact';
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Text(
+                  "Error: $_error\n\nPlease check your API Keys in Config.",
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            )
+          : ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: _payments.length,
+              itemBuilder: (context, index) {
+                final item = _payments[index];
+                final amount = (item['amount'] ?? 0) / 100;
+                final date = DateTime.fromMillisecondsSinceEpoch(
+                  (item['created_at'] ?? 0) * 1000,
+                );
+                final status = item['status'] ?? 'unknown';
+                final email = item['email'] ?? 'No Email';
+                final contact = item['contact'] ?? 'No Contact';
 
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: status == 'captured' ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
-                          child: Icon(status == 'captured' ? Icons.check : Icons.error, color: status == 'captured' ? Colors.green : Colors.red, size: 20),
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: status == 'captured'
+                          ? Colors.green.withValues(alpha: 0.1)
+                          : Colors.red.withValues(alpha: 0.1),
+                      child: Icon(
+                        status == 'captured' ? Icons.check : Icons.error,
+                        color: status == 'captured' ? Colors.green : Colors.red,
+                        size: 20,
+                      ),
+                    ),
+                    title: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        "₹$amount",
+                        style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "$email • $contact",
+                          style: const TextStyle(fontSize: 12),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        title: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerLeft,
-                          child: Text("₹$amount", style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "$email • $contact", 
-                              style: const TextStyle(fontSize: 12),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(DateFormat('MMM d, y • h:mm a').format(date), style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                          ],
-                        ),
-                        trailing: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: status == 'captured' ? Colors.green : Colors.redAccent,
-                            borderRadius: BorderRadius.circular(3.0),
+                        Text(
+                          DateFormat('MMM d, y • h:mm a').format(date),
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: Colors.grey,
                           ),
-                          child: Text(status.toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: status == 'captured'
+                            ? Colors.green
+                            : Colors.redAccent,
+                        borderRadius: BorderRadius.circular(3.0),
+                      ),
+                      child: Text(
+                        status.toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  ),
+                );
+              },
+            ),
     );
   }
 }
-

@@ -103,6 +103,7 @@ dependencies:
   path: any
   flutter_background_service: ^5.1.0
   connectivity_plus: ^7.0.0
+  disk_space_2: ^1.0.12
 dev_dependencies:
   flutter_test:
     sdk: flutter

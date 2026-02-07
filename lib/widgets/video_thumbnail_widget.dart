@@ -53,7 +53,7 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
   @override
   void didUpdateWidget(covariant VideoThumbnailWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.videoPath != widget.videoPath || 
+    if (oldWidget.videoPath != widget.videoPath ||
         oldWidget.customThumbnailPath != widget.customThumbnailPath) {
       _checkCacheAndGenerate();
     }
@@ -62,8 +62,8 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
   void _checkCacheAndGenerate() {
     // 1. Check Custom Thumbnail Path First
     if (widget.customThumbnailPath != null) {
-       _loadCustomThumbnail();
-       return;
+      _loadCustomThumbnail();
+      return;
     }
 
     // 2. Then check memory cache for generated ones
@@ -71,7 +71,7 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
       // LRU: Refresh position
       VideoThumbnailWidget._cacheKeys.remove(widget.videoPath);
       VideoThumbnailWidget._cacheKeys.add(widget.videoPath);
-      
+
       setState(() {
         _thumbnailData = VideoThumbnailWidget._memoryCache[widget.videoPath];
         _isLoading = false;
@@ -84,34 +84,37 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
 
   Future<void> _loadCustomThumbnail() async {
     if (widget.customThumbnailPath == null) return;
-    
+
     final bool isNetwork = widget.customThumbnailPath!.startsWith('http');
 
     if (isNetwork) {
-       if (mounted) {
-         setState(() {
-           _isLoading = false;
-           _hasError = false;
-         });
-       }
-       return;
-    }
-
-    // Check if we already have it in memory (using path as key)
-    if (VideoThumbnailWidget._memoryCache.containsKey(widget.customThumbnailPath!)) {
+      if (mounted) {
         setState(() {
-          _thumbnailData = VideoThumbnailWidget._memoryCache[widget.customThumbnailPath!];
           _isLoading = false;
           _hasError = false;
         });
-        return;
+      }
+      return;
+    }
+
+    // Check if we already have it in memory (using path as key)
+    if (VideoThumbnailWidget._memoryCache.containsKey(
+      widget.customThumbnailPath!,
+    )) {
+      setState(() {
+        _thumbnailData =
+            VideoThumbnailWidget._memoryCache[widget.customThumbnailPath!];
+        _isLoading = false;
+        _hasError = false;
+      });
+      return;
     }
 
     try {
       final file = java_io.File(widget.customThumbnailPath!);
       if (await file.exists()) {
         final bytes = await file.readAsBytes();
-        
+
         // Cache it
         VideoThumbnailWidget._addToCache(widget.customThumbnailPath!, bytes);
 
@@ -123,8 +126,8 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
           });
         }
       } else {
-         // Fallback to generator if file missing
-         _generateThumbnail();
+        // Fallback to generator if file missing
+        _generateThumbnail();
       }
     } catch (e) {
       _generateThumbnail();
@@ -144,7 +147,7 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
         video: widget.videoPath,
         imageFormat: ImageFormat.JPEG,
         maxWidth: 200, // Reduced further for memory optimization
-        quality: 35,   // Reduced quality for better performance
+        quality: 35, // Reduced quality for better performance
       );
 
       if (uint8list != null) {
@@ -179,13 +182,17 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
           child: SizedBox(
             width: 20,
             height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white24),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Colors.white24,
+            ),
           ),
         ),
       );
     }
 
-    if (widget.customThumbnailPath != null && widget.customThumbnailPath!.startsWith('http')) {
+    if (widget.customThumbnailPath != null &&
+        widget.customThumbnailPath!.startsWith('http')) {
       return Image.network(
         widget.customThumbnailPath!,
         width: widget.width,
@@ -209,9 +216,12 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
       height: widget.height,
       fit: widget.fit,
       gaplessPlayback: true,
-      cacheWidth: (widget.width != null && widget.width! > 0 && widget.width! != double.infinity) 
-          ? widget.width!.toInt() 
-          : null, 
+      cacheWidth:
+          (widget.width != null &&
+              widget.width! > 0 &&
+              widget.width! != double.infinity)
+          ? widget.width!.toInt()
+          : null,
     );
   }
 }

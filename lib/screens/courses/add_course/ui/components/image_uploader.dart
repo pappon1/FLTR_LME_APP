@@ -29,7 +29,9 @@ class ImageUploader extends StatelessWidget {
             color: Colors.transparent,
             borderRadius: BorderRadius.circular(UIConstants.globalRadius),
             border: Border.all(
-              color: Theme.of(context).dividerColor.withValues(alpha: UIConstants.borderOpacity),
+              color: Theme.of(
+                context,
+              ).dividerColor.withValues(alpha: UIConstants.borderOpacity),
               style: BorderStyle.solid,
             ),
             image: image != null

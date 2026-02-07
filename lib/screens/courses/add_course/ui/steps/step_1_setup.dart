@@ -40,26 +40,28 @@ class Step1SetupWidget extends StatelessWidget {
               pinned: true,
             ),
             SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: UIConstants.screenPadding),
+              padding: const EdgeInsets.symmetric(
+                horizontal: UIConstants.screenPadding,
+              ),
               sliver: SliverToBoxAdapter(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildHeader(context),
                     const SizedBox(height: UIConstants.s2HeaderSpace),
-                    
+
                     _buildPricingSection(context),
                     const SizedBox(height: UIConstants.s2LanguageSpace),
-    
+
                     _buildLanguageSupportSection(context),
                     const SizedBox(height: UIConstants.s2ValiditySpace),
-    
+
                     _buildValiditySection(context),
                     const SizedBox(height: 24),
-    
+
                     _buildCertificateSection(context),
                     const SizedBox(height: UIConstants.certToBigScreenSpace),
-    
+
                     _buildBigScreenToggle(context),
                   ],
                 ),
@@ -122,11 +124,16 @@ class Step1SetupWidget extends StatelessWidget {
               maintainAnimation: true,
               maintainState: true,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.green.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(3.0),
-                  border: Border.all(color: Colors.green.withValues(alpha: 0.2)),
+                  border: Border.all(
+                    color: Colors.green.withValues(alpha: 0.2),
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -135,9 +142,16 @@ class Step1SetupWidget extends StatelessWidget {
                         ? const SizedBox(
                             height: 12,
                             width: 12,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.green),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.green,
+                            ),
                           )
-                        : const Icon(Icons.check_circle, size: 16, color: Colors.green),
+                        : const Icon(
+                            Icons.check_circle,
+                            size: 16,
+                            color: Colors.green,
+                          ),
                     const SizedBox(width: 8),
                     Text(
                       isSaving ? 'Syncing...' : 'Safe & Synced',
@@ -212,7 +226,11 @@ class Step1SetupWidget extends StatelessWidget {
             padding: const EdgeInsets.only(top: 8, left: 4),
             child: Row(
               children: [
-                Icon(Icons.warning_amber_rounded, size: 14, color: Colors.orange.shade400),
+                Icon(
+                  Icons.warning_amber_rounded,
+                  size: 14,
+                  color: Colors.orange.shade400,
+                ),
                 const SizedBox(width: 4),
                 Text(
                   'Warning: Maximum discount allowed is 50% of MRP',
@@ -324,10 +342,17 @@ class Step1SetupWidget extends StatelessWidget {
                 logic.checkUrlValidity(v, isWhatsapp: true);
               },
               suffixWidget: state.isWpChecking
-                  ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
+                  ? const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
                   : state.isWpValid
-                       ? const Icon(Icons.check_circle, color: Colors.green)
-                       : null,
+                  ? const Icon(Icons.check_circle, color: Colors.green)
+                  : null,
             ),
           ),
         ],
@@ -340,10 +365,18 @@ class Step1SetupWidget extends StatelessWidget {
       key: state.validityKey,
       child: DropdownButtonFormField<int>(
         isExpanded: true,
-        style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 16),
+        style: TextStyle(
+          color: Theme.of(context).textTheme.bodyLarge?.color,
+          fontSize: 16,
+        ),
         initialValue: state.courseValidityDays,
         hint: const Text('Select Validity'),
-        decoration: _dropdownDecoration(context, 'Course Validity', state.validityError, prefix: Icons.history_toggle_off),
+        decoration: _dropdownDecoration(
+          context,
+          'Course Validity',
+          state.validityError,
+          prefix: Icons.history_toggle_off,
+        ),
         items: const [
           DropdownMenuItem(value: 0, child: Text('Lifetime Access')),
           DropdownMenuItem(value: 184, child: Text('6 Months')),
@@ -398,19 +431,27 @@ class Step1SetupWidget extends StatelessWidget {
           const SizedBox(height: 4),
           const Text(
             'Upload PDF File (A4 Landscape)',
-            style: TextStyle(fontSize: 11, color: Colors.orange, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.orange,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           const SizedBox(height: 16),
           PdfUploader(
             file: state.certificate1File,
             label: 'Tap to upload Certificate PDF',
             onTap: () => logic.pickCertificatePdf(context, showWarning),
-            onRemove: state.certificate1File != null ? () {
-              state.certificate1File = null;
-              state.updateState();
-              logic.draftManager.saveCourseDraft();
-            } : null,
-            onView: state.certificate1File != null ? () => _showPdfViewer(context) : null,
+            onRemove: state.certificate1File != null
+                ? () {
+                    state.certificate1File = null;
+                    state.updateState();
+                    logic.draftManager.saveCourseDraft();
+                  }
+                : null,
+            onView: state.certificate1File != null
+                ? () => _showPdfViewer(context)
+                : null,
           ),
           if (state.certError && state.certificate1File == null)
             const Padding(
@@ -457,10 +498,17 @@ class Step1SetupWidget extends StatelessWidget {
                 logic.checkUrlValidity(v, isWhatsapp: false);
               },
               suffixWidget: state.isWebChecking
-                  ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
+                  ? const Padding(
+                      padding: EdgeInsets.all(12),
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
                   : state.isWebValid
-                      ? const Icon(Icons.check_circle, color: Colors.green)
-                      : null,
+                  ? const Icon(Icons.check_circle, color: Colors.green)
+                  : null,
               hasError: state.bigScreenUrlError,
             ),
           ),
@@ -489,9 +537,7 @@ class Step1SetupWidget extends StatelessWidget {
                 backgroundColor: Colors.transparent,
                 foregroundColor: Colors.white,
               ),
-              Expanded(
-                child: SfPdfViewer.file(state.certificate1File!),
-              ),
+              Expanded(child: SfPdfViewer.file(state.certificate1File!)),
             ],
           ),
         ),
@@ -499,16 +545,28 @@ class Step1SetupWidget extends StatelessWidget {
     );
   }
 
-  InputDecoration _dropdownDecoration(BuildContext context, String label, bool hasError, {IconData? prefix}) {
+  InputDecoration _dropdownDecoration(
+    BuildContext context,
+    String label,
+    bool hasError, {
+    IconData? prefix,
+  }) {
     return InputDecoration(
-      contentPadding: const EdgeInsets.symmetric(vertical: UIConstants.inputVerticalPadding, horizontal: 16),
+      contentPadding: const EdgeInsets.symmetric(
+        vertical: UIConstants.inputVerticalPadding,
+        horizontal: 16,
+      ),
       labelText: label,
       floatingLabelBehavior: FloatingLabelBehavior.always,
       prefixIcon: prefix != null ? Icon(prefix, size: 20) : null,
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(UIConstants.globalRadius),
         borderSide: BorderSide(
-          color: hasError ? Colors.red : Theme.of(context).dividerColor.withValues(alpha: UIConstants.borderOpacity),
+          color: hasError
+              ? Colors.red
+              : Theme.of(
+                  context,
+                ).dividerColor.withValues(alpha: UIConstants.borderOpacity),
         ),
       ),
       focusedBorder: OutlineInputBorder(
@@ -518,9 +576,13 @@ class Step1SetupWidget extends StatelessWidget {
           width: 2,
         ),
       ),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(UIConstants.globalRadius)),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(UIConstants.globalRadius),
+      ),
       filled: true,
-      fillColor: AppTheme.primaryColor.withValues(alpha: UIConstants.fillOpacity),
+      fillColor: AppTheme.primaryColor.withValues(
+        alpha: UIConstants.fillOpacity,
+      ),
     );
   }
 
@@ -537,18 +599,35 @@ class Step1SetupWidget extends StatelessWidget {
   }) {
     return DropdownButtonFormField<String>(
       isExpanded: true,
-      style: TextStyle(color: Theme.of(context).textTheme.bodyLarge?.color, fontSize: 16),
+      style: TextStyle(
+        color: Theme.of(context).textTheme.bodyLarge?.color,
+        fontSize: 16,
+      ),
       initialValue: value,
       hint: Text(
         hint ?? 'Select $label',
         style: TextStyle(
-          color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.4),
+          color: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.color?.withValues(alpha: 0.4),
           fontSize: hintFontSize,
           fontWeight: FontWeight.normal,
         ),
       ),
-      decoration: _dropdownDecoration(context, label, hasError, prefix: prefixIcon),
-      items: items.map((l) => DropdownMenuItem(value: l, child: Text(l, overflow: TextOverflow.ellipsis))).toList(),
+      decoration: _dropdownDecoration(
+        context,
+        label,
+        hasError,
+        prefix: prefixIcon,
+      ),
+      items: items
+          .map(
+            (l) => DropdownMenuItem(
+              value: l,
+              child: Text(l, overflow: TextOverflow.ellipsis),
+            ),
+          )
+          .toList(),
       onChanged: onChanged,
     );
   }

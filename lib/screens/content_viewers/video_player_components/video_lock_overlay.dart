@@ -32,7 +32,7 @@ class VideoLockOverlay extends StatelessWidget {
             child: Container(color: Colors.transparent),
           ),
         ),
-        
+
         IgnorePointer(
           ignoring: !isVisible,
           child: AnimatedOpacity(
@@ -41,14 +41,12 @@ class VideoLockOverlay extends StatelessWidget {
             child: Stack(
               children: [
                 // 1. Dim Overlay
-                Positioned.fill(
-                  child: Container(color: scrimColor),
-                ),
-                
+                Positioned.fill(child: Container(color: scrimColor)),
+
                 // 2. Title (Top Center)
                 Positioned(
-                  top: 40, 
-                  left: 20, 
+                  top: 40,
+                  left: 20,
                   right: 20,
                   child: Text(
                     title,
@@ -57,7 +55,9 @@ class VideoLockOverlay extends StatelessWidget {
                       color: contentColor,
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
-                      shadows: isDark ? [const Shadow(color: Colors.black, blurRadius: 4)] : null,
+                      shadows: isDark
+                          ? [const Shadow(color: Colors.black, blurRadius: 4)]
+                          : null,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -80,7 +80,11 @@ class VideoLockOverlay extends StatelessWidget {
                             shape: BoxShape.circle,
                             border: Border.all(color: borderColor),
                           ),
-                          child: const Icon(Icons.lock, size: 40, color: contentColor),
+                          child: const Icon(
+                            Icons.lock,
+                            size: 40,
+                            color: contentColor,
+                          ),
                         ),
                       ),
                     ],
@@ -96,9 +100,9 @@ class VideoLockOverlay extends StatelessWidget {
                     child: Text(
                       "Double tap to unlock",
                       style: TextStyle(
-                        color: contentColor.withValues(alpha: 0.7), 
-                        fontSize: 16, 
-                        fontWeight: FontWeight.w500
+                        color: contentColor.withValues(alpha: 0.7),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),

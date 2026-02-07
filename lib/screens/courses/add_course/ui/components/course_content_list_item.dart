@@ -98,61 +98,65 @@ class CourseContentListItem extends StatelessWidget {
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(3.0),
                   border: Border.all(
-                      color: isSelected
-                          ? AppTheme.primaryColor
-                          : Theme.of(context).dividerColor.withValues(alpha: 0.12),
-                      width: isSelected ? 2 : 1),
+                    color: isSelected
+                        ? AppTheme.primaryColor
+                        : Theme.of(
+                            context,
+                          ).dividerColor.withValues(alpha: 0.12),
+                    width: isSelected ? 2 : 1,
+                  ),
                 ),
-                child: isMedia ? _buildMediaLayout(context) : _buildStandardLayout(context),
+                child: isMedia
+                    ? _buildMediaLayout(context)
+                    : _buildStandardLayout(context),
               ),
             ),
 
-
-          if (!isReadOnly)
-            Positioned.fill(
-              bottom: bottomSpacing,
-              child: isDragMode
-                  ? Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const SizedBox(width: 40), // Left Scroll Zone
-                        Expanded(
-                          child: ReorderableDragStartListener(
-                            index: index,
-                            child: Container(color: Colors.transparent),
+            if (!isReadOnly)
+              Positioned.fill(
+                bottom: bottomSpacing,
+                child: isDragMode
+                    ? Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const SizedBox(width: 40), // Left Scroll Zone
+                          Expanded(
+                            child: ReorderableDragStartListener(
+                              index: index,
+                              child: Container(color: Colors.transparent),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 40), // Right Scroll Zone
-                      ],
-                    )
-                  : Row(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Left Zone: Tap & Hold for Drag
-                        Expanded(
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.translucent,
-                            onTapDown: (_) => onStartHold(),
-                            onTapUp: (_) => onCancelHold(),
-                            onTapCancel: () => onCancelHold(),
-                            onTap: onTap,
-                            child: Container(color: Colors.transparent),
+                          const SizedBox(width: 40), // Right Scroll Zone
+                        ],
+                      )
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          // Left Zone: Tap & Hold for Drag
+                          Expanded(
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.translucent,
+                              onTapDown: (_) => onStartHold(),
+                              onTapUp: (_) => onCancelHold(),
+                              onTapCancel: () => onCancelHold(),
+                              onTap: onTap,
+                              child: Container(color: Colors.transparent),
+                            ),
                           ),
-                        ),
-                        // Right Zone: Long Press for Selection (excluding 3-dot menu area)
-                        Expanded(
-                          child: GestureDetector(
-                            behavior: HitTestBehavior.translucent,
-                            onLongPress: onEnterSelectionMode,
-                            onTap: onTap,
-                            child: Container(color: Colors.transparent),
+                          // Right Zone: Long Press for Selection (excluding 3-dot menu area)
+                          Expanded(
+                            child: GestureDetector(
+                              behavior: HitTestBehavior.translucent,
+                              onLongPress: onEnterSelectionMode,
+                              onTap: onTap,
+                              child: Container(color: Colors.transparent),
+                            ),
                           ),
-                        ),
-                        // Exclude 3-dot menu area from overlay (48px width for icon button)
-                        const SizedBox(width: 48),
-                      ],
-                    ),
-            ),
+                          // Exclude 3-dot menu area from overlay (48px width for icon button)
+                          const SizedBox(width: 48),
+                        ],
+                      ),
+              ),
             // Selection Checkcircle Overlay
             if (isSelectionMode)
               Positioned(
@@ -166,170 +170,194 @@ class CourseContentListItem extends StatelessWidget {
                       color: Colors.white, // Background for visibility
                     ),
                     child: isSelected
-                        ? const Icon(Icons.check_circle, color: AppTheme.primaryColor)
+                        ? const Icon(
+                            Icons.check_circle,
+                            color: AppTheme.primaryColor,
+                          )
                         : const Icon(Icons.circle_outlined, color: Colors.grey),
                   ),
                 ),
               ),
-        ],
+          ],
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildStandardLayout(BuildContext context) {
-      IconData icon;
-      Color color;
-      switch (item['type']) {
-        case 'folder':
-          icon = Icons.folder;
-          color = Colors.orange;
-          break;
-        case 'pdf':
-          icon = Icons.picture_as_pdf_rounded;
-          color = const Color(0xFFE53935); // Sharper PDF red
-          break;
-        case 'zip':
-          icon = Icons.folder_zip;
-          color = Colors.blueGrey;
-          break;
-        default:
-          icon = Icons.insert_drive_file;
-          color = Colors.blue;
-      }
+    IconData icon;
+    Color color;
+    switch (item['type']) {
+      case 'folder':
+        icon = Icons.folder;
+        color = Colors.orange;
+        break;
+      case 'pdf':
+        icon = Icons.picture_as_pdf_rounded;
+        color = const Color(0xFFE53935); // Sharper PDF red
+        break;
+      case 'zip':
+        icon = Icons.folder_zip;
+        color = Colors.blueGrey;
+        break;
+      default:
+        icon = Icons.insert_drive_file;
+        color = Colors.blue;
+    }
 
-      const double size = 60.0; // Fixed size as per user request
-      // const double iconDisplaySize = size * 0.56; // Ratio 28/50 approx -> ~33.6
+    const double size = 60.0; // Fixed size as per user request
+    // const double iconDisplaySize = size * 0.56; // Ratio 28/50 approx -> ~33.6
 
-      final String typeLabel = item['type'].toString().toUpperCase();
-      final Color tagColor = color;
+    final String typeLabel = item['type'].toString().toUpperCase();
+    final Color tagColor = color;
 
-      return InkWell(
-        onTap: isReadOnly ? onTap : null,
-        borderRadius: BorderRadius.circular(3.0),
-        child: Padding(
-          padding: const EdgeInsets.only(left: 0, right: 0, top: 4, bottom: 4), 
-          child: Stack(
-            alignment: Alignment.centerRight,
-            children: [
-              // 1. Base Layer: Icon + Title
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Hero(
-                    tag: (item['path'] ?? item['name']) + index.toString() + (isReadOnly ? '_read' : ''),
-                    child: Container(
-                      width: size, 
-                      height: size, 
-                      margin: EdgeInsets.only(
-                        left: leftOffset,
-                        top: videoThumbTop,
-                        bottom: videoThumbBottom,
-                      ),
-                      child: Icon(icon, color: color, size: size * 0.8),
+    return InkWell(
+      onTap: isReadOnly ? onTap : null,
+      borderRadius: BorderRadius.circular(3.0),
+      child: Padding(
+        padding: const EdgeInsets.only(left: 0, right: 0, top: 4, bottom: 4),
+        child: Stack(
+          alignment: Alignment.centerRight,
+          children: [
+            // 1. Base Layer: Icon + Title
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Hero(
+                  tag:
+                      (item['path'] ?? item['name']) +
+                      index.toString() +
+                      (isReadOnly ? '_read' : ''),
+                  child: Container(
+                    width: size,
+                    height: size,
+                    margin: EdgeInsets.only(
+                      left: leftOffset,
+                      top: videoThumbTop,
+                      bottom: videoThumbBottom,
                     ),
+                    child: Icon(icon, color: color, size: size * 0.8),
                   ),
-                  Expanded(
-                    child: Padding(
-                      padding: EdgeInsets.only(left: 12, right: titleRightPadding),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            item['name'],
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: isSelected 
-                                  ? AppTheme.primaryColor 
-                                  : Theme.of(context).textTheme.bodyLarge?.color,
-                              fontSize: 14, 
-                              height: 1.1, 
-                            ),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      left: 12,
+                      right: titleRightPadding,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          item['name'],
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            color: isSelected
+                                ? AppTheme.primaryColor
+                                : Theme.of(context).textTheme.bodyLarge?.color,
+                            fontSize: 14,
+                            height: 1.1,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
-              
-              // 1.5 Type Tag Overlay (Fixed at bottom)
+                ),
+              ],
+            ),
+
+            // 1.5 Type Tag Overlay (Fixed at bottom)
+            Positioned(
+              bottom: -1,
+              left:
+                  size +
+                  leftOffset +
+                  (item['type'] == 'folder'
+                      ? folderLabelOffset
+                      : pdfLabelOffset),
+              child: _buildTypeTag(typeLabel, tagColor, tagLabelFontSize),
+            ),
+
+            // 2. Overlay Layer: Menu / Lock
+            if (!isReadOnly && !isSelectionMode)
               Positioned(
-                bottom: -1, 
-                left: size + leftOffset + (item['type'] == 'folder' ? folderLabelOffset : pdfLabelOffset),
-                child: _buildTypeTag(typeLabel, tagColor, tagLabelFontSize),
-              ),
-              
-              // 2. Overlay Layer: Menu / Lock
-              if (!isReadOnly && !isSelectionMode)
-                Positioned(
-                  right: 0,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
+                right: 0,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Transform.translate(
+                      offset: Offset(menuOffset, 0),
+                      child: PopupMenuButton<String>(
+                        offset: Offset(menuPanelOffsetDX, menuPanelOffsetDY),
+                        padding: EdgeInsets.zero,
+                        constraints: BoxConstraints(
+                          minWidth: menuPanelWidth ?? 0,
+                          maxWidth: menuPanelWidth ?? double.infinity,
+                          minHeight: menuPanelHeight ?? 0,
+                          maxHeight: menuPanelHeight ?? double.infinity,
+                        ),
+                        icon: Icon(
+                          Icons.more_vert,
+                          color: Colors.grey.shade600,
+                        ),
+                        onSelected: (value) {
+                          switch (value) {
+                            case 'rename':
+                              onRename();
+                              break;
+                            case 'thumbnail':
+                              onAddThumbnail?.call();
+                              break;
+                            case 'delete':
+                              onRemove();
+                              break;
+                            case 'toggle_lock':
+                              onToggleLock?.call();
+                              break;
+                          }
+                        },
+                        itemBuilder: (context) =>
+                            _buildPopupMenuItems(item['type'] == 'video'),
+                      ),
+                    ),
+                    if (item['isLocked'] ?? true)
                       Transform.translate(
-                        offset: Offset(menuOffset, 0),
-                        child: PopupMenuButton<String>(
-                          offset: Offset(menuPanelOffsetDX, menuPanelOffsetDY),
-                          padding: EdgeInsets.zero,
-                          constraints: BoxConstraints(
-                            minWidth: menuPanelWidth ?? 0,
-                            maxWidth: menuPanelWidth ?? double.infinity,
-                            minHeight: menuPanelHeight ?? 0,
-                            maxHeight: menuPanelHeight ?? double.infinity,
-                          ),
-                          icon: Icon(Icons.more_vert, color: Colors.grey.shade600),
-                          onSelected: (value) {
-                            switch (value) {
-                              case 'rename':
-                                onRename();
-                                break;
-                              case 'thumbnail':
-                                onAddThumbnail?.call();
-                                break;
-                              case 'delete':
-                                onRemove();
-                                break;
-                              case 'toggle_lock':
-                                onToggleLock?.call();
-                                break;
-                            }
-                          },
-                          itemBuilder: (context) => _buildPopupMenuItems(item['type'] == 'video'),
+                        offset: Offset(lockLeftOffset, lockTopOffset),
+                        child: Icon(
+                          Icons.lock,
+                          size: lockSize,
+                          color: Colors.red,
                         ),
                       ),
-                      if (item['isLocked'] ?? true)
-                        Transform.translate(
-                          offset: Offset(lockLeftOffset, lockTopOffset),
-                          child: Icon(Icons.lock, size: lockSize, color: Colors.red),
-                        ),
-                    ],
-                  ),
+                  ],
                 ),
-              if (isReadOnly)
-                Positioned(
-                  right: 12,
-                  child: Icon(Icons.lock_outline, size: 20, color: Colors.grey.shade400),
+              ),
+            if (isReadOnly)
+              Positioned(
+                right: 12,
+                child: Icon(
+                  Icons.lock_outline,
+                  size: 20,
+                  color: Colors.grey.shade400,
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
-      );
+      ),
+    );
   }
 
   Widget _buildMediaLayout(BuildContext context) {
     // YouTube Style List Layout: Left Thumbnail, Right Title
     final bool isImage = item['type'] == 'image';
-    
+
     // Config: Image = 80x80 (1:1), Video = 120x68 (16:9)
     final double thumbWidth = isImage ? 80.0 : 120.0;
     final double thumbHeight = isImage ? 80.0 : 68.0;
 
     return InkWell(
-      onTap: isReadOnly 
-        ? onTap 
-        : null,
+      onTap: isReadOnly ? onTap : null,
       borderRadius: BorderRadius.circular(3.0),
       child: Padding(
         padding: const EdgeInsets.only(left: 0, right: 0, top: 4, bottom: 4),
@@ -341,7 +369,10 @@ class CourseContentListItem extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Hero(
-                  tag: (item['path'] ?? item['name']) + index.toString() + (isReadOnly ? '_read' : ''),
+                  tag:
+                      (item['path'] ?? item['name']) +
+                      index.toString() +
+                      (isReadOnly ? '_read' : ''),
                   child: Container(
                     width: thumbWidth,
                     height: thumbHeight,
@@ -355,7 +386,9 @@ class CourseContentListItem extends StatelessWidget {
                       color: Colors.black12,
                       borderRadius: BorderRadius.circular(4.0),
                       border: Border.all(
-                        color: Theme.of(context).dividerColor.withValues(alpha: 0.12),
+                        color: Theme.of(
+                          context,
+                        ).dividerColor.withValues(alpha: 0.12),
                         width: 1.0,
                       ),
                     ),
@@ -368,9 +401,9 @@ class CourseContentListItem extends StatelessWidget {
                                 isImage ? Icons.image : Icons.video_library,
                                 Colors.grey,
                                 constraints.maxWidth,
-                                constraints.maxHeight
+                                constraints.maxHeight,
                               );
-                            }
+                            },
                           ),
                         ),
                         if (item['type'] == 'video')
@@ -379,17 +412,23 @@ class CourseContentListItem extends StatelessWidget {
                             right: 4,
                             child: Builder(
                               builder: (context) {
-                                final duration = item['duration']
-                                    ?? item['videoDuration']
-                                    ?? item['durationInSeconds']
-                                    ?? item['length']
-                                    ?? item['videoLength'];
-                                
+                                final duration =
+                                    item['duration'] ??
+                                    item['videoDuration'] ??
+                                    item['durationInSeconds'] ??
+                                    item['length'] ??
+                                    item['videoLength'];
+
                                 if (duration != null) {
                                   return Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 2,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: Colors.black.withValues(alpha: 0.8),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.8,
+                                      ),
                                       borderRadius: BorderRadius.circular(4),
                                     ),
                                     child: Text(
@@ -410,10 +449,13 @@ class CourseContentListItem extends StatelessWidget {
                     ),
                   ),
                 ),
-                
+
                 Expanded(
                   child: Padding(
-                    padding: EdgeInsets.only(left: 12, right: titleRightPadding),
+                    padding: EdgeInsets.only(
+                      left: 12,
+                      right: titleRightPadding,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -421,28 +463,35 @@ class CourseContentListItem extends StatelessWidget {
                         Text(
                           item['name'],
                           style: TextStyle(
-                            fontWeight: FontWeight.w600, 
-                            color: isSelected 
-                                ? AppTheme.primaryColor 
+                            fontWeight: FontWeight.w600,
+                            color: isSelected
+                                ? AppTheme.primaryColor
                                 : Theme.of(context).textTheme.bodyLarge?.color,
                             fontSize: 14,
-                            height: 1.1, 
+                            height: 1.1,
                           ),
                         ),
-                        ],
-                      ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
+            ),
 
-              // 1.5 Type Tag Overlay (Fixed at bottom)
-              Positioned(
-                bottom: -1, 
-                left: thumbWidth + leftOffset + (isImage ? imageLabelOffset : videoLabelOffset),
-                child: _buildTypeTag(isImage ? 'IMAGE' : 'VIDEO', isImage ? Colors.blue : Colors.red, tagLabelFontSize),
+            // 1.5 Type Tag Overlay (Fixed at bottom)
+            Positioned(
+              bottom: -1,
+              left:
+                  thumbWidth +
+                  leftOffset +
+                  (isImage ? imageLabelOffset : videoLabelOffset),
+              child: _buildTypeTag(
+                isImage ? 'IMAGE' : 'VIDEO',
+                isImage ? Colors.blue : Colors.red,
+                tagLabelFontSize,
               ),
-            
+            ),
+
             // 2. Overlay Layer: Menu / Lock
             if (!isReadOnly && !isSelectionMode)
               Positioned(
@@ -461,7 +510,10 @@ class CourseContentListItem extends StatelessWidget {
                           minHeight: menuPanelHeight ?? 0,
                           maxHeight: menuPanelHeight ?? double.infinity,
                         ),
-                        icon: Icon(Icons.more_vert, color: Colors.grey.shade600),
+                        icon: Icon(
+                          Icons.more_vert,
+                          color: Colors.grey.shade600,
+                        ),
                         onSelected: (value) {
                           switch (value) {
                             case 'rename':
@@ -478,13 +530,18 @@ class CourseContentListItem extends StatelessWidget {
                               break;
                           }
                         },
-                        itemBuilder: (context) => _buildPopupMenuItems(item['type'] == 'video'),
+                        itemBuilder: (context) =>
+                            _buildPopupMenuItems(item['type'] == 'video'),
                       ),
                     ),
                     if (item['isLocked'] ?? true)
                       Transform.translate(
                         offset: Offset(lockLeftOffset, lockTopOffset),
-                        child: Icon(Icons.lock, size: lockSize, color: Colors.red),
+                        child: Icon(
+                          Icons.lock,
+                          size: lockSize,
+                          color: Colors.red,
+                        ),
                       ),
                   ],
                 ),
@@ -492,15 +549,24 @@ class CourseContentListItem extends StatelessWidget {
             if (isReadOnly)
               Positioned(
                 right: 12,
-                child: Icon(Icons.lock_outline, size: 20, color: Colors.grey.shade400),
+                child: Icon(
+                  Icons.lock_outline,
+                  size: 20,
+                  color: Colors.grey.shade400,
+                ),
               ),
           ],
         ),
       ),
     );
   }
-  
-  Widget _buildLeadingPreview(IconData defaultIcon, Color defaultColor, double width, double height) {
+
+  Widget _buildLeadingPreview(
+    IconData defaultIcon,
+    Color defaultColor,
+    double width,
+    double height,
+  ) {
     final String? pathStr = item['path']?.toString();
     final String? thumb = item['thumbnail']?.toString();
 
@@ -525,9 +591,18 @@ class CourseContentListItem extends StatelessWidget {
           fit: StackFit.expand,
           children: [
             isNetwork
-                ? Image.network(thumb, fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) => Container(color: Colors.black))
-                : Image.file(File(thumb), fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) => Container(color: Colors.black)),
-
+                ? Image.network(
+                    thumb,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        Container(color: Colors.black),
+                  )
+                : Image.file(
+                    File(thumb),
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) =>
+                        Container(color: Colors.black),
+                  ),
           ],
         );
       }
@@ -537,19 +612,31 @@ class CourseContentListItem extends StatelessWidget {
         children: [
           Container(color: Colors.black87),
           const Icon(Icons.play_circle_outline, color: Colors.white, size: 48),
-        ]
+        ],
       );
     }
 
     if (item['type'] == 'image' && pathStr != null && pathStr.isNotEmpty) {
-       final bool isNetwork = pathStr.startsWith('http');
-       try {
-         return isNetwork
-            ? Image.network(pathStr, fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) => Center(child: Icon(defaultIcon, color: defaultColor, size: 48)))
-            : Image.file(File(pathStr), fit: BoxFit.cover, errorBuilder: (context, error, stackTrace) => Center(child: Icon(defaultIcon, color: defaultColor, size: 48)));
-       } catch (_) {
-         return Center(child: Icon(defaultIcon, color: defaultColor, size: 48));
-       }
+      final bool isNetwork = pathStr.startsWith('http');
+      try {
+        return isNetwork
+            ? Image.network(
+                pathStr,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Center(
+                  child: Icon(defaultIcon, color: defaultColor, size: 48),
+                ),
+              )
+            : Image.file(
+                File(pathStr),
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Center(
+                  child: Icon(defaultIcon, color: defaultColor, size: 48),
+                ),
+              );
+      } catch (_) {
+        return Center(child: Icon(defaultIcon, color: defaultColor, size: 48));
+      }
     }
 
     // Default icon for other types or if media path is invalid
@@ -618,7 +705,7 @@ class CourseContentListItem extends StatelessWidget {
   String _formatDuration(dynamic duration) {
     try {
       int totalSeconds;
-      
+
       // Handle different duration formats
       if (duration is int) {
         totalSeconds = duration;
@@ -666,4 +753,3 @@ class CourseContentListItem extends StatelessWidget {
     }
   }
 }
-

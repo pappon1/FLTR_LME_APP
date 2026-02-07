@@ -22,7 +22,8 @@ class ImageViewerScreen extends StatefulWidget {
 }
 
 class _ImageViewerScreenState extends State<ImageViewerScreen> {
-  final PhotoViewScaleStateController _scaleStateController = PhotoViewScaleStateController();
+  final PhotoViewScaleStateController _scaleStateController =
+      PhotoViewScaleStateController();
   int _retryKey = 0;
 
   @override
@@ -35,7 +36,8 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final backgroundColor = Theme.of(context).scaffoldBackgroundColor;
-    final textColor = Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white;
+    final textColor =
+        Theme.of(context).textTheme.bodyLarge?.color ?? Colors.white;
     final iconColor = Theme.of(context).iconTheme.color ?? Colors.white;
 
     return Scaffold(
@@ -65,15 +67,18 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
                         imageUrl: widget.filePath,
                         fit: BoxFit.contain,
                         memCacheWidth: 2048,
-                        placeholder: (context, url) => _buildShimmerLoader(isDark),
-                        errorWidget: (context, url, error) => _buildErrorWidget(textColor, iconColor),
+                        placeholder: (context, url) =>
+                            _buildShimmerLoader(isDark),
+                        errorWidget: (context, url, error) =>
+                            _buildErrorWidget(textColor, iconColor),
                       )
                     : Image.file(
                         File(widget.filePath),
                         key: ValueKey("file_$_retryKey"),
                         fit: BoxFit.contain,
                         cacheWidth: 2048,
-                        errorBuilder: (context, error, stackTrace) => _buildErrorWidget(textColor, iconColor),
+                        errorBuilder: (context, error, stackTrace) =>
+                            _buildErrorWidget(textColor, iconColor),
                       ),
               ),
             ),
@@ -87,7 +92,10 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
                 height: MediaQuery.of(context).padding.top + 60,
                 color: backgroundColor, // Matches theme background
                 alignment: Alignment.bottomCenter,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: SafeArea(
                   bottom: false,
                   child: Row(
@@ -121,7 +129,11 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
     );
   }
 
-  Widget _buildSimpleButton({required IconData icon, required VoidCallback onTap, required Color color}) {
+  Widget _buildSimpleButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    required Color color,
+  }) {
     return IconButton(
       onPressed: onTap,
       icon: Icon(icon, color: color, size: 24),
@@ -150,11 +162,18 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.broken_image_outlined, color: iconColor.withValues(alpha: 0.5), size: 80),
+          Icon(
+            Icons.broken_image_outlined,
+            color: iconColor.withValues(alpha: 0.5),
+            size: 80,
+          ),
           const SizedBox(height: 16),
           Text(
             "Failed to load image",
-            style: TextStyle(color: textColor.withValues(alpha: 0.6), fontSize: 16),
+            style: TextStyle(
+              color: textColor.withValues(alpha: 0.6),
+              fontSize: 16,
+            ),
           ),
           const SizedBox(height: 24),
           Row(
@@ -162,8 +181,14 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
             children: [
               TextButton.icon(
                 onPressed: () => Navigator.pop(context),
-                icon: Icon(Icons.arrow_back, color: textColor.withValues(alpha: 0.7)),
-                label: Text("Back", style: TextStyle(color: textColor.withValues(alpha: 0.7))),
+                icon: Icon(
+                  Icons.arrow_back,
+                  color: textColor.withValues(alpha: 0.7),
+                ),
+                label: Text(
+                  "Back",
+                  style: TextStyle(color: textColor.withValues(alpha: 0.7)),
+                ),
               ),
               const SizedBox(width: 16),
               ElevatedButton.icon(
@@ -175,16 +200,17 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF6366F1),
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(3.0)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(3.0),
+                  ),
                 ),
                 icon: const Icon(Icons.refresh),
                 label: const Text("Retry"),
               ),
             ],
-          )
+          ),
         ],
       ),
     );
   }
 }
-

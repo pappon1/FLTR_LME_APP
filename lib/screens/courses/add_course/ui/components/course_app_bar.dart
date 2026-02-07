@@ -38,7 +38,11 @@ class CourseAppBar extends StatelessWidget implements PreferredSizeWidget {
           fit: BoxFit.scaleDown,
           child: Text(
             'Drag and Drop Mode',
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         centerTitle: true,
@@ -58,7 +62,11 @@ class CourseAppBar extends StatelessWidget implements PreferredSizeWidget {
           fit: BoxFit.scaleDown,
           child: Text(
             '${state.selectedIndices.length} Selected',
-            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
         actions: [
@@ -67,15 +75,17 @@ class CourseAppBar extends StatelessWidget implements PreferredSizeWidget {
             child: TextButton(
               onPressed: onSelectAll,
               child: Text(
-                state.selectedIndices.length == state.courseContents.length ? 'Unselect' : 'All',
-                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                state.selectedIndices.length == state.courseContents.length
+                    ? 'Unselect'
+                    : 'All',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.copy),
-            onPressed: onBulkCopy,
-          ),
+          IconButton(icon: const Icon(Icons.copy), onPressed: onBulkCopy),
           IconButton(
             icon: const Icon(Icons.delete, color: Colors.redAccent),
             onPressed: onBulkDelete,
@@ -86,7 +96,10 @@ class CourseAppBar extends StatelessWidget implements PreferredSizeWidget {
     }
 
     return AppBar(
-      title: const Text('Add Course', style: TextStyle(fontWeight: FontWeight.bold)),
+      title: const Text(
+        'Add Course',
+        style: TextStyle(fontWeight: FontWeight.bold),
+      ),
       centerTitle: true,
       elevation: 0,
       actions: [

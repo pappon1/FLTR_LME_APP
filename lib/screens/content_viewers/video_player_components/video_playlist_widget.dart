@@ -21,7 +21,7 @@ class VideoPlaylistWidget extends StatefulWidget {
 
 class _VideoPlaylistWidgetState extends State<VideoPlaylistWidget> {
   late final ScrollController _scrollController;
-  final double _itemHeight = 101.0; 
+  final double _itemHeight = 101.0;
 
   @override
   void initState() {
@@ -43,9 +43,12 @@ class _VideoPlaylistWidgetState extends State<VideoPlaylistWidget> {
 
   void _scrollToCurrentIndex() {
     if (!_scrollController.hasClients) return;
-    
+
     _scrollController.animateTo(
-      (widget.currentIndex * _itemHeight).clamp(0.0, _scrollController.position.maxScrollExtent),
+      (widget.currentIndex * _itemHeight).clamp(
+        0.0,
+        _scrollController.position.maxScrollExtent,
+      ),
       duration: const Duration(milliseconds: 500),
       curve: Curves.easeInOut,
     );
@@ -81,21 +84,23 @@ class _VideoPlaylistWidgetState extends State<VideoPlaylistWidget> {
     final isPlaying = index == widget.currentIndex;
     final path = item['path'] as String?;
     final progress = widget.videoProgress[path] ?? 0.0;
-    
+
     // Theme colors
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isPlaying 
-        ? const Color(0xFF22C55E) 
+    final textColor = isPlaying
+        ? const Color(0xFF22C55E)
         : (isDark ? Colors.white : Colors.black87);
     final subTextColor = isPlaying
         ? const Color(0xFF22C55E).withValues(alpha: 0.8)
         : (isDark ? Colors.white54 : Colors.black54);
-    final thumbnailBg = isDark ? const Color(0xFF202020) : const Color(0xFFEEEEEE);
+    final thumbnailBg = isDark
+        ? const Color(0xFF202020)
+        : const Color(0xFFEEEEEE);
 
     return InkWell(
       onTap: () => widget.onVideoTap(index),
       child: Container(
-        height: 85, 
+        height: 85,
         margin: const EdgeInsets.only(bottom: 16),
         child: Row(
           children: [
@@ -116,15 +121,15 @@ class _VideoPlaylistWidgetState extends State<VideoPlaylistWidget> {
                   child: Stack(
                     children: [
                       path != null
-                            ? Positioned.fill(
-                                child: VideoThumbnailWidget(
-                                    videoPath: path, 
-                                    customThumbnailPath: item['thumbnail'],
-                                    width: double.infinity,
-                                    height: double.infinity,
-                                    fit: BoxFit.cover
-                                  ),
-                              )
+                          ? Positioned.fill(
+                              child: VideoThumbnailWidget(
+                                videoPath: path,
+                                customThumbnailPath: item['thumbnail'],
+                                width: double.infinity,
+                                height: double.infinity,
+                                fit: BoxFit.cover,
+                              ),
+                            )
                           : Center(
                               child: Icon(
                                 isPlaying ? Icons.pause : Icons.play_arrow,
@@ -154,8 +159,11 @@ class _VideoPlaylistWidgetState extends State<VideoPlaylistWidget> {
                 if (isPlaying)
                   const Positioned.fill(
                     child: Center(
-                      child: Icon(Icons.play_circle_fill,
-                          color: Color(0xFF22C55E), size: 30),
+                      child: Icon(
+                        Icons.play_circle_fill,
+                        color: Color(0xFF22C55E),
+                        size: 30,
+                      ),
                     ),
                   ),
               ],
@@ -180,27 +188,29 @@ class _VideoPlaylistWidgetState extends State<VideoPlaylistWidget> {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      Icon(Icons.access_time,
-                          size: 12, color: subTextColor),
+                      Icon(Icons.access_time, size: 12, color: subTextColor),
                       const SizedBox(width: 4),
                       Text(
                         _formatDuration(item['duration']),
-                        style: TextStyle(
-                            color: subTextColor, fontSize: 11),
+                        style: TextStyle(color: subTextColor, fontSize: 11),
                       ),
                       if (progress > 0.9) ...[
                         const SizedBox(width: 8),
-                        const Icon(Icons.check_circle,
-                            size: 12, color: Color(0xFF22C55E)),
+                        const Icon(
+                          Icons.check_circle,
+                          size: 12,
+                          color: Color(0xFF22C55E),
+                        ),
                         const SizedBox(width: 4),
                         const Text(
                           "Watched",
                           style: TextStyle(
-                              color: Color(0xFF22C55E),
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold),
+                            color: Color(0xFF22C55E),
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ]
+                      ],
                     ],
                   ),
                 ],
@@ -212,4 +222,3 @@ class _VideoPlaylistWidgetState extends State<VideoPlaylistWidget> {
     );
   }
 }
-

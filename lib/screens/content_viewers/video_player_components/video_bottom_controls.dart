@@ -8,14 +8,14 @@ class VideoBottomControls extends StatelessWidget {
   final double playbackSpeed;
   final String currentQuality;
   final String? activeTray;
-  
+
   final VoidCallback onToggleTraySpeed;
   final VoidCallback? onToggleTrayQuality;
   final VoidCallback? onTogglePlaylist;
   final VoidCallback onLockTap;
   final VoidCallback onDoubleLockTap;
   final VoidCallback onOrientationTap;
-  
+
   final VoidCallback onResetSpeed;
   final VoidCallback onResetQuality;
 
@@ -44,7 +44,7 @@ class VideoBottomControls extends StatelessWidget {
       children: [
         // Speed
         _buildAnimatedControl(
-          isVisible: !isLocked, 
+          isVisible: !isLocked,
           child: _buildControlIcon(
             Icons.speed,
             "${playbackSpeed.toStringAsFixed(2)}x",
@@ -94,14 +94,14 @@ class VideoBottomControls extends StatelessWidget {
     );
   }
 
-  Widget _buildAnimatedControl({required bool isVisible, required Widget child}) {
+  Widget _buildAnimatedControl({
+    required bool isVisible,
+    required Widget child,
+  }) {
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 300),
       opacity: isVisible ? 1.0 : 0.0,
-      child: IgnorePointer(
-        ignoring: !isVisible,
-        child: child,
-      ),
+      child: IgnorePointer(ignoring: !isVisible, child: child),
     );
   }
 
@@ -134,14 +134,17 @@ class VideoBottomControls extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 3),
-                      if (!isLocked)
-                        const FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            "Lock",
-                            style: TextStyle(color: Colors.white, fontSize: 10), // Fixed color access since we are in builder but using local var 'color'
-                          ),
+                    if (!isLocked)
+                      const FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          "Lock",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                          ), // Fixed color access since we are in builder but using local var 'color'
                         ),
+                      ),
                     if (isLocked && isUnlockControlsVisible)
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
@@ -157,7 +160,7 @@ class VideoBottomControls extends StatelessWidget {
                             ),
                           ),
                         ),
-                      )
+                      ),
                   ],
                 ),
               ),
@@ -171,27 +174,31 @@ class VideoBottomControls extends StatelessWidget {
             onLockTap,
           );
         }
-      }
+      },
     );
   }
 
-  Widget _buildControlIcon(IconData icon, String label, VoidCallback? onTap,
-      {bool isActive = false, VoidCallback? onReset}) {
-    
-    // In BuildContext isn't readily available in helper method if not passed, 
-    // but better to pass or use Builder. 
+  Widget _buildControlIcon(
+    IconData icon,
+    String label,
+    VoidCallback? onTap, {
+    bool isActive = false,
+    VoidCallback? onReset,
+  }) {
+    // In BuildContext isn't readily available in helper method if not passed,
+    // but better to pass or use Builder.
     // Since this is a stateless widget method, we can't access context easily unless we change signature.
     // Let's change the call sites to pass context or use Builder.
     // Actually, Cleaner way: Move this method to build() or make it accept context.
-    
+
     // Changing signature:
     return Builder(
       builder: (context) {
         final isDark = Theme.of(context).brightness == Brightness.dark;
-        final color = isActive 
-            ? const Color(0xFF22C55E) 
+        final color = isActive
+            ? const Color(0xFF22C55E)
             : ((isLandscape || isDark) ? Colors.white : Colors.black87);
-            
+
         return GestureDetector(
           onTap: onTap,
           behavior: HitTestBehavior.translucent,
@@ -220,7 +227,7 @@ class VideoBottomControls extends StatelessWidget {
             ),
           ),
         );
-      }
+      },
     );
   }
 }
