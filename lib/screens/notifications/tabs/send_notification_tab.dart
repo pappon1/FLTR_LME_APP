@@ -1033,7 +1033,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
       child: Column(
         children: [
           Container(
-            margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            margin: const EdgeInsets.fromLTRB(10, 16, 10, 8),
             decoration: BoxDecoration(
               color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(3.0),
@@ -1080,7 +1080,7 @@ class _SendNotificationTabState extends State<SendNotificationTab> {
           ),
 
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
             child: Form(
               key: _formKey,
               child: Column(

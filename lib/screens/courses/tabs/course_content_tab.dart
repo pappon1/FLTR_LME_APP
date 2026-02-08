@@ -137,14 +137,11 @@ class _CourseContentTabState extends State<CourseContentTab> {
     return CustomScrollView(
       key: const PageStorageKey('content_tab'),
       slivers: [
-        // Using explicit padding instead of SliverOverlapInjector due to pinned header issue
+        SliverOverlapInjector(
+          handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+        ),
         SliverPadding(
-          padding: const EdgeInsets.fromLTRB(
-            16,
-            175,
-            16,
-            80,
-          ), // Increased to 175 to clear AppBar+TabBar
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 80),
           sliver: SliverList(
             delegate: SliverChildBuilderDelegate((context, index) {
               final item = _contents[index];
@@ -154,6 +151,13 @@ class _CourseContentTabState extends State<CourseContentTab> {
                 isSelected: false,
                 isSelectionMode: false,
                 isDragMode: false,
+                leftOffset: 5.0, // Matches UIConstants.contentItemLeftOffset
+                videoThumbTop: 0.50, // Matches UIConstants.videoThumbTop
+                videoThumbBottom: 0.50, // Matches UIConstants.videoThumbBottom
+                imageThumbTop: 0.50, // Matches UIConstants.imageThumbTop
+                imageThumbBottom: 0.50, // Matches UIConstants.imageThumbBottom
+                bottomSpacing: 5.0, // Matches UIConstants.itemBottomSpacing
+                tagLabelFontSize: 6.0, // Matches UIConstants.tagLabelFontSize
                 onTap: () => _handleContentTap(item, index),
                 onToggleSelection: () {},
                 onEnterSelectionMode: () {},

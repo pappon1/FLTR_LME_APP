@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'dart:async';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import '../../models/course_model.dart';
 import '../../utils/app_theme.dart';
 
 // Modular Imports
@@ -9,10 +10,12 @@ import 'add_course/local_logic/state_manager.dart';
 import 'add_course/local_logic/draft_manager.dart';
 import 'add_course/local_logic/validation.dart';
 import 'add_course/local_logic/content_manager.dart';
+import 'add_course/local_logic/history_manager.dart';
 import 'add_course/local_logic/navigation_logic.dart';
 import 'add_course/local_logic/step0_logic.dart';
 import 'add_course/local_logic/step1_logic.dart';
 import 'add_course/local_logic/step2_logic.dart';
+import 'add_course/local_logic/step3_logic.dart';
 import 'add_course/backend_service/submit_handler.dart';
 
 // UI Components
@@ -31,7 +34,8 @@ import '../content_viewers/pdf_viewer_screen.dart' show PDFViewerScreen;
 import 'folder_detail_screen.dart';
 
 class AddCourseScreen extends StatefulWidget {
-  const AddCourseScreen({super.key});
+  final CourseModel? course;
+  const AddCourseScreen({super.key, this.course});
 
   @override
   State<AddCourseScreen> createState() => _AddCourseScreenState();
@@ -47,8 +51,10 @@ class _AddCourseScreenState extends State<AddCourseScreen>
   late Step0Logic step0Logic;
   late Step1Logic step1Logic;
   late Step2Logic step2Logic;
+  late Step3Logic step3Logic;
   late SubmitHandler submitHandler;
   final List<StreamSubscription> _serviceSubscriptions = [];
+  late HistoryManager historyManager;
   // Removed local _draftDebouncer as DraftManager handles debouncing
 
   @override
@@ -58,6 +64,15 @@ class _AddCourseScreenState extends State<AddCourseScreen>
 
     state = CourseStateManager();
     draftManager = DraftManager(state);
+    historyManager = HistoryManager(state, draftManager);
+    
+    // Wire up History: When draft saves, capture state for Undo stack
+    draftManager.onDraftSaved = () {
+      if (mounted) {
+        historyManager.captureState();
+      }
+    };
+
     validation = ValidationLogic(state);
     contentManager = ContentManager(state, draftManager);
     navigation = NavigationLogic(
@@ -67,13 +82,30 @@ class _AddCourseScreenState extends State<AddCourseScreen>
       draftManager,
       context,
     );
-    step0Logic = Step0Logic(state, draftManager);
-    step1Logic = Step1Logic(state, draftManager);
-    step2Logic = Step2Logic(state, draftManager);
+    step0Logic = Step0Logic(state, draftManager, historyManager); // Pass HM to Step0Logic
+    step1Logic = Step1Logic(state, draftManager, historyManager);
+    step2Logic = Step2Logic(state, draftManager, historyManager);
+    step3Logic = Step3Logic(state, draftManager, historyManager);
     submitHandler = SubmitHandler(state, validation);
 
-    // Initial draft loading
-    _loadDraft();
+    if (widget.course != null) {
+      // Edit Mode
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        state.initializeFromCourse(widget.course!);
+        state.isInitialLoading = false;
+        // Also check if there's a newer draft for this course
+        _loadDraft();
+        // Capture initial state for Undo stack
+        historyManager.captureState();
+      });
+    } else {
+      // Create Mode - Load Draft
+      _loadDraft();
+      // Capture initial state for Undo stack (empty or draft state)
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        historyManager.captureState();
+      });
+    }
 
     // Initial listeners
     // Auto-save listeners with error clearing (Step 0)
@@ -96,19 +128,38 @@ class _AddCourseScreenState extends State<AddCourseScreen>
     // Step 1 Listeners
     state.mrpController.addListener(() {
       state.calculateFinalPrice();
-      _handleFieldChange(() => state.mrpError = false);
-    });
-    state.discountAmountController.addListener(() {
-      state.calculateFinalPrice();
-      _handleFieldChange(() => state.discountError = false);
+      if (state.mrpError && state.mrpController.text.trim().isNotEmpty) {
+        state.mrpError = false;
+        state.updateState();
+      }
+      draftManager.saveCourseDraft();
     });
 
-    state.whatsappController.addListener(
-      () => _handleFieldChange(() => state.wpGroupLinkError = false),
-    );
-    state.websiteUrlController.addListener(
-      () => _handleFieldChange(() => state.bigScreenUrlError = false),
-    );
+    state.discountAmountController.addListener(() {
+      state.calculateFinalPrice();
+      if (state.discountError && state.discountAmountController.text.trim().isNotEmpty) {
+        state.discountError = false;
+        state.updateState();
+      }
+      draftManager.saveCourseDraft();
+    });
+
+    state.whatsappController.addListener(() {
+      if (state.wpGroupLinkError && state.whatsappController.text.trim().isNotEmpty) {
+        state.wpGroupLinkError = false;
+        state.updateState();
+      }
+      draftManager.saveCourseDraft();
+    });
+
+    state.websiteUrlController.addListener(() {
+      if (state.bigScreenUrlError && state.websiteUrlController.text.trim().isNotEmpty) {
+        state.bigScreenUrlError = false;
+        state.updateState();
+      }
+      draftManager.saveCourseDraft();
+    });
+
     state.specialTagController.addListener(
       () => draftManager.saveCourseDraft(),
     );
@@ -341,114 +392,133 @@ class _AddCourseScreenState extends State<AddCourseScreen>
 
   @override
   Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: state,
-      builder: (context, _) {
-        return Scaffold(
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-          appBar: CourseAppBar(
-            state: state,
-            currentStep: state.currentStep,
-            onCancelSelection: () {
-              state.isSelectionMode = false;
-              state.selectedIndices.clear();
-            },
-            onSelectAll: () {
-              if (state.selectedIndices.length == state.courseContents.length) {
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(kToolbarHeight),
+        child: ListenableBuilder(
+          listenable: state,
+          builder: (context, _) {
+            return CourseAppBar(
+              state: state,
+              currentStep: state.currentStep,
+              onCancelSelection: () {
+                state.isSelectionMode = false;
                 state.selectedIndices.clear();
-              } else {
-                state.selectedIndices.clear();
-                for (int i = 0; i < state.courseContents.length; i++) {
-                  state.selectedIndices.add(i);
+                state.updateState();
+              },
+              onSelectAll: () {
+                if (state.selectedIndices.length ==
+                    state.courseContents.length) {
+                  state.selectedIndices.clear();
+                } else {
+                  state.selectedIndices.clear();
+                  for (int i = 0; i < state.courseContents.length; i++) {
+                    state.selectedIndices.add(i);
+                  }
                 }
-              }
-              state.updateState();
-            },
-            onBulkCopy: () => contentManager.handleBulkCopyCut(context, false),
-            onBulkDelete: () => contentManager.handleBulkDelete(context),
-            onAddContent: _showAddContentMenu,
-            onCancelDrag: () {
-              state.isDragModeActive = false;
-            },
-          ),
-          body: Form(
-            key: state.formKey,
-            child: Stack(
+                state.updateState();
+              },
+              onBulkCopy:
+                  () => contentManager.handleBulkCopyCut(context, false),
+              onBulkDelete: () => contentManager.handleBulkDelete(context),
+              onAddContent: _showAddContentMenu,
+              onCancelDrag: () {
+                state.isDragModeActive = false;
+                state.updateState();
+              },
+            );
+          },
+        ),
+      ),
+      body: Form(
+        key: state.formKey,
+        child: Stack(
+          children: [
+            PageView(
+              controller: state.pageController,
+              physics: const NeverScrollableScrollPhysics(),
+              onPageChanged: (idx) {
+                FocusScope.of(context).unfocus();
+                state.currentStep = idx;
+              },
               children: [
-                PageView(
-                  controller: state.pageController,
-                  physics: const NeverScrollableScrollPhysics(),
-                  onPageChanged: (idx) {
-                    FocusScope.of(context).unfocus();
-                    state.currentStep = idx;
-                  },
-                  children: [
-                    KeepAliveWrapper(
-                      child: Step0BasicWidget(
-                        state: state,
-                        logic: step0Logic,
-                        navButtons: _buildNavButtons(),
-                        showWarning: _showWarning,
-                      ),
-                    ),
-                    KeepAliveWrapper(
-                      child: Step1SetupWidget(
-                        state: state,
-                        logic: step1Logic,
-                        navButtons: _buildNavButtons(),
-                        showWarning: _showWarning,
-                      ),
-                    ),
-                    KeepAliveWrapper(
-                      child: Step2ContentWidget(
-                        state: state,
-                        logic: step2Logic,
-                        contentManager: contentManager,
-                        navButtons: _buildNavButtons(),
-                        onContentTap: _handleContentTap,
-                      ),
-                    ),
-                    KeepAliveWrapper(
-                      child: Step3AdvanceWidget(
-                        state: state,
-                        draftManager: draftManager,
-                        navButtons: _buildNavButtons(),
-                        onEditStep: (step) => navigation.jumpToStep(step),
-                      ),
-                    ),
-                  ],
+                KeepAliveWrapper(
+                  child: Step0BasicWidget(
+                    state: state,
+                    logic: step0Logic,
+                    navButtons: _buildNavButtons(),
+                    showWarning: _showWarning,
+                  ),
                 ),
-                ValueListenableBuilder<double>(
-                  valueListenable: state.totalProgressNotifier,
-                  builder: (context, progress, _) {
-                    return ListenableBuilder(
-                      listenable: state, // For uploadTasks list changes
-                      builder: (context, _) {
-                        if (!state.isUploading) return const SizedBox.shrink();
-                        return CourseUploadingOverlay(
-                          totalProgress: progress,
-                          uploadTasks: state.uploadTasks,
-                          preparationMessage: state.preparationMessage,
-                          preparationProgress: state.preparationProgress,
+                KeepAliveWrapper(
+                  child: Step1SetupWidget(
+                    state: state,
+                    logic: step1Logic,
+                    navButtons: _buildNavButtons(),
+                    showWarning: _showWarning,
+                  ),
+                ),
+                KeepAliveWrapper(
+                  child: Step2ContentWidget(
+                    state: state,
+                    logic: step2Logic,
+                    contentManager: contentManager,
+                    navButtons: _buildNavButtons(),
+                    onContentTap: _handleContentTap,
+                  ),
+                ),
+                KeepAliveWrapper(
+                  child: Step3AdvanceWidget(
+                    state: state,
+                    logic: step3Logic,
+                    navButtons: _buildNavButtons(),
+                    onEditStep: (step) => navigation.jumpToStep(step),
+                  ),
+                ),
+              ],
+            ),
+            // Progress Overlay (Scoped Listener)
+            ValueListenableBuilder<double>(
+              valueListenable: state.totalProgressNotifier,
+              builder: (context, progress, _) {
+                return ValueListenableBuilder<String>(
+                  valueListenable: state.preparationMessageNotifier,
+                  builder: (context, prepMsg, _) {
+                    return ValueListenableBuilder<double>(
+                      valueListenable: state.preparationProgressNotifier,
+                      builder: (context, prepProgress, _) {
+                        return ListenableBuilder(
+                          listenable: state, // For uploadTasks list changes
+                          builder: (context, _) {
+                            if (!state.isUploading) return const SizedBox.shrink();
+                            return CourseUploadingOverlay(
+                              totalProgress: progress,
+                              uploadTasks: state.uploadTasks,
+                              preparationMessage: prepMsg,
+                              preparationProgress: prepProgress,
+                            );
+                          },
                         );
                       },
                     );
                   },
-                ),
-                ListenableBuilder(
-                  listenable: state,
-                  builder: (context, _) {
-                    if (state.isLoading && !state.isUploading) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    return const SizedBox.shrink();
-                  },
-                ),
-              ],
+                );
+              },
             ),
-          ),
-        );
-      },
+            // Loading Overlay (Scoped Listener)
+            ListenableBuilder(
+              listenable: state,
+              builder: (context, _) {
+                if (state.isLoading && !state.isUploading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -541,7 +611,9 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                           fit: BoxFit.scaleDown,
                           child: Text(
                             state.currentStep == 3
-                                ? 'Create Course'
+                                ? (state.editingCourseId != null
+                                    ? 'Update Course'
+                                    : 'Create Course')
                                 : 'Next Step',
                             style: const TextStyle(
                               color: Colors.white,

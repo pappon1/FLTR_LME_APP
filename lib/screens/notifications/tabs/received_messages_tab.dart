@@ -112,7 +112,7 @@ class _ReceivedMessagesTabState extends State<ReceivedMessagesTab> {
             if (unreadCount == 0) return const SizedBox.shrink();
 
             return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               color: Theme.of(context).cardColor.withValues(alpha: 0.5),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -163,7 +163,7 @@ class _ReceivedMessagesTabState extends State<ReceivedMessagesTab> {
                   isRefreshing) {
                 return ListView.separated(
                   physics: const NeverScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
                   itemCount: 8,
                   separatorBuilder: (context, index) =>
                       const SizedBox(height: 12),
@@ -214,7 +214,7 @@ class _ReceivedMessagesTabState extends State<ReceivedMessagesTab> {
                 },
                 child: ListView.separated(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
                   itemCount: docs.length,
                   separatorBuilder: (context, index) =>
                       const SizedBox(height: 12),

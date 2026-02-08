@@ -9,6 +9,7 @@ import '../../widgets/course_card_skeleton.dart';
 import '../../widgets/course_card.dart';
 import '../../models/course_model.dart';
 import 'add_course_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class CoursesTab extends StatefulWidget {
   const CoursesTab({super.key});
@@ -39,17 +40,13 @@ class _CoursesTabState extends State<CoursesTab> {
       isOfflineDownloadEnabled: true,
       isBigScreenEnabled: true,
       specialTag: 'Best Seller',
+      supportType: 'WhatsApp Group',
     ),
   ];
 
   @override
   void initState() {
     super.initState();
-    // DON'T invoke service on init - it starts the service!
-    // Request status from background service once UI is ready
-    // WidgetsBinding.instance.addPostFrameCallback((_) {
-    //    FlutterBackgroundService().invoke('get_status');
-    // });
   }
 
   @override
@@ -118,9 +115,6 @@ class _CoursesTabState extends State<CoursesTab> {
             // Use dummy data regardless of provider state
             final displayCourses = _dummyCourses;
 
-            // Optional: Simulate loading if you want, but for dummy data instant is usually better
-            // if (provider.isLoading) { return _buildShimmerGrid(); }
-
             if (displayCourses.isEmpty) {
               return Stack(
                 children: [
@@ -164,7 +158,7 @@ class _CoursesTabState extends State<CoursesTab> {
                 return CourseCard(
                       course: course,
                       isEdgeToEdge: true,
-                      customHorizontalMargin: 6,
+                      customHorizontalMargin: 10,
                       bottomMargin: 14,
                       cornerRadius: 3,
                       showBorder: true,
@@ -187,7 +181,7 @@ class _CoursesTabState extends State<CoursesTab> {
       itemBuilder: (context, index) {
         return const CourseCardSkeleton(
           isEdgeToEdge: true,
-          customHorizontalMargin: 6,
+          customHorizontalMargin: 10,
           bottomMargin: 14,
           cornerRadius: 3,
         );

@@ -103,15 +103,56 @@ class Step1SetupWidget extends StatelessWidget {
                 fontSize: UIConstants.labelFontSize + 2,
               ),
             ),
-            TextButton.icon(
-              onPressed: () => logic.clearSetupDraft(context),
-              icon: const Icon(Icons.refresh, size: 16),
-              label: const Text('Clear Draft', style: TextStyle(fontSize: 12)),
-              style: TextButton.styleFrom(
-                foregroundColor: Colors.red,
-                padding: EdgeInsets.zero,
-                minimumSize: const Size(0, 0),
-              ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (state.editingCourseId == null)
+                  TextButton.icon(
+                    onPressed: () => logic.clearSetupDraft(context),
+                    icon: const Icon(Icons.delete_sweep, size: 16),
+                    label: const Text(
+                      'Clear',
+                      style: TextStyle(fontSize: 12),
+                    ),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      minimumSize: const Size(0, 0),
+                    ),
+                  ),
+                if (state.editingCourseId == null) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    width: 1,
+                    height: 16,
+                    color: Colors.grey.withOpacity(0.3),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                IconButton(
+                  onPressed: () => logic.historyManager.undo(context),
+                  icon: Icon(
+                    Icons.undo,
+                    size: 20,
+                    color: logic.historyManager.canUndo ? AppTheme.primaryColor : Colors.grey,
+                  ),
+                  tooltip: 'Undo',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+                const SizedBox(width: 16),
+                IconButton(
+                  onPressed: () => logic.historyManager.redo(context),
+                  icon: Icon(
+                    Icons.redo,
+                    size: 20,
+                    color: logic.historyManager.canRedo ? AppTheme.primaryColor : Colors.grey,
+                  ),
+                  tooltip: 'Redo',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
             ),
           ],
         ),

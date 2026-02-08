@@ -96,9 +96,9 @@ class CourseAppBar extends StatelessWidget implements PreferredSizeWidget {
     }
 
     return AppBar(
-      title: const Text(
-        'Add Course',
-        style: TextStyle(fontWeight: FontWeight.bold),
+      title: Text(
+        state.editingCourseId != null ? 'Edit Course' : 'Create Course',
+        style: const TextStyle(fontWeight: FontWeight.bold),
       ),
       centerTitle: true,
       elevation: 0,

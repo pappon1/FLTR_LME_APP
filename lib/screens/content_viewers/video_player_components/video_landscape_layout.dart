@@ -227,7 +227,7 @@ class _VideoControlsLayer extends StatelessWidget {
             child: !showControls
                 ? const SizedBox()
                 : Container(
-                    padding: const EdgeInsets.fromLTRB(32, 20, 32, 30),
+                    padding: const EdgeInsets.fromLTRB(10, 20, 10, 30),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [

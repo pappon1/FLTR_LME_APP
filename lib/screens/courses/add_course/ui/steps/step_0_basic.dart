@@ -48,88 +48,158 @@ class Step0BasicWidget extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'Create New Course',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: UIConstants.labelFontSize + 2,
+                        Expanded(
+                          child: Text(
+                            state.editingCourseId != null
+                                ? 'Edit Course'
+                                : 'New Course',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: UIConstants.labelFontSize + 1,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        TextButton.icon(
-                          onPressed: () => logic.clearBasicDraft(context),
-                          icon: const Icon(Icons.refresh, size: 16),
-                          label: const Text(
-                            'Clear Draft',
-                            style: TextStyle(fontSize: 12),
-                          ),
-                          style: TextButton.styleFrom(
-                            foregroundColor: Colors.red,
-                            padding: EdgeInsets.zero,
-                            minimumSize: const Size(0, 0),
-                          ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (state.editingCourseId == null)
+                              TextButton.icon(
+                                onPressed: () => logic.clearBasicDraft(context),
+                                icon: const Icon(Icons.delete_sweep, size: 16),
+                                label: const Text(
+                                  'Clear',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.red,
+                                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                                  minimumSize: const Size(0, 0),
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                              ),
+                            if (state.editingCourseId == null) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                width: 1,
+                                height: 16,
+                                color: Colors.grey.withValues(alpha: 0.3),
+                              ),
+                              const SizedBox(width: 8),
+                            ],
+                            IconButton(
+                              onPressed: () => logic.historyManager.undo(context),
+                              icon: Icon(
+                                Icons.undo, 
+                                size: 20, 
+                                color: logic.historyManager.canUndo ? AppTheme.primaryColor : Colors.grey,
+                              ),
+                              tooltip: 'Undo',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                            const SizedBox(width: 16),
+                            IconButton(
+                              onPressed: () => logic.historyManager.redo(context),
+                              icon: Icon(
+                                Icons.redo, 
+                                size: 20,
+                                color: logic.historyManager.canRedo ? AppTheme.primaryColor : Colors.grey,
+                              ),
+                              tooltip: 'Redo',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                    ValueListenableBuilder<bool>(
-                      valueListenable: state.isSavingDraftNotifier,
-                      builder: (context, isSaving, _) {
-                        return Visibility(
-                          visible: state.hasContent,
-                          maintainSize: true,
-                          maintainAnimation: true,
-                          maintainState: true,
-                          child: Container(
-                            margin: EdgeInsets.zero,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.green.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(3.0),
-                              border: Border.all(
-                                color: Colors.green.withValues(alpha: 0.2),
-                              ),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.green.withValues(alpha: 0.05),
-                                  blurRadius: 10,
-                                  spreadRadius: 0,
+                    Row(
+                      children: [
+                        ValueListenableBuilder<bool>(
+                          valueListenable: state.isSavingDraftNotifier,
+                          builder: (context, isSaving, _) {
+                            return Visibility(
+                              visible: state.hasContent,
+                              maintainSize: true,
+                              maintainAnimation: true,
+                              maintainState: true,
+                              child: Container(
+                                margin: EdgeInsets.zero,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 8,
                                 ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                isSaving
-                                    ? const SizedBox(
-                                        height: 12,
-                                        width: 12,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.green,
-                                        ),
-                                      )
-                                    : const Icon(
-                                        Icons.check_circle,
-                                        size: 16,
-                                        color: Colors.green,
-                                      ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  isSaving ? 'Syncing...' : 'Safe & Synced',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.5,
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(3.0),
+                                  border: Border.all(
+                                    color: Colors.green.withValues(alpha: 0.2),
                                   ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.green.withValues(alpha: 0.05),
+                                      blurRadius: 10,
+                                      spreadRadius: 0,
+                                    ),
+                                  ],
                                 ),
-                              ],
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    isSaving
+                                        ? const SizedBox(
+                                            height: 12,
+                                            width: 12,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.green,
+                                            ),
+                                          )
+                                        : const Icon(
+                                            Icons.check_circle,
+                                            size: 16,
+                                            color: Colors.green,
+                                          ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      isSaving ? 'Syncing...' : 'Safe & Synced',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.green,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        const SizedBox(width: 10),
+                        if (state.editingCourseId == null)
+                          TextButton.icon(
+                            onPressed: () => logic.clearAllDrafts(context),
+                            icon: const Icon(
+                              Icons.delete_forever,
+                              size: 16,
+                            ),
+                            label: const Text(
+                              'Clear All Steps',
+                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
+                            style: TextButton.styleFrom(
+                              foregroundColor: Colors.red,
+                              backgroundColor: Colors.red.withValues(alpha: 0.1),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(3.0),
+                                side: BorderSide(color: Colors.red.withValues(alpha: 0.2)),
+                              ),
                             ),
                           ),
-                        );
-                      },
+                      ],
                     ),
                     const SizedBox(height: UIConstants.s1HeaderSpace),
                     // 1. Image

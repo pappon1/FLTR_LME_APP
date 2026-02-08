@@ -293,8 +293,8 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
       padding: EdgeInsets.only(
         top: MediaQuery.of(context).padding.top + 4,
         bottom: 8,
-        left: 12,
-        right: 12,
+        left: 10,
+        right: 10,
       ),
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,

@@ -248,7 +248,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
 
   Widget _buildUserInfoTab(Color cardColor) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
+      padding: const EdgeInsets.fromLTRB(10, 20, 10, 20),
       child: Transform.translate(
         offset: Offset(0, _contentLift),
         child: Column(
@@ -703,7 +703,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
     ];
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -994,7 +994,7 @@ class _UserProfileScreenState extends State<UserProfileScreen>
     ];
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

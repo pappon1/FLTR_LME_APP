@@ -176,7 +176,7 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
         centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 24),
         child: Column(
           children: [
             const SizedBox(height: 20),

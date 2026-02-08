@@ -13,6 +13,8 @@ import '../../data/dummy_course_data.dart'; // Import dummy data file
 
 import '../user_profile/user_profile_screen.dart';
 import '../../models/student_model.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:share_plus/share_plus.dart';
 
 class CourseDetailScreen extends StatefulWidget {
   final CourseModel course;
@@ -245,7 +247,13 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                   color: isDark ? Colors.white70 : _textDark,
                   size: _fHActionIconSize,
                 ),
-                onPressed: () {},
+                onPressed: () {
+                  debugPrint('Share button clicked for course: ${course.title}');
+                  final String shareText = 'Check out this course: ${course.title}\n\n'
+                      '${course.description.length > 200 ? '${course.description.substring(0, 200)}...' : course.description}\n\n'
+                      '${course.websiteUrl.isNotEmpty ? "View more: ${course.websiteUrl}" : "Download the app for more details!"}';
+                  Share.share(shareText);
+                },
               ),
               const SizedBox(width: 4),
             ],
@@ -261,7 +269,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
 
   Widget _buildCustomTabBar(bool isDark) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+      margin: const EdgeInsets.fromLTRB(10, 8, 10, 12),
       height: 44,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
@@ -334,7 +342,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
               handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
             ),
             SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 10),
               sliver: SliverList(
                 delegate: SliverChildListDelegate([
                   const SizedBox(height: 12),
@@ -397,7 +405,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                     style: GoogleFonts.poppins(
                       fontSize: _fOvDescSize,
                       fontWeight: FontWeight.w500,
-                      color: isDark ? Colors.white : const Color(0xFF6B7280),
+                      color: Colors.white,
                       height: 1.5,
                     ),
                   ),
@@ -432,6 +440,276 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
 
                   const SizedBox(height: _fOvGapSeeMoreHigh),
 
+                  _buildSectionHeader("Course Features & Benefits", showEdit: false),
+                  const SizedBox(height: 12),
+
+                  // 🏷️ Course Badges Row
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: () {
+                      final List<Map<String, dynamic>> badgeData = [];
+                      
+                      // 🎥 Videos First
+                      badgeData.add({
+                        'icon': Icons.video_library,
+                        'label': 'Course - ${course.totalVideos} Videos',
+                        'color': const Color(0xFF536DFE),
+                      });
+
+                      if (course.category.isNotEmpty) {
+                        badgeData.add({
+                          'icon': Icons.category,
+                          'label': 'Category - ${course.category}',
+                          'color': course.category.toLowerCase() == 'hardware'
+                              ? (isDark ? Colors.white : const Color(0xFF3F51B5))
+                              : const Color(0xFF3F51B5),
+                        });
+                      }
+                      if (course.difficulty.isNotEmpty) {
+                        badgeData.add({
+                          'icon': Icons.signal_cellular_alt,
+                          'label': 'Course Type - ${course.difficulty}',
+                          'color': course.difficulty.toLowerCase() == 'advanced'
+                              ? Colors.amberAccent
+                              : const Color(0xFF795548),
+                        });
+                      }
+                      badgeData.add({
+                        'icon': Icons.language,
+                        'label': 'Course Language - ${course.language}',
+                        'color': const Color(0xFF9C27B0),
+                      });
+                      badgeData.add({
+                        'icon': course.courseMode.toLowerCase().contains('live')
+                            ? Icons.sensors
+                            : Icons.play_circle_outline,
+                        'label': 'Course Mode - ${course.courseMode}',
+                        'color': const Color(0xFFFF5722),
+                      });
+                      if (course.hasCertificate) {
+                        badgeData.add({
+                          'icon': Icons.workspace_premium,
+                          'label': 'Course - Certificate',
+                          'color': const Color(0xFFFF5252),
+                        });
+                      }
+                      badgeData.add({
+                        'icon': Icons.history_toggle_off,
+                        'label': 'Course Validity - ${course.duration}',
+                        'color': const Color(0xFF00BCD4),
+                      });
+                      if (course.isOfflineDownloadEnabled) {
+                        badgeData.add({
+                          'icon': Icons.download_for_offline,
+                          'label': 'Course - Offline Access',
+                          'color': const Color(0xFF009688),
+                        });
+                      }
+                      if (course.supportType == 'WhatsApp Group') {
+                        badgeData.add({
+                          'icon': FontAwesomeIcons.whatsapp,
+                          'label': 'Student Support - WhatsApp Support Group',
+                          'color': const Color(0xFF25D366),
+                          'extraPadding': const EdgeInsets.only(left: 5), // Reduced for static layout
+                        });
+                      }
+
+                      // 📺 Demo Badge
+                      badgeData.add({
+                        'icon': Icons.play_lesson,
+                        'label': 'Course - Demo',
+                        'color': const Color(0xFFE91E63),
+                        'extraPadding': const EdgeInsets.only(left: 2), // Reduced for static layout
+                      });
+
+                      // 💻 Web Access Badge
+                      badgeData.add({
+                        'icon': Icons.devices,
+                        'label': 'Course Access - Web/PC Access',
+                        'color': const Color(0xFF03A9F4),
+                        'extraPadding': const EdgeInsets.only(left: 2),
+                      });
+
+                      return badgeData.map((data) {
+                        return _buildBadge(
+                          icon: data['icon'] as IconData,
+                          label: data['label'] as String,
+                          color: data['color'] as Color,
+                          extraPadding: data['extraPadding'] as EdgeInsets? ?? EdgeInsets.zero,
+                        );
+                      }).toList();
+                    }(),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // 🔗 WhatsApp Support Group Link Section
+                  _buildSectionHeader("WhatsApp Support Group Link", showEdit: false),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2C254D), // Deep Purple
+                      borderRadius: BorderRadius.circular(100), // Capsule Shape
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.1),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const FaIcon(
+                          FontAwesomeIcons.whatsapp,
+                          color: Color(0xFF25D366),
+                          size: 18,
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            "https://chat.whatsapp.com/invite/LMESirSupportGroup",
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                      .animate(onPlay: (controller) => controller.repeat())
+                      .shimmer(
+                        duration: 2000.ms,
+                        color: Colors.white.withOpacity(0.1),
+                        angle: 45,
+                      )
+                      .then(delay: 1000.ms),
+
+                  const SizedBox(height: 24),
+
+                  // 📜 Download Certificate Section
+                  _buildSectionHeader("Download Certificate", showEdit: false),
+                  const SizedBox(height: 12),
+                  GestureDetector(
+                    onTap: () {
+                      // Logic for downloading certificate
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF6C5DD3), Color(0xFF8E81E8)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(100), // Capsule Shape
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFF6C5DD3).withOpacity(0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.workspace_premium_rounded,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            "Download",
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(
+                            Icons.download_rounded,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                        ],
+                      ),
+                    )
+                        .animate(onPlay: (controller) => controller.repeat())
+                        .shimmer(
+                          duration: 1500.ms,
+                          color: Colors.white.withOpacity(0.2),
+                          angle: 45,
+                        )
+                        .then(delay: 1000.ms),
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // 💻 Website (PC Access) Section
+                  _buildSectionHeader("Website (PC Access)", showEdit: false),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF2C254D), // Deep Purple
+                      borderRadius: BorderRadius.circular(100), // Capsule Shape
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.1),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.laptop_mac_rounded,
+                          color: Color(0xFF03A9F4),
+                          size: 18,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            course.websiteUrl.isNotEmpty 
+                                ? course.websiteUrl 
+                                : "https://www.lmestudy.com/login",
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 0.2,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Icon(
+                          Icons.open_in_new_rounded,
+                          color: Colors.white.withOpacity(0.4),
+                          size: 16,
+                        ),
+                      ],
+                    ),
+                  )
+                      .animate(onPlay: (controller) => controller.repeat())
+                      .shimmer(
+                        duration: 2000.ms,
+                        color: Colors.white.withOpacity(0.1),
+                        angle: 45,
+                      )
+                      .then(delay: 1500.ms),
+
+                  const SizedBox(height: 24),
+
                   // Highlights Section
                   if (course.highlights.isNotEmpty) ...[
                     _buildSectionHeader("Course Highlights", showEdit: false),
@@ -464,10 +742,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
 
                   // Chat Banner - One Line Fix
                   Container(
-                    padding: const EdgeInsets.all(_fWaPadding),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: _fWaPadding),
                     decoration: BoxDecoration(
                       color: const Color(0xFF2C254D), // Deep Reference Purple
-                      borderRadius: BorderRadius.circular(_fWaRadius),
+                      borderRadius: BorderRadius.circular(100), // Capsule Shape
                       border: Border.all(
                         color: Colors.white.withOpacity(0.08),
                         width: 1,
@@ -507,9 +785,15 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                         ),
                       ],
                     ),
-                  ),
-                  const SizedBox(height: 40),
-                  const SizedBox(height: 40),
+                  )
+                      .animate(onPlay: (controller) => controller.repeat())
+                      .shimmer(
+                        duration: 2000.ms,
+                        color: Colors.white.withOpacity(0.15),
+                        angle: 45,
+                      )
+                      .then(delay: 500.ms), // Short pause between shines
+                  const SizedBox(height: 30),
                 ]),
               ),
             ),
@@ -597,9 +881,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                 text,
                 style: GoogleFonts.manrope(
                   fontSize: _fHighTextSize,
-                  color: isDark
-                      ? const Color(0xFFD1D5DB)
-                      : const Color(0xFF4B5563),
+                  color: Colors.white,
                   height: 1.5,
                   fontWeight: FontWeight.w500,
                 ),
@@ -637,7 +919,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                 'Q. ',
                 style: GoogleFonts.manrope(
                   fontWeight: FontWeight.w700,
-                  color: _primaryPurple,
+                  color: Colors.white,
                   fontSize: _fFaqQSize + 1.5,
                 ),
               ),
@@ -646,7 +928,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                   question,
                   style: GoogleFonts.manrope(
                     fontWeight: FontWeight.w700,
-                    color: isDark ? Colors.white : _textDark,
+                    color: Colors.white,
                     fontSize: _fFaqQSize,
                     height: 1.4,
                   ),
@@ -670,7 +952,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                   'A. ',
                   style: GoogleFonts.manrope(
                     fontWeight: FontWeight.w700,
-                    color: _primaryPurple.withOpacity(0.5),
+                    color: Colors.white,
                     fontSize: _fFaqASize + 1.5,
                   ),
                 ),
@@ -679,9 +961,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                     answer,
                     style: GoogleFonts.manrope(
                       fontWeight: FontWeight.w500,
-                      color: isDark
-                          ? const Color(0xFF94A3B8)
-                          : const Color(0xFF64748B),
+                      color: Colors.white,
                       fontSize: _fFaqASize,
                       height: 1.5,
                     ),
@@ -704,13 +984,58 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
           style: GoogleFonts.manrope(
             fontSize: 14,
             fontWeight: FontWeight.w700,
-            color: const Color(0xFF818CF8), // Reference Indigo
+            color: Colors.yellow,
             letterSpacing: 0.1,
           ),
         ),
         if (showEdit)
           Icon(Icons.mode_edit_outline_outlined, size: 18, color: _textGrey),
       ],
+    );
+  }
+
+  Widget _buildBadge({
+    required IconData icon,
+    required String label,
+    required Color color,
+    EdgeInsets extraPadding = EdgeInsets.zero,
+  }) {
+    final parts = label.split(' - ');
+    final String prefix = parts[0];
+    final String value = parts.length > 1 ? parts[1] : '';
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2).add(extraPadding),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Transform.translate(
+            offset: const Offset(0, 1), // Nudge icon down for perfect alignment
+            child: Icon(icon, size: 18.0, color: Colors.white),
+          ),
+          const SizedBox(width: 6),
+          RichText(
+            text: TextSpan(
+              style: GoogleFonts.inter(
+                fontSize: 13.2,
+                fontWeight: FontWeight.bold,
+              ),
+              children: [
+                TextSpan(
+                  text: '$prefix${value.isNotEmpty ? ' - ' : ''}',
+                  style: const TextStyle(color: Colors.white),
+                ),
+                if (value.isNotEmpty)
+                  TextSpan(
+                    text: value,
+                    style: const TextStyle(color: Color(0xFF2DC572)), // Vibrant Green
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -726,16 +1051,24 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
 
     return Container(
       padding: const EdgeInsets.symmetric(
-        horizontal: 16,
+        horizontal: 10,
         vertical: _fBarPaddingV,
       ),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0D0D0D) : Colors.white,
+        color: const Color(0xFF0F0C1D), // Deep Dark Navy/Purple for focus
         border: Border(
           top: BorderSide(
-            color: isDark ? Colors.white.withOpacity(0.08) : Colors.grey[200]!,
+            color: Colors.white.withOpacity(0.50),
+            width: 1,
           ),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, -4),
+          ),
+        ],
       ),
       child: SafeArea(
         top: false,
@@ -791,49 +1124,40 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
             InkWell(
               onTap: () {},
               borderRadius: BorderRadius.circular(3.0),
-              child: Container(
+            child: Container(
                 height: _fBtnHeight,
-                padding: const EdgeInsets.symmetric(horizontal: 18),
+                padding: const EdgeInsets.symmetric(horizontal: 18), // Restored original padding
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF6C5DD3), Color(0xFF8E81E8)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(3.0),
+                  color: Colors.yellow, // Solid Yellow
+                  borderRadius: BorderRadius.circular(100), // Capsule Shape
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF6C5DD3).withOpacity(0.3),
-                      blurRadius: 8,
+                      color: Colors.yellow.withOpacity(0.3),
+                      blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
                   ],
                 ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Transform.rotate(
-                      angle: _fIconRotate,
-                      child: const Icon(
-                        Icons.local_offer_outlined,
-                        size: 16,
-                        color: Colors.white,
-                      ),
+                child: Center(
+                  child: Text(
+                    'BUY NOW',
+                    style: GoogleFonts.poppins(
+                      fontWeight: FontWeight.w900, // Extra Bold
+                      fontSize: _fBtnTextSize + 6, // Significantly larger text
+                      color: Colors.black,
+                      letterSpacing: 0.8,
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'BUY NOW',
-                      style: GoogleFonts.poppins(
-                        fontWeight: FontWeight.w700,
-                        fontSize: _fBtnTextSize,
-                        color: Colors.white,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
-            ),
+            )
+                .animate(onPlay: (controller) => controller.repeat())
+                .shake(
+                  delay: 1000.ms,
+                  duration: 1000.ms,
+                  hz: 4,
+                  offset: const Offset(2, 0),
+                ),
           ],
         ),
       ),
@@ -892,7 +1216,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
             // Search Bar
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
                 child: TextField(
                   controller: _studentSearchController,
                   style: GoogleFonts.manrope(
@@ -957,7 +1281,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
               )
             else
               SliverPadding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 10),
                 sliver: SliverList(
                   delegate: SliverChildBuilderDelegate((context, index) {
                     final student = filteredStudents[index];
@@ -966,7 +1290,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                         student['image']!.isNotEmpty;
 
                     return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
+                      margin: const EdgeInsets.only(bottom: 7),
                       decoration: BoxDecoration(
                         color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
                         borderRadius: BorderRadius.circular(3.0),

@@ -3,21 +3,21 @@ import 'package:flutter/services.dart'; // Added for formatters
 import '../../../../../utils/app_theme.dart';
 import '../ui_constants.dart';
 import '../../local_logic/state_manager.dart';
-import '../../local_logic/draft_manager.dart';
+import '../../local_logic/step3_logic.dart';
 import '../components/collapsing_step_indicator.dart';
 import '../components/review_card.dart';
 import '../components/text_field.dart';
 
 class Step3AdvanceWidget extends StatelessWidget {
   final CourseStateManager state;
-  final DraftManager draftManager;
+  final Step3Logic logic;
   final Widget navButtons;
   final Function(int) onEditStep;
 
   const Step3AdvanceWidget({
     super.key,
     required this.state,
-    required this.draftManager,
+    required this.logic,
     required this.navButtons,
     required this.onEditStep,
   });
@@ -46,12 +46,72 @@ class Step3AdvanceWidget extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Special Course Badge (Tag)',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Special Badge',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (state.editingCourseId == null)
+                              TextButton.icon(
+                                onPressed: () => logic.clearAdvanceDraft(context),
+                                icon: const Icon(Icons.delete_sweep, size: 16),
+                                label: const Text(
+                                  'Clear',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.red,
+                                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                                  minimumSize: const Size(0, 0),
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                              ),
+                            if (state.editingCourseId == null) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                width: 1,
+                                height: 16,
+                                color: Colors.grey.withOpacity(0.3),
+                              ),
+                              const SizedBox(width: 8),
+                            ],
+                            IconButton(
+                              onPressed: () => logic.historyManager.undo(context),
+                              icon: Icon(
+                                Icons.undo,
+                                size: 20,
+                                color: logic.historyManager.canUndo ? AppTheme.primaryColor : Colors.grey,
+                              ),
+                              tooltip: 'Undo',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                            const SizedBox(width: 12),
+                            IconButton(
+                              onPressed: () => logic.historyManager.redo(context),
+                              icon: Icon(
+                                Icons.redo,
+                                size: 20,
+                                color: logic.historyManager.canRedo ? AppTheme.primaryColor : Colors.grey,
+                              ),
+                              tooltip: 'Redo',
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     CustomTextField(
@@ -65,7 +125,7 @@ class Step3AdvanceWidget extends StatelessWidget {
                           return newValue.copyWith(text: newValue.text.toUpperCase());
                         }),
                       ],
-                      onChanged: (_) => draftManager.saveCourseDraft(),
+                      onChanged: logic.updateSpecialTag,
                     ),
                     const SizedBox(height: 8),
                     Wrap(
@@ -88,10 +148,12 @@ class Step3AdvanceWidget extends StatelessWidget {
                                 ),
                               ),
                               padding: EdgeInsets.zero,
-                              onPressed: () {
-                                state.specialTagController.text = tag;
-                                draftManager.saveCourseDraft();
-                              },
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                onPressed: () {
+                                  logic.setSpecialTagText(tag);
+                                },
                               backgroundColor: AppTheme.primaryColor.withValues(
                                 alpha: 0.05,
                               ),
@@ -115,8 +177,7 @@ class Step3AdvanceWidget extends StatelessWidget {
                       ),
                       value: state.isSpecialTagVisible,
                       onChanged: (v) {
-                        state.isSpecialTagVisible = v;
-                        draftManager.saveCourseDraft();
+                        logic.toggleSpecialTagVisibility(v);
                       },
                       activeThumbColor: AppTheme.primaryColor,
                       tileColor: Colors.transparent,
@@ -149,12 +210,7 @@ class Step3AdvanceWidget extends StatelessWidget {
                             child: Text('Always Visible (Lifetime)'),
                           ),
                         ],
-                        onChanged: (v) {
-                          if (v != null) {
-                            state.specialTagDurationDays = v;
-                            draftManager.saveCourseDraft();
-                          }
-                        },
+                          onChanged: logic.setSpecialTagDuration,
                       ),
                     ],
 
@@ -191,8 +247,7 @@ class Step3AdvanceWidget extends StatelessWidget {
 
                           return GestureDetector(
                             onTap: () {
-                              state.specialTagColor = colorName;
-                              draftManager.saveCourseDraft();
+                              logic.setSpecialTagColor(colorName);
                             },
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
@@ -263,10 +318,7 @@ class Step3AdvanceWidget extends StatelessWidget {
                         ),
                       ),
                       value: state.isOfflineDownloadEnabled,
-                      onChanged: (v) {
-                        state.isOfflineDownloadEnabled = v;
-                        draftManager.saveCourseDraft();
-                      },
+                      onChanged: logic.toggleOfflineDownload,
                       activeThumbColor: AppTheme.primaryColor,
                       tileColor: Colors.transparent,
                       shape: RoundedRectangleBorder(
@@ -308,10 +360,7 @@ class Step3AdvanceWidget extends StatelessWidget {
                         ),
                       ),
                       value: state.isPublished,
-                      onChanged: (v) {
-                        state.isPublished = v;
-                        draftManager.saveCourseDraft();
-                      },
+                      onChanged: logic.togglePublishStatus,
                       activeThumbColor: Colors.green,
                       tileColor: Colors.transparent,
                       shape: RoundedRectangleBorder(

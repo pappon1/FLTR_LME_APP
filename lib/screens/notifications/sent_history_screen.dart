@@ -45,7 +45,7 @@ class _SentHistoryScreenState extends State<SentHistoryScreen> {
                 _isRefreshing) {
               return ListView.separated(
                 physics: const NeverScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
                 itemCount: 8,
                 separatorBuilder: (context, index) =>
                     const SizedBox(height: 12),
@@ -91,7 +91,7 @@ class _SentHistoryScreenState extends State<SentHistoryScreen> {
             }
 
             return ListView.separated(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
               itemCount: docs.length,
               separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {

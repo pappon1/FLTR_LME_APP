@@ -1,13 +1,17 @@
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'state_manager.dart';
 import 'draft_manager.dart';
 
+import 'history_manager.dart';
+
 class Step2Logic {
   final CourseStateManager state;
   final DraftManager draftManager;
+  final HistoryManager historyManager;
 
-  Step2Logic(this.state, this.draftManager);
+  Step2Logic(this.state, this.draftManager, this.historyManager);
 
   void onReorder(int oldIndex, int newIndex) {
     if (oldIndex < newIndex) {
@@ -57,5 +61,34 @@ class Step2Logic {
 
   void cancelHoldTimer() {
     _holdTimer?.cancel();
+  }
+  void clearContentDraft(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear Course Content?'),
+        content: const Text(
+          'This will remove all videos, folders, and resources added. This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              state.courseContents.clear();
+              state.selectedIndices.clear();
+              state.isSelectionMode = false;
+              state.isDragModeActive = false;
+              state.updateState();
+              draftManager.saveCourseDraft();
+              Navigator.pop(context);
+            },
+            child: const Text('Clear', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
   }
 }

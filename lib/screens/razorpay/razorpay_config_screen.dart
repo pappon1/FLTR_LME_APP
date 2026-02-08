@@ -70,7 +70,7 @@ class _RazorpayConfigScreenState extends State<RazorpayConfigScreen> {
         elevation: 0,
       ),
       body: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 24),
         child: Column(
           children: [
             Text(

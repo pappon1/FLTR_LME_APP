@@ -195,31 +195,31 @@ class SubmitHandler {
         state.certificate1File = File(newPath);
       }
 
-      final newDocId = FirebaseFirestore.instance
-          .collection('courses')
-          .doc()
-          .id;
+      final String docId = state.editingCourseId ??
+          FirebaseFirestore.instance.collection('courses').doc().id;
 
       final draftCourse = CourseModel(
-        id: newDocId,
+        id: docId,
         title: state.titleController.text.trim(),
         category: state.selectedCategory!,
         price: int.tryParse(state.mrpController.text) ?? 0,
         discountPrice: int.tryParse(state.finalPriceController.text) ?? 0,
         description: finalDesc,
-        thumbnailUrl: state.thumbnailImage?.path ?? '',
+        thumbnailUrl:
+            state.thumbnailImage?.path ?? state.currentThumbnailUrl ?? '',
         duration: finalValidity == 0
             ? 'Lifetime Access'
             : '$finalValidity Days',
         difficulty: state.difficulty!,
-        enrolledStudents: 0,
-        rating: 0.0,
+        enrolledStudents: state.originalCourse?.enrolledStudents ?? 0,
+        rating: state.originalCourse?.rating ?? 0.0,
         totalVideos: _countVideos(state.courseContents),
         isPublished: state.isPublished,
-        createdAt: DateTime.now(),
+        createdAt: state.originalCourse?.createdAt ?? DateTime.now(),
         courseValidityDays: finalValidity,
         hasCertificate: state.hasCertificate,
-        certificateUrl1: state.certificate1File?.path,
+        certificateUrl1:
+            state.certificate1File?.path ?? state.currentCertificate1Url,
         selectedCertificateSlot: 1,
         isOfflineDownloadEnabled: state.isOfflineDownloadEnabled,
         language: state.selectedLanguage!,
@@ -335,9 +335,6 @@ class SubmitHandler {
         processItemRecursive(item);
       }
 
-      final courseMap = draftCourse.toMap();
-      courseMap['createdAt'] = DateTime.now().toIso8601String();
-
       final service = FlutterBackgroundService();
 
       // --- NEW: Reliable Command Delivery ---
@@ -354,18 +351,57 @@ class SubmitHandler {
       // 3. Optimized Metadata Transfer (File-based instead of String-based)
       final String metadataFileName = 'course_metadata_${sessionId}.json';
       final File metadataFile = File('${safeDir.path}/$metadataFileName');
-      await metadataFile.writeAsString(
-        jsonEncode({'course': courseMap, 'files': fileTasks}),
-      );
+
+      final Map<String, dynamic> payload = {};
+      
+      // Function to fix types for JSON serialization
+      void prepareMapForJson(Map<String, dynamic> map) {
+        if (map['createdAt'] != null) {
+           if (map['createdAt'] is Timestamp) {
+              map['createdAt'] = (map['createdAt'] as Timestamp).toDate().toIso8601String();
+           } else if (map['createdAt'] is DateTime) {
+              map['createdAt'] = (map['createdAt'] as DateTime).toIso8601String();
+           } else {
+              // Convert FieldValue or others to current time string fallback
+              map['createdAt'] = DateTime.now().toIso8601String();
+           }
+        }
+      }
+
+      if (state.editingCourseId != null) {
+        final updateMap = draftCourse.toMap();
+        prepareMapForJson(updateMap);
+        
+        payload['updateData'] = updateMap;
+        payload['updateData'].remove('id'); // ID is passed separately
+        payload['courseId'] = docId;
+        payload['files'] = fileTasks;
+      } else {
+        final contentMap = draftCourse.toMap();
+        prepareMapForJson(contentMap);
+        
+        payload['course'] = contentMap;
+        payload['files'] = fileTasks;
+      }
+
+      await metadataFile.writeAsString(jsonEncode(payload));
 
       while (!commandDelivered && retryCount < maxRetries) {
-        service.invoke('submit_course', {'metadataPath': metadataFile.path});
+        if (state.editingCourseId != null) {
+          service.invoke('update_course', {'metadataPath': metadataFile.path});
+        } else {
+          service.invoke('submit_course', {'metadataPath': metadataFile.path});
+        }
         service.invoke('get_status');
 
         await Future.delayed(const Duration(seconds: 1));
 
         final checkPrefs = await SharedPreferences.getInstance();
-        if (checkPrefs.containsKey('pending_course_v1')) {
+        final keyToCheck = state.editingCourseId != null
+            ? 'pending_update_course_v1'
+            : 'pending_course_v1';
+
+        if (checkPrefs.containsKey(keyToCheck)) {
           commandDelivered = true;
           debugPrint("✅ SubmitHandler: Command delivered (via Metadata File)");
         }
@@ -376,8 +412,12 @@ class SubmitHandler {
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Upload Started in Background 🚀'),
+          SnackBar(
+            content: Text(
+              state.editingCourseId != null
+                  ? 'Update Started in Background 🚀'
+                  : 'Upload Started in Background 🚀',
+            ),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
           ),

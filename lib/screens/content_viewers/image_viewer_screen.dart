@@ -93,7 +93,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
                 color: backgroundColor, // Matches theme background
                 alignment: Alignment.bottomCenter,
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
+                  horizontal: 10,
                   vertical: 8,
                 ),
                 child: SafeArea(

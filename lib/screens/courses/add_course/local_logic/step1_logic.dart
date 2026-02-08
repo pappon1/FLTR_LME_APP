@@ -6,11 +6,14 @@ import 'draft_manager.dart';
 import 'package:http/http.dart' as http;
 import 'package:file_picker/file_picker.dart';
 
+import 'history_manager.dart';
+
 class Step1Logic {
   final CourseStateManager state;
   final DraftManager draftManager;
+  final HistoryManager historyManager;
 
-  Step1Logic(this.state, this.draftManager);
+  Step1Logic(this.state, this.draftManager, this.historyManager);
 
   Future<void> checkUrlValidity(String url, {required bool isWhatsapp}) async {
     if (url.isEmpty) {

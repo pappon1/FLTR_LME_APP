@@ -55,7 +55,7 @@ class EnrollmentDetailScreen extends StatelessWidget {
           ),
         ),
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 100, 20, 40),
+          padding: const EdgeInsets.fromLTRB(10, 100, 10, 40),
           child: Column(
             children: [
               // 1. Status Badge (Floating)

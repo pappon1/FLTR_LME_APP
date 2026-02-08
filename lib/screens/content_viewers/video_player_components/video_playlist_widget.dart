@@ -74,7 +74,7 @@ class _VideoPlaylistWidgetState extends State<VideoPlaylistWidget> {
   Widget build(BuildContext context) {
     return ListView.builder(
       controller: _scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
       itemCount: widget.playlist.length,
       itemBuilder: (context, i) => _buildPlaylistItem(widget.playlist[i], i),
     );

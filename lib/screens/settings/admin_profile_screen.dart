@@ -57,7 +57,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
         centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 24),
         child: Form(
           key: _formKey,
           child: Column(

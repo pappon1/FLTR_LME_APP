@@ -934,7 +934,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                 : SliverPadding(
                     padding: EdgeInsets.fromLTRB(
                       10.0,
-                      16.0,
+                      10.0,
                       10.0,
                       24.0 + MediaQuery.of(context).padding.bottom,
                     ),
@@ -1010,7 +1010,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
 
   Widget _buildShimmerList() {
     return Padding(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 24),
       child: Column(
         children: List.generate(
           5,

@@ -50,6 +50,10 @@ class _SplashScreenState extends State<SplashScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Column(
+                  children: [
               // Logo with pulse animation
               Container(
                     width: 120,
@@ -136,6 +140,9 @@ class _SplashScreenState extends State<SplashScreen> {
                   .fadeIn(duration: 800.ms)
                   .then()
                   .fadeOut(duration: 800.ms),
+                  ],
+                ),
+              ),
             ],
           ),
         ),

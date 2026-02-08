@@ -247,7 +247,7 @@ class _VideoControlsSection extends StatelessWidget {
                 Container(
                   color: Colors.black,
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
+                    horizontal: 10,
                     vertical: 12,
                   ),
                   child: ValueListenableBuilder<Duration>(
@@ -278,8 +278,8 @@ class _VideoControlsSection extends StatelessWidget {
                     Container(
                       color: Colors.black,
                       padding: const EdgeInsets.only(
-                        left: 20,
-                        right: 20,
+                        left: 10,
+                        right: 10,
                         bottom: 8,
                       ),
                       child: ValueListenableBuilder<double>(

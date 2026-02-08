@@ -125,7 +125,7 @@ class _ContactLinksScreenState extends State<ContactLinksScreen> {
       body: _isLoading
           ? Center(child: CircularProgressIndicator(color: theme.primaryColor))
           : SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+              padding: const EdgeInsets.fromLTRB(10, 20, 10, 100),
               child: Form(
                 key: _formKey,
                 child: Column(

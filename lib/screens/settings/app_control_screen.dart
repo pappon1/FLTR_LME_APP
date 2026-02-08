@@ -127,7 +127,7 @@ class _AppControlScreenState extends State<AppControlScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 20),
               child: Form(
                 key: _formKey,
                 child: Column(

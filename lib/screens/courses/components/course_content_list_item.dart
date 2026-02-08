@@ -330,10 +330,10 @@ class CourseContentListItem extends StatelessWidget {
             if (isReadOnly)
               Positioned(
                 right: 12,
-                child: Icon(
-                  Icons.lock_outline,
-                  size: 20,
-                  color: Colors.grey.shade400,
+                child: const Icon(
+                  Icons.lock,
+                  size: 22,
+                  color: Colors.red,
                 ),
               ),
           ],
@@ -543,10 +543,10 @@ class CourseContentListItem extends StatelessWidget {
             if (isReadOnly)
               Positioned(
                 right: 12,
-                child: Icon(
-                  Icons.lock_outline,
-                  size: 20,
-                  color: Colors.grey.shade400,
+                child: const Icon(
+                  Icons.lock,
+                  size: 22,
+                  color: Colors.red,
                 ),
               ),
           ],

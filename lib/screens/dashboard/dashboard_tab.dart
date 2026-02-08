@@ -323,7 +323,7 @@ class _DashboardTabState extends State<DashboardTab>
                 const SizedBox(height: 16),
                 // Announcement Header
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 14,
@@ -428,8 +428,8 @@ class _DashboardTabState extends State<DashboardTab>
                       return Container(
                         margin: const EdgeInsets.only(
                           bottom: 24,
-                          left: 6,
-                          right: 6,
+                          left: 10,
+                          right: 10,
                         ),
                         decoration: BoxDecoration(
                           color: isDark
@@ -473,8 +473,8 @@ class _DashboardTabState extends State<DashboardTab>
                     return Container(
                       margin: const EdgeInsets.only(
                         bottom: 24,
-                        left: 6,
-                        right: 6,
+                        left: 10,
+                        right: 10,
                       ),
                       decoration: BoxDecoration(
                         color: Theme.of(context).brightness == Brightness.dark
@@ -506,7 +506,7 @@ class _DashboardTabState extends State<DashboardTab>
 
                 // Popular Courses Header
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 14,
@@ -624,7 +624,7 @@ class _DashboardTabState extends State<DashboardTab>
                               return CourseCard(
                                 course: provider.popularCourses[courseIndex],
                                 isEdgeToEdge: true,
-                                customHorizontalMargin: 6,
+                                customHorizontalMargin: 10,
                                 bottomMargin: 14,
                                 cornerRadius: 3,
                                 showBorder: true,
@@ -684,7 +684,7 @@ class _DashboardTabState extends State<DashboardTab>
 
                 // Stats & Other Sections
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
                   child: Column(
                     children: [
                       // Stats Cards Grid

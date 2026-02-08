@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../ui_constants.dart';
+import '../../../../../utils/app_theme.dart';
 import '../../local_logic/state_manager.dart';
 import '../../local_logic/step2_logic.dart';
 import '../../local_logic/content_manager.dart';
@@ -40,6 +41,52 @@ class Step2ContentWidget extends StatelessWidget {
               ),
               pinned: true,
             ),
+            SliverPadding(
+              key: const ValueKey('step2_header_padding'),
+              padding: EdgeInsets.only(
+                left: UIConstants.screenPadding,
+                right: UIConstants.screenPadding,
+                top: 16.0,
+              ),
+              sliver: SliverToBoxAdapter(
+                child: Column(
+                  children: [
+                    if (!state.isSelectionMode && !state.isDragModeActive)
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Course Content',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: UIConstants.labelFontSize + 2,
+                            ),
+                          ),
+                          if (state.editingCourseId == null)
+                            Row(
+                              children: [
+                                TextButton.icon(
+                                  onPressed: () => logic.clearContentDraft(context),
+                                  icon: const Icon(Icons.delete_sweep, size: 16),
+                                  label: const Text(
+                                    'Clear',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: Colors.red,
+                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    minimumSize: const Size(0, 0),
+                                  ),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            ),
+
             SliverPadding(
               key: const ValueKey('step2_content_padding'),
               padding: EdgeInsets.only(

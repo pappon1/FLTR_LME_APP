@@ -19,7 +19,7 @@ class SettingsTab extends StatelessWidget {
         title: Text('Settings', style: AppTheme.heading2(context)),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
         children: [
           // General Section
           Text(

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../backend_service/models/course_upload_task.dart';
 import '../../../../services/bunny_cdn_service.dart';
+import '../../../../models/course_model.dart';
 
 class CourseStateManager extends ChangeNotifier {
   final formKey = GlobalKey<FormState>();
@@ -72,18 +73,17 @@ class CourseStateManager extends ChangeNotifier {
   }
 
   // Point 1: Preparation Feedback
-  double _preparationProgress = 0.0;
-  double get preparationProgress => _preparationProgress;
+  final ValueNotifier<double> preparationProgressNotifier = ValueNotifier<double>(0.0);
+  final ValueNotifier<String> preparationMessageNotifier = ValueNotifier<String>('');
+
+  double get preparationProgress => preparationProgressNotifier.value;
   set preparationProgress(double value) {
-    _preparationProgress = value;
-    notifyListeners();
+    preparationProgressNotifier.value = value;
   }
 
-  String _preparationMessage = '';
-  String get preparationMessage => _preparationMessage;
+  String get preparationMessage => preparationMessageNotifier.value;
   set preparationMessage(String value) {
-    _preparationMessage = value;
-    notifyListeners();
+    preparationMessageNotifier.value = value;
   }
 
   bool _isLoading = false;
@@ -184,8 +184,8 @@ class CourseStateManager extends ChangeNotifier {
     if (_isSavingDraft == value) return;
     _isSavingDraft = value;
     isSavingDraftNotifier.value = value;
-    // We still notify because some labels depend on this in the header
-    notifyListeners();
+    // Removed notifyListeners() to prevent full screen rebuild.
+    // All UI components MUST use ValueListenableBuilder<bool>(state.isSavingDraftNotifier).
   }
 
   bool isRestoringDraft = false;
@@ -238,12 +238,10 @@ class CourseStateManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  double _totalProgress = 0.0;
   void calculateOverallProgress() {
     if (_uploadTasks.isEmpty) {
-      if (_totalProgress != 0.0) {
-        _totalProgress = 0.0;
-        notifyListeners();
+      if (totalProgressNotifier.value != 0.0) {
+        totalProgressNotifier.value = 0.0;
       }
       return;
     }
@@ -252,9 +250,9 @@ class CourseStateManager extends ChangeNotifier {
       total += task.progress;
     }
     final newProgress = total / _uploadTasks.length;
-    if ((newProgress - _totalProgress).abs() > 0.01) {
-      _totalProgress = newProgress;
-      notifyListeners();
+    // 0.005 = 0.5% threshold to avoid excessive UI updates
+    if ((newProgress - totalProgressNotifier.value).abs() > 0.005) {
+      totalProgressNotifier.value = newProgress;
     }
   }
 
@@ -398,6 +396,102 @@ class CourseStateManager extends ChangeNotifier {
     }
   }
 
+  // Edit Mode
+  String? editingCourseId;
+  CourseModel? originalCourse;
+
+  void initializeFromCourse(CourseModel course) {
+    editingCourseId = course.id;
+    originalCourse = course;
+
+    // 1. Basic Info
+    titleController.text = course.title;
+    descController.text = course.description;
+    selectedCategory = course.category;
+    difficulty = course.difficulty;
+
+    // 2. Setup
+    mrpController.text = course.price.toString();
+    // Calculate original discount amount (Price - DiscountedPrice)
+    // Wait, discountPrice is the FINAL price.
+    // Logic: Final = MRP - DiscountAmount
+    // So DiscountAmount = MRP - Final
+    discountAmountController.text = (course.price - course.discountPrice).toString();
+    finalPriceController.text = course.discountPrice.toString();
+    
+    selectedLanguage = course.language;
+    selectedCourseMode = course.courseMode;
+    selectedSupportType = course.supportType;
+    whatsappController.text = course.whatsappNumber;
+    websiteUrlController.text = course.websiteUrl;
+    
+    courseValidityDays = course.courseValidityDays;
+    if (course.courseValidityDays > 0) {
+      customValidityController.text = course.courseValidityDays.toString();
+    }
+
+    hasCertificate = course.hasCertificate;
+    // Certificates are URLs, so we can't set File objects directly.
+    // We need to handle this in UI or keep separate URL variables.
+    // For now, let's just respect that if we pick a new file, it overrides.
+    // We might need 'currentCertificateUrl' in state to display existing ones.
+    
+    isOfflineDownloadEnabled = course.isOfflineDownloadEnabled;
+    isBigScreenEnabled = course.isBigScreenEnabled;
+
+    // 3. Advanced
+    specialTagController.text = course.specialTag;
+    specialTagColor = course.specialTagColor;
+    isSpecialTagVisible = course.isSpecialTagVisible;
+    specialTagDurationDays = course.specialTagDurationDays;
+
+    highlightControllers.clear();
+    for (var h in course.highlights) {
+      if (h.isNotEmpty) highlightControllers.add(TextEditingController(text: h));
+    }
+    if (highlightControllers.isEmpty) highlightControllers.add(TextEditingController());
+
+    faqControllers.clear();
+    for (var f in course.faqs) {
+      faqControllers.add({
+        'q': TextEditingController(text: f['question']),
+        'a': TextEditingController(text: f['answer']),
+      });
+    }
+    if (faqControllers.isEmpty) {
+      faqControllers.add({
+        'q': TextEditingController(),
+        'a': TextEditingController(),
+      });
+    }
+
+    // 4. Content & Thumbnail
+    // We need to store current thumbnail URL to show it if no new file is picked
+    currentThumbnailUrl = course.thumbnailUrl;
+    
+    // Deep copy contents to ensure mutability
+    _courseContents.clear();
+    _courseContents.addAll(_deepCopyContents(course.contents));
+
+    isPublished = course.isPublished;
+    notifyListeners();
+  }
+
+  // Helper to deep copy contents and ensure they are mutable maps
+  List<Map<String, dynamic>> _deepCopyContents(List<dynamic> source) {
+    return source.map((item) {
+      final Map<String, dynamic> copy = Map<String, dynamic>.from(item);
+      if (copy['type'] == 'folder' && copy['contents'] != null) {
+        copy['contents'] = _deepCopyContents(copy['contents']);
+      }
+      return copy;
+    }).toList();
+  }
+
+  // Helper for existing URLs
+  String? currentThumbnailUrl;
+  String? currentCertificate1Url;
+
   @override
   void dispose() {
     pageController.dispose();
@@ -425,3 +519,4 @@ class CourseStateManager extends ChangeNotifier {
     super.dispose();
   }
 }
+

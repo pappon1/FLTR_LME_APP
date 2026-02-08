@@ -61,7 +61,7 @@ class _RazorpaySettlementsScreenState extends State<RazorpaySettlementsScreen> {
               ),
             )
           : ListView.builder(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
               itemCount: _settlements.length,
               itemBuilder: (context, index) {
                 final item = _settlements[index];

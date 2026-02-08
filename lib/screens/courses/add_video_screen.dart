@@ -145,7 +145,7 @@ class _AddVideoScreenState extends State<AddVideoScreen> {
         title: const FittedBox(fit: BoxFit.scaleDown, child: Text('Add Video')),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
         child: Form(
           key: _formKey,
           child: Column(

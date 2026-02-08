@@ -4,12 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'state_manager.dart';
 import 'draft_manager.dart';
+import 'history_manager.dart';
 
 class Step0Logic {
   final CourseStateManager state;
   final DraftManager draftManager;
+  final HistoryManager historyManager;
 
-  Step0Logic(this.state, this.draftManager);
+  Step0Logic(this.state, this.draftManager, this.historyManager);
 
   Future<void> pickImage(
     BuildContext context,
@@ -128,6 +130,103 @@ class Step0Logic {
               Navigator.pop(context);
             },
             child: const Text('Clear', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _performClearAll() {
+    // Step 0
+    state.titleController.clear();
+    state.descController.clear();
+    state.selectedCategory = null;
+    state.difficulty = null;
+    state.thumbnailImage = null;
+    state.currentThumbnailUrl = null;
+
+    // Clear lists while keeping controllers disposed
+    for (var c in state.highlightControllers) c.dispose();
+    state.highlightControllers.clear();
+    
+    for (var f in state.faqControllers) {
+      f['q']?.dispose();
+      f['a']?.dispose();
+    }
+    state.faqControllers.clear();
+
+    // Step 1
+    state.mrpController.clear();
+    state.discountAmountController.clear();
+    state.finalPriceController.clear();
+    state.selectedLanguage = null;
+    state.selectedCourseMode = null;
+    state.selectedSupportType = null;
+    state.whatsappController.clear();
+    state.websiteUrlController.clear();
+    state.courseValidityDays = null;
+    state.customValidityController.clear();
+    state.hasCertificate = false;
+    state.certificate1File = null;
+    state.currentCertificate1Url = null;
+
+    // Step 2
+    state.courseContents.clear();
+    state.selectedIndices.clear();
+    state.isSelectionMode = false;
+    state.isDragModeActive = false;
+
+    // Step 3
+    state.specialTagController.clear();
+    state.specialTagColor = 'Blue';
+    state.isSpecialTagVisible = true;
+    state.specialTagDurationDays = 30;
+    state.isOfflineDownloadEnabled = true;
+    state.isBigScreenEnabled = false;
+
+    // Reset All Error Flags
+    state.thumbnailError = false;
+    state.titleError = false;
+    state.descError = false;
+    state.categoryError = false;
+    state.difficultyError = false;
+    state.highlightsError = false;
+    state.faqsError = false;
+    state.mrpError = false;
+    state.languageError = false;
+    state.courseModeError = false;
+    state.supportTypeError = false;
+    state.wpGroupLinkError = false;
+    state.validityError = false;
+    state.certError = false;
+    state.bigScreenUrlError = false;
+    state.discountError = false;
+    state.discountWarning = false;
+    state.courseContentError = false;
+
+    state.updateState();
+    draftManager.saveCourseDraft();
+  }
+
+  void clearAllDrafts(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Clear EVERYTHING?'),
+        content: const Text(
+          'WARNING: This will wipe ALL data from ALL steps (Basic Info, Setup, Content, Advanced). This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              _performClearAll();
+              Navigator.pop(context);
+            },
+            child: const Text('CLEAR ALL', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
           ),
         ],
       ),

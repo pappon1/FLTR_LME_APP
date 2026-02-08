@@ -18,6 +18,7 @@ class DummyCourseData {
     totalVideos: 145,
     isPublished: true,
     hasCertificate: true,
+    websiteUrl: 'https://localmobileengineer.com/course/dummy-smartphone-repair',
     createdAt: DateTime.now(),
     highlights: [
       'Hands-on Practical Training',
