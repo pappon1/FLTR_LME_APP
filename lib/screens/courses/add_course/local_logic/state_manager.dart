@@ -73,8 +73,10 @@ class CourseStateManager extends ChangeNotifier {
   }
 
   // Point 1: Preparation Feedback
-  final ValueNotifier<double> preparationProgressNotifier = ValueNotifier<double>(0.0);
-  final ValueNotifier<String> preparationMessageNotifier = ValueNotifier<String>('');
+  final ValueNotifier<double> preparationProgressNotifier =
+      ValueNotifier<double>(0.0);
+  final ValueNotifier<String> preparationMessageNotifier =
+      ValueNotifier<String>('');
 
   double get preparationProgress => preparationProgressNotifier.value;
   set preparationProgress(double value) {
@@ -109,8 +111,6 @@ class CourseStateManager extends ChangeNotifier {
     _isInitialLoading = value;
     notifyListeners();
   }
-
-
 
   int? _courseValidityDays;
   int? get courseValidityDays => _courseValidityDays;
@@ -416,15 +416,16 @@ class CourseStateManager extends ChangeNotifier {
     // Wait, discountPrice is the FINAL price.
     // Logic: Final = MRP - DiscountAmount
     // So DiscountAmount = MRP - Final
-    discountAmountController.text = (course.price - course.discountPrice).toString();
+    discountAmountController.text = (course.price - course.discountPrice)
+        .toString();
     finalPriceController.text = course.discountPrice.toString();
-    
+
     selectedLanguage = course.language;
     selectedCourseMode = course.courseMode;
     selectedSupportType = course.supportType;
     whatsappController.text = course.whatsappNumber;
     websiteUrlController.text = course.websiteUrl;
-    
+
     courseValidityDays = course.courseValidityDays;
     if (course.courseValidityDays > 0) {
       customValidityController.text = course.courseValidityDays.toString();
@@ -435,7 +436,7 @@ class CourseStateManager extends ChangeNotifier {
     // We need to handle this in UI or keep separate URL variables.
     // For now, let's just respect that if we pick a new file, it overrides.
     // We might need 'currentCertificateUrl' in state to display existing ones.
-    
+
     isOfflineDownloadEnabled = course.isOfflineDownloadEnabled;
     isBigScreenEnabled = course.isBigScreenEnabled;
 
@@ -447,9 +448,11 @@ class CourseStateManager extends ChangeNotifier {
 
     highlightControllers.clear();
     for (var h in course.highlights) {
-      if (h.isNotEmpty) highlightControllers.add(TextEditingController(text: h));
+      if (h.isNotEmpty)
+        highlightControllers.add(TextEditingController(text: h));
     }
-    if (highlightControllers.isEmpty) highlightControllers.add(TextEditingController());
+    if (highlightControllers.isEmpty)
+      highlightControllers.add(TextEditingController());
 
     faqControllers.clear();
     for (var f in course.faqs) {
@@ -468,7 +471,7 @@ class CourseStateManager extends ChangeNotifier {
     // 4. Content & Thumbnail
     // We need to store current thumbnail URL to show it if no new file is picked
     currentThumbnailUrl = course.thumbnailUrl;
-    
+
     // Deep copy contents to ensure mutability
     _courseContents.clear();
     _courseContents.addAll(_deepCopyContents(course.contents));
@@ -519,4 +522,3 @@ class CourseStateManager extends ChangeNotifier {
     super.dispose();
   }
 }
-

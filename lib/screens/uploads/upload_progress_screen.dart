@@ -168,47 +168,42 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
         showDialog(
           context: context,
           barrierDismissible: false,
-          builder:
-              (ctx) => AlertDialog(
-                title: const Column(
-                  children: [
-                    Icon(
-                      Icons.check_circle_outline,
-                      color: Colors.green,
-                      size: 60,
-                    ),
-                    SizedBox(height: 16),
-                    Text(
-                      "Upload Complete! 🚀",
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-                content: const Text(
-                  "All files have been uploaded and the course has been saved successfully.",
+          builder: (ctx) => AlertDialog(
+            title: const Column(
+              children: [
+                Icon(Icons.check_circle_outline, color: Colors.green, size: 60),
+                SizedBox(height: 16),
+                Text(
+                  "Upload Complete! 🚀",
                   textAlign: TextAlign.center,
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-                actions: [
-                  Center(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(ctx); // Close Dialog
-                        Navigator.of(context).pop(); // Exit Progress Screen
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primaryColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 32,
-                          vertical: 12,
-                        ),
-                      ),
-                      child: const Text("Back to Dashboard"),
+              ],
+            ),
+            content: const Text(
+              "All files have been uploaded and the course has been saved successfully.",
+              textAlign: TextAlign.center,
+            ),
+            actions: [
+              Center(
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(ctx); // Close Dialog
+                    Navigator.of(context).pop(); // Exit Progress Screen
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 12,
                     ),
                   ),
-                ],
+                  child: const Text("Back to Dashboard"),
+                ),
               ),
+            ],
+          ),
         );
       }
     });

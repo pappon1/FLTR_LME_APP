@@ -110,10 +110,7 @@ class Step1SetupWidget extends StatelessWidget {
                   TextButton.icon(
                     onPressed: () => logic.clearSetupDraft(context),
                     icon: const Icon(Icons.delete_sweep, size: 16),
-                    label: const Text(
-                      'Clear',
-                      style: TextStyle(fontSize: 12),
-                    ),
+                    label: const Text('Clear', style: TextStyle(fontSize: 12)),
                     style: TextButton.styleFrom(
                       foregroundColor: Colors.red,
                       padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -134,7 +131,9 @@ class Step1SetupWidget extends StatelessWidget {
                   icon: Icon(
                     Icons.undo,
                     size: 20,
-                    color: logic.historyManager.canUndo ? AppTheme.primaryColor : Colors.grey,
+                    color: logic.historyManager.canUndo
+                        ? AppTheme.primaryColor
+                        : Colors.grey,
                   ),
                   tooltip: 'Undo',
                   padding: EdgeInsets.zero,
@@ -146,7 +145,9 @@ class Step1SetupWidget extends StatelessWidget {
                   icon: Icon(
                     Icons.redo,
                     size: 20,
-                    color: logic.historyManager.canRedo ? AppTheme.primaryColor : Colors.grey,
+                    color: logic.historyManager.canRedo
+                        ? AppTheme.primaryColor
+                        : Colors.grey,
                   ),
                   tooltip: 'Redo',
                   padding: EdgeInsets.zero,

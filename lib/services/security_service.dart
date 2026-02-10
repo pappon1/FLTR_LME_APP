@@ -9,7 +9,9 @@ class SecurityService {
   // 🔥 THE MASTER SALT/KEY
   // NOTE: In production, this can be further obfuscated using native C++ code (JNI/NDK)
   // as per your request for high-level security.
-  static final _masterKey = encrypt.Key.fromUtf8('LME_OFFICIAL_SECURE_2026_BY_AIDM'); // 32 chars
+  static final _masterKey = encrypt.Key.fromUtf8(
+    'LME_OFFICIAL_SECURE_2026_BY_AIDM',
+  ); // 32 chars
   static final _iv = encrypt.IV.fromLength(16);
 
   static final _encrypter = encrypt.Encrypter(encrypt.AES(_masterKey));
@@ -19,6 +21,9 @@ class SecurityService {
     if (encryptedText == null || encryptedText.isEmpty) return '';
     try {
       final decrypted = _encrypter.decrypt64(encryptedText, iv: _iv);
+      if (decrypted.isNotEmpty) {
+        LoggerService.info("Value decrypted successfully", tag: 'SECURITY');
+      }
       return decrypted;
     } catch (e) {
       LoggerService.error("Decryption Failed: $e", tag: 'SECURITY');

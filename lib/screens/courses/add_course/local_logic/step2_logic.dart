@@ -62,6 +62,7 @@ class Step2Logic {
   void cancelHoldTimer() {
     _holdTimer?.cancel();
   }
+
   void clearContentDraft(BuildContext context) {
     showDialog(
       context: context,

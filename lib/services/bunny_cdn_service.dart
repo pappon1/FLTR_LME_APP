@@ -9,9 +9,9 @@ class BunnyCDNService {
   static const String storageZoneName = 'lme-media-storage';
   static const String hostname =
       'sg.storage.bunnycdn.com'; // Verified Region: Singapore
-  
+
   static String get apiKey => ConfigService().bunnyStorageKey;
-  
+
   static const String cdnUrl = 'https://lme-media-storage.b-cdn.net';
 
   final Dio _dio = Dio(
@@ -46,6 +46,11 @@ class BunnyCDNService {
         final apiUrl = 'https://$hostname/$storageZoneName/$remotePath';
         final stream = file.openRead();
 
+        LoggerService.info(
+          "Starting Upload: $fileName -> $remotePath (Attempt $attempts) | Size: ${(fileSize / 1024).toStringAsFixed(2)} KB",
+          tag: 'BUNNY_CDN',
+        );
+
         final response = await _dio.put(
           apiUrl,
           data: stream,
@@ -57,8 +62,25 @@ class BunnyCDNService {
               'Content-Length': fileSize,
             },
           ),
-          onSendProgress: onProgress,
+          onSendProgress: (sent, total) {
+            if (total > 0) {
+              final percentage = (sent / total * 100).floor();
+              // Log every 20% to avoid spam
+              if (percentage % 20 == 0 && percentage > 0) {
+                LoggerService.info(
+                  "Upload Progress ($fileName): $percentage%",
+                  tag: 'BUNNY_CDN',
+                );
+              }
+            }
+            onProgress?.call(sent, total);
+          },
           cancelToken: cancelToken,
+        );
+
+        LoggerService.info(
+          "PUT Response: ${response.statusCode}",
+          tag: 'BUNNY_CDN',
         );
 
         if (response.statusCode != 201 && response.statusCode != 200) {
@@ -68,6 +90,7 @@ class BunnyCDNService {
         }
 
         final publicUrl = '$cdnUrl/$remotePath';
+        LoggerService.success("Upload Complete: $publicUrl", tag: 'BUNNY_CDN');
         return Uri.encodeFull(publicUrl);
       } catch (e) {
         if (e is DioException && e.type == DioExceptionType.cancel) {
@@ -90,7 +113,11 @@ class BunnyCDNService {
         apiUrl,
         options: Options(headers: {'AccessKey': apiKey}),
       );
-      return response.statusCode == 200 || response.statusCode == 204;
+      if (response.statusCode == 200) {
+        LoggerService.success("Deleted file: $remotePath", tag: 'BUNNY_CDN');
+        return true;
+      }
+      return false;
     } catch (e) {
       LoggerService.error('Bunny CDN Storage delete error: $e', tag: 'CDN');
       return false;

@@ -29,10 +29,19 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
   @override
   void initState() {
     super.initState();
-    final user = Provider.of<FirebaseAuthService>(context, listen: false).currentUser;
-    _nameController = TextEditingController(text: user?.displayName ?? 'Admin User');
-    _phoneController = TextEditingController(text: user?.phoneNumber?.replaceAll('+91', '').trim() ?? '');
-    _emailController = TextEditingController(text: user?.email ?? 'admin@example.com');
+    final user = Provider.of<FirebaseAuthService>(
+      context,
+      listen: false,
+    ).currentUser;
+    _nameController = TextEditingController(
+      text: user?.displayName ?? 'Admin User',
+    );
+    _phoneController = TextEditingController(
+      text: user?.phoneNumber?.replaceAll('+91', '').trim() ?? '',
+    );
+    _emailController = TextEditingController(
+      text: user?.email ?? 'admin@example.com',
+    );
   }
 
   Future<void> _pickImage() async {
@@ -88,7 +97,10 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                       backgroundColor: AppTheme.primaryColor.withOpacity(0.1),
                       backgroundImage: _image != null
                           ? FileImage(_image!)
-                          : (user?.photoURL != null ? NetworkImage(user!.photoURL!) : null) as ImageProvider?,
+                          : (user?.photoURL != null
+                                    ? NetworkImage(user!.photoURL!)
+                                    : null)
+                                as ImageProvider?,
                       child: _image == null && user?.photoURL == null
                           ? Text(
                               (user?.displayName ?? 'A')[0].toUpperCase(),
@@ -190,9 +202,9 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 20),
-              
+
               // Sign Out Button
               TextButton.icon(
                 onPressed: () async {

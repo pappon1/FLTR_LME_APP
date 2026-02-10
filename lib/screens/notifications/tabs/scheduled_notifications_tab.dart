@@ -130,7 +130,10 @@ class _ScheduledNotificationsTabState extends State<ScheduledNotificationsTab> {
                 _isRefreshing) {
               return ListView.separated(
                 physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 16,
+                ),
                 itemCount: 5,
                 separatorBuilder: (context, index) =>
                     const SizedBox(height: 16),

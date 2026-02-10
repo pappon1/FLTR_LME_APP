@@ -163,7 +163,10 @@ class _ReceivedMessagesTabState extends State<ReceivedMessagesTab> {
                   isRefreshing) {
                 return ListView.separated(
                   physics: const NeverScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 16,
+                  ),
                   itemCount: 8,
                   separatorBuilder: (context, index) =>
                       const SizedBox(height: 12),
@@ -214,7 +217,10 @@ class _ReceivedMessagesTabState extends State<ReceivedMessagesTab> {
                 },
                 child: ListView.separated(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 16,
+                  ),
                   itemCount: docs.length,
                   separatorBuilder: (context, index) =>
                       const SizedBox(height: 12),

@@ -142,7 +142,10 @@ class CourseCard extends StatelessWidget {
                             ? Colors.grey.shade900
                             : Colors.grey.shade200,
                       ),
-                      child: _CourseThumbnail(thumbnailUrl: course.thumbnailUrl, isDark: isDark),
+                      child: _CourseThumbnail(
+                        thumbnailUrl: course.thumbnailUrl,
+                        isDark: isDark,
+                      ),
                     ),
                   ),
 
@@ -158,9 +161,7 @@ class CourseCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // ✨ Badges Row (Sequential Zoom Animation)
-                        RepaintBoundary(
-                          child: _BadgeRow(course: course),
-                        ),
+                        RepaintBoundary(child: _BadgeRow(course: course)),
 
                         // Add 15px right padding back for subsequent elements (Title, Price, etc.)
                         Padding(
@@ -364,11 +365,7 @@ class _CourseThumbnail extends StatelessWidget {
       errorWidget: (context, url, error) => Container(
         color: isDark ? Colors.grey.shade900 : Colors.grey.shade200,
         alignment: Alignment.center,
-        child: const Icon(
-          Icons.broken_image,
-          color: Colors.grey,
-          size: 48,
-        ),
+        child: const Icon(Icons.broken_image, color: Colors.grey, size: 48),
       ),
     );
   }
@@ -408,96 +405,124 @@ class _BadgeRow extends StatelessWidget {
     final List<_BadgeData> data = [];
 
     // 🎥 Videos First
-    data.add(_BadgeData(
-      id: 'videos',
-      icon: Icons.video_library,
-      label: '${course.totalVideos} Videos',
-      color: const Color(0xFF536DFE),
-    ));
+    data.add(
+      _BadgeData(
+        id: 'videos',
+        icon: Icons.video_library,
+        label: '${course.totalVideos} Videos',
+        color: const Color(0xFF536DFE),
+      ),
+    );
 
     if (course.category.isNotEmpty) {
-      data.add(_BadgeData(
-        id: 'category',
-        icon: Icons.category,
-        label: course.category,
-        color: course.category.toLowerCase() == 'hardware' ? Colors.white : const Color(0xFF3F51B5),
-      ));
+      data.add(
+        _BadgeData(
+          id: 'category',
+          icon: Icons.category,
+          label: course.category,
+          color: course.category.toLowerCase() == 'hardware'
+              ? Colors.white
+              : const Color(0xFF3F51B5),
+        ),
+      );
     }
 
     if (course.difficulty.isNotEmpty) {
-      data.add(_BadgeData(
-        id: 'difficulty',
-        icon: Icons.signal_cellular_alt,
-        label: course.difficulty,
-        color: course.difficulty.toLowerCase() == 'advanced' ? Colors.amberAccent : const Color(0xFF795548),
-      ));
+      data.add(
+        _BadgeData(
+          id: 'difficulty',
+          icon: Icons.signal_cellular_alt,
+          label: course.difficulty,
+          color: course.difficulty.toLowerCase() == 'advanced'
+              ? Colors.amberAccent
+              : const Color(0xFF795548),
+        ),
+      );
     }
 
-    data.add(_BadgeData(
-      id: 'language',
-      icon: Icons.language,
-      label: course.language,
-      color: const Color(0xFF9C27B0),
-    ));
+    data.add(
+      _BadgeData(
+        id: 'language',
+        icon: Icons.language,
+        label: course.language,
+        color: const Color(0xFF9C27B0),
+      ),
+    );
 
-    data.add(_BadgeData(
-      id: 'mode',
-      icon: course.courseMode.toLowerCase().contains('live') ? Icons.sensors : Icons.play_circle_outline,
-      label: course.courseMode,
-      color: const Color(0xFFFF5722),
-    ));
+    data.add(
+      _BadgeData(
+        id: 'mode',
+        icon: course.courseMode.toLowerCase().contains('live')
+            ? Icons.sensors
+            : Icons.play_circle_outline,
+        label: course.courseMode,
+        color: const Color(0xFFFF5722),
+      ),
+    );
 
     if (course.hasCertificate) {
-      data.add(_BadgeData(
-        id: 'certificate',
-        icon: Icons.workspace_premium,
-        label: 'Certificate',
-        color: const Color(0xFFFF5252),
-      ));
+      data.add(
+        _BadgeData(
+          id: 'certificate',
+          icon: Icons.workspace_premium,
+          label: 'Certificate',
+          color: const Color(0xFFFF5252),
+        ),
+      );
     }
 
-    data.add(_BadgeData(
-      id: 'validity',
-      icon: Icons.history_toggle_off,
-      label: _getValidityText(course.courseValidityDays),
-      color: const Color(0xFF00BCD4),
-    ));
+    data.add(
+      _BadgeData(
+        id: 'validity',
+        icon: Icons.history_toggle_off,
+        label: _getValidityText(course.courseValidityDays),
+        color: const Color(0xFF00BCD4),
+      ),
+    );
 
     if (course.isOfflineDownloadEnabled) {
-      data.add(_BadgeData(
-        id: 'offline',
-        icon: Icons.download_for_offline,
-        label: 'Offline Access',
-        color: const Color(0xFF009688),
-      ));
+      data.add(
+        _BadgeData(
+          id: 'offline',
+          icon: Icons.download_for_offline,
+          label: 'Offline Access',
+          color: const Color(0xFF009688),
+        ),
+      );
     }
 
     if (course.isBigScreenEnabled) {
-      data.add(_BadgeData(
-        id: 'web',
-        icon: Icons.devices,
-        label: 'Web/PC Access',
-        color: const Color(0xFF03A9F4),
-      ));
+      data.add(
+        _BadgeData(
+          id: 'web',
+          icon: Icons.devices,
+          label: 'Web/PC Access',
+          color: const Color(0xFF03A9F4),
+        ),
+      );
     }
 
     if (course.supportType == 'WhatsApp Group') {
-      data.add(_BadgeData(
-        id: 'whatsapp',
-        icon: FontAwesomeIcons.whatsapp,
-        label: 'WhatsApp Support Group',
-        color: const Color(0xFF25D366),
-        extraPadding: const EdgeInsets.only(left: 11),
-      ));
+      data.add(
+        _BadgeData(
+          id: 'whatsapp',
+          icon: FontAwesomeIcons.whatsapp,
+          label: 'WhatsApp Support Group',
+          color: const Color(0xFF25D366),
+          extraPadding: const EdgeInsets.only(left: 11),
+        ),
+      );
     }
 
-    data.add(_BadgeData(
-      id: 'demo',
-      icon: Icons.play_lesson,
-      label: 'Demo',
-      color: const Color(0xFFE91E63),
-      extraPadding: const EdgeInsets.only(left: 5),
-    ));
+    data.add(
+      _BadgeData(
+        id: 'demo',
+        icon: Icons.play_lesson,
+        label: 'Demo',
+        color: const Color(0xFFE91E63),
+        extraPadding: const EdgeInsets.only(left: 5),
+      ),
+    );
 
     return data;
   }
@@ -554,44 +579,53 @@ class _CourseBadge extends StatelessWidget {
     final totalCycleDuration = (totalCount * totalBadgeTime) + postCycleIdle;
 
     return Padding(
-      padding: const EdgeInsets.only(left: 10, top: 2, bottom: 2).add(extraPadding),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 7.2, color: color),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: GoogleFonts.inter(
-              color: color,
-              fontSize: 8.2,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      )
-      .animate(onPlay: (controller) => controller.repeat())
-      .then(delay: (index * totalBadgeTime).ms)
-      .scale(
-        begin: const Offset(1, 1),
-        end: const Offset(1.25, 1.25),
-        duration: singleZoomDuration.ms,
-        curve: Curves.easeInOut,
-      )
-      .then()
-      .scale(
-        begin: const Offset(1.25, 1.25),
-        end: const Offset(1, 1),
-        duration: singleZoomDuration.ms,
-        curve: Curves.easeInOut,
-      )
-      .then(
-        delay: (totalCycleDuration - (index * totalBadgeTime) - totalBadgeTime).ms,
-      )
-      .custom(
-        duration: 1.ms,
-        builder: (context, value, child) => child,
-      ),
+      padding: const EdgeInsets.only(
+        left: 10,
+        top: 2,
+        bottom: 2,
+      ).add(extraPadding),
+      child:
+          Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(icon, size: 7.2, color: color),
+                  const SizedBox(width: 4),
+                  Text(
+                    label,
+                    style: GoogleFonts.inter(
+                      color: color,
+                      fontSize: 8.2,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              )
+              .animate(onPlay: (controller) => controller.repeat())
+              .then(delay: (index * totalBadgeTime).ms)
+              .scale(
+                begin: const Offset(1, 1),
+                end: const Offset(1.25, 1.25),
+                duration: singleZoomDuration.ms,
+                curve: Curves.easeInOut,
+              )
+              .then()
+              .scale(
+                begin: const Offset(1.25, 1.25),
+                end: const Offset(1, 1),
+                duration: singleZoomDuration.ms,
+                curve: Curves.easeInOut,
+              )
+              .then(
+                delay:
+                    (totalCycleDuration -
+                            (index * totalBadgeTime) -
+                            totalBadgeTime)
+                        .ms,
+              )
+              .custom(
+                duration: 1.ms,
+                builder: (context, value, child) => child,
+              ),
     );
   }
 }
@@ -601,7 +635,10 @@ class _ScrewdriverTagAnimation extends StatelessWidget {
   final String label;
   final String colorName;
 
-  const _ScrewdriverTagAnimation({required this.label, required this.colorName});
+  const _ScrewdriverTagAnimation({
+    required this.label,
+    required this.colorName,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -786,7 +823,12 @@ class _SawToothThread extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Colors.grey.shade700, Colors.white, Colors.grey.shade500, Colors.grey.shade800],
+              colors: [
+                Colors.grey.shade700,
+                Colors.white,
+                Colors.grey.shade500,
+                Colors.grey.shade800,
+              ],
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
             ),
@@ -829,7 +871,12 @@ class _ChromeFlatHead extends StatelessWidget {
         gradient: RadialGradient(
           center: const Alignment(-0.3, -0.3),
           radius: 0.8,
-          colors: [Colors.white, Colors.white, Colors.grey.shade200, Colors.grey.shade400],
+          colors: [
+            Colors.white,
+            Colors.white,
+            Colors.grey.shade200,
+            Colors.grey.shade400,
+          ],
         ),
         borderRadius: BorderRadius.circular(1.5),
         border: Border.all(color: Colors.black26, width: 0.5),
@@ -845,7 +892,10 @@ class _ChromeFlatHead extends StatelessWidget {
         child: Container(
           width: 1.5,
           height: 6,
-          decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(0.5)),
+          decoration: BoxDecoration(
+            color: Colors.black87,
+            borderRadius: BorderRadius.circular(0.5),
+          ),
         ),
       ),
     );
@@ -858,24 +908,30 @@ class _PrecisionGoldBit extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 28,
-      height: 5.0,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF5D4037), Color(0xFFFFD700), Color(0xFFFFF176), Color(0xFFFFD700), Color(0xFF5D4037)],
-          stops: [0.0, 0.3, 0.5, 0.7, 1.0],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
-      ),
-    )
-    .animate(onPlay: (controller) => controller.repeat())
-    .shimmer(
-      duration: 600.ms,
-      color: Colors.white,
-      angle: 3.14 / 2, // Vertical sweep simulates cylinder spin
-      size: 0.3,
-    );
+          width: 28,
+          height: 5.0,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                Color(0xFF5D4037),
+                Color(0xFFFFD700),
+                Color(0xFFFFF176),
+                Color(0xFFFFD700),
+                Color(0xFF5D4037),
+              ],
+              stops: [0.0, 0.3, 0.5, 0.7, 1.0],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+        )
+        .animate(onPlay: (controller) => controller.repeat())
+        .shimmer(
+          duration: 600.ms,
+          color: Colors.white,
+          angle: 3.14 / 2, // Vertical sweep simulates cylinder spin
+          size: 0.3,
+        );
   }
 }
 
@@ -905,10 +961,7 @@ class _TaperedMetalChuck extends StatelessWidget {
           topRight: Radius.circular(6),
           bottomRight: Radius.circular(6),
         ),
-        border: Border.all(
-          color: Colors.black.withOpacity(0.4),
-          width: 0.8,
-        ),
+        border: Border.all(color: Colors.black.withOpacity(0.4), width: 0.8),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -999,7 +1052,9 @@ class _PremiumHDHandle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = CourseCard._handleColorPresets[colorName] ?? CourseCard._handleColorPresets['Blue']!;
+    final colors =
+        CourseCard._handleColorPresets[colorName] ??
+        CourseCard._handleColorPresets['Blue']!;
 
     return RepaintBoundary(
       child: Container(
@@ -1023,13 +1078,12 @@ class _PremiumHDHandle extends StatelessWidget {
                     Container(
                       height: 25, // Adjusted size
                       padding: const EdgeInsets.symmetric(horizontal: 12),
-                      decoration: _premiumHandleDecoration(colors)
-                          .copyWith(
-                            border: Border.all(
-                              color: Colors.white24,
-                              width: 0.5,
-                            ), // Restored thickness
-                          ),
+                      decoration: _premiumHandleDecoration(colors).copyWith(
+                        border: Border.all(
+                          color: Colors.white24,
+                          width: 0.5,
+                        ), // Restored thickness
+                      ),
                       alignment: Alignment.center,
                       child: Text(
                         label.toUpperCase(),
@@ -1078,10 +1132,7 @@ class _PremiumHDHandle extends StatelessWidget {
                           topRight: Radius.circular(9),
                           bottomRight: Radius.circular(9),
                         ),
-                        border: Border.all(
-                          color: Colors.white30,
-                          width: 0.8,
-                        ),
+                        border: Border.all(color: Colors.white30, width: 0.8),
                       ),
                       child: Center(
                         child: Container(

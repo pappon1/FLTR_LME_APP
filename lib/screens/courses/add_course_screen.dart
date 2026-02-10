@@ -65,7 +65,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
     state = CourseStateManager();
     draftManager = DraftManager(state);
     historyManager = HistoryManager(state, draftManager);
-    
+
     // Wire up History: When draft saves, capture state for Undo stack
     draftManager.onDraftSaved = () {
       if (mounted) {
@@ -82,7 +82,11 @@ class _AddCourseScreenState extends State<AddCourseScreen>
       draftManager,
       context,
     );
-    step0Logic = Step0Logic(state, draftManager, historyManager); // Pass HM to Step0Logic
+    step0Logic = Step0Logic(
+      state,
+      draftManager,
+      historyManager,
+    ); // Pass HM to Step0Logic
     step1Logic = Step1Logic(state, draftManager, historyManager);
     step2Logic = Step2Logic(state, draftManager, historyManager);
     step3Logic = Step3Logic(state, draftManager, historyManager);
@@ -137,7 +141,8 @@ class _AddCourseScreenState extends State<AddCourseScreen>
 
     state.discountAmountController.addListener(() {
       state.calculateFinalPrice();
-      if (state.discountError && state.discountAmountController.text.trim().isNotEmpty) {
+      if (state.discountError &&
+          state.discountAmountController.text.trim().isNotEmpty) {
         state.discountError = false;
         state.updateState();
       }
@@ -145,7 +150,8 @@ class _AddCourseScreenState extends State<AddCourseScreen>
     });
 
     state.whatsappController.addListener(() {
-      if (state.wpGroupLinkError && state.whatsappController.text.trim().isNotEmpty) {
+      if (state.wpGroupLinkError &&
+          state.whatsappController.text.trim().isNotEmpty) {
         state.wpGroupLinkError = false;
         state.updateState();
       }
@@ -153,7 +159,8 @@ class _AddCourseScreenState extends State<AddCourseScreen>
     });
 
     state.websiteUrlController.addListener(() {
-      if (state.bigScreenUrlError && state.websiteUrlController.text.trim().isNotEmpty) {
+      if (state.bigScreenUrlError &&
+          state.websiteUrlController.text.trim().isNotEmpty) {
         state.bigScreenUrlError = false;
         state.updateState();
       }
@@ -419,8 +426,8 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                 }
                 state.updateState();
               },
-              onBulkCopy:
-                  () => contentManager.handleBulkCopyCut(context, false),
+              onBulkCopy: () =>
+                  contentManager.handleBulkCopyCut(context, false),
               onBulkDelete: () => contentManager.handleBulkDelete(context),
               onAddContent: _showAddContentMenu,
               onCancelDrag: () {
@@ -491,7 +498,8 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                         return ListenableBuilder(
                           listenable: state, // For uploadTasks list changes
                           builder: (context, _) {
-                            if (!state.isUploading) return const SizedBox.shrink();
+                            if (!state.isUploading)
+                              return const SizedBox.shrink();
                             return CourseUploadingOverlay(
                               totalProgress: progress,
                               uploadTasks: state.uploadTasks,
@@ -612,8 +620,8 @@ class _AddCourseScreenState extends State<AddCourseScreen>
                           child: Text(
                             state.currentStep == 3
                                 ? (state.editingCourseId != null
-                                    ? 'Update Course'
-                                    : 'Create Course')
+                                      ? 'Update Course'
+                                      : 'Create Course')
                                 : 'Next Step',
                             style: const TextStyle(
                               color: Colors.white,

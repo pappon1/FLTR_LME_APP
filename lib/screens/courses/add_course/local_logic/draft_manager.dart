@@ -18,8 +18,8 @@ class DraftManager {
     try {
       state.isRestoringDraft = true;
       final prefs = await SharedPreferences.getInstance();
-      final String draftKey = state.editingCourseId != null 
-          ? 'course_draft_${state.editingCourseId}' 
+      final String draftKey = state.editingCourseId != null
+          ? 'course_draft_${state.editingCourseId}'
           : 'course_creation_draft';
       final String? jsonString = prefs.getString(draftKey);
       if (jsonString != null) {
@@ -175,10 +175,10 @@ class DraftManager {
     try {
       state.isSavingDraft = true;
       final prefs = await SharedPreferences.getInstance();
-      
+
       // Determine the key
-      final String draftKey = state.editingCourseId != null 
-          ? 'course_draft_${state.editingCourseId}' 
+      final String draftKey = state.editingCourseId != null
+          ? 'course_draft_${state.editingCourseId}'
           : 'course_creation_draft';
 
       // Use the helper method to generate the snapshot
@@ -190,10 +190,13 @@ class DraftManager {
 
       await prefs.setString(draftKey, encodedDraft);
       state.isSavingDraft = false;
-      LoggerService.info('Course draft saved successfully to $draftKey', tag: 'DRAFT');
-      
+      LoggerService.info(
+        'Course draft saved successfully to $draftKey',
+        tag: 'DRAFT',
+      );
+
       // Notify History Manager (or any other listener) that a save occurred
-      onDraftSaved?.call(); 
+      onDraftSaved?.call();
     } catch (e) {
       state.isSavingDraft = false;
       LoggerService.error('Draft Save Error: $e', tag: 'DRAFT');

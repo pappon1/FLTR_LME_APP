@@ -38,7 +38,7 @@ class HistoryManager {
     if (_isPerformingUndoRedo) return;
 
     final snapshot = draftManager.createSnapshot();
-    
+
     // Avoid duplicate adjacent snapshots
     if (_undoStack.isNotEmpty) {
       // Basic check: compare lastUpdated or a quick hash? content comparison is expensive.
@@ -49,26 +49,30 @@ class HistoryManager {
     if (_undoStack.length > _maxStackSize) {
       _undoStack.removeAt(0);
     }
-    
+
     // Clear redo stack on new change
     _redoStack.clear();
-    
+
     // Notify UI (Undo button enablement changes)
     // We use a microtask or just call it, but verify we are not in build.
     // Since this is called from Debounce (Timer), it's safe.
     state.updateState();
-    
-    LoggerService.info('State Captured. Undo Stack: ${_undoStack.length}', tag: 'HISTORY');
+
+    LoggerService.info(
+      'State Captured. Undo Stack: ${_undoStack.length}',
+      tag: 'HISTORY',
+    );
   }
 
-  bool get canUndo => _undoStack.length > 1; // Need at least 1 previous state to undo TO
+  bool get canUndo =>
+      _undoStack.length > 1; // Need at least 1 previous state to undo TO
   bool get canRedo => _redoStack.isNotEmpty;
 
   void undo(BuildContext context) {
     if (_undoStack.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nothing to undo')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Nothing to undo')));
       return;
     }
 
@@ -81,15 +85,15 @@ class HistoryManager {
       // 2. Pop the latest state from Undo Stack (which represents "Current" before this undo)
       // Actually, if we capture state continuously, the top of Undo Stack is "Current".
       // So we pop it (discard or move to redo), and peek the *previous* one.
-      
+
       // If we only captured *before* changes, top of stack is "Previous".
       // But if we capture *after* changes (via DraftManager debouncer), top is "Current".
       // Let's assume top is "Current".
-      
+
       if (_undoStack.length < 2) {
-         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Initial state reached')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Initial state reached')));
         _isPerformingUndoRedo = false;
         return;
       }
@@ -100,11 +104,13 @@ class HistoryManager {
       // 3. Restore
       draftManager.restoreFromSnapshot(previousSnapshot);
       state.updateState(); // Notify listeners
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Undone'), duration: Duration(milliseconds: 500)),
+        const SnackBar(
+          content: Text('Undone'),
+          duration: Duration(milliseconds: 500),
+        ),
       );
-      
     } catch (e) {
       LoggerService.error('Undo Failed: $e', tag: 'HISTORY');
     } finally {
@@ -114,9 +120,9 @@ class HistoryManager {
 
   void redo(BuildContext context) {
     if (_redoStack.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Nothing to redo')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Nothing to redo')));
       return;
     }
 
@@ -134,9 +140,11 @@ class HistoryManager {
       state.updateState();
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Redone'), duration: Duration(milliseconds: 500)),
+        const SnackBar(
+          content: Text('Redone'),
+          duration: Duration(milliseconds: 500),
+        ),
       );
-
     } catch (e) {
       LoggerService.error('Redo Failed: $e', tag: 'HISTORY');
     } finally {

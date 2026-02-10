@@ -66,15 +66,21 @@ class Step2ContentWidget extends StatelessWidget {
                             Row(
                               children: [
                                 TextButton.icon(
-                                  onPressed: () => logic.clearContentDraft(context),
-                                  icon: const Icon(Icons.delete_sweep, size: 16),
+                                  onPressed: () =>
+                                      logic.clearContentDraft(context),
+                                  icon: const Icon(
+                                    Icons.delete_sweep,
+                                    size: 16,
+                                  ),
                                   label: const Text(
                                     'Clear',
                                     style: TextStyle(fontSize: 12),
                                   ),
                                   style: TextButton.styleFrom(
                                     foregroundColor: Colors.red,
-                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                    ),
                                     minimumSize: const Size(0, 0),
                                   ),
                                 ),

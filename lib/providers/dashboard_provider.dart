@@ -5,6 +5,7 @@ import '../models/course_model.dart';
 import '../models/student_model.dart';
 import '../services/firestore_service.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class DashboardProvider extends ChangeNotifier {
   int _selectedIndex = 0;
@@ -65,6 +66,20 @@ class DashboardProvider extends ChangeNotifier {
   /// Refresh all dashboard data
   Future<void> refreshData() async {
     if (_isLoading) return; // Prevent multiple simultaneous refreshes
+
+    final user = FirebaseAuth.instance.currentUser;
+    debugPrint("🔍 [DASHBOARD_DEBUG] User: ${user?.email} (ID: ${user?.uid})");
+    
+    if (user != null) {
+      try {
+        final idToken = await user.getIdTokenResult();
+        debugPrint("🔍 [DASHBOARD_DEBUG] Auth Claims: ${idToken.claims}");
+      } catch (e) {
+        debugPrint("🔍 [DASHBOARD_DEBUG] Failed to get Auth Claims: $e");
+      }
+    } else {
+      debugPrint("🔍 [DASHBOARD_DEBUG] NO AUTHENTICATED USER FOUND!");
+    }
 
     _isLoading = true;
     notifyListeners();

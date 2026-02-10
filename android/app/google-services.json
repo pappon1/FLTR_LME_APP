@@ -12,7 +12,20 @@
           "package_name": "com.officialmobileengineer.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1014977122104-ecvdihei0kslaks5fdcuf5kd6tpigpgo.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.officialmobileengineer.app",
+            "certificate_hash": "2d7e369da09ea049a1ace16f3e8f79e1c51c4d68"
+          }
+        },
+        {
+          "client_id": "1014977122104-evjh3pona5k5smo72b3e1oructh70tuu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyCOP4Udsulcpujh8OanH_FkVdGA8KP06qE"
@@ -20,7 +33,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1014977122104-evjh3pona5k5smo72b3e1oructh70tuu.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

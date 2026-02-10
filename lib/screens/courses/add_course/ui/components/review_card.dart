@@ -72,7 +72,6 @@ class CourseReviewCard extends StatelessWidget {
             onEdit: () => onEditStep(0),
           ),
 
-
           const SizedBox(height: 8),
           const Divider(height: 24),
 

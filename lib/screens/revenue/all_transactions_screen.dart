@@ -85,7 +85,10 @@ class _AllTransactionsScreenState extends State<AllTransactionsScreen> {
               onRefresh: _fetchTransactions,
               color: primaryColor,
               child: ListView.builder(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 16,
+                ),
                 itemCount: _transactions.length,
                 itemBuilder: (context, index) {
                   final data =

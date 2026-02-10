@@ -19,7 +19,6 @@ class CoursesTab extends StatefulWidget {
 }
 
 class _CoursesTabState extends State<CoursesTab> {
-
   @override
   void initState() {
     super.initState();
@@ -93,15 +92,15 @@ class _CoursesTabState extends State<CoursesTab> {
             final bool isLoading = provider.isLoading;
 
             if (isLoading && displayCourses.isEmpty) {
-               return _buildShimmerGrid();
+              return _buildShimmerGrid();
             }
 
             if (displayCourses.isEmpty) {
               return Stack(
                 children: [
-                   ListView(
-                     physics: const AlwaysScrollableScrollPhysics(),
-                   ), // Always scrollable for RefreshIndicator
+                  ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                  ), // Always scrollable for RefreshIndicator
                   Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -147,7 +146,10 @@ class _CoursesTabState extends State<CoursesTab> {
                       showBorder: true,
                     )
                     .animate()
-                    .fadeIn(duration: 400.ms, delay: (index * 50).ms) // Reduced delay for smoother list
+                    .fadeIn(
+                      duration: 400.ms,
+                      delay: (index * 50).ms,
+                    ) // Reduced delay for smoother list
                     .slideX(begin: -0.05, end: 0);
               },
             );

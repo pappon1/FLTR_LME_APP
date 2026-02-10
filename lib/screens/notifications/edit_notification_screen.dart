@@ -326,7 +326,10 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
                   ),
                   Expanded(
                     child: ListView(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 16,
+                      ),
                       children: [
                         RadioGroup<String>(
                           groupValue: tempAction,
@@ -553,7 +556,10 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
                     ),
                   )
                 : SingleChildScrollView(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 16,
+                    ),
                     child: Form(
                       key: _formKey,
                       child: Column(

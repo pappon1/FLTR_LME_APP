@@ -54,92 +54,94 @@ class _SplashScreenState extends State<SplashScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 child: Column(
                   children: [
-              // Logo with pulse animation
-              Container(
-                    width: 120,
-                    height: 120,
-                    decoration: BoxDecoration(
-                      gradient: AppTheme.primaryGradient,
-                      borderRadius: BorderRadius.circular(3.0),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.primaryColor.withValues(alpha: 0.5),
-                          blurRadius: 30,
-                          spreadRadius: 5,
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      FontAwesomeIcons.mobileScreenButton,
-                      size: 60,
-                      color: Colors.white,
-                    ),
-                  )
-                  .animate(onPlay: (controller) => controller.repeat())
-                  .shimmer(duration: 2000.ms, color: Colors.white24)
-                  .animate()
-                  .scale(duration: 600.ms, curve: Curves.easeOutBack),
+                    // Logo with pulse animation
+                    Container(
+                          width: 120,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            gradient: AppTheme.primaryGradient,
+                            borderRadius: BorderRadius.circular(3.0),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppTheme.primaryColor.withValues(
+                                  alpha: 0.5,
+                                ),
+                                blurRadius: 30,
+                                spreadRadius: 5,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            FontAwesomeIcons.mobileScreenButton,
+                            size: 60,
+                            color: Colors.white,
+                          ),
+                        )
+                        .animate(onPlay: (controller) => controller.repeat())
+                        .shimmer(duration: 2000.ms, color: Colors.white24)
+                        .animate()
+                        .scale(duration: 600.ms, curve: Curves.easeOutBack),
 
-              const SizedBox(height: 30),
+                    const SizedBox(height: 30),
 
-              // App Name
-              Text(
-                    'Mobile Repair Pro',
-                    style: AppTheme.heading1(
-                      context,
-                    ).copyWith(color: Colors.white, letterSpacing: 1),
-                  )
-                  .animate()
-                  .fadeIn(duration: 800.ms, delay: 300.ms)
-                  .slideY(begin: 0.3, end: 0, duration: 600.ms),
+                    // App Name
+                    Text(
+                          'Mobile Repair Pro',
+                          style: AppTheme.heading1(
+                            context,
+                          ).copyWith(color: Colors.white, letterSpacing: 1),
+                        )
+                        .animate()
+                        .fadeIn(duration: 800.ms, delay: 300.ms)
+                        .slideY(begin: 0.3, end: 0, duration: 600.ms),
 
-              const SizedBox(height: 8),
+                    const SizedBox(height: 8),
 
-              // Subtitle
-              Text(
-                    'Admin Dashboard',
-                    style: AppTheme.bodyLarge(context).copyWith(
-                      color: Colors.white60,
-                      letterSpacing: 3,
-                      fontWeight: FontWeight.w300,
-                    ),
-                  )
-                  .animate()
-                  .fadeIn(duration: 800.ms, delay: 500.ms)
-                  .slideY(begin: 0.3, end: 0, duration: 600.ms),
+                    // Subtitle
+                    Text(
+                          'Admin Dashboard',
+                          style: AppTheme.bodyLarge(context).copyWith(
+                            color: Colors.white60,
+                            letterSpacing: 3,
+                            fontWeight: FontWeight.w300,
+                          ),
+                        )
+                        .animate()
+                        .fadeIn(duration: 800.ms, delay: 500.ms)
+                        .slideY(begin: 0.3, end: 0, duration: 600.ms),
 
-              const SizedBox(height: 50),
+                    const SizedBox(height: 50),
 
-              // Loading indicator
-              SizedBox(
-                    width: 200,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(3.0),
-                      child: const LinearProgressIndicator(
-                        backgroundColor: Colors.white10,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          AppTheme.primaryColor,
-                        ),
-                      ),
-                    ),
-                  )
-                  .animate(onPlay: (controller) => controller.repeat())
-                  .shimmer(duration: 1500.ms)
-                  .animate()
-                  .fadeIn(delay: 700.ms),
+                    // Loading indicator
+                    SizedBox(
+                          width: 200,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(3.0),
+                            child: const LinearProgressIndicator(
+                              backgroundColor: Colors.white10,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                AppTheme.primaryColor,
+                              ),
+                            ),
+                          ),
+                        )
+                        .animate(onPlay: (controller) => controller.repeat())
+                        .shimmer(duration: 1500.ms)
+                        .animate()
+                        .fadeIn(delay: 700.ms),
 
-              const SizedBox(height: 20),
+                    const SizedBox(height: 20),
 
-              Text(
-                    'Loading...',
-                    style: AppTheme.bodySmall(
-                      context,
-                    ).copyWith(color: Colors.white38, letterSpacing: 2),
-                  )
-                  .animate(onPlay: (controller) => controller.repeat())
-                  .fadeIn(duration: 800.ms)
-                  .then()
-                  .fadeOut(duration: 800.ms),
+                    Text(
+                          'Loading...',
+                          style: AppTheme.bodySmall(
+                            context,
+                          ).copyWith(color: Colors.white38, letterSpacing: 2),
+                        )
+                        .animate(onPlay: (controller) => controller.repeat())
+                        .fadeIn(duration: 800.ms)
+                        .then()
+                        .fadeOut(duration: 800.ms),
                   ],
                 ),
               ),

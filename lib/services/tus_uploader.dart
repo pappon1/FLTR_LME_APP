@@ -34,7 +34,10 @@ class TusUploader {
     final String fingerprint = "$filename-$fileSize-$libraryId-$videoId";
 
     // 1. Check for existing upload URL (Resume)
-    LoggerService.info("Checking session for fingerprint: $fingerprint", tag: 'TUS');
+    LoggerService.info(
+      "Checking session for fingerprint: $fingerprint",
+      tag: 'TUS',
+    );
     final session = await _getSession(fingerprint);
     String? uploadUrl = session?['url'];
     String? currentVideoId = session?['videoId'];
@@ -61,27 +64,38 @@ class TusUploader {
         );
 
         final serverOffset = headResponse.headers.value('Upload-Offset');
+        LoggerService.info(
+          "HEAD Response Headers: ${headResponse.headers}",
+          tag: 'TUS',
+        );
         if (serverOffset != null) {
           offset = int.parse(serverOffset);
           LoggerService.success(
-              "Resuming from Server Offset: $offset bytes", tag: 'TUS');
+            "Resuming from Server Offset: $offset bytes",
+            tag: 'TUS',
+          );
           if (onProgress != null) onProgress(offset, fileSize);
         } else {
           LoggerService.warning(
-              "No Upload-Offset found in HEAD response.", tag: 'TUS');
+            "No Upload-Offset found in HEAD response.",
+            tag: 'TUS',
+          );
           uploadUrl = null; // Force fresh POST if session is invalid
         }
       } catch (e) {
         if (e is DioException &&
             (e.response?.statusCode == 404 || e.response?.statusCode == 410)) {
           LoggerService.warning(
-              "TUS Session Expired (404). Starting fresh.", tag: 'TUS');
+            "TUS Session Expired (404). Starting fresh.",
+            tag: 'TUS',
+          );
           uploadUrl = null;
           await _clearSession(fingerprint);
         } else {
           LoggerService.error(
-              "Network error during Handshake: $e. Cannot resume safely.",
-              tag: 'TUS');
+            "Network error during Handshake: $e. Cannot resume safely.",
+            tag: 'TUS',
+          );
           rethrow; // Don't fall back to 0% if it's just a network error!
         }
       }
@@ -90,8 +104,9 @@ class TusUploader {
     // 2. Create new Upload (POST) ONLY if we don't have a valid resume URL
     if (uploadUrl == null) {
       LoggerService.info(
-          "No valid session found for $filename. Creating new POST.",
-          tag: 'TUS');
+        "No valid session found for $filename. Creating new POST.",
+        tag: 'TUS',
+      );
       try {
         final metadata = {
           'libraryid': base64Encode(utf8.encode(libraryId)),
@@ -103,8 +118,9 @@ class TusUploader {
           metadata['video_id'] = base64Encode(utf8.encode(videoId));
         }
 
-        final metadataStr =
-            metadata.entries.map((e) => "${e.key} ${e.value}").join(",");
+        final metadataStr = metadata.entries
+            .map((e) => "${e.key} ${e.value}")
+            .join(",");
         final headers = {
           'Tus-Resumable': '1.0.0',
           'Upload-Length': fileSize.toString(),
@@ -134,12 +150,18 @@ class TusUploader {
           currentVideoId = uploadUrl.split('/').last;
         }
 
+        LoggerService.info(
+          "POST Success. Location: $uploadUrl, MediaID: $currentVideoId",
+          tag: 'TUS',
+        );
         await _saveSession(fingerprint, uploadUrl, currentVideoId);
         LoggerService.success("New Session Created: $uploadUrl", tag: 'TUS');
       } on DioException catch (e) {
         final errorData = e.response?.data;
-        LoggerService.error("Creation Error Status: ${e.response?.statusCode}",
-            tag: 'TUS');
+        LoggerService.error(
+          "Creation Error Status: ${e.response?.statusCode}",
+          tag: 'TUS',
+        );
         LoggerService.error("Creation Error Body: $errorData", tag: 'TUS');
 
         String errorMsg = "Upload Creation Failed (${e.response?.statusCode})";
@@ -179,6 +201,12 @@ class TusUploader {
 
         final List<int> chunkData = await raf.read(sizeToRead);
 
+        LoggerService.info(
+          "Uploading Chunk: Offset $offset, Size $sizeToRead bytes...",
+          tag: 'TUS',
+        );
+        final stopwatch = Stopwatch()..start();
+
         // Upload chunk
         try {
           final response = await _dio.patch(
@@ -205,13 +233,18 @@ class TusUploader {
           );
 
           if (response.statusCode != 204 && response.statusCode != 200) {
+            LoggerService.error(
+              "TUS PATCH Server Error: Status=${response.statusCode}, Body=${response.data}",
+              tag: 'TUS',
+            );
             throw Exception(
               "TUS PATCH Error (${response.statusCode}): ${response.data}",
             );
           }
 
+          stopwatch.stop();
           LoggerService.success(
-            "Chunk Uploaded: $sizeToRead bytes at offset $offset",
+            "Chunk Uploaded in ${stopwatch.elapsedMilliseconds}ms. New Offset: ${offset + sizeToRead}",
             tag: 'TUS',
           );
         } on DioException catch (e) {

@@ -35,7 +35,8 @@ class Step3Logic {
 
   void setSpecialTagColor(String colorName) {
     state.specialTagColor = colorName;
-    state.updateState(); // Helper to notify listeners if needed immediately for UI feedback
+    state
+        .updateState(); // Helper to notify listeners if needed immediately for UI feedback
     draftManager.saveCourseDraft();
   }
 
@@ -48,6 +49,7 @@ class Step3Logic {
     state.isPublished = isPublished;
     draftManager.saveCourseDraft();
   }
+
   void clearAdvanceDraft(BuildContext context) {
     showDialog(
       context: context,

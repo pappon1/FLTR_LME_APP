@@ -35,7 +35,7 @@ class _ContactLinksScreenState extends State<ContactLinksScreen> {
           .get();
       if (doc.exists) {
         final data = doc.data() as Map<String, dynamic>;
-        
+
         // Helper to strip prefix
         String stripPrefix(String? val) {
           if (val == null) return '';
@@ -301,7 +301,7 @@ class _ContactLinksScreenState extends State<ContactLinksScreen> {
                 horizontal: 16,
                 vertical: 14,
               ),
-              prefixIcon: prefixText != null 
+              prefixIcon: prefixText != null
                   ? Container(
                       padding: const EdgeInsets.only(left: 16, right: 8),
                       child: Row(
@@ -310,7 +310,8 @@ class _ContactLinksScreenState extends State<ContactLinksScreen> {
                           Text(
                             prefixText,
                             style: GoogleFonts.inter(
-                              color: theme.textTheme.bodyLarge?.color?.withOpacity(0.7),
+                              color: theme.textTheme.bodyLarge?.color
+                                  ?.withOpacity(0.7),
                               fontWeight: FontWeight.w600,
                               fontSize: 14,
                             ),

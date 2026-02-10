@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../services/local_notification_service.dart';
 
 class AdminNotificationProvider with ChangeNotifier {
@@ -23,10 +24,20 @@ class AdminNotificationProvider with ChangeNotifier {
 
   void init() {
     _notificationService.init();
+    
+    // Cancel existing if any (to prevent multiple listeners)
+    _subscription?.cancel();
+    
     _listenToNotifications();
   }
 
   void _listenToNotifications() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      debugPrint("ℹ️ [NOTIFICATIONS] User not logged in. Skipping notification listener.");
+      return;
+    }
+
     _subscription = FirebaseFirestore.instance
         .collection('admin_notifications')
         .where('isRead', isEqualTo: false) // Only fetch unread to count badges

@@ -14,7 +14,8 @@ class FirebaseAuthService {
   Future<void> _initGoogleSignIn() async {
     // Initialize with Web Client ID (Required for Android backends/verification)
     await _googleSignIn.initialize(
-      serverClientId: '1014977122104-evjh3pona5k5smo72b3e1oructh70tuu.apps.googleusercontent.com',
+      serverClientId:
+          '1014977122104-evjh3pona5k5smo72b3e1oructh70tuu.apps.googleusercontent.com',
     );
   }
 

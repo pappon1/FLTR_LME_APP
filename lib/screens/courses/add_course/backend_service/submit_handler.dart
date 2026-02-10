@@ -12,8 +12,10 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../../../models/course_model.dart';
 import '../local_logic/state_manager.dart';
 import '../local_logic/validation.dart';
+import '../../../../services/config_service.dart';
 import 'package:disk_space_2/disk_space_2.dart';
 import '../../../../screens/uploads/upload_progress_screen.dart';
+import '../../../../services/logger_service.dart';
 
 class SubmitHandler {
   final CourseStateManager state;
@@ -45,6 +47,11 @@ class SubmitHandler {
     state.isUploading = true;
     state.uploadTasks = [];
     state.updateState();
+
+    LoggerService.info(
+      "Starting Course Submission Process...",
+      tag: 'SUBMIT_HANDLER',
+    );
 
     try {
       await WakelockPlus.enable();
@@ -95,10 +102,12 @@ class SubmitHandler {
       }
 
       calculateSizeRecursive(state.courseContents);
-      if (state.thumbnailImage != null)
+      if (state.thumbnailImage != null) {
         totalSizeNeeded += state.thumbnailImage!.lengthSync();
-      if (state.certificate1File != null)
+      }
+      if (state.certificate1File != null) {
         totalSizeNeeded += state.certificate1File!.lengthSync();
+      }
 
       // Get free space (MB to Bytes)
       final double? freeSpaceMb = await DiskSpace.getFreeDiskSpace;
@@ -115,6 +124,11 @@ class SubmitHandler {
           return;
         }
       }
+
+      LoggerService.info(
+        "Disk Space Check Passed. Free: ${freeSpaceMb?.toInt()} MB",
+        tag: 'SUBMIT_HANDLER',
+      );
 
       // --- Point 1: Preparation Progress ---
       int totalFiles = filesToCopy.length;
@@ -142,6 +156,10 @@ class SubmitHandler {
         final newPath = '${safeDir.path}/$filename';
 
         updatePrep("Copying $label...");
+        LoggerService.info(
+          "Copying file: $label -> $newPath",
+          tag: 'SUBMIT_HANDLER',
+        );
         await f.copy(newPath);
 
         copiedCount++;
@@ -162,7 +180,9 @@ class SubmitHandler {
 
           if ((type == 'video' || type == 'pdf' || type == 'image')) {
             final String? fPath = item['path'];
-            if (fPath != null && fPath.isNotEmpty && (item['isLocal'] == true || fPath.startsWith('/'))) {
+            if (fPath != null &&
+                fPath.isNotEmpty &&
+                (item['isLocal'] == true || fPath.startsWith('/'))) {
               item['path'] = await copyToSafe(fPath, itemName);
             }
           }
@@ -172,7 +192,9 @@ class SubmitHandler {
               item['thumbnail'] = await copyToSafe(tPath, 'Thumbnail');
             }
           }
-          if (type == 'folder' && item['contents'] != null && item['contents'] is List) {
+          if (type == 'folder' &&
+              item['contents'] != null &&
+              item['contents'] is List) {
             await processContentsRecursive(item['contents']);
           }
         }
@@ -195,7 +217,8 @@ class SubmitHandler {
         state.certificate1File = File(newPath);
       }
 
-      final String docId = state.editingCourseId ??
+      final String docId =
+          state.editingCourseId ??
           FirebaseFirestore.instance.collection('courses').doc().id;
 
       final draftCourse = CourseModel(
@@ -294,7 +317,9 @@ class SubmitHandler {
 
         // 1. Process File Task
         if ((type == 'video' || type == 'pdf' || type == 'image') &&
-            (item['isLocal'] == true || (item['path'] != null && item['path'].toString().startsWith('/')))) {
+            (item['isLocal'] == true ||
+                (item['path'] != null &&
+                    item['path'].toString().startsWith('/')))) {
           final filePath = item['path'];
           if (filePath != null && filePath is String && filePath.isNotEmpty) {
             String folder = 'others';
@@ -306,9 +331,11 @@ class SubmitHandler {
               folder = 'images';
             }
 
-            final String safeName = (item['name'] ?? 'file').toString().replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
+            final String safeName = (item['name'] ?? 'file')
+                .toString()
+                .replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
             final uniqueName = '${currentIndex}_$safeName';
-            
+
             addTask(
               filePath,
               'courses/$sessionId/$folder/$uniqueName',
@@ -333,7 +360,9 @@ class SubmitHandler {
         }
 
         // 3. Recurse into Folders
-        if (type == 'folder' && item['contents'] != null && item['contents'] is List) {
+        if (type == 'folder' &&
+            item['contents'] != null &&
+            item['contents'] is List) {
           for (var sub in item['contents']) {
             processItemRecursive(sub);
           }
@@ -358,29 +387,38 @@ class SubmitHandler {
 
       // 2. Persistent retry loop for "Double Tap" until status is confirmed
       // 3. Optimized Metadata Transfer (File-based instead of String-based)
-      final String metadataFileName = 'course_metadata_${sessionId}.json';
+      final String metadataFileName = 'course_metadata_$sessionId.json';
       final File metadataFile = File('${safeDir.path}/$metadataFileName');
 
       final Map<String, dynamic> payload = {};
       
+      // Pass API keys to background service since it can't read from Firestore (no Auth in isolate)
+      payload['bunnyKeys'] = {
+        'storageKey': ConfigService().bunnyStorageKey,
+        'streamKey': ConfigService().bunnyStreamKey,
+        'libraryId': ConfigService().bunnyLibraryId,
+      };
+
       // Function to fix types for JSON serialization
       void prepareMapForJson(Map<String, dynamic> map) {
         if (map['createdAt'] != null) {
-           if (map['createdAt'] is Timestamp) {
-              map['createdAt'] = (map['createdAt'] as Timestamp).toDate().toIso8601String();
-           } else if (map['createdAt'] is DateTime) {
-              map['createdAt'] = (map['createdAt'] as DateTime).toIso8601String();
-           } else {
-              // Convert FieldValue or others to current time string fallback
-              map['createdAt'] = DateTime.now().toIso8601String();
-           }
+          if (map['createdAt'] is Timestamp) {
+            map['createdAt'] = (map['createdAt'] as Timestamp)
+                .toDate()
+                .toIso8601String();
+          } else if (map['createdAt'] is DateTime) {
+            map['createdAt'] = (map['createdAt'] as DateTime).toIso8601String();
+          } else {
+            // Convert FieldValue or others to current time string fallback
+            map['createdAt'] = DateTime.now().toIso8601String();
+          }
         }
       }
 
       if (state.editingCourseId != null) {
         final updateMap = draftCourse.toMap();
         prepareMapForJson(updateMap);
-        
+
         payload['updateData'] = updateMap;
         payload['updateData'].remove('id'); // ID is passed separately
         payload['courseId'] = docId;
@@ -388,13 +426,23 @@ class SubmitHandler {
       } else {
         final contentMap = draftCourse.toMap();
         prepareMapForJson(contentMap);
-        contentMap['id'] = docId; // 🔥 MANDATORY: Ensure ID is preserved for finalization
-        
+        contentMap['id'] =
+            docId; // 🔥 MANDATORY: Ensure ID is preserved for finalization
+
         payload['course'] = contentMap;
         payload['files'] = fileTasks;
       }
 
+      LoggerService.info(
+        "Writing metadata file: ${metadataFile.path}",
+        tag: 'SUBMIT_HANDLER',
+      );
       await metadataFile.writeAsString(jsonEncode(payload));
+
+      LoggerService.info(
+        "Metadata Payload Ready. Sending command to Background Service...",
+        tag: 'SUBMIT_HANDLER',
+      );
 
       while (!commandDelivered && retryCount < maxRetries) {
         if (state.editingCourseId != null) {
@@ -407,8 +455,6 @@ class SubmitHandler {
         await Future.delayed(const Duration(seconds: 1));
 
         final checkPrefs = await SharedPreferences.getInstance();
-        await checkPrefs.reload(); // 🔥 Force sync to see flag set by BG isolate
-        
         final keyToCheck = state.editingCourseId != null
             ? 'pending_update_course_v1'
             : 'pending_course_v1';
@@ -420,15 +466,7 @@ class SubmitHandler {
         retryCount++;
       }
 
-      if (commandDelivered) {
-        final draftKey = state.editingCourseId != null 
-            ? 'course_draft_${state.editingCourseId}' 
-            : 'course_creation_draft';
-        await prefs.remove(draftKey);
-        debugPrint("🗑️ SubmitHandler: Draft cleared ($draftKey) - Service accepted mission.");
-      } else {
-        debugPrint("⚠️ SubmitHandler: Service might be slow, keeping draft for safety.");
-      }
+      await prefs.remove('course_creation_draft');
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -444,11 +482,14 @@ class SubmitHandler {
         );
 
         if (!context.mounted) return;
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const UploadProgressScreen()),
+        unawaited(
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const UploadProgressScreen()),
+          ),
         );
       }
-    } catch (e) {
+    } catch (e, stack) {
+      LoggerService.error("SUBMIT_HANDLER FAILED: $e\n$stack", tag: 'SUBMIT_HANDLER');
       state.isLoading = false;
       state.isUploading = false;
       state.updateState();
@@ -482,7 +523,7 @@ class SubmitHandler {
   String _formatBytes(int bytes) {
     if (bytes <= 0) return "0 B";
     const suffixes = ["B", "KB", "MB", "GB", "TB"];
-    var i = (math.log(bytes) / math.log(1024)).floor();
+    final i = (math.log(bytes) / math.log(1024)).floor();
     return '${(bytes / math.pow(1024, i)).toStringAsFixed(1)} ${suffixes[i]}';
   }
 

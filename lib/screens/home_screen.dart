@@ -9,6 +9,8 @@ import 'courses/courses_tab.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'settings/settings_tab.dart';
+import '../services/config_service.dart';
+import '../providers/admin_notification_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -61,7 +63,26 @@ class _HomeScreenState extends State<HomeScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkNotificationPermission();
       _checkPendingUploads(); // Auto-navigate if upload is in progress
+      
+      // 🔥 RE-INITIALIZE DATA AFTER LOGIN
+      // Since initial boot skipped these due to null user
+      _reloadData();
     });
+  }
+
+  Future<void> _reloadData() async {
+    debugPrint("🔄 [HOME] Reloading admin data after login...");
+    
+    // 1. Config Keys
+    await ConfigService().initialize();
+    
+    if (mounted) {
+      // 2. Dashboard Stats
+      context.read<DashboardProvider>().refreshData();
+      
+      // 3. Admin Notifications
+      context.read<AdminNotificationProvider>().init();
+    }
   }
 
   Future<void> _checkPendingUploads() async {

@@ -1,21 +1,24 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
+import 'dart:ui' show Color, DartPluginRegistrant;
+import 'dart:developer' as dev;
+
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'bunny_cdn_service.dart';
 import 'package:path_provider/path_provider.dart';
-import 'tus_uploader.dart';
-import 'dart:developer' as dev;
-import 'dart:ui' show Color, DartPluginRegistrant;
-import 'logger_service.dart';
 
+import 'bunny_cdn_service.dart';
 import 'config_service.dart';
+import 'logger_service.dart';
+import 'tus_uploader.dart';
 
 // Key used for storage
 const String kQueueKey = 'upload_queue_v1';
@@ -138,15 +141,9 @@ Future<bool> onIosBackground(ServiceInstance service) async {
 void onStart(ServiceInstance service) async {
   // 1. DART CONTEXT READY
   DartPluginRegistrant.ensureInitialized();
-  
-  // 🔥 INITIALIZE FIREBASE FOR BACKGROUND ISOLATE
-  try {
-    await Firebase.initializeApp();
-    // Fetch Remote Config Keys
-    await ConfigService().initialize();
-  } catch (e) {
-    LoggerService.error("Firebase/Config init failed in BG: $e", tag: 'BG_SERVICE');
-  }
+
+  // 🔥 INITIALIZE FIREBASE FOR BACKGROUND ISOLATE - MOVED TO initDeps TO PREVENT HANG
+  // We don't await here so the service can report "Ready" status immediately.
 
   LoggerService.info(
     "onStart triggered! Time: ${DateTime.now()}",
@@ -161,19 +158,15 @@ void onStart(ServiceInstance service) async {
   bool isPaused = false;
   final Map<String, CancelToken> activeUploads = {};
   final bunnyService = BunnyCDNService();
-  // TUS Uploader with Real Credentials
-  final tusUploader = TusUploader(
-    apiKey: ConfigService().bunnyStreamKey,
-    libraryId: ConfigService().bunnyLibraryId,
-    videoId: '', // Will be generated per file or managed dynamically
-  );
+  // TUS Uploader - Initialized with empty keys, populated in initDeps
+  TusUploader tusUploader = TusUploader(apiKey: '', libraryId: '', videoId: '');
 
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
   // Initialize Notifications immediately for instant feedback
   const AndroidInitializationSettings initializationSettingsAndroid =
-      AndroidInitializationSettings('ic_launcher'); // Standard launcher icon fallback
+      AndroidInitializationSettings('@mipmap/ic_launcher');
   const InitializationSettings initializationSettings = InitializationSettings(
     android: initializationSettingsAndroid,
   );
@@ -303,7 +296,7 @@ void onStart(ServiceInstance service) async {
           android: AndroidNotificationDetails(
             kServiceNotificationChannelId,
             'Upload Status',
-            icon: 'ic_launcher',
+            icon: '@mipmap/ic_launcher',
             ongoing: uploading > 0 || isPaused || failed > 0,
             showProgress: uploading > 0 || isPaused,
             maxProgress: 100,
@@ -366,12 +359,32 @@ void onStart(ServiceInstance service) async {
       await Firebase.initializeApp();
       LoggerService.success("Firebase READY", tag: 'BG_SERVICE');
 
-      /* Notifications already initialized at top */
+      // Check for User in Background Isolate
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        LoggerService.info("Auth Found in Background: ${user.email}", tag: 'BG_SERVICE');
+      } else {
+        LoggerService.warning("Auth NOT Found in Background. Firestore writes might fail.", tag: 'BG_SERVICE');
+      }
+
+      // Load Config Keys
+      await ConfigService().initialize();
+      LoggerService.info(
+        "Config Loaded. Storage Key Length: ${ConfigService().bunnyStorageKey.length}, Stream Key Length: ${ConfigService().bunnyStreamKey.length}",
+        tag: 'BG_SERVICE',
+      );
+
+      // Re-initialize Uploaders with real keys
+      tusUploader = TusUploader(
+        apiKey: ConfigService().bunnyStreamKey,
+        libraryId: ConfigService().bunnyLibraryId,
+        videoId: '',
+      );
 
       depsReady = true;
-      // Heartbeat removed
-    } catch (e) {
-      LoggerService.error("Dependency Init Failed: $e", tag: 'BG_SERVICE');
+      LoggerService.success("Background dependencies initialized successfully.", tag: 'BG_SERVICE');
+    } catch (e, stack) {
+      LoggerService.error("Dependency Init Failed: $e\n$stack", tag: 'BG_SERVICE');
     }
   }
 
@@ -416,7 +429,8 @@ void onStart(ServiceInstance service) async {
 
       // --- 🚀 DYNAMIC SETTINGS BASED ON NETWORK SPEED ---
       int currentMaxConcurrent = 1;
-      int currentTusChunkSize = 1 * 1024 * 1024; // 1MB for ultra-granular commits & stability
+      int currentTusChunkSize =
+          1 * 1024 * 1024; // 1MB for ultra-granular commits & stability
 
       if (connectivityResults.contains(ConnectivityResult.wifi) ||
           connectivityResults.contains(ConnectivityResult.ethernet)) {
@@ -572,31 +586,27 @@ void onStart(ServiceInstance service) async {
         continue;
       }
 
-      // 2. MASTER PAUSE (DECOUPLED)
-      // We removed the 'if (_isPaused) continue' to allow individual tasks to resume
-      // even if the master toggle is in 'Paused' state. Master toggle now acts as a batch command.
-
       // 3. SLOT FILLING
       bool slotFilled = false;
       if (activeUploads.length < currentMaxConcurrent) {
-        final now = DateTime.now().millisecondsSinceEpoch;
-
         // Re-scan for next task
         final int nextIndex = queue.indexWhere(
           (t) =>
               t['status'] == 'pending' &&
               t['paused'] != true &&
-              (t['retryAt'] == null || now > t['retryAt']),
+              (t['retryAt'] == null ||
+                  DateTime.now().isAfter(DateTime.parse(t['retryAt']))),
         );
 
         if (nextIndex != -1) {
           final task = queue[nextIndex];
-          final String taskId = task['id'];
+          final String taskId = task['taskId'] ?? task['id'];
           LoggerService.info("Dispatching Task: $taskId", tag: 'BG_SERVICE');
 
           task['status'] = 'uploading';
           queue[nextIndex] = task;
           await saveQueue(); // Sync status change
+          service.invoke('update', {'queue': queue, 'isPaused': isPaused});
 
           final cancelToken = CancelToken();
           activeUploads[taskId] = cancelToken;
@@ -636,101 +646,85 @@ void onStart(ServiceInstance service) async {
               cancelToken: cancelToken,
             );
           }
-          // Safety breather to prevent battery-draining CPU spike
-          await Future.delayed(const Duration(seconds: 1));
 
-          uploadFuture
-              .then((resultUrl) async {
-                LoggerService.success(
-                  "Upload Success: $resultUrl",
+          // Execute Upload
+          unawaited(() async {
+            try {
+              final resultUrl = await uploadFuture;
+              LoggerService.success(
+                "Upload Success: $resultUrl",
+                tag: 'BG_SERVICE',
+              );
+
+              final idx = queue.indexWhere(
+                (t) => (t['taskId'] ?? t['id']) == taskId,
+              );
+              if (idx != -1) {
+                queue[idx]['status'] = 'completed';
+                queue[idx]['progress'] = 1.0;
+                queue[idx]['url'] = resultUrl;
+                // Ensure bytes are synced on completion
+                if (queue[idx]['totalBytes'] != null) {
+                  queue[idx]['uploadedBytes'] = queue[idx]['totalBytes'];
+                }
+                await saveQueue();
+                service.invoke('update', {
+                  'queue': queue,
+                  'isPaused': isPaused,
+                });
+                service.invoke('task_completed', {'taskId': taskId});
+              }
+            } catch (e) {
+              if (e is DioException && e.type == DioExceptionType.cancel) {
+                LoggerService.warning(
+                  "Task Cancelled: $taskId",
                   tag: 'BG_SERVICE',
                 );
-
-                activeUploads.remove(taskId);
-                final idx = queue.indexWhere((t) => t['id'] == taskId);
+              } else {
+                LoggerService.error(
+                  "Upload Failed for $taskId: $e",
+                  tag: 'BG_SERVICE',
+                );
+                final idx = queue.indexWhere(
+                  (t) => (t['taskId'] ?? t['id']) == taskId,
+                );
                 if (idx != -1) {
-                  queue[idx]['status'] = 'completed';
-                  queue[idx]['progress'] = 1.0;
-                  queue[idx]['url'] = resultUrl;
-                  // Ensure bytes are synced on completion
-                  if (queue[idx]['totalBytes'] != null) {
-                    queue[idx]['uploadedBytes'] = queue[idx]['totalBytes'];
+                  queue[idx]['status'] = 'failed';
+                  queue[idx]['error'] = e.toString();
+                  // Retry Logic
+                  final int retries = (queue[idx]['retries'] ?? 0) + 1;
+                   queue[idx]['retries'] = retries;
+                  if (retries <= 3) {
+                    final retryDelay = Duration(
+                      seconds: math.pow(2, retries).toInt() * 5,
+                    );
+                    queue[idx]['retryAt'] = DateTime.now()
+                        .add(retryDelay)
+                        .toIso8601String();
+                    queue[idx]['status'] = 'pending';
+                    LoggerService.warning(
+                      "Scheduling Retry #$retries",
+                      tag: 'BG_SERVICE',
+                    );
                   }
-
-                  // If it was TUS, we might have a Video ID, but the URL is enough for now.
-                  // For storage files, resultUrl is the CDN URL.
-
                   await saveQueue();
-                  service.invoke('task_completed', {
-                    'id': taskId,
-                    'url': resultUrl,
+                  service.invoke('update', {
+                    'queue': queue,
+                    'isPaused': isPaused,
+                  });
+                  service.invoke('upload_error', {
+                    'taskId': taskId,
+                    'error': e.toString(),
                   });
                 }
-                triggerProcessing();
-              })
-              .catchError((e) async {
-                final String errorStr = e.toString();
-                final bool isMissingFile =
-                    errorStr.contains('File not found') ||
-                    errorStr.contains('No such file');
-                final bool isCancelled =
-                    e is DioException && e.type == DioExceptionType.cancel;
+              }
+            } finally {
+              activeUploads.remove(taskId);
+            }
+          }());
 
-                if (isCancelled) {
-                  LoggerService.info("⏸️ Task Paused by User: $taskId",
-                      tag: 'BG_SERVICE');
-                } else if (!isMissingFile) {
-                  LoggerService.error("Task Error: $taskId | $e",
-                      tag: 'BG_SERVICE');
-                } else {
-                  LoggerService.warning(
-                    "Task Failed: File missing from device ($taskId)",
-                    tag: 'BG_SERVICE',
-                  );
-                }
-
-                activeUploads.remove(taskId);
-                final currentIdx = queue.indexWhere((t) => t['id'] == taskId);
-                if (currentIdx != -1) {
-                  final isNetworkError =
-                      e is DioException &&
-                      (e.type == DioExceptionType.connectionTimeout ||
-                          e.type == DioExceptionType.sendTimeout ||
-                          e.type == DioExceptionType.receiveTimeout ||
-                          e.type == DioExceptionType.connectionError);
-
-                  if (e is DioException && e.type == DioExceptionType.cancel) {
-                    queue[currentIdx]['status'] = 'pending';
-                    LoggerService.info(
-                      "Task $taskId marked as pending (Paused)",
-                      tag: 'BG_SERVICE',
-                    );
-                  } else if (isNetworkError) {
-                    queue[currentIdx]['status'] = 'pending';
-                    queue[currentIdx]['error'] =
-                        "Network Issue - Auto Retrying...";
-                    queue[currentIdx]['retryAt'] = DateTime.now()
-                        .add(const Duration(seconds: 15))
-                        .millisecondsSinceEpoch;
-                    LoggerService.info(
-                      "Network error for $taskId - Initializing Auto-Retry in 15s",
-                      tag: 'BG_SERVICE',
-                    );
-                  } else {
-                    queue[currentIdx]['status'] = 'failed';
-                    queue[currentIdx]['error'] = isMissingFile
-                        ? "File missing from device"
-                        : errorStr;
-                    queue[currentIdx]['retries'] =
-                        (queue[currentIdx]['retries'] ?? 0) + 1;
-                    queue[currentIdx]['retryAt'] = DateTime.now()
-                        .add(const Duration(seconds: 30))
-                        .millisecondsSinceEpoch;
-                  }
-                  await saveQueue();
-                }
-                triggerProcessing();
-              });
+          // Safety breather to prevent battery-draining CPU spike
+          await Future.delayed(const Duration(milliseconds: 200));
         }
       }
 
@@ -751,18 +745,46 @@ void onStart(ServiceInstance service) async {
 
   service.on('submit_course').listen((event) async {
     if (event == null) return;
+    LoggerService.info(
+      "Received 'submit_course' event from UI",
+      tag: 'BG_SERVICE',
+    );
 
     Map<String, dynamic> finalEvent = event;
 
     // 🔥 NEW: Optimized Metadata Loading (File-based)
     if (event.containsKey('metadataPath')) {
+      final String path = event['metadataPath'];
+      LoggerService.info("Reading Metadata File: $path", tag: 'BG_SERVICE');
       try {
-        final file = File(event['metadataPath']);
+        final file = File(path);
         if (await file.exists()) {
           final content = await file.readAsString();
+          LoggerService.info(
+            "Metadata File Read Success. Size: ${content.length} chars",
+            tag: 'BG_SERVICE',
+          );
           finalEvent = jsonDecode(content);
+
           // Cleanup the temp file
           await file.delete();
+          LoggerService.info("Metadata Temp File Deleted", tag: 'BG_SERVICE');
+
+          // 🔥 NEW: Inject API keys if passed from UI
+          if (finalEvent.containsKey('bunnyKeys')) {
+            final keys = finalEvent['bunnyKeys'];
+            ConfigService().setupKeys(
+              storageKey: keys['storageKey'] ?? '',
+              streamKey: keys['streamKey'] ?? '',
+              libraryId: keys['libraryId'] ?? '',
+            );
+          }
+        } else {
+          LoggerService.error(
+            "Metadata File NOT FOUND at $path",
+            tag: 'BG_SERVICE',
+          );
+          return;
         }
       } catch (e) {
         LoggerService.error(
@@ -775,8 +797,9 @@ void onStart(ServiceInstance service) async {
 
     // 1. Save Course Metadata
     final courseData = finalEvent['course'];
+    final String courseTitle = courseData?['title'] ?? 'Unknown Course';
     LoggerService.info(
-      "Saving metadata for course: ${courseData?['title']}",
+      "Saving metadata for course: $courseTitle",
       tag: 'BG_SERVICE',
     );
     await prefs.setString(kPendingCourseKey, jsonEncode(courseData));
@@ -784,9 +807,11 @@ void onStart(ServiceInstance service) async {
     // 2. Add Files to Queue
     final List<dynamic> items = finalEvent['files'] ?? [];
     LoggerService.info(
-      "Adding ${items.length} files to queue",
+      "Adding ${items.length} files to upload queue",
       tag: 'BG_SERVICE',
     );
+
+    int addedCount = 0;
     for (var item in items) {
       // DUPLICATE CHECK: Skip if file already in queue (any status)
       final String filePath = item['filePath'];
@@ -809,6 +834,7 @@ void onStart(ServiceInstance service) async {
         } catch (_) {}
 
         queue.add(task);
+        addedCount++;
       } else {
         LoggerService.warning(
           "Skipping duplicate task: $filePath",
@@ -816,9 +842,16 @@ void onStart(ServiceInstance service) async {
         );
       }
     }
+
+    LoggerService.success(
+      "Queue Updated. Added $addedCount new tasks. Total Queue Size: ${queue.length}",
+      tag: 'BG_SERVICE',
+    );
+
     await saveQueue();
 
     // 3. Start
+    LoggerService.info("Triggering Processing Loop...", tag: 'BG_SERVICE');
     triggerProcessing();
     unawaited(updateNotification("Course Creation Started", 0));
   });
@@ -836,6 +869,16 @@ void onStart(ServiceInstance service) async {
           final content = await file.readAsString();
           finalEvent = jsonDecode(content);
           await file.delete();
+
+          // 🔥 NEW: Inject API keys
+          if (finalEvent.containsKey('bunnyKeys')) {
+            final keys = finalEvent['bunnyKeys'];
+            ConfigService().setupKeys(
+              storageKey: keys['storageKey'] ?? '',
+              streamKey: keys['streamKey'] ?? '',
+              libraryId: keys['libraryId'] ?? '',
+            );
+          }
         }
       } catch (e) {
         LoggerService.error(
@@ -857,7 +900,7 @@ void onStart(ServiceInstance service) async {
     await prefs.setString(kPendingUpdateCourseKey, jsonEncode(updateData));
 
     // 2. Add Files to Queue
-    final List<dynamic> items = finalEvent['files'] ?? [];
+    final List<dynamic> items = event['files'] ?? [];
     LoggerService.info(
       "Adding ${items.length} files to queue (Update)",
       tag: 'BG_SERVICE',
@@ -1144,11 +1187,12 @@ void onStart(ServiceInstance service) async {
           );
           deletedFromServer = await bunnyService.deleteFile(remotePath);
         }
-        if (deletedFromServer)
+        if (deletedFromServer) {
           LoggerService.success(
             "Server Cleanup SUCCESS for $taskId",
             tag: 'BG_SERVICE',
           );
+        }
       } catch (e) {
         LoggerService.error("Server delete error: $e", tag: 'BG_SERVICE');
       }
@@ -1209,7 +1253,7 @@ void onStart(ServiceInstance service) async {
 
   // 5. HEAVY INITIALIZATION (Background)
   // 5. BOOTSTRAP (Parallel)
-
+  unawaited(initDeps());
 
   // Heartbeat Timer removed per user request
 
@@ -1267,13 +1311,17 @@ Future<void> _finalizeCourseIfPending(
 
   // Check if any failed
   if (!forceSkip && diskQueue.any((t) => t['status'] == 'failed')) {
-    LoggerService.warning("Finalization Halted: Queue has failed items", tag: 'BG_SERVICE');
-    
+    LoggerService.warning(
+      "Finalization Halted: Queue has failed items",
+      tag: 'BG_SERVICE',
+    );
+
     final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
     await flutterLocalNotificationsPlugin.show(
       id: kServiceNotificationId + 5,
       title: 'Finalization Paused ⚠️',
-      body: 'Some files failed to upload. Fix them to complete course creation.',
+      body:
+          'Some files failed to upload. Fix them to complete course creation.',
       notificationDetails: const NotificationDetails(
         android: AndroidNotificationDetails(
           kAlertNotificationChannelId,
@@ -1326,12 +1374,13 @@ Future<void> _finalizeCourseIfPending(
         "SAFETY HALT: Course still contains local paths!",
         tag: 'BG_SERVICE',
       );
-      
+
       final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
       await flutterLocalNotificationsPlugin.show(
         id: kServiceNotificationId + 2,
         title: 'Upload Failed ⚠️',
-        body: 'Course not published: Some files could not be linked. Please try again.',
+        body:
+            'Course not published: Some files could not be linked. Please try again.',
         notificationDetails: const NotificationDetails(
           android: AndroidNotificationDetails(
             kAlertNotificationChannelId,
@@ -1350,32 +1399,42 @@ Future<void> _finalizeCourseIfPending(
 
     if (courseData.containsKey('createdAt')) {
       final rawDate = courseData['createdAt'];
-      if (rawDate is String)
+      if (rawDate is String) {
         courseData['createdAt'] = Timestamp.fromDate(DateTime.parse(rawDate));
+      }
     } else {
       courseData['createdAt'] = Timestamp.now();
     }
 
     final String? courseId = courseData['id'];
-    
+
     try {
       final String projectId = Firebase.app().options.projectId;
-      LoggerService.info("Target Firestore Project: $projectId", tag: 'BG_SERVICE');
-      
+      LoggerService.info(
+        "Target Firestore Project: $projectId",
+        tag: 'BG_SERVICE',
+      );
+
       if (courseId != null && courseId.isNotEmpty) {
-        LoggerService.info("Setting Course Document: $courseId", tag: 'BG_SERVICE');
+        LoggerService.info(
+          "Setting Course Document: $courseId",
+          tag: 'BG_SERVICE',
+        );
         await FirebaseFirestore.instance
             .collection('courses')
             .doc(courseId)
             .set(courseData);
       } else {
-        LoggerService.info("Adding New Course Document (Auto ID)", tag: 'BG_SERVICE');
+        LoggerService.info(
+          "Adding New Course Document (Auto ID)",
+          tag: 'BG_SERVICE',
+        );
         await FirebaseFirestore.instance.collection('courses').add(courseData);
       }
       LoggerService.success("Firestore Write SUCCESS ✅", tag: 'BG_SERVICE');
     } catch (e) {
       LoggerService.error("FIRESTORE WRITE FAILED ❌: $e", tag: 'BG_SERVICE');
-      
+
       final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
       await flutterLocalNotificationsPlugin.show(
         id: kServiceNotificationId + 10,
@@ -1432,7 +1491,7 @@ Future<void> _finalizeCourseIfPending(
         ),
       ),
     );
-    
+
     // Explicitly signal completion to UI
     service.invoke('all_completed');
   } catch (e) {
@@ -1587,8 +1646,14 @@ Future<void> _finalizeUpdateIfPending(
     // Firestore Write
     try {
       final String projectId = Firebase.app().options.projectId;
-      LoggerService.info("Target Firestore Project: $projectId", tag: 'BG_SERVICE');
-      LoggerService.info("Updating Course Document: $courseId", tag: 'BG_SERVICE');
+      LoggerService.info(
+        "Target Firestore Project: $projectId",
+        tag: 'BG_SERVICE',
+      );
+      LoggerService.info(
+        "Updating Course Document: $courseId",
+        tag: 'BG_SERVICE',
+      );
       await FirebaseFirestore.instance
           .collection('courses')
           .doc(courseId)
@@ -1645,10 +1710,9 @@ Future<void> _finalizeUpdateIfPending(
         ),
       ),
     );
-    
+
     // Explicitly signal completion to UI
     service.invoke('all_completed');
-    
   } catch (e) {
     LoggerService.error("Finalization (Update) Error: $e", tag: 'BG_SERVICE');
   }

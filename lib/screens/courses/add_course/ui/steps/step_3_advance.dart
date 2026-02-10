@@ -64,7 +64,8 @@ class Step3AdvanceWidget extends StatelessWidget {
                           children: [
                             if (state.editingCourseId == null)
                               TextButton.icon(
-                                onPressed: () => logic.clearAdvanceDraft(context),
+                                onPressed: () =>
+                                    logic.clearAdvanceDraft(context),
                                 icon: const Icon(Icons.delete_sweep, size: 16),
                                 label: const Text(
                                   'Clear',
@@ -72,9 +73,12 @@ class Step3AdvanceWidget extends StatelessWidget {
                                 ),
                                 style: TextButton.styleFrom(
                                   foregroundColor: Colors.red,
-                                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
                                   minimumSize: const Size(0, 0),
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
                                 ),
                               ),
                             if (state.editingCourseId == null) ...[
@@ -87,11 +91,14 @@ class Step3AdvanceWidget extends StatelessWidget {
                               const SizedBox(width: 8),
                             ],
                             IconButton(
-                              onPressed: () => logic.historyManager.undo(context),
+                              onPressed: () =>
+                                  logic.historyManager.undo(context),
                               icon: Icon(
                                 Icons.undo,
                                 size: 20,
-                                color: logic.historyManager.canUndo ? AppTheme.primaryColor : Colors.grey,
+                                color: logic.historyManager.canUndo
+                                    ? AppTheme.primaryColor
+                                    : Colors.grey,
                               ),
                               tooltip: 'Undo',
                               padding: EdgeInsets.zero,
@@ -99,11 +106,14 @@ class Step3AdvanceWidget extends StatelessWidget {
                             ),
                             const SizedBox(width: 12),
                             IconButton(
-                              onPressed: () => logic.historyManager.redo(context),
+                              onPressed: () =>
+                                  logic.historyManager.redo(context),
                               icon: Icon(
                                 Icons.redo,
                                 size: 20,
-                                color: logic.historyManager.canRedo ? AppTheme.primaryColor : Colors.grey,
+                                color: logic.historyManager.canRedo
+                                    ? AppTheme.primaryColor
+                                    : Colors.grey,
                               ),
                               tooltip: 'Redo',
                               padding: EdgeInsets.zero,
@@ -122,7 +132,9 @@ class Step3AdvanceWidget extends StatelessWidget {
                       maxLength: 12, // Keeps design compact
                       inputFormatters: [
                         TextInputFormatter.withFunction((oldValue, newValue) {
-                          return newValue.copyWith(text: newValue.text.toUpperCase());
+                          return newValue.copyWith(
+                            text: newValue.text.toUpperCase(),
+                          );
                         }),
                       ],
                       onChanged: logic.updateSpecialTag,
@@ -148,12 +160,12 @@ class Step3AdvanceWidget extends StatelessWidget {
                                 ),
                               ),
                               padding: EdgeInsets.zero,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                onPressed: () {
-                                  logic.setSpecialTagText(tag);
-                                },
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              onPressed: () {
+                                logic.setSpecialTagText(tag);
+                              },
                               backgroundColor: AppTheme.primaryColor.withValues(
                                 alpha: 0.05,
                               ),
@@ -210,7 +222,7 @@ class Step3AdvanceWidget extends StatelessWidget {
                             child: Text('Always Visible (Lifetime)'),
                           ),
                         ],
-                          onChanged: logic.setSpecialTagDuration,
+                        onChanged: logic.setSpecialTagDuration,
                       ),
                     ],
 

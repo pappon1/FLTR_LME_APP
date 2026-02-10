@@ -54,7 +54,6 @@ class Step0Logic {
     state.difficulty = null;
     state.thumbnailImage = null;
 
-
     // Dispose and clear controllers
     for (var c in state.highlightControllers) {
       c.dispose();
@@ -148,7 +147,7 @@ class Step0Logic {
     // Clear lists while keeping controllers disposed
     for (var c in state.highlightControllers) c.dispose();
     state.highlightControllers.clear();
-    
+
     for (var f in state.faqControllers) {
       f['q']?.dispose();
       f['a']?.dispose();
@@ -226,7 +225,10 @@ class Step0Logic {
               _performClearAll();
               Navigator.pop(context);
             },
-            child: const Text('CLEAR ALL', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+            child: const Text(
+              'CLEAR ALL',
+              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),

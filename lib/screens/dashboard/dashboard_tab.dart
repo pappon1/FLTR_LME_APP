@@ -450,9 +450,7 @@ class _DashboardTabState extends State<DashboardTab>
                             imageUrl: (imageUrl != null)
                                 ? BunnyCDNService.signUrl(imageUrl)
                                 : "",
-                            httpHeaders: {
-                              'AccessKey': BunnyCDNService.apiKey,
-                            },
+                            httpHeaders: {'AccessKey': BunnyCDNService.apiKey},
                             fit: BoxFit.cover,
                             placeholder: (c, u) => Container(
                               color: Colors.grey[900],
@@ -469,51 +467,51 @@ class _DashboardTabState extends State<DashboardTab>
                       );
                     }
 
-                      // Empty State - No Announcements
-                      return Container(
-                        margin: const EdgeInsets.only(
-                          bottom: 24,
-                          left: 10,
-                          right: 10,
+                    // Empty State - No Announcements
+                    return Container(
+                      margin: const EdgeInsets.only(
+                        bottom: 24,
+                        left: 10,
+                        right: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.grey.shade900
+                            : Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(3.0),
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white.withOpacity(0.1)
+                              : Colors.black.withOpacity(0.1),
+                          width: 1.0,
                         ),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).brightness == Brightness.dark
-                              ? Colors.grey.shade900
-                              : Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(3.0),
-                          border: Border.all(
-                            color: isDark
-                                ? Colors.white.withOpacity(0.1)
-                                : Colors.black.withOpacity(0.1),
-                            width: 1.0,
-                          ),
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: AspectRatio(
-                          aspectRatio: 16 / 9,
-                          child: Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.campaign_outlined,
-                                  size: 40,
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: AspectRatio(
+                        aspectRatio: 16 / 9,
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.campaign_outlined,
+                                size: 40,
+                                color: Colors.grey.withOpacity(0.5),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                "No Announcements",
+                                style: GoogleFonts.outfit(
+                                  fontSize: 14,
                                   color: Colors.grey.withOpacity(0.5),
+                                  fontWeight: FontWeight.w500,
                                 ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  "No Announcements",
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 14,
-                                    color: Colors.grey.withOpacity(0.5),
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
-                      );
+                      ),
+                    );
                   },
                 ),
 

@@ -73,9 +73,12 @@ class Step0BasicWidget extends StatelessWidget {
                                 ),
                                 style: TextButton.styleFrom(
                                   foregroundColor: Colors.red,
-                                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                  ),
                                   minimumSize: const Size(0, 0),
-                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
                                 ),
                               ),
                             if (state.editingCourseId == null) ...[
@@ -88,11 +91,14 @@ class Step0BasicWidget extends StatelessWidget {
                               const SizedBox(width: 8),
                             ],
                             IconButton(
-                              onPressed: () => logic.historyManager.undo(context),
+                              onPressed: () =>
+                                  logic.historyManager.undo(context),
                               icon: Icon(
-                                Icons.undo, 
-                                size: 20, 
-                                color: logic.historyManager.canUndo ? AppTheme.primaryColor : Colors.grey,
+                                Icons.undo,
+                                size: 20,
+                                color: logic.historyManager.canUndo
+                                    ? AppTheme.primaryColor
+                                    : Colors.grey,
                               ),
                               tooltip: 'Undo',
                               padding: EdgeInsets.zero,
@@ -100,11 +106,14 @@ class Step0BasicWidget extends StatelessWidget {
                             ),
                             const SizedBox(width: 16),
                             IconButton(
-                              onPressed: () => logic.historyManager.redo(context),
+                              onPressed: () =>
+                                  logic.historyManager.redo(context),
                               icon: Icon(
-                                Icons.redo, 
+                                Icons.redo,
                                 size: 20,
-                                color: logic.historyManager.canRedo ? AppTheme.primaryColor : Colors.grey,
+                                color: logic.historyManager.canRedo
+                                    ? AppTheme.primaryColor
+                                    : Colors.grey,
                               ),
                               tooltip: 'Redo',
                               padding: EdgeInsets.zero,
@@ -138,7 +147,9 @@ class Step0BasicWidget extends StatelessWidget {
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.green.withValues(alpha: 0.05),
+                                      color: Colors.green.withValues(
+                                        alpha: 0.05,
+                                      ),
                                       blurRadius: 10,
                                       spreadRadius: 0,
                                     ),
@@ -181,21 +192,28 @@ class Step0BasicWidget extends StatelessWidget {
                         if (state.editingCourseId == null)
                           TextButton.icon(
                             onPressed: () => logic.clearAllDrafts(context),
-                            icon: const Icon(
-                              Icons.delete_forever,
-                              size: 16,
-                            ),
+                            icon: const Icon(Icons.delete_forever, size: 16),
                             label: const Text(
                               'Clear All Steps',
-                              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             style: TextButton.styleFrom(
                               foregroundColor: Colors.red,
-                              backgroundColor: Colors.red.withValues(alpha: 0.1),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              backgroundColor: Colors.red.withValues(
+                                alpha: 0.1,
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(3.0),
-                                side: BorderSide(color: Colors.red.withValues(alpha: 0.2)),
+                                side: BorderSide(
+                                  color: Colors.red.withValues(alpha: 0.2),
+                                ),
                               ),
                             ),
                           ),

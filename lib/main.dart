@@ -42,18 +42,46 @@ void main() async {
   await Firebase.initializeApp();
 
   // 🔥 Lock 2: THE KEY-MASTER (App Check)
-  // This ensures only the REAL app can access Firestore keys
   try {
+    debugPrint("🔥 [SECURITY] Attempting to activate Firebase App Check...");
+    
     await FirebaseAppCheck.instance.activate(
-      // For Android, use Play Integrity in production, Debug in development
       androidProvider: kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
-      appleProvider: AppleProvider.deviceCheck,
+      appleProvider: kDebugMode ? AppleProvider.debug : AppleProvider.deviceCheck,
     );
-    // Note: The token is usually printed by the Firebase SDK itself to the console.
-    // If it's missing, ensure you have the 'firebase_app_check' debug dependency in build.gradle
-    LoggerService.success("Firebase App Check Activated 🛡️ (Check console for Debug Token)", tag: 'SECURITY');
+    
+    debugPrint("🔥 [SECURITY] Firebase App Check Activated! 🛡️");
   } catch (e) {
-    LoggerService.error("App Check failed: $e", tag: 'SECURITY');
+    debugPrint("❌ [SECURITY] App Check activation failed: $e");
+  }
+
+  // Check Auth State
+  final user = FirebaseAuth.instance.currentUser;
+  debugPrint("👤 [AUTH] Current User Status: ${user != null ? 'LOGGED_IN' : 'LOGGED_OUT'}");
+  debugPrint("👤 [AUTH] UID: ${user?.uid}, Email: ${user?.email}");
+
+  if (kDebugMode) {
+    // Listen to token changes
+    FirebaseAppCheck.instance.onTokenChange.listen((token) {
+      debugPrint("\n\n🛡️🛡️🛡️ [SECURITY_STREAM] NEW APP CHECK TOKEN: 🛡️🛡️🛡️");
+      debugPrint("👉 $token 👈");
+      debugPrint("------------------------------------------------------\n\n");
+    });
+
+    // Also try to force a fetch once
+    unawaited(
+      FirebaseAppCheck.instance.getToken(true).then((token) {
+        debugPrint("\n\n🛡️🛡️🛡️ [SECURITY_FORCED] APP CHECK TOKEN: 🛡️🛡️🛡️");
+        debugPrint("👉 $token 👈");
+        debugPrint("------------------------------------------------------\n\n");
+      }).catchError((e) {
+        debugPrint("🛡️ [SECURITY_FORCED] Error: $e");
+      })
+    );
+  }
+
+  if (user == null) {
+    LoggerService.warning("⚠️ User NOT logged in. Config fetch may fail.", tag: 'AUTH');
   }
 
   // 🔥 Initialize Config Service (Fetch Keys)
