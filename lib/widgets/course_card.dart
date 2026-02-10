@@ -352,7 +352,7 @@ class _CourseThumbnail extends StatelessWidget {
 
     return CachedNetworkImage(
       imageUrl: signedUrl,
-      httpHeaders: isStorageUrl ? const {'AccessKey': BunnyCDNService.apiKey} : null,
+      httpHeaders: isStorageUrl ? {'AccessKey': BunnyCDNService.apiKey} : null,
       fit: BoxFit.cover,
       placeholder: (context, url) => Shimmer.fromColors(
         baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,

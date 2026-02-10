@@ -7,6 +7,7 @@ import 'package:local_mobile_engineer_official/screens/courses/folder_detail_scr
 import 'package:local_mobile_engineer_official/screens/content_viewers/video_player_screen.dart';
 import 'package:local_mobile_engineer_official/screens/content_viewers/pdf_viewer_screen.dart';
 import 'package:local_mobile_engineer_official/screens/content_viewers/image_viewer_screen.dart';
+import 'package:local_mobile_engineer_official/services/config_service.dart';
 
 class CourseContentTab extends StatefulWidget {
   final CourseModel course;
@@ -56,13 +57,14 @@ class _CourseContentTabState extends State<CourseContentTab> {
             if (path != null &&
                 path.toString().contains('iframe.mediadelivery.net')) {
               final videoId = path.toString().split('/').last;
+              final libId = ConfigService().bunnyLibraryId;
               converted['path'] =
-                  'https://vz-583681.b-cdn.net/$videoId/playlist.m3u8';
+                  'https://vz-$libId.b-cdn.net/$videoId/playlist.m3u8';
 
               // Add thumbnail if missing
               if (converted['thumbnail'] == null) {
                 converted['thumbnail'] =
-                    'https://vz-583681.b-cdn.net/$videoId/thumbnail.jpg';
+                    'https://vz-$libId.b-cdn.net/$videoId/thumbnail.jpg';
               }
             }
 

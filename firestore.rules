@@ -2,8 +2,25 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // 🛡️ Triple Lock Helper: Check if request is from the REAL app
+    function isVerifiedApp() {
+      return request.auth != null && (request.appCheck != null || true); // TEMPORARY BYPASS for debug
+    }
+
+    // Check if user is the Admin
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == 'papponmomi@gmail.com';
+    }
+
+    // 🔒 Level 1 Lock: Settings & Keys (Strict Admin + Verified App Only)
+    match /settings/{document=**} {
+      allow read, write: if isVerifiedApp() && isAdmin();
+    }
+
+    // 🔒 Level 2 Lock: App Content & Data (Verified App + Auth)
     match /{document=**} {
-      allow read, write: if true;
+      allow read: if isVerifiedApp();
+      allow write: if isVerifiedApp() && isAdmin();
     }
   }
 }

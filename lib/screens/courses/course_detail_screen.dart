@@ -9,12 +9,13 @@ import '../../services/bunny_cdn_service.dart';
 import '../../utils/app_theme.dart';
 import 'tabs/course_content_tab.dart';
 import 'edit_course_info_screen.dart';
-import '../../data/dummy_course_data.dart'; // Import dummy data file
 
 import '../user_profile/user_profile_screen.dart';
 import '../../models/student_model.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class CourseDetailScreen extends StatefulWidget {
   final CourseModel course;
@@ -110,10 +111,21 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     final Color bgColor = isDark ? const Color(0xFF050505) : Colors.white;
 
     return StreamBuilder<CourseModel>(
-      // 🔥 TO UI DESIGN: Switch back to _firestoreService.getCourseStream(widget.course.id) for real data
-      stream: DummyCourseData.fetchCourseDetails(),
-      initialData: DummyCourseData.sampleCourse,
+      stream: _firestoreService.getCourseStream(widget.course.id),
       builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Scaffold(
+            backgroundColor: bgColor,
+            appBar: AppBar(backgroundColor: bgColor, leading: const BackButton()),
+            body: Center(
+              child: Text(
+                'Error loading course',
+                style: TextStyle(color: isDark ? Colors.white : Colors.black),
+              ),
+            ),
+          );
+        }
+
         final course = snapshot.data ?? widget.course;
 
         return Scaffold(
@@ -212,8 +224,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                       decoration: BoxDecoration(
                         color: _fHShowBadgeBg
                             ? (isDark
-                                  ? const Color(0xFF1C1C1E)
-                                  : const Color(0xFFF3E8FF))
+                                ? const Color(0xFF1C1C1E)
+                                : const Color(0xFFF3E8FF))
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(3.0),
                       ),
@@ -239,6 +251,60 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                     ),
                   ),
                 ),
+              // Delete Button
+              IconButton(
+                constraints: const BoxConstraints(),
+                padding: const EdgeInsets.all(8),
+                icon: Icon(
+                  Icons.delete_outline,
+                  color: Colors.redAccent,
+                  size: _fHActionIconSize + 2,
+                ),
+                onPressed: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Delete Course?'),
+                      content: Text(
+                        'Are you sure you want to delete "${course.title}"? This action cannot be undone.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text(
+                            'Delete',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+
+                  if (confirm == true) {
+                    try {
+                      await _firestoreService.deleteCourse(course.id);
+                      if (context.mounted) {
+                        Navigator.pop(context); // Close screen
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Course deleted successfully'),
+                          ),
+                        );
+                      }
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Error deleting course: $e')),
+                        );
+                      }
+                    }
+                  }
+                },
+              ),
               IconButton(
                 constraints: const BoxConstraints(),
                 padding: const EdgeInsets.all(8),
@@ -249,7 +315,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                 ),
                 onPressed: () {
                   debugPrint('Share button clicked for course: ${course.title}');
-                  final String shareText = 'Check out this course: ${course.title}\n\n'
+                  final String shareText =
+                      'Check out this course: ${course.title}\n\n'
                       '${course.description.length > 200 ? '${course.description.substring(0, 200)}...' : course.description}\n\n'
                       '${course.websiteUrl.isNotEmpty ? "View more: ${course.websiteUrl}" : "Download the app for more details!"}';
                   Share.share(shareText);
@@ -397,7 +464,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                   Text(
                     course.description.isNotEmpty
                         ? course.description
-                        : "Iss advanced course mein aap seekhenge mobile hardware repair, chip-level soldering, IC reballing aur latest techniques...",
+                        : "No description available.",
                     maxLines: _isDescriptionExpanded ? null : 2,
                     overflow: _isDescriptionExpanded
                         ? TextOverflow.visible
@@ -546,167 +613,227 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                   const SizedBox(height: 24),
 
                   // 🔗 WhatsApp Support Group Link Section
-                  _buildSectionHeader("WhatsApp Support Group Link", showEdit: false),
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2C254D), // Deep Purple
-                      borderRadius: BorderRadius.circular(100), // Capsule Shape
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.1),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        const FaIcon(
-                          FontAwesomeIcons.whatsapp,
-                          color: Color(0xFF25D366),
-                          size: 18,
-                        ),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: Text(
-                            "https://chat.whatsapp.com/invite/LMESirSupportGroup",
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 0.2,
-                            ),
+                  // 🔗 WhatsApp Support Group Link Section
+                  if (course.supportType == 'WhatsApp Group' && course.whatsappNumber.isNotEmpty) ...[
+                    _buildSectionHeader("WhatsApp Support Group Link", showEdit: false),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () async {
+                        final uri = Uri.parse(course.whatsappNumber);
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        } else {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Could not launch WhatsApp link')),
+                            );
+                          }
+                        }
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2C254D), // Deep Purple
+                          borderRadius: BorderRadius.circular(100), // Capsule Shape
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.1),
+                            width: 1,
                           ),
                         ),
-                      ],
-                    ),
-                  )
-                      .animate(onPlay: (controller) => controller.repeat())
-                      .shimmer(
-                        duration: 2000.ms,
-                        color: Colors.white.withOpacity(0.1),
-                        angle: 45,
+                        child: Row(
+                          children: [
+                            const FaIcon(
+                              FontAwesomeIcons.whatsapp,
+                              color: Color(0xFF25D366),
+                              size: 18,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                course.whatsappNumber,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       )
-                      .then(delay: 1000.ms),
-
-                  const SizedBox(height: 24),
+                          .animate(onPlay: (controller) => controller.repeat())
+                          .shimmer(
+                            duration: 2000.ms,
+                            color: Colors.white.withOpacity(0.1),
+                            angle: 45,
+                          )
+                          .then(delay: 1000.ms),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
 
                   // 📜 Download Certificate Section
-                  _buildSectionHeader("Download Certificate", showEdit: false),
-                  const SizedBox(height: 12),
-                  GestureDetector(
-                    onTap: () {
-                      // Logic for downloading certificate
-                    },
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF6C5DD3), Color(0xFF8E81E8)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(100), // Capsule Shape
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF6C5DD3).withOpacity(0.3),
-                            blurRadius: 12,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.workspace_premium_rounded,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 10),
-                          Text(
-                            "Download",
-                            style: GoogleFonts.poppins(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Icon(
-                            Icons.download_rounded,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                        ],
-                      ),
-                    )
-                        .animate(onPlay: (controller) => controller.repeat())
-                        .shimmer(
-                          duration: 1500.ms,
-                          color: Colors.white.withOpacity(0.2),
-                          angle: 45,
-                        )
-                        .then(delay: 1000.ms),
-                  ),
+                  if (course.hasCertificate) ...[
+                     Builder(
+                       builder: (context) {
+                         final String? certUrl = course.selectedCertificateSlot == 1 
+                             ? course.certificateUrl1 
+                             : course.certificateUrl2;
+                         
+                         if (certUrl == null || certUrl.isEmpty) return const SizedBox.shrink();
 
-                  const SizedBox(height: 24),
+                         return Column(
+                           crossAxisAlignment: CrossAxisAlignment.start,
+                           children: [
+                             _buildSectionHeader("Download Certificate", showEdit: false),
+                             const SizedBox(height: 12),
+                             GestureDetector(
+                               onTap: () async {
+                                 final uri = Uri.parse(certUrl);
+                                 if (await canLaunchUrl(uri)) {
+                                   await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                 } else {
+                                   if (context.mounted) {
+                                     ScaffoldMessenger.of(context).showSnackBar(
+                                       const SnackBar(content: Text('Could not open certificate link')),
+                                     );
+                                   }
+                                 }
+                               },
+                               child: Container(
+                                 width: double.infinity,
+                                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                 decoration: BoxDecoration(
+                                   gradient: const LinearGradient(
+                                     colors: [Color(0xFF6C5DD3), Color(0xFF8E81E8)],
+                                     begin: Alignment.topLeft,
+                                     end: Alignment.bottomRight,
+                                   ),
+                                   borderRadius: BorderRadius.circular(100), // Capsule Shape
+                                   boxShadow: [
+                                     BoxShadow(
+                                       color: const Color(0xFF6C5DD3).withOpacity(0.3),
+                                       blurRadius: 12,
+                                       offset: const Offset(0, 4),
+                                     ),
+                                   ],
+                                 ),
+                                 child: Row(
+                                   mainAxisAlignment: MainAxisAlignment.center,
+                                   children: [
+                                     const Icon(
+                                       Icons.workspace_premium_rounded,
+                                       color: Colors.white,
+                                       size: 20,
+                                     ),
+                                     const SizedBox(width: 10),
+                                     Text(
+                                       "Download",
+                                       style: GoogleFonts.poppins(
+                                         color: Colors.white,
+                                         fontSize: 14,
+                                         fontWeight: FontWeight.w700,
+                                         letterSpacing: 0.5,
+                                       ),
+                                     ),
+                                     const SizedBox(width: 8),
+                                     const Icon(
+                                       Icons.download_rounded,
+                                       color: Colors.white,
+                                       size: 18,
+                                     ),
+                                   ],
+                                 ),
+                               )
+                                   .animate(onPlay: (controller) => controller.repeat())
+                                   .shimmer(
+                                     duration: 1500.ms,
+                                     color: Colors.white.withOpacity(0.2),
+                                     angle: 45,
+                                   )
+                                   .then(delay: 1000.ms),
+                             ),
+                             const SizedBox(height: 24),
+                           ],
+                         );
+                       }
+                     ),
+                  ],
 
                   // 💻 Website (PC Access) Section
-                  _buildSectionHeader("Website (PC Access)", showEdit: false),
-                  const SizedBox(height: 12),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2C254D), // Deep Purple
-                      borderRadius: BorderRadius.circular(100), // Capsule Shape
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.1),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.laptop_mac_rounded,
-                          color: Color(0xFF03A9F4),
-                          size: 18,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            course.websiteUrl.isNotEmpty 
-                                ? course.websiteUrl 
-                                : "https://www.lmestudy.com/login",
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 0.2,
-                            ),
+                  if (course.websiteUrl.isNotEmpty) ...[
+                    _buildSectionHeader("Website (PC Access)", showEdit: false),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () async {
+                        String url = course.websiteUrl;
+                         if (!url.startsWith('http')) {
+                           url = 'https://$url';
+                         }
+                        final uri = Uri.parse(url);
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        } else {
+                          if (context.mounted) {
+                             ScaffoldMessenger.of(context).showSnackBar(
+                               const SnackBar(content: Text('Could not launch website')),
+                             );
+                           }
+                        }
+                      },
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF2C254D), // Deep Purple
+                          borderRadius: BorderRadius.circular(100), // Capsule Shape
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.1),
+                            width: 1,
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Icon(
-                          Icons.open_in_new_rounded,
-                          color: Colors.white.withOpacity(0.4),
-                          size: 16,
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.laptop_mac_rounded,
+                              color: Color(0xFF03A9F4),
+                              size: 18,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                course.websiteUrl,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: 0.2,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Icon(
+                              Icons.open_in_new_rounded,
+                              color: Colors.white.withOpacity(0.4),
+                              size: 16,
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  )
-                      .animate(onPlay: (controller) => controller.repeat())
-                      .shimmer(
-                        duration: 2000.ms,
-                        color: Colors.white.withOpacity(0.1),
-                        angle: 45,
                       )
-                      .then(delay: 1500.ms),
+                          .animate(onPlay: (controller) => controller.repeat())
+                          .shimmer(
+                            duration: 2000.ms,
+                            color: Colors.white.withOpacity(0.1),
+                            angle: 45,
+                          )
+                          .then(delay: 1500.ms),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
 
                   const SizedBox(height: 24),
 
@@ -738,62 +865,88 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                     ),
                   ],
 
-                  const SizedBox(height: 24),
+                  // Chat Banner - Show only if link is configured
+                  StreamBuilder<DocumentSnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection('settings')
+                        .doc('contact_links')
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (!snapshot.hasData || !snapshot.data!.exists) {
+                        return const SizedBox.shrink();
+                      }
+                      
+                      final data = snapshot.data!.data() as Map<String, dynamic>;
+                      final String? chatUrl = data['chatLme'];
+                      
+                      if (chatUrl == null || chatUrl.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
 
-                  // Chat Banner - One Line Fix
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: _fWaPadding),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2C254D), // Deep Reference Purple
-                      borderRadius: BorderRadius.circular(100), // Capsule Shape
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.08),
-                        width: 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Transform.translate(
-                          offset: const Offset(_fWaIconShiftX, 0),
-                          child: Container(
-                            padding: const EdgeInsets.all(_fWaIconPadding),
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF25D366),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const FaIcon(
-                              FontAwesomeIcons.whatsapp,
-                              color: Colors.white,
-                              size: _fWaIconSize,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: _fWaGap),
-                        Expanded(
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              'Chat With LME Sir For More Course Details.',
-                              style: GoogleFonts.poppins(
-                                fontSize: _fWaTextSize,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const SizedBox(height: 24),
+                          GestureDetector(
+                            onTap: () => _launchChatLme(),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: _fWaPadding),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2C254D), // Deep Reference Purple
+                                borderRadius: BorderRadius.circular(100), // Capsule Shape
+                                border: Border.all(
+                                  color: Colors.white.withOpacity(0.08),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  Transform.translate(
+                                    offset: const Offset(_fWaIconShiftX, 0),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(_fWaIconPadding),
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFF25D366),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const FaIcon(
+                                        FontAwesomeIcons.whatsapp,
+                                        color: Colors.white,
+                                        size: _fWaIconSize,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: _fWaGap),
+                                  Expanded(
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      alignment: Alignment.centerLeft,
+                                      child: Text(
+                                        'Chat With LME Sir For More Course Details.',
+                                        style: GoogleFonts.poppins(
+                                          fontSize: _fWaTextSize,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-                      .animate(onPlay: (controller) => controller.repeat())
-                      .shimmer(
-                        duration: 2000.ms,
-                        color: Colors.white.withOpacity(0.15),
-                        angle: 45,
-                      )
-                      .then(delay: 500.ms), // Short pause between shines
-                  const SizedBox(height: 30),
+                          )
+                              .animate(onPlay: (controller) => controller.repeat())
+                              .shimmer(
+                                duration: 2000.ms,
+                                color: Colors.white.withOpacity(0.15),
+                                angle: 45,
+                              )
+                              .then(delay: 500.ms),
+                          const SizedBox(height: 30),
+                        ],
+                      );
+                    },
+                  ),
                 ]),
               ),
             ),
@@ -1446,5 +1599,43 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
         );
       },
     );
+  }
+  Future<void> _launchChatLme() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('settings')
+          .doc('contact_links')
+          .get();
+      
+      if (doc.exists) {
+        final data = doc.data() as Map<String, dynamic>;
+        final String? chatUrl = data['chatLme'];
+        
+        if (chatUrl != null && chatUrl.isNotEmpty) {
+          final Uri uri = Uri.parse(chatUrl);
+          if (await canLaunchUrl(uri)) {
+            await launchUrl(uri, mode: LaunchMode.externalApplication);
+          } else {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Could not launch WhatsApp link')),
+              );
+            }
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Chat link not configured yet')),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+    }
   }
 }

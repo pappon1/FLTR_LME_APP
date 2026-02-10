@@ -263,7 +263,7 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
                                 imageUrl: BunnyCDNService().getAuthenticatedUrl(
                                   _existingImageUrl!,
                                 ),
-                                httpHeaders: const {
+                                httpHeaders: {
                                   'AccessKey': BunnyCDNService.apiKey,
                                 },
                                 width: double.infinity,

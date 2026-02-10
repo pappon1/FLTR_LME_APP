@@ -450,7 +450,7 @@ class _DashboardTabState extends State<DashboardTab>
                             imageUrl: (imageUrl != null)
                                 ? BunnyCDNService.signUrl(imageUrl)
                                 : "",
-                            httpHeaders: const {
+                            httpHeaders: {
                               'AccessKey': BunnyCDNService.apiKey,
                             },
                             fit: BoxFit.cover,
@@ -469,38 +469,51 @@ class _DashboardTabState extends State<DashboardTab>
                       );
                     }
 
-                    // Empty State - YouTube 16:9 Size
-                    return Container(
-                      margin: const EdgeInsets.only(
-                        bottom: 24,
-                        left: 10,
-                        right: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.grey.shade900
-                            : Colors.grey.shade200,
-                        borderRadius: BorderRadius.circular(3.0),
-                        border: Border.all(
-                          color: isDark
-                              ? Colors.white.withOpacity(0.2)
-                              : Colors.black.withOpacity(0.1),
-                          width: 1.0,
+                      // Empty State - No Announcements
+                      return Container(
+                        margin: const EdgeInsets.only(
+                          bottom: 24,
+                          left: 10,
+                          right: 10,
                         ),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: AspectRatio(
-                        aspectRatio: 16 / 9,
-                        child: CachedNetworkImage(
-                          imageUrl:
-                              "https://picsum.photos/id/4/800/450", // Dummy Laptop/Tech Image
-                          fit: BoxFit.cover,
-                          placeholder: (c, u) =>
-                              const Center(child: CircularProgressIndicator()),
-                          errorWidget: (c, u, e) => const Icon(Icons.error),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.grey.shade900
+                              : Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(3.0),
+                          border: Border.all(
+                            color: isDark
+                                ? Colors.white.withOpacity(0.1)
+                                : Colors.black.withOpacity(0.1),
+                            width: 1.0,
+                          ),
                         ),
-                      ),
-                    );
+                        clipBehavior: Clip.antiAlias,
+                        child: AspectRatio(
+                          aspectRatio: 16 / 9,
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.campaign_outlined,
+                                  size: 40,
+                                  color: Colors.grey.withOpacity(0.5),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  "No Announcements",
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 14,
+                                    color: Colors.grey.withOpacity(0.5),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
                   },
                 ),
 

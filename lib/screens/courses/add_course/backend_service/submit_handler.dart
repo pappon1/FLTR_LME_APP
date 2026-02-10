@@ -156,23 +156,23 @@ class SubmitHandler {
 
       Future<void> processContentsRecursive(List<dynamic> items) async {
         for (var item in items) {
-          final String type = item['type'];
+          if (item is! Map) continue;
+          final String type = item['type'] ?? 'unknown';
           final String itemName = item['name'] ?? 'File';
 
-          if ((type == 'video' || type == 'pdf' || type == 'image') &&
-              item['isLocal'] == true) {
+          if ((type == 'video' || type == 'pdf' || type == 'image')) {
             final String? fPath = item['path'];
-            if (fPath != null && fPath.isNotEmpty) {
+            if (fPath != null && fPath.isNotEmpty && (item['isLocal'] == true || fPath.startsWith('/'))) {
               item['path'] = await copyToSafe(fPath, itemName);
             }
           }
           if (item['thumbnail'] != null && item['thumbnail'] is String) {
             final String tPath = item['thumbnail'];
-            if (tPath.isNotEmpty && !tPath.startsWith('http')) {
+            if (tPath.isNotEmpty && tPath.startsWith('/')) {
               item['thumbnail'] = await copyToSafe(tPath, 'Thumbnail');
             }
           }
-          if (type == 'folder' && item['contents'] != null) {
+          if (type == 'folder' && item['contents'] != null && item['contents'] is List) {
             await processContentsRecursive(item['contents']);
           }
         }
@@ -288,12 +288,15 @@ class SubmitHandler {
 
       int globalCounter = 0;
       void processItemRecursive(dynamic item) {
+        if (item is! Map) return;
         final int currentIndex = globalCounter++;
-        final String type = item['type'];
+        final String type = item['type'] ?? 'unknown';
+
+        // 1. Process File Task
         if ((type == 'video' || type == 'pdf' || type == 'image') &&
-            item['isLocal'] == true) {
+            (item['isLocal'] == true || (item['path'] != null && item['path'].toString().startsWith('/')))) {
           final filePath = item['path'];
-          if (filePath != null && filePath is String) {
+          if (filePath != null && filePath is String && filePath.isNotEmpty) {
             String folder = 'others';
             if (type == 'video') {
               folder = 'videos';
@@ -303,7 +306,9 @@ class SubmitHandler {
               folder = 'images';
             }
 
-            final uniqueName = '${currentIndex}_${item['name']}';
+            final String safeName = (item['name'] ?? 'file').toString().replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
+            final uniqueName = '${currentIndex}_$safeName';
+            
             addTask(
               filePath,
               'courses/$sessionId/$folder/$uniqueName',
@@ -314,9 +319,11 @@ class SubmitHandler {
             );
           }
         }
+
+        // 2. Process Thumbnail Task (Standalone or Video Thumb)
         if (item['thumbnail'] != null && item['thumbnail'] is String) {
           final String thumbPath = item['thumbnail'];
-          if (thumbPath.isNotEmpty && !thumbPath.startsWith('http')) {
+          if (thumbPath.isNotEmpty && thumbPath.startsWith('/')) {
             addTask(
               thumbPath,
               'courses/$sessionId/thumbnails/thumb_${currentIndex}_${path.basename(thumbPath)}',
@@ -324,7 +331,9 @@ class SubmitHandler {
             );
           }
         }
-        if (type == 'folder' && item['contents'] != null) {
+
+        // 3. Recurse into Folders
+        if (type == 'folder' && item['contents'] != null && item['contents'] is List) {
           for (var sub in item['contents']) {
             processItemRecursive(sub);
           }
@@ -379,6 +388,7 @@ class SubmitHandler {
       } else {
         final contentMap = draftCourse.toMap();
         prepareMapForJson(contentMap);
+        contentMap['id'] = docId; // 🔥 MANDATORY: Ensure ID is preserved for finalization
         
         payload['course'] = contentMap;
         payload['files'] = fileTasks;
@@ -397,6 +407,8 @@ class SubmitHandler {
         await Future.delayed(const Duration(seconds: 1));
 
         final checkPrefs = await SharedPreferences.getInstance();
+        await checkPrefs.reload(); // 🔥 Force sync to see flag set by BG isolate
+        
         final keyToCheck = state.editingCourseId != null
             ? 'pending_update_course_v1'
             : 'pending_course_v1';
@@ -408,7 +420,15 @@ class SubmitHandler {
         retryCount++;
       }
 
-      await prefs.remove('course_creation_draft');
+      if (commandDelivered) {
+        final draftKey = state.editingCourseId != null 
+            ? 'course_draft_${state.editingCourseId}' 
+            : 'course_creation_draft';
+        await prefs.remove(draftKey);
+        debugPrint("🗑️ SubmitHandler: Draft cleared ($draftKey) - Service accepted mission.");
+      } else {
+        debugPrint("⚠️ SubmitHandler: Service might be slow, keeping draft for safety.");
+      }
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

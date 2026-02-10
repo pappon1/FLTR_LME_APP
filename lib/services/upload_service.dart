@@ -15,6 +15,8 @@ import 'dart:developer' as dev;
 import 'dart:ui' show Color, DartPluginRegistrant;
 import 'logger_service.dart';
 
+import 'config_service.dart';
+
 // Key used for storage
 const String kQueueKey = 'upload_queue_v1';
 const String kServiceNotificationChannelId = 'upload_service_channel';
@@ -134,13 +136,22 @@ Future<bool> onIosBackground(ServiceInstance service) async {
 
 @pragma('vm:entry-point')
 void onStart(ServiceInstance service) async {
+  // 1. DART CONTEXT READY
+  DartPluginRegistrant.ensureInitialized();
+  
+  // 🔥 INITIALIZE FIREBASE FOR BACKGROUND ISOLATE
+  try {
+    await Firebase.initializeApp();
+    // Fetch Remote Config Keys
+    await ConfigService().initialize();
+  } catch (e) {
+    LoggerService.error("Firebase/Config init failed in BG: $e", tag: 'BG_SERVICE');
+  }
+
   LoggerService.info(
     "onStart triggered! Time: ${DateTime.now()}",
     tag: 'BG_SERVICE',
   );
-
-  // 1. DART CONTEXT READY
-  DartPluginRegistrant.ensureInitialized();
 
   // 2. STATE INITIALIZATION (Fast)
   // Shared Prefs is usually fast enough, but we should still be careful.
@@ -152,8 +163,8 @@ void onStart(ServiceInstance service) async {
   final bunnyService = BunnyCDNService();
   // TUS Uploader with Real Credentials
   final tusUploader = TusUploader(
-    apiKey: '0db49ca1-ac4b-40ae-9aa5d710ef1d-00ec-4077',
-    libraryId: '583681',
+    apiKey: ConfigService().bunnyStreamKey,
+    libraryId: ConfigService().bunnyLibraryId,
     videoId: '', // Will be generated per file or managed dynamically
   );
 
@@ -162,7 +173,7 @@ void onStart(ServiceInstance service) async {
 
   // Initialize Notifications immediately for instant feedback
   const AndroidInitializationSettings initializationSettingsAndroid =
-      AndroidInitializationSettings('ic_bg_service_small'); // Use your icon
+      AndroidInitializationSettings('ic_launcher'); // Standard launcher icon fallback
   const InitializationSettings initializationSettings = InitializationSettings(
     android: initializationSettingsAndroid,
   );
@@ -292,7 +303,7 @@ void onStart(ServiceInstance service) async {
           android: AndroidNotificationDetails(
             kServiceNotificationChannelId,
             'Upload Status',
-            icon: 'ic_bg_service_small',
+            icon: 'ic_launcher',
             ongoing: uploading > 0 || isPaused || failed > 0,
             showProgress: uploading > 0 || isPaused,
             maxProgress: 100,
@@ -846,7 +857,7 @@ void onStart(ServiceInstance service) async {
     await prefs.setString(kPendingUpdateCourseKey, jsonEncode(updateData));
 
     // 2. Add Files to Queue
-    final List<dynamic> items = event['files'] ?? [];
+    final List<dynamic> items = finalEvent['files'] ?? [];
     LoggerService.info(
       "Adding ${items.length} files to queue (Update)",
       tag: 'BG_SERVICE',
@@ -945,9 +956,9 @@ void onStart(ServiceInstance service) async {
             tag: 'BG_SERVICE',
           );
           await bunnyService.deleteVideo(
-            libraryId: '583681',
+            libraryId: ConfigService().bunnyLibraryId,
             videoId: assetUrl,
-            apiKey: '0db49ca1-ac4b-40ae-9aa5d710ef1d-00ec-4077',
+            apiKey: ConfigService().bunnyStreamKey,
           );
         } else if (remotePath != null && remotePath.isNotEmpty) {
           // Storage file cleanup
@@ -1122,9 +1133,9 @@ void onStart(ServiceInstance service) async {
             tag: 'BG_SERVICE',
           );
           deletedFromServer = await bunnyService.deleteVideo(
-            libraryId: '583681',
+            libraryId: ConfigService().bunnyLibraryId,
             videoId: assetUrl,
-            apiKey: '0db49ca1-ac4b-40ae-9aa5d710ef1d-00ec-4077',
+            apiKey: ConfigService().bunnyStreamKey,
           );
         } else if (remotePath != null && remotePath.isNotEmpty) {
           LoggerService.info(
@@ -1198,7 +1209,7 @@ void onStart(ServiceInstance service) async {
 
   // 5. HEAVY INITIALIZATION (Background)
   // 5. BOOTSTRAP (Parallel)
-  unawaited(initDeps());
+
 
   // Heartbeat Timer removed per user request
 
@@ -1256,6 +1267,23 @@ Future<void> _finalizeCourseIfPending(
 
   // Check if any failed
   if (!forceSkip && diskQueue.any((t) => t['status'] == 'failed')) {
+    LoggerService.warning("Finalization Halted: Queue has failed items", tag: 'BG_SERVICE');
+    
+    final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+    await flutterLocalNotificationsPlugin.show(
+      id: kServiceNotificationId + 5,
+      title: 'Finalization Paused ⚠️',
+      body: 'Some files failed to upload. Fix them to complete course creation.',
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          kAlertNotificationChannelId,
+          'Upload Alerts',
+          importance: Importance.max,
+          priority: Priority.high,
+          playSound: true,
+        ),
+      ),
+    );
     return;
   }
 
@@ -1298,6 +1326,22 @@ Future<void> _finalizeCourseIfPending(
         "SAFETY HALT: Course still contains local paths!",
         tag: 'BG_SERVICE',
       );
+      
+      final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+      await flutterLocalNotificationsPlugin.show(
+        id: kServiceNotificationId + 2,
+        title: 'Upload Failed ⚠️',
+        body: 'Course not published: Some files could not be linked. Please try again.',
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            kAlertNotificationChannelId,
+            'Upload Alerts',
+            importance: Importance.max,
+            priority: Priority.high,
+            playSound: true,
+          ),
+        ),
+      );
       return;
     }
 
@@ -1313,13 +1357,42 @@ Future<void> _finalizeCourseIfPending(
     }
 
     final String? courseId = courseData['id'];
-    if (courseId != null && courseId.isNotEmpty) {
-      await FirebaseFirestore.instance
-          .collection('courses')
-          .doc(courseId)
-          .set(courseData);
-    } else {
-      await FirebaseFirestore.instance.collection('courses').add(courseData);
+    
+    try {
+      final String projectId = Firebase.app().options.projectId;
+      LoggerService.info("Target Firestore Project: $projectId", tag: 'BG_SERVICE');
+      
+      if (courseId != null && courseId.isNotEmpty) {
+        LoggerService.info("Setting Course Document: $courseId", tag: 'BG_SERVICE');
+        await FirebaseFirestore.instance
+            .collection('courses')
+            .doc(courseId)
+            .set(courseData);
+      } else {
+        LoggerService.info("Adding New Course Document (Auto ID)", tag: 'BG_SERVICE');
+        await FirebaseFirestore.instance.collection('courses').add(courseData);
+      }
+      LoggerService.success("Firestore Write SUCCESS ✅", tag: 'BG_SERVICE');
+    } catch (e) {
+      LoggerService.error("FIRESTORE WRITE FAILED ❌: $e", tag: 'BG_SERVICE');
+      
+      final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+      await flutterLocalNotificationsPlugin.show(
+        id: kServiceNotificationId + 10,
+        title: 'Database Error ❌',
+        body: 'Upload finished but could not save course: $e',
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            kAlertNotificationChannelId,
+            'Upload Errors',
+            importance: Importance.max,
+            priority: Priority.high,
+            playSound: true,
+          ),
+        ),
+      );
+      // Re-throw to prevent queue cleanup
+      throw Exception("Firestore Write Failed: $e");
     }
 
     try {
@@ -1359,6 +1432,9 @@ Future<void> _finalizeCourseIfPending(
         ),
       ),
     );
+    
+    // Explicitly signal completion to UI
+    service.invoke('all_completed');
   } catch (e) {
     LoggerService.error("Finalization Error: $e", tag: 'BG_SERVICE');
     // Notify Error
@@ -1508,10 +1584,37 @@ Future<void> _finalizeUpdateIfPending(
     }
 
     updateData.remove('id');
-    await FirebaseFirestore.instance
-        .collection('courses')
-        .doc(courseId)
-        .update(updateData);
+    // Firestore Write
+    try {
+      final String projectId = Firebase.app().options.projectId;
+      LoggerService.info("Target Firestore Project: $projectId", tag: 'BG_SERVICE');
+      LoggerService.info("Updating Course Document: $courseId", tag: 'BG_SERVICE');
+      await FirebaseFirestore.instance
+          .collection('courses')
+          .doc(courseId)
+          .update(updateData);
+      LoggerService.success("Firestore Update SUCCESS ✅", tag: 'BG_SERVICE');
+    } catch (e) {
+      LoggerService.error("FIRESTORE UPDATE FAILED ❌: $e", tag: 'BG_SERVICE');
+
+      final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+      await flutterLocalNotificationsPlugin.show(
+        id: kServiceNotificationId + 10,
+        title: 'Database Error ❌',
+        body: 'Update finished but could not save changes to database: $e',
+        notificationDetails: const NotificationDetails(
+          android: AndroidNotificationDetails(
+            kAlertNotificationChannelId,
+            'Upload Errors',
+            importance: Importance.max,
+            priority: Priority.high,
+            playSound: true,
+          ),
+        ),
+      );
+      // Re-throw to prevent queue cleanup if DB write failed
+      throw Exception("Firestore Update Failed: $e");
+    }
 
     try {
       for (var localPath in urlMap.keys) {
@@ -1542,6 +1645,10 @@ Future<void> _finalizeUpdateIfPending(
         ),
       ),
     );
+    
+    // Explicitly signal completion to UI
+    service.invoke('all_completed');
+    
   } catch (e) {
     LoggerService.error("Finalization (Update) Error: $e", tag: 'BG_SERVICE');
   }

@@ -2,10 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'services/firebase_auth_service.dart';
+import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'providers/theme_provider.dart';
 import 'providers/dashboard_provider.dart';
@@ -13,6 +17,7 @@ import 'providers/admin_notification_provider.dart';
 import 'utils/app_theme.dart';
 import 'services/upload_service.dart';
 import 'services/logger_service.dart';
+import 'services/config_service.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'dart:async';
 
@@ -35,6 +40,25 @@ void main() async {
 
   // Initialize Firebase
   await Firebase.initializeApp();
+
+  // 🔥 Lock 2: THE KEY-MASTER (App Check)
+  // This ensures only the REAL app can access Firestore keys
+  try {
+    await FirebaseAppCheck.instance.activate(
+      // For Android, use Play Integrity in production, Debug in development
+      androidProvider: kDebugMode ? AndroidProvider.debug : AndroidProvider.playIntegrity,
+      appleProvider: AppleProvider.deviceCheck,
+    );
+    // Note: The token is usually printed by the Firebase SDK itself to the console.
+    // If it's missing, ensure you have the 'firebase_app_check' debug dependency in build.gradle
+    LoggerService.success("Firebase App Check Activated 🛡️ (Check console for Debug Token)", tag: 'SECURITY');
+  } catch (e) {
+    LoggerService.error("App Check failed: $e", tag: 'SECURITY');
+  }
+
+  // 🔥 Initialize Config Service (Fetch Keys)
+  final configService = ConfigService();
+  await configService.initialize();
 
   // 🔥 Optimization: Enable Offline Persistence (Caching)
   FirebaseFirestore.instance.settings = const Settings(
@@ -75,6 +99,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
+        Provider(create: (_) => FirebaseAuthService()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => DashboardProvider()),
         ChangeNotifierProvider(
@@ -137,7 +162,20 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // BYPASS: Directly show HomeScreen without authentication
-    return const HomeScreen();
+    final authService = Provider.of<FirebaseAuthService>(context);
+    return StreamBuilder<User?>(
+      stream: authService.authStateChanges,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snapshot.hasData) {
+          return const HomeScreen();
+        }
+        return LoginScreen();
+      },
+    );
   }
 }

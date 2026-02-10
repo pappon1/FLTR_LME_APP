@@ -149,7 +149,7 @@ class _SentHistoryScreenState extends State<SentHistoryScreen> {
                                     width: double.infinity,
                                     fit: BoxFit
                                         .fitWidth, // Adjusted for full image view
-                                    httpHeaders: const {
+                                    httpHeaders: {
                                       'AccessKey': BunnyCDNService.apiKey,
                                     },
                                     placeholder: (c, u) => Container(

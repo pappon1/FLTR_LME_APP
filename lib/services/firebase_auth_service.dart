@@ -7,12 +7,15 @@ class FirebaseAuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Use getter to ensure fresh instance/config
-  // GoogleSignIn is now a singleton in v7.x
+  // Google Sign-In instance with Web Client ID (Required for Android)
+  // Google Sign-In instance (Singleton in v7.x)
   GoogleSignIn get _googleSignIn => GoogleSignIn.instance;
 
   Future<void> _initGoogleSignIn() async {
-    await _googleSignIn.initialize();
+    // Initialize with Web Client ID (Required for Android backends/verification)
+    await _googleSignIn.initialize(
+      serverClientId: '1014977122104-evjh3pona5k5smo72b3e1oructh70tuu.apps.googleusercontent.com',
+    );
   }
 
   // Current user stream

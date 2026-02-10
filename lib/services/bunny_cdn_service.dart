@@ -2,14 +2,16 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:path/path.dart' as path;
 import 'logger_service.dart';
+import 'config_service.dart';
 
 class BunnyCDNService {
   // Bunny.net Storage Zone Configuration
   static const String storageZoneName = 'lme-media-storage';
   static const String hostname =
       'sg.storage.bunnycdn.com'; // Verified Region: Singapore
-  static const String apiKey =
-      '47d150e7-c234-4267-85a4018657d5-afa6-4d5c'; // Admin Storage Key for lme-media-storage
+  
+  static String get apiKey => ConfigService().bunnyStorageKey;
+  
   static const String cdnUrl = 'https://lme-media-storage.b-cdn.net';
 
   final Dio _dio = Dio(

@@ -719,7 +719,7 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
                                                     _existingImageUrl!,
                                                   ),
                                               fit: BoxFit.cover,
-                                              httpHeaders: const {
+                                              httpHeaders: {
                                                 'AccessKey':
                                                     BunnyCDNService.apiKey,
                                               },
@@ -834,7 +834,7 @@ class _EditNotificationScreenState extends State<EditNotificationScreen> {
                                                           _existingImageUrl!,
                                                         ),
                                                     fit: BoxFit.cover,
-                                                    httpHeaders: const {
+                                                    httpHeaders: {
                                                       'AccessKey':
                                                           BunnyCDNService
                                                               .apiKey,

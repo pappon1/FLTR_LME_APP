@@ -314,7 +314,7 @@ class _ScheduledNotificationsTabState extends State<ScheduledNotificationsTab> {
                       width: double.infinity,
                       // removed height: 180 to allow full height
                       fit: BoxFit.fitWidth, // Show full image
-                      httpHeaders: const {'AccessKey': BunnyCDNService.apiKey},
+                      httpHeaders: {'AccessKey': BunnyCDNService.apiKey},
                       errorWidget: (context, url, error) => Container(
                         height: 180,
                         color: Colors.grey[200],

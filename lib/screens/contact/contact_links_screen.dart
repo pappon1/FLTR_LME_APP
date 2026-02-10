@@ -19,6 +19,7 @@ class _ContactLinksScreenState extends State<ContactLinksScreen> {
   final TextEditingController _instagramController = TextEditingController();
   final TextEditingController _facebookController = TextEditingController();
   final TextEditingController _youtubeController = TextEditingController();
+  final TextEditingController _chatLmeController = TextEditingController();
 
   @override
   void initState() {
@@ -34,16 +35,25 @@ class _ContactLinksScreenState extends State<ContactLinksScreen> {
           .get();
       if (doc.exists) {
         final data = doc.data() as Map<String, dynamic>;
-        _whatsappController.text =
-            (data['whatsapp'] != null && data['whatsapp'].toString().isNotEmpty)
-            ? data['whatsapp']
-            : '+92 9365523684';
+        
+        // Helper to strip prefix
+        String stripPrefix(String? val) {
+          if (val == null) return '';
+          if (val.startsWith('https://wa.me/91')) {
+            return val.replaceFirst('https://wa.me/91', '');
+          }
+          return val.replaceFirst('https://wa.me/', '');
+        }
+
+        _whatsappController.text = stripPrefix(data['whatsapp']);
         _instagramController.text = data['instagram'] ?? '';
         _facebookController.text = data['facebook'] ?? '';
         _youtubeController.text = data['youtube'] ?? '';
+        _chatLmeController.text = stripPrefix(data['chatLme']);
       } else {
         // Default for new setup
-        _whatsappController.text = '+92 9365523684';
+        _whatsappController.text = '';
+        _chatLmeController.text = '';
       }
     } catch (e) {
       if (mounted) {
@@ -63,15 +73,23 @@ class _ContactLinksScreenState extends State<ContactLinksScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isSaving = true);
+    // Helper to add prefix
+    String addPrefix(String text) {
+      if (text.isEmpty) return '';
+      if (text.startsWith('http')) return text; // already has one
+      return 'https://wa.me/91$text';
+    }
+
     try {
       await FirebaseFirestore.instance
           .collection('settings')
           .doc('contact_links')
           .set({
-            'whatsapp': _whatsappController.text.trim(),
+            'whatsapp': addPrefix(_whatsappController.text.trim()),
             'instagram': _instagramController.text.trim(),
             'facebook': _facebookController.text.trim(),
             'youtube': _youtubeController.text.trim(),
+            'chatLme': addPrefix(_chatLmeController.text.trim()),
             'updatedAt': FieldValue.serverTimestamp(),
           }, SetOptions(merge: true));
 
@@ -136,7 +154,8 @@ class _ContactLinksScreenState extends State<ContactLinksScreen> {
                       FontAwesomeIcons.whatsapp,
                       Colors.green,
                       _whatsappController,
-                      'e.g. https://wa.me/919999999999',
+                      'Please enter number',
+                      prefixText: 'https://wa.me/91',
                     ),
                     const SizedBox(height: 16),
                     _buildLinkCard(
@@ -164,6 +183,16 @@ class _ContactLinksScreenState extends State<ContactLinksScreen> {
                       Colors.red,
                       _youtubeController,
                       'e.g. https://youtube.com/@your_channel',
+                    ),
+                    const SizedBox(height: 16),
+                    _buildLinkCard(
+                      context,
+                      'Chat with LME Sir',
+                      FontAwesomeIcons.whatsapp,
+                      Colors.green,
+                      _chatLmeController,
+                      'Please enter number',
+                      prefixText: 'https://wa.me/91',
                     ),
                     const SizedBox(height: 32),
 
@@ -207,8 +236,9 @@ class _ContactLinksScreenState extends State<ContactLinksScreen> {
     IconData icon,
     Color iconColor,
     TextEditingController controller,
-    String hint,
-  ) {
+    String hint, {
+    String? prefixText,
+  }) {
     final theme = Theme.of(context);
     final cardColor = theme.cardTheme.color ?? Colors.white;
     final borderColor = theme.dividerColor.withValues(alpha: 0.2);
@@ -271,7 +301,24 @@ class _ContactLinksScreenState extends State<ContactLinksScreen> {
                 horizontal: 16,
                 vertical: 14,
               ),
-              prefixIcon: Icon(Icons.link, size: 18, color: Colors.grey[400]),
+              prefixIcon: prefixText != null 
+                  ? Container(
+                      padding: const EdgeInsets.only(left: 16, right: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            prefixText,
+                            style: GoogleFonts.inter(
+                              color: theme.textTheme.bodyLarge?.color?.withOpacity(0.7),
+                              fontWeight: FontWeight.w600,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : Icon(Icons.link, size: 18, color: Colors.grey[400]),
             ),
           ),
         ],

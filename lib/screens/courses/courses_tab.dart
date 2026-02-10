@@ -19,30 +19,6 @@ class CoursesTab extends StatefulWidget {
 }
 
 class _CoursesTabState extends State<CoursesTab> {
-  // Dummy Data for UI Testing
-  final List<CourseModel> _dummyCourses = [
-    CourseModel(
-      id: '101',
-      title: 'Advanced Chip Level Repairing',
-      category: 'Hardware',
-      price: 25000,
-      discountPrice: 19999,
-      description:
-          'Master mobile hardware repairing from basics to advanced chip level.',
-      thumbnailUrl: 'https://picsum.photos/id/1/800/450',
-      duration: '3 Months',
-      difficulty: 'Advanced',
-      enrolledStudents: 1540,
-      rating: 4.8,
-      totalVideos: 120,
-      isPublished: false,
-      hasCertificate: true,
-      isOfflineDownloadEnabled: true,
-      isBigScreenEnabled: true,
-      specialTag: 'Best Seller',
-      supportType: 'WhatsApp Group',
-    ),
-  ];
 
   @override
   void initState() {
@@ -112,13 +88,20 @@ class _CoursesTabState extends State<CoursesTab> {
         },
         child: Consumer<DashboardProvider>(
           builder: (context, provider, child) {
-            // Use dummy data regardless of provider state
-            final displayCourses = _dummyCourses;
+            // Use real data from provider
+            final displayCourses = provider.courses;
+            final bool isLoading = provider.isLoading;
+
+            if (isLoading && displayCourses.isEmpty) {
+               return _buildShimmerGrid();
+            }
 
             if (displayCourses.isEmpty) {
               return Stack(
                 children: [
-                  ListView(), // Always scrollable for RefreshIndicator
+                   ListView(
+                     physics: const AlwaysScrollableScrollPhysics(),
+                   ), // Always scrollable for RefreshIndicator
                   Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -152,9 +135,9 @@ class _CoursesTabState extends State<CoursesTab> {
             return ListView.builder(
               physics: const AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.symmetric(vertical: 16),
-              itemCount: 1, // Forced to 1
+              itemCount: displayCourses.length,
               itemBuilder: (context, index) {
-                final course = _dummyCourses.first;
+                final course = displayCourses[index];
                 return CourseCard(
                       course: course,
                       isEdgeToEdge: true,
@@ -164,8 +147,8 @@ class _CoursesTabState extends State<CoursesTab> {
                       showBorder: true,
                     )
                     .animate()
-                    .fadeIn(duration: 400.ms, delay: (index * 100).ms)
-                    .slideX(begin: -0.1, end: 0);
+                    .fadeIn(duration: 400.ms, delay: (index * 50).ms) // Reduced delay for smoother list
+                    .slideX(begin: -0.05, end: 0);
               },
             );
           },

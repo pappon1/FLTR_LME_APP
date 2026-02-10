@@ -8,6 +8,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../widgets/shimmer_loading.dart';
 import '../../widgets/video_thumbnail_widget.dart';
+import '../../services/config_service.dart';
 import 'dart:math' as math;
 
 class UploadProgressScreen extends StatefulWidget {
@@ -155,7 +156,62 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
       }
     });
 
-    // Heartbeat Monitor removed
+    FlutterBackgroundService().on('all_completed').listen((event) {
+      if (mounted) {
+        // Clear local queue immediately for UI feedback
+        setState(() {
+          _queue.clear();
+          _isLoading = false;
+        });
+
+        // Show Success Dialog
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder:
+              (ctx) => AlertDialog(
+                title: const Column(
+                  children: [
+                    Icon(
+                      Icons.check_circle_outline,
+                      color: Colors.green,
+                      size: 60,
+                    ),
+                    SizedBox(height: 16),
+                    Text(
+                      "Upload Complete! 🚀",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                content: const Text(
+                  "All files have been uploaded and the course has been saved successfully.",
+                  textAlign: TextAlign.center,
+                ),
+                actions: [
+                  Center(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.pop(ctx); // Close Dialog
+                        Navigator.of(context).pop(); // Exit Progress Screen
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 32,
+                          vertical: 12,
+                        ),
+                      ),
+                      child: const Text("Back to Dashboard"),
+                    ),
+                  ),
+                ],
+              ),
+        );
+      }
+    });
 
     FlutterBackgroundService().on('task_completed').listen((event) {
       // Optional: Trigger specific animations
@@ -1031,7 +1087,7 @@ class UploadTaskCard extends StatelessWidget {
           (remoteUrl != null && !remoteUrl.startsWith('http'))
           ? remoteUrl
           : null;
-      const String libraryId = '583681';
+      final String libraryId = ConfigService().bunnyLibraryId;
 
       return Container(
         width: 72,
