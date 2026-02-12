@@ -225,8 +225,9 @@ class SubmitHandler {
         id: docId,
         title: state.titleController.text.trim(),
         category: state.selectedCategory!,
-        price: int.tryParse(state.mrpController.text) ?? 0,
-        discountPrice: int.tryParse(state.finalPriceController.text) ?? 0,
+        price: (double.tryParse(state.mrpController.text) ?? 0).round(),
+        discountPrice:
+            (double.tryParse(state.finalPriceController.text) ?? 0).round(),
         description: finalDesc,
         thumbnailUrl:
             state.thumbnailImage?.path ?? state.currentThumbnailUrl ?? '',
@@ -271,7 +272,7 @@ class SubmitHandler {
             .toList(),
       );
 
-      final sessionId = DateTime.now().millisecondsSinceEpoch.toString();
+      final sessionId = state.editingCourseId ?? DateTime.now().millisecondsSinceEpoch.toString();
       final List<Map<String, dynamic>> fileTasks = [];
       final Set<String> processedFilePaths = {};
 
@@ -315,11 +316,17 @@ class SubmitHandler {
         final int currentIndex = globalCounter++;
         final String type = item['type'] ?? 'unknown';
 
+        bool isActuallyLocal(dynamic p) {
+          if (p == null || p is! String || p.isEmpty) return false;
+          if (p.startsWith('http') || p.startsWith('https')) return false;
+          // Android/iOS/Linux starts with /
+          // Windows starts with drive letter e.g. C:\
+          return p.startsWith('/') || p.contains(':\\');
+        }
+
         // 1. Process File Task
-        if ((type == 'video' || type == 'pdf' || type == 'image') &&
-            (item['isLocal'] == true ||
-                (item['path'] != null &&
-                    item['path'].toString().startsWith('/')))) {
+        final bool isLocal = item['isLocal'] == true || isActuallyLocal(item['path']);
+        if ((type == 'video' || type == 'pdf' || type == 'image') && isLocal) {
           final filePath = item['path'];
           if (filePath != null && filePath is String && filePath.isNotEmpty) {
             String folder = 'others';
@@ -350,7 +357,7 @@ class SubmitHandler {
         // 2. Process Thumbnail Task (Standalone or Video Thumb)
         if (item['thumbnail'] != null && item['thumbnail'] is String) {
           final String thumbPath = item['thumbnail'];
-          if (thumbPath.isNotEmpty && thumbPath.startsWith('/')) {
+          if (thumbPath.isNotEmpty && !thumbPath.startsWith('http') && (thumbPath.startsWith('/') || thumbPath.contains(':\\'))) {
             addTask(
               thumbPath,
               'courses/$sessionId/thumbnails/thumb_${currentIndex}_${path.basename(thumbPath)}',

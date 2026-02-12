@@ -151,7 +151,13 @@ class ContentManager {
     }
 
     for (var newItem in itemsToPaste) {
-      newItem['isLocal'] = true;
+      final String path = newItem['path']?.toString() ?? '';
+      // Only mark as local if it's NOT a remote URL
+      if (!path.startsWith('http')) {
+        newItem['isLocal'] = true;
+      } else {
+        newItem['isLocal'] = false;
+      }
       newItem['isLocked'] = true;
     }
 

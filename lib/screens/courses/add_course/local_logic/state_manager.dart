@@ -6,6 +6,16 @@ import '../../../../models/course_model.dart';
 import '../../../../services/config_service.dart';
 
 class CourseStateManager extends ChangeNotifier {
+  CourseStateManager() {
+    mrpController.addListener(_onPriceChanged);
+    discountAmountController.addListener(_onPriceChanged);
+  }
+
+  void _onPriceChanged() {
+    calculateFinalPrice();
+    notifyListeners();
+  }
+
   final formKey = GlobalKey<FormState>();
   final bunnyService = BunnyCDNService();
   final pageController = PageController();

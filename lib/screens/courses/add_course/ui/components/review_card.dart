@@ -143,7 +143,8 @@ class CourseReviewCard extends StatelessWidget {
             value: state.isOfflineDownloadEnabled ? 'Enabled' : 'Disabled',
             onEdit: () => onEditStep(3),
           ),
-          if (state.specialTagController.text.isNotEmpty)
+          if (state.specialTagController.text.isNotEmpty &&
+              state.isSpecialTagVisible)
             ReviewItem(
               icon: Icons.local_offer_outlined,
               label: 'Special Tag',

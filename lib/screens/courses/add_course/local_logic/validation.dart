@@ -247,7 +247,10 @@ class ValidationLogic {
       isValid = false;
     }
 
-    if (state.hasCertificate && state.certificate1File == null) {
+    if (state.hasCertificate &&
+        state.certificate1File == null &&
+        (state.currentCertificate1Url == null ||
+            state.currentCertificate1Url!.isEmpty)) {
       state.certError = true;
       if (isValid) {
         firstError = 'Please upload certificate design PDF';

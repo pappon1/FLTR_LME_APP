@@ -20,6 +20,7 @@ class CourseCard extends StatelessWidget {
   final double? cornerRadius;
   final bool? showBorder;
   final VoidCallback? onTap;
+  final bool hideSpecialTag;
 
   const CourseCard({
     super.key,
@@ -30,6 +31,7 @@ class CourseCard extends StatelessWidget {
     this.cornerRadius,
     this.showBorder,
     this.onTap,
+    this.hideSpecialTag = false,
   });
 
   // Final Fixed Offsets for Badges
@@ -80,6 +82,15 @@ class CourseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Unified logic for special tag visibility
+    final bool showSpecialTag = !hideSpecialTag &&
+        course.isSpecialTagVisible &&
+        course.specialTag.isNotEmpty &&
+        (course.specialTagDurationDays == 0 ||
+            course.createdAt == null ||
+            DateTime.now().difference(course.createdAt!).inDays <
+                course.specialTagDurationDays);
+
     // Correct Pricing Logic: price = MRP, discountPrice = Selling Price
     final double sellingPrice = course.discountPrice.toDouble();
     final double originalPrice = course.price.toDouble();
@@ -97,9 +108,7 @@ class CourseCard extends StatelessWidget {
         RepaintBoundary(
           child: Card(
             margin: EdgeInsets.only(
-              top: (course.isSpecialTagVisible && course.specialTag.isNotEmpty)
-                  ? 15
-                  : 0,
+              top: showSpecialTag ? 15 : 0,
               bottom: bottomMargin ?? 20,
               left: customHorizontalMargin ?? (isEdgeToEdge ? 0 : 16),
               right: customHorizontalMargin ?? (isEdgeToEdge ? 0 : 16),
@@ -138,17 +147,53 @@ class CourseCard extends StatelessWidget {
                   // 🖼️ Thumbnail
                   AspectRatio(
                     aspectRatio: 16 / 9,
-                    child: Container(
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.grey.shade900
-                            : Colors.grey.shade200,
-                      ),
-                      child: CourseThumbnailWidget(
-                        course: course,
-                        isDark: isDark,
-                      ),
+                    child: Stack(
+                      children: [
+                        Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.grey.shade900
+                                : Colors.grey.shade200,
+                          ),
+                          child: CourseThumbnailWidget(
+                            course: course,
+                            isDark: isDark,
+                          ),
+                        ),
+                        // 🏷️ NEON DISCOUNT BADGE (Extreme Visibility)
+                        if (discountPercent > 0)
+                          Positioned(
+                            top: 12,
+                            left: 12,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF00E676), // Neon Green
+                                borderRadius: BorderRadius.circular(4),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: Text(
+                                '$discountPercent% OFF',
+                                style: GoogleFonts.inter(
+                                  color: Colors.black,
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 12,
+                                  letterSpacing: -0.5,
+                                ),
+                              ),
+                            ),
+                          ).animate().scale(delay: 400.ms, duration: 400.ms, curve: Curves.elasticOut),
+                      ],
                     ),
                   ),
 
@@ -177,6 +222,8 @@ class CourseCard extends StatelessWidget {
                               // 🏷️ Title
                               Text(
                                 course.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
                                 style: GoogleFonts.inter(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w600,
@@ -223,7 +270,7 @@ class CourseCard extends StatelessWidget {
                                             : Colors.black,
                                       ),
                                     ),
-                                    if (discountPercent > 0) ...[
+                                    if (discountPercent > 0 || originalPrice > sellingPrice) ...[
                                       const SizedBox(width: 12),
                                       // Red Strikethrough (MRP)
                                       Text(
@@ -241,11 +288,11 @@ class CourseCard extends StatelessWidget {
                                       const SizedBox(width: 12),
                                       // Neon Green Discount
                                       Text(
-                                        '$discountPercent % Off',
+                                        '$discountPercent% OFF',
                                         style: GoogleFonts.inter(
                                           fontSize: 15,
                                           color: const Color(0xFF00E676),
-                                          fontWeight: FontWeight.bold,
+                                          fontWeight: FontWeight.w900,
                                         ),
                                       ),
                                     ],
@@ -322,13 +369,8 @@ class CourseCard extends StatelessWidget {
             ),
           ),
         ),
-        // 🛠️ Ultra-Realistic 3D Screwdriver & Screw Animation (Full Sweep)
-        if (course.isSpecialTagVisible &&
-            course.specialTag.isNotEmpty &&
-            (course.specialTagDurationDays == 0 ||
-                (course.createdAt != null &&
-                    DateTime.now().difference(course.createdAt!).inDays <
-                        course.specialTagDurationDays)))
+        // Unified logic for special tag visibility
+        if (showSpecialTag)
           Positioned(
             top: -12,
             right: 0,

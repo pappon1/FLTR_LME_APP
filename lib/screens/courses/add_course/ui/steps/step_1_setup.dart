@@ -232,6 +232,7 @@ class Step1SetupWidget extends StatelessWidget {
                   keyboardType: TextInputType.number,
                   hasError: state.mrpError,
                   verticalPadding: 7,
+                  onChanged: (v) => logic.draftManager.saveCourseDraft(),
                 ),
               ),
             ),
@@ -247,6 +248,7 @@ class Step1SetupWidget extends StatelessWidget {
                   keyboardType: TextInputType.number,
                   hasError: state.discountError,
                   verticalPadding: 7,
+                  onChanged: (v) => logic.draftManager.saveCourseDraft(),
                 ),
               ),
             ),
@@ -411,7 +413,7 @@ class Step1SetupWidget extends StatelessWidget {
           color: Theme.of(context).textTheme.bodyLarge?.color,
           fontSize: 16,
         ),
-        initialValue: state.courseValidityDays,
+        value: state.courseValidityDays,
         hint: const Text('Select Validity'),
         decoration: _dropdownDecoration(
           context,
@@ -659,7 +661,7 @@ class Step1SetupWidget extends StatelessWidget {
         color: Theme.of(context).textTheme.bodyLarge?.color,
         fontSize: 16,
       ),
-      initialValue: value,
+      value: value,
       hint: Text(
         hint ?? 'Select $label',
         style: TextStyle(

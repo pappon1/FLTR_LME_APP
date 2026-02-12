@@ -617,7 +617,7 @@ class _DashboardTabState extends State<DashboardTab>
                   Column(
                     children: [
                       SizedBox(
-                        height: 345,
+                        height: 375,
                         child: NotificationListener<UserScrollNotification>(
                           onNotification: (notification) {
                             // Pause only when user actively swipes (drags) the carousel
@@ -636,14 +636,15 @@ class _DashboardTabState extends State<DashboardTab>
                             itemBuilder: (context, index) {
                               final courseIndex =
                                   index % provider.popularCourses.length;
-                              return CourseCard(
-                                course: provider.popularCourses[courseIndex],
-                                isEdgeToEdge: true,
-                                customHorizontalMargin: 10,
-                                bottomMargin: 14,
-                                cornerRadius: 3,
-                                showBorder: true,
-                              );
+                                return CourseCard(
+                                  course: provider.popularCourses[courseIndex],
+                                  isEdgeToEdge: true,
+                                  customHorizontalMargin: 10,
+                                  bottomMargin: 14,
+                                  cornerRadius: 3,
+                                  showBorder: true,
+                                  hideSpecialTag: false,
+                                );
                             },
                           ),
                         ),

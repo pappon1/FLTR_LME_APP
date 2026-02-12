@@ -602,6 +602,22 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                         'extraPadding': const EdgeInsets.only(left: 2),
                       });
 
+                      // ✨ Special Tag Badge (Badge Row in Detail Overview)
+                      if (course.isSpecialTagVisible &&
+                          course.specialTag.isNotEmpty) {
+                        badgeData.add({
+                          'icon': Icons.stars_rounded,
+                          'label': 'Badge - ${course.specialTag}',
+                          'color': course.specialTagColor == 'Red'
+                              ? const Color(0xFFFF5252)
+                              : course.specialTagColor == 'Green'
+                                  ? const Color(0xFF00E676)
+                                  : course.specialTagColor == 'Pink'
+                                      ? const Color(0xFFFF4081)
+                                      : const Color(0xFF42A5F5), // Default Blue
+                        });
+                      }
+
                       return badgeData.map((data) {
                         return _buildBadge(
                           icon: data['icon'] as IconData,
@@ -616,6 +632,35 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                   ),
 
                   const SizedBox(height: 24),
+
+                  // Highlights Section
+                  if (course.highlights.isNotEmpty) ...[
+                    _buildSectionHeader("Course Highlights", showEdit: false),
+                    const SizedBox(height: 16),
+                    ...course.highlights.asMap().entries.map((entry) {
+                      return _buildHighlightItem(
+                        entry.value,
+                        isDark,
+                        isFirst: entry.key == 0,
+                        isLast: entry.key == course.highlights.length - 1,
+                      );
+                    }),
+                    const SizedBox(height: _fOvGapHighFaq),
+                  ],
+
+                  // FAQs
+                  if (course.faqs.isNotEmpty) ...[
+                    _buildSectionHeader("FAQs", showEdit: false),
+                    const SizedBox(height: 16),
+                    ...course.faqs.map(
+                      (faq) => _buildFAQItem(
+                        faq['question'] ?? '',
+                        faq['answer'] ?? '',
+                        isDark,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                  ],
 
                   // 🔗 WhatsApp Support Group Link Section
                   // 🔗 WhatsApp Support Group Link Section
@@ -898,35 +943,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                     const SizedBox(height: 24),
                   ],
 
-                  const SizedBox(height: 24),
-
-                  // Highlights Section
-                  if (course.highlights.isNotEmpty) ...[
-                    _buildSectionHeader("Course Highlights", showEdit: false),
-                    const SizedBox(height: 16),
-                    ...course.highlights.asMap().entries.map((entry) {
-                      return _buildHighlightItem(
-                        entry.value,
-                        isDark,
-                        isFirst: entry.key == 0,
-                        isLast: entry.key == course.highlights.length - 1,
-                      );
-                    }),
-                    const SizedBox(height: _fOvGapHighFaq),
-                  ],
-
-                  // FAQs
-                  if (course.faqs.isNotEmpty) ...[
-                    _buildSectionHeader("FAQs", showEdit: false),
-                    const SizedBox(height: 16),
-                    ...course.faqs.map(
-                      (faq) => _buildFAQItem(
-                        faq['question'] ?? '',
-                        faq['answer'] ?? '',
-                        isDark,
-                      ),
-                    ),
-                  ],
 
                   // Chat Banner - Show only if link is configured
                   StreamBuilder<DocumentSnapshot>(
@@ -1318,10 +1334,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                       style: GoogleFonts.manrope(
                         fontSize: _fPriceSize,
                         fontWeight: FontWeight.w800,
-                        color: isDark ? Colors.white : Colors.black,
+                        color: Colors.white, // Always white on dark bar
                       ),
                     ),
-                    if (discountPercent > 0) ...[
+                    if (discountPercent > 0 || originalPrice > sellingPrice) ...[
                       const SizedBox(width: _fElemSpace),
                       Text(
                         '₹${originalPrice.toStringAsFixed(0)}',

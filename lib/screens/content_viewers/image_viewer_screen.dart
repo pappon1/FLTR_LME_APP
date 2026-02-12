@@ -5,6 +5,7 @@ import 'package:photo_view/photo_view.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../services/config_service.dart';
+import '../../services/bunny_cdn_service.dart';
 
 class ImageViewerScreen extends StatefulWidget {
   final String filePath;
@@ -63,17 +64,25 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
                 basePosition: Alignment.center,
                 heroAttributes: PhotoViewHeroAttributes(tag: widget.filePath),
                 child: widget.isNetwork
-                    ? CachedNetworkImage(
-                        key: ValueKey("network_$_retryKey"),
-                        imageUrl: widget.filePath,
-                        httpHeaders: {'Referer': ConfigService.allowedReferer},
-                        fit: BoxFit.contain,
-                        memCacheWidth: 2048,
-                        placeholder: (context, url) =>
-                            _buildShimmerLoader(isDark),
-                        errorWidget: (context, url, error) =>
-                            _buildErrorWidget(textColor, iconColor),
-                      )
+                    ? (() {
+                        final String signedUrl = BunnyCDNService.signUrl(widget.filePath);
+                        final bool isStorage = signedUrl.contains('storage.bunnycdn.com');
+                        return CachedNetworkImage(
+                          key: ValueKey("network_$_retryKey"),
+                          imageUrl: signedUrl,
+                          httpHeaders: {
+                            if (!isStorage) 'Referer': ConfigService.allowedReferer,
+                            if (isStorage) 'AccessKey': BunnyCDNService.apiKey,
+                          },
+                          fit: BoxFit.contain,
+                          memCacheWidth: 2048,
+                          placeholder: (context, url) => _buildShimmerLoader(isDark),
+                          errorWidget: (context, url, error) {
+                            debugPrint('❌ [IMAGE_VIEWER_ERROR] Path: $signedUrl | Error: $error');
+                            return _buildErrorWidget(textColor, iconColor);
+                          },
+                        );
+                      }())
                     : Image.file(
                         File(widget.filePath),
                         key: ValueKey("file_$_retryKey"),

@@ -586,7 +586,7 @@ class CourseContentListItem extends StatelessWidget {
                     imageUrl: effectiveThumb,
                     fit: BoxFit.cover,
                     httpHeaders: {
-                      'Referer': ConfigService.allowedReferer,
+                      if (!isStorage) 'Referer': ConfigService.allowedReferer,
                       if (isStorage) 'AccessKey': BunnyCDNService.apiKey,
                     },
                     errorWidget: (context, url, error) => Container(color: Colors.black),
@@ -621,7 +621,7 @@ class CourseContentListItem extends StatelessWidget {
                 imageUrl: effectivePath,
                 fit: BoxFit.cover,
                 httpHeaders: {
-                  'Referer': ConfigService.allowedReferer,
+                  if (!isStorage) 'Referer': ConfigService.allowedReferer,
                   if (isStorage) 'AccessKey': BunnyCDNService.apiKey,
                 },
                 errorWidget: (context, url, error) => Center(
