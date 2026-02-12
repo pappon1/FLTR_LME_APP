@@ -12,7 +12,10 @@ import 'package:shimmer/shimmer.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../utils/app_theme.dart';
+import '../../services/bunny_cdn_service.dart';
+import '../../services/config_service.dart';
 import '../../services/logger_service.dart';
+import 'package:dio/dio.dart';
 
 class PDFViewerScreen extends StatefulWidget {
   final String filePath;
@@ -109,16 +112,30 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
   Future<void> _prepareFile() async {
     try {
       if (widget.isNetwork) {
-        final response = await http.get(Uri.parse(widget.filePath));
+        final String effectiveUrl = BunnyCDNService.signUrl(widget.filePath);
+        final bool isStorage = effectiveUrl.contains('storage.bunnycdn.com');
+        
+        final dio = Dio();
+        final response = await dio.get(
+          effectiveUrl,
+          options: Options(
+            responseType: ResponseType.bytes,
+            headers: {
+              if (isStorage) 'AccessKey': BunnyCDNService.apiKey,
+              if (!isStorage) 'Referer': ConfigService.allowedReferer,
+            },
+          ),
+        );
+
         if (response.statusCode == 200) {
           final dir = await getTemporaryDirectory();
           final file = File(
             '${dir.path}/temp_pdf_${widget.filePath.hashCode}.pdf',
           );
-          await file.writeAsBytes(response.bodyBytes);
+          await file.writeAsBytes(response.data);
           _localPath = file.path;
         } else {
-          throw Exception("Failed to download PDF");
+          throw Exception("Failed to download PDF (${response.statusCode})");
         }
       } else {
         _localPath = widget.filePath;
@@ -338,8 +355,9 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
                             valueListenable: _searchResultNotifier,
                             builder: (context, result, _) {
                               if (result == null ||
-                                  result.totalInstanceCount == 0)
+                                  result.totalInstanceCount == 0) {
                                 return const SizedBox();
+                              }
                               return Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 6,

@@ -72,8 +72,39 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _contents = List.from(widget.contentList);
+    _contents = _normalizeContents(widget.contentList);
     _initData();
+  }
+
+  List<Map<String, dynamic>> _normalizeContents(List<dynamic> rawContents) {
+    final String cdnHost = ConfigService().bunnyStreamCdnHost;
+    return rawContents.map((item) {
+      final converted = Map<String, dynamic>.from(item);
+      // Robust path extraction (same as AddCourseScreen/CourseContentTab)
+      final String? path = (converted['path'] ?? converted['videoUrl'] ?? converted['url'])?.toString();
+
+      if (path != null && (path.contains('iframe.mediadelivery.net') || path.contains(cdnHost))) {
+        try {
+          final uri = Uri.parse(path);
+          final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+          
+          String? videoId;
+          if (path.contains('iframe.mediadelivery.net')) {
+            videoId = segments.last;
+          } else if (segments.isNotEmpty) {
+            videoId = segments.firstWhere((s) => s.length > 20, orElse: () => segments[0]);
+          }
+
+          if (videoId != null && videoId != cdnHost) {
+            converted['path'] = 'https://$cdnHost/$videoId/playlist.m3u8';
+            if (converted['thumbnail'] == null || converted['thumbnail'].toString().isEmpty) {
+              converted['thumbnail'] = 'https://$cdnHost/$videoId/thumbnail.jpg';
+            }
+          }
+        } catch (_) {}
+      }
+      return converted;
+    }).toList();
   }
 
   Future<void> _initData() async {
@@ -111,7 +142,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
     super.didUpdateWidget(oldWidget);
     if (widget.contentList != oldWidget.contentList) {
       setState(() {
-        _contents = List.from(widget.contentList);
+        _contents = _normalizeContents(widget.contentList);
       });
       _loadPersistentContent();
     }
@@ -386,10 +417,11 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
 
   void _pasteContent() {
     if (ContentClipboard.isEmpty) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text('Clipboard is empty')));
+      }
       return;
     }
 
@@ -470,12 +502,13 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
     }
     _savePersistentContent();
 
-    if (mounted)
+    if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('${ContentClipboard.items!.length} items pasted'),
         ),
       );
+    }
   }
 
   void _renameContent(int index) {
@@ -827,42 +860,14 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
         ),
       );
     } else if (item['type'] == 'video' && path != null) {
-      // CREATE PLAYLIST: Filter only video items
-      final videoList = _contents
-          .where(
-            (element) =>
-                element['type'] == 'video' &&
-                (element['path'] != null || element['url'] != null),
-          )
-          .map((video) {
-            final converted = Map<String, dynamic>.from(video);
-            final videoPath = video['path'] ?? video['url'];
-            converted['path'] = videoPath; // Normalize to path
-            converted['thumbnail'] =
-                video['thumbnail']; // Ensure custom thumbnail is passed
+      final List<Map<String, dynamic>> rawPlaylist =
+          _contents.where((e) => e['type'] == 'video').toList();
 
-            // Convert iframe URL to actual video URL in read-only mode
-            if (widget.isReadOnly &&
-                videoPath != null &&
-                videoPath.toString().contains('iframe.mediadelivery.net')) {
-              final videoId = videoPath.toString().split('/').last;
-              final libId = ConfigService().bunnyLibraryId;
-              converted['path'] =
-                  'https://vz-$libId.b-cdn.net/$videoId/playlist.m3u8';
+      // Ensure the playlist is normalized before playback (fixes "Edit Mode" playback)
+      final List<Map<String, dynamic>> videoPlaylist = _normalizeContents(rawPlaylist);
 
-              // Add network thumbnail if manual one is missing
-              if (converted['thumbnail'] == null) {
-                converted['thumbnail'] =
-                    'https://vz-$libId.b-cdn.net/$videoId/thumbnail.jpg';
-              }
-            }
-
-            return converted;
-          })
-          .toList();
-
-      final initialIndex = videoList.indexWhere(
-        (e) => e['name'] == item['name'],
+      final initialIndex = videoPlaylist.indexWhere(
+        (e) => e['name'] == item['name'] || e['path'] == item['path'],
       );
 
       unawaited(
@@ -870,7 +875,7 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
           context,
           MaterialPageRoute(
             builder: (_) => VideoPlayerScreen(
-              playlist: videoList,
+              playlist: videoPlaylist,
               initialIndex: initialIndex >= 0 ? initialIndex : 0,
             ),
           ),
@@ -943,8 +948,9 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
                     sliver: SliverReorderableList(
                       itemCount: _contents.length,
                       onReorder: (oldIndex, newIndex) {
-                        if (widget.isReadOnly)
+                        if (widget.isReadOnly) {
                           return; // Disable reorder in read-only
+                        }
                         setState(() {
                           if (oldIndex < newIndex) newIndex -= 1;
                           final item = _contents.removeAt(oldIndex);

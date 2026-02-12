@@ -2,6 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../../../utils/app_theme.dart';
 import '../../../../../widgets/video_thumbnail_widget.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../../../../services/config_service.dart';
+import '../../../../../services/bunny_cdn_service.dart';
 
 class CourseContentListItem extends StatelessWidget {
   final Map<String, dynamic> item;
@@ -567,11 +570,11 @@ class CourseContentListItem extends StatelessWidget {
     double width,
     double height,
   ) {
-    final String? pathStr = item['path']?.toString();
+    final String? pathStr = (item['path'] ?? item['videoUrl'] ?? item['url'])?.toString();
     final String? thumb = item['thumbnail']?.toString();
 
     if (item['type'] == 'video') {
-      // Use VideoThumbnailWidget if pathStr is available, otherwise use a fallback
+      // 1. Primary: Use VideoThumbnailWidget (It knows how to guess/handle Bunny Stream + Local)
       if (pathStr != null && pathStr.isNotEmpty) {
         return Stack(
           children: [
@@ -584,47 +587,58 @@ class CourseContentListItem extends StatelessWidget {
             Container(color: Colors.black12), // Slight overlay
           ],
         );
-      } else if (thumb != null && thumb.isNotEmpty) {
-        // Fallback to custom thumbnail if pathStr is missing but thumb is present
-        final bool isNetwork = thumb.startsWith('http');
+      }
+      
+      // 2. Fallback: If only thumbnail is present
+      if (thumb != null && thumb.isNotEmpty) {
+        final String effectiveUrl = BunnyCDNService.signUrl(thumb);
+        final bool isNetwork = effectiveUrl.startsWith('http');
+        final bool isStorage = effectiveUrl.contains('storage.bunnycdn.com');
         return Stack(
           fit: StackFit.expand,
           children: [
             isNetwork
-                ? Image.network(
-                    thumb,
+                ? CachedNetworkImage(
+                    imageUrl: effectiveUrl,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        Container(color: Colors.black),
+                    httpHeaders: {
+                      if (!isStorage) 'Referer': ConfigService.allowedReferer,
+                      if (isStorage) 'AccessKey': BunnyCDNService.apiKey,
+                    },
+                    errorWidget: (context, url, error) => _buildVideoFallback(width, height),
+                    placeholder: (context, url) => Container(color: Colors.black12),
                   )
                 : Image.file(
                     File(thumb),
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        Container(color: Colors.black),
+                    errorBuilder: (context, error, stackTrace) => _buildVideoFallback(width, height),
                   ),
+            Container(color: Colors.black12),
           ],
         );
       }
-      // Default fallback for video if no path or thumbnail
-      return Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(color: Colors.black87),
-          const Icon(Icons.play_circle_outline, color: Colors.white, size: 48),
-        ],
-      );
+
+      return _buildVideoFallback(width, height);
     }
 
     if (item['type'] == 'image' && pathStr != null && pathStr.isNotEmpty) {
-      final bool isNetwork = pathStr.startsWith('http');
+      final String effectivePath = BunnyCDNService.signUrl(pathStr);
+      final bool isNetwork = effectivePath.startsWith('http');
+      final bool isStorage = effectivePath.contains('storage.bunnycdn.com');
       try {
         return isNetwork
-            ? Image.network(
-                pathStr,
+            ? CachedNetworkImage(
+                imageUrl: effectivePath,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Center(
+                httpHeaders: {
+                  if (!isStorage) 'Referer': ConfigService.allowedReferer,
+                  if (isStorage) 'AccessKey': BunnyCDNService.apiKey,
+                },
+                errorWidget: (context, url, error) => Center(
                   child: Icon(defaultIcon, color: defaultColor, size: 48),
+                ),
+                placeholder: (context, url) => Center(
+                  child: Icon(defaultIcon, color: defaultColor.withValues(alpha: 0.3), size: 48),
                 ),
               )
             : Image.file(
@@ -751,5 +765,19 @@ class CourseContentListItem extends StatelessWidget {
     } catch (e) {
       return '';
     }
+  }
+
+  Widget _buildVideoFallback(double width, double height) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Container(
+          width: width,
+          height: height,
+          color: Colors.black,
+        ),
+        const Icon(Icons.play_circle_outline, color: Colors.white24, size: 40),
+      ],
+    );
   }
 }

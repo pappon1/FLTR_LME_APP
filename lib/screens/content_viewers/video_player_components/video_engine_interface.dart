@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 abstract class BaseVideoEngine {
   Future<void> init();
-  Future<void> open(String path, {bool play = true});
+  Future<void> open(String path, {bool play = true, Map<String, String>? headers});
   Future<void> play();
   Future<void> pause();
   Future<void> playOrPause();

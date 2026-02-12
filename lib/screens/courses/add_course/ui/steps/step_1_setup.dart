@@ -482,16 +482,20 @@ class Step1SetupWidget extends StatelessWidget {
           const SizedBox(height: 16),
           PdfUploader(
             file: state.certificate1File,
+            networkUrl: state.currentCertificate1Url,
             label: 'Tap to upload Certificate PDF',
             onTap: () => logic.pickCertificatePdf(context, showWarning),
-            onRemove: state.certificate1File != null
+            onRemove: (state.certificate1File != null ||
+                    state.currentCertificate1Url != null)
                 ? () {
                     state.certificate1File = null;
+                    state.currentCertificate1Url = null;
                     state.updateState();
                     logic.draftManager.saveCourseDraft();
                   }
                 : null,
-            onView: state.certificate1File != null
+            onView: (state.certificate1File != null ||
+                    state.currentCertificate1Url != null)
                 ? () => _showPdfViewer(context)
                 : null,
           ),
@@ -570,7 +574,11 @@ class Step1SetupWidget extends StatelessWidget {
           child: Column(
             children: [
               AppBar(
-                title: Text(state.certificate1File!.path.split('/').last),
+                title: Text(
+                  state.certificate1File != null
+                      ? state.certificate1File!.path.split('/').last
+                      : 'Certificate Design',
+                ),
                 leading: IconButton(
                   icon: const Icon(Icons.close),
                   onPressed: () => Navigator.pop(context),
@@ -579,7 +587,13 @@ class Step1SetupWidget extends StatelessWidget {
                 backgroundColor: Colors.transparent,
                 foregroundColor: Colors.white,
               ),
-              Expanded(child: SfPdfViewer.file(state.certificate1File!)),
+              Expanded(
+                child: state.certificate1File != null
+                    ? SfPdfViewer.file(state.certificate1File!)
+                    : (state.currentCertificate1Url != null
+                        ? SfPdfViewer.network(state.currentCertificate1Url!)
+                        : const Center(child: Text('No PDF to view'))),
+              ),
             ],
           ),
         ),

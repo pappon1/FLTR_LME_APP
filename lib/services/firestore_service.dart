@@ -394,23 +394,27 @@ class FirestoreService {
       final coursesCount = await _firestore
           .collection('courses')
           .count()
-          .get(source: AggregateSource.server);
+          .get(source: AggregateSource.server)
+          .timeout(const Duration(seconds: 10));
       final videosCount = await _firestore
           .collection('videos')
           .count()
-          .get(source: AggregateSource.server);
+          .get(source: AggregateSource.server)
+          .timeout(const Duration(seconds: 10));
       final usersCount = await _firestore
           .collection('users')
           .where('role', isEqualTo: 'user')
           .count()
-          .get(source: AggregateSource.server);
+          .get(source: AggregateSource.server)
+          .timeout(const Duration(seconds: 10));
 
       final buyersCount = await _firestore
           .collection('users')
           .where('role', isEqualTo: 'user')
           .where('enrolledCourses', isGreaterThan: 0)
           .count()
-          .get(source: AggregateSource.server);
+          .get(source: AggregateSource.server)
+          .timeout(const Duration(seconds: 10));
 
       return {
         'totalCourses': coursesCount.count ?? 0,

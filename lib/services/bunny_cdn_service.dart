@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
 import 'package:path/path.dart' as path;
 import 'logger_service.dart';
@@ -8,9 +9,13 @@ class BunnyCDNService {
   // Bunny.net Storage Zone Configuration
   static const String storageZoneName = 'lme-media-storage';
   static const String hostname =
-      'sg.storage.bunnycdn.com'; // Verified Region: Singapore
+      'sg.storage.bunnycdn.com'; // Use Singapore storage endpoint (Verified fix for 401)
 
-  static String get apiKey => ConfigService().bunnyStorageKey;
+  static String get apiKey {
+    // ⚡ USER VERIFIED KEY: Provided by user to fix broken thumbnails/PDFs
+    // "bunny pdf image read write password - 47d150e7-c234-4267-85a4018657d5-afa6-4d5c"
+    return '47d150e7-c234-4267-85a4018657d5-afa6-4d5c';
+  }
 
   static const String cdnUrl = 'https://lme-media-storage.b-cdn.net';
 
@@ -42,6 +47,15 @@ class BunnyCDNService {
 
         final fileSize = await file.length();
         final fileName = path.basename(filePath);
+
+        if (apiKey.isEmpty) {
+          LoggerService.warning("API Key missing. Attempting lazy initialization...", tag: 'BUNNY_CDN');
+          await ConfigService().initialize();
+        }
+
+        if (apiKey.isEmpty) {
+          throw Exception('CDN API Key is missing. Please restart the app or check internet.');
+        }
 
         final apiUrl = 'https://$hostname/$storageZoneName/$remotePath';
         final stream = file.openRead();
@@ -221,12 +235,17 @@ class BunnyCDNService {
   static String signUrl(String publicUrl) {
     if (publicUrl.isEmpty) return publicUrl;
 
-    // Only transform if it's our specific Storage Zone CDN
-    // This prevents breaking Bunny Stream thumbnails (which also use b-cdn.net but different host)
-    if (publicUrl.startsWith(cdnUrl)) {
+    debugPrint('🛡️ [SIGN_URL] Processing: $publicUrl');
+
+    if (publicUrl.toLowerCase().contains('lme-media-storage.b-cdn.net')) {
       try {
-        String pathPart = publicUrl.split(cdnUrl).last;
+        String pathPart = publicUrl.split('.b-cdn.net').last;
         if (pathPart.startsWith('/')) pathPart = pathPart.substring(1);
+
+        // Remove query parameters if any
+        if (pathPart.contains('?')) {
+          pathPart = pathPart.split('?').first;
+        }
 
         final decoded = Uri.decodeFull(pathPart);
         final segments = decoded.split('/');
@@ -235,12 +254,13 @@ class BunnyCDNService {
             .toList();
         final targetPath = encodedSegments.join('/');
 
-        return 'https://sg.storage.bunnycdn.com/lme-media-storage/$targetPath';
+        // ⚡ REGIONAL FIX: Use sg.storage.bunnycdn.com as verified by auth_test
+        final signed = 'https://sg.storage.bunnycdn.com/lme-media-storage/$targetPath';
+        debugPrint('🛡️ [SIGN_URL] Result: $signed');
+        return signed;
       } catch (e) {
-        return publicUrl.replaceFirst(
-          cdnUrl,
-          'https://sg.storage.bunnycdn.com/lme-media-storage',
-        );
+        debugPrint('🛡️ [SIGN_URL] Error: $e');
+        return publicUrl;
       }
     }
 

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
@@ -8,6 +9,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../utils/app_theme.dart';
+import '../services/config_service.dart';
+import 'course_thumbnail_widget.dart';
 
 class CourseCard extends StatelessWidget {
   final CourseModel course;
@@ -142,8 +145,8 @@ class CourseCard extends StatelessWidget {
                             ? Colors.grey.shade900
                             : Colors.grey.shade200,
                       ),
-                      child: _CourseThumbnail(
-                        thumbnailUrl: course.thumbnailUrl,
+                      child: CourseThumbnailWidget(
+                        course: course,
                         isDark: isDark,
                       ),
                     ),
@@ -339,37 +342,7 @@ class CourseCard extends StatelessWidget {
   }
 }
 
-/// 🖼️ Optimized Thumbnail Widget
-class _CourseThumbnail extends StatelessWidget {
-  final String thumbnailUrl;
-  final bool isDark;
-
-  const _CourseThumbnail({required this.thumbnailUrl, required this.isDark});
-
-  @override
-  Widget build(BuildContext context) {
-    final signedUrl = BunnyCDNService.signUrl(thumbnailUrl);
-    final isStorageUrl = signedUrl.contains('storage.bunnycdn.com');
-
-    return CachedNetworkImage(
-      imageUrl: signedUrl,
-      httpHeaders: isStorageUrl ? {'AccessKey': BunnyCDNService.apiKey} : null,
-      fit: BoxFit.cover,
-      placeholder: (context, url) => Shimmer.fromColors(
-        baseColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-        highlightColor: isDark ? Colors.grey.shade700 : Colors.grey.shade100,
-        child: Container(
-          color: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-        ),
-      ),
-      errorWidget: (context, url, error) => Container(
-        color: isDark ? Colors.grey.shade900 : Colors.grey.shade200,
-        alignment: Alignment.center,
-        child: const Icon(Icons.broken_image, color: Colors.grey, size: 48),
-      ),
-    );
-  }
-}
+// _CourseThumbnail class removed - now using centralized CourseThumbnailWidget
 
 /// ✨ Optimized Badge Row Widget
 class _BadgeRow extends StatelessWidget {
@@ -462,11 +435,11 @@ class _BadgeRow extends StatelessWidget {
 
     if (course.hasCertificate) {
       data.add(
-        _BadgeData(
+        const _BadgeData(
           id: 'certificate',
           icon: Icons.workspace_premium,
           label: 'Certificate',
-          color: const Color(0xFFFF5252),
+          color: Color(0xFFFF5252),
         ),
       );
     }
@@ -482,45 +455,45 @@ class _BadgeRow extends StatelessWidget {
 
     if (course.isOfflineDownloadEnabled) {
       data.add(
-        _BadgeData(
+        const _BadgeData(
           id: 'offline',
           icon: Icons.download_for_offline,
           label: 'Offline Access',
-          color: const Color(0xFF009688),
+          color: Color(0xFF009688),
         ),
       );
     }
 
     if (course.isBigScreenEnabled) {
       data.add(
-        _BadgeData(
+        const _BadgeData(
           id: 'web',
           icon: Icons.devices,
           label: 'Web/PC Access',
-          color: const Color(0xFF03A9F4),
+          color: Color(0xFF03A9F4),
         ),
       );
     }
 
     if (course.supportType == 'WhatsApp Group') {
       data.add(
-        _BadgeData(
+        const _BadgeData(
           id: 'whatsapp',
           icon: FontAwesomeIcons.whatsapp,
           label: 'WhatsApp Support Group',
-          color: const Color(0xFF25D366),
-          extraPadding: const EdgeInsets.only(left: 11),
+          color: Color(0xFF25D366),
+          extraPadding: EdgeInsets.only(left: 11),
         ),
       );
     }
 
     data.add(
-      _BadgeData(
+      const _BadgeData(
         id: 'demo',
         icon: Icons.play_lesson,
         label: 'Demo',
-        color: const Color(0xFFE91E63),
-        extraPadding: const EdgeInsets.only(left: 5),
+        color: Color(0xFFE91E63),
+        extraPadding: EdgeInsets.only(left: 5),
       ),
     );
 
@@ -718,16 +691,16 @@ class _RotatingScrew extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         // 🔩 Tapered Saw-Tooth Threads (Thinner)
-        Container(
+        SizedBox(
               height: 8,
-              child: Row(
+              child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const _SawToothThread(height: 2), // Acts as tip
-                  const _SawToothThread(height: 3),
-                  const _SawToothThread(height: 4),
-                  const _SawToothThread(height: 6),
-                  const _SawToothThread(height: 7),
+                  _SawToothThread(height: 2), // Acts as tip
+                  _SawToothThread(height: 3),
+                  _SawToothThread(height: 4),
+                  _SawToothThread(height: 6),
+                  _SawToothThread(height: 7),
                 ],
               ),
             )
@@ -1057,7 +1030,7 @@ class _PremiumHDHandle extends StatelessWidget {
         CourseCard._handleColorPresets['Blue']!;
 
     return RepaintBoundary(
-      child: Container(
+      child: SizedBox(
         height: 36,
         child:
             Row(

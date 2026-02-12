@@ -19,41 +19,45 @@ class VideoErrorOverlay extends StatelessWidget {
 
     return Container(
       color: backgroundColor,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.error_outline, color: Colors.redAccent, size: 48),
-            const SizedBox(height: 16),
-            Text(
-              "Playback Error",
-              style: TextStyle(
-                color: titleColor,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: messageColor, fontSize: 13),
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: onRetry,
-              icon: const Icon(Icons.refresh, size: 18),
-              label: const Text("Retry"),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF22C55E),
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(3.0),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.redAccent, size: 32),
+              const SizedBox(height: 8),
+              Text(
+                "Playback Error",
+                style: TextStyle(
+                  color: titleColor,
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: messageColor, fontSize: 12),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: onRetry,
+                icon: const Icon(Icons.refresh, size: 16),
+                label: const Text("Retry"),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  backgroundColor: const Color(0xFF22C55E),
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(0, 32),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(3.0),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

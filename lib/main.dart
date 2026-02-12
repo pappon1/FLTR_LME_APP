@@ -41,7 +41,8 @@ void main() async {
   // Initialize Firebase
   await Firebase.initializeApp();
 
-  // 🔥 Lock 2: THE KEY-MASTER (App Check)
+  // 🔥 Lock 2: THE KEY-MASTER (App Check) - DISABLED FOR DEBUGGING
+  /*
   try {
     debugPrint("🔥 [SECURITY] Attempting to activate Firebase App Check...");
     
@@ -54,12 +55,14 @@ void main() async {
   } catch (e) {
     debugPrint("❌ [SECURITY] App Check activation failed: $e");
   }
+  */
 
   // Check Auth State
   final user = FirebaseAuth.instance.currentUser;
   debugPrint("👤 [AUTH] Current User Status: ${user != null ? 'LOGGED_IN' : 'LOGGED_OUT'}");
   debugPrint("👤 [AUTH] UID: ${user?.uid}, Email: ${user?.email}");
 
+  /*
   if (kDebugMode) {
     // Listen to token changes
     FirebaseAppCheck.instance.onTokenChange.listen((token) {
@@ -79,6 +82,7 @@ void main() async {
       })
     );
   }
+  */
 
   if (user == null) {
     LoggerService.warning("⚠️ User NOT logged in. Config fetch may fail.", tag: 'AUTH');

@@ -29,7 +29,49 @@ class _CourseContentTabState extends State<CourseContentTab> {
   @override
   void initState() {
     super.initState();
-    _contents = List<Map<String, dynamic>>.from(widget.course.contents);
+    _contents = _normalizeContents(widget.course.contents);
+  }
+
+  List<Map<String, dynamic>> _normalizeContents(List<dynamic> rawContents) {
+    final cdnHost = ConfigService().bunnyStreamCdnHost;
+    return rawContents.map((item) {
+      final converted = Map<String, dynamic>.from(item);
+      // Support multiple key names for the video path
+      final String? rawPath = (converted['path'] ?? converted['videoUrl'] ?? converted['url'])?.toString();
+
+      if (rawPath != null && (rawPath.contains('iframe.mediadelivery.net') || rawPath.contains(cdnHost))) {
+        try {
+          final uri = Uri.parse(rawPath);
+          final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+          
+          String? videoId;
+          if (rawPath.contains('iframe.mediadelivery.net')) {
+            videoId = segments.last;
+          } else if (segments.isNotEmpty) {
+            videoId = segments.firstWhere((s) => s.length > 20, orElse: () => segments[0]);
+          }
+
+          if (videoId != null && videoId != cdnHost && !videoId.startsWith('http')) {
+            // Remove query params if any (e.g. ?autoplay=true)
+            if (videoId.contains('?')) {
+              videoId = videoId.split('?').first;
+            }
+
+            converted['path'] = 'https://$cdnHost/$videoId/playlist.m3u8';
+            if (converted['thumbnail'] == null || converted['thumbnail'].toString().isEmpty) {
+              converted['thumbnail'] = 'https://$cdnHost/$videoId/thumbnail.jpg';
+            }
+          } else {
+             converted['path'] = rawPath;
+          }
+        } catch (_) {
+          converted['path'] = rawPath;
+        }
+      } else if (rawPath != null) {
+        converted['path'] = rawPath;
+      }
+      return converted;
+    }).toList();
   }
 
   void _handleContentTap(Map<String, dynamic> item, int index) {
@@ -46,31 +88,8 @@ class _CourseContentTabState extends State<CourseContentTab> {
         ),
       );
     } else if (item['type'] == 'video') {
-      // Convert all iframe URLs to actual video URLs
-      final List<Map<String, dynamic>> videoList = _contents
-          .where((e) => e['type'] == 'video')
-          .map((video) {
-            final converted = Map<String, dynamic>.from(video);
-            final path = video['path'];
-
-            // Convert iframe URL to actual video URL
-            if (path != null &&
-                path.toString().contains('iframe.mediadelivery.net')) {
-              final videoId = path.toString().split('/').last;
-              final libId = ConfigService().bunnyLibraryId;
-              converted['path'] =
-                  'https://vz-$libId.b-cdn.net/$videoId/playlist.m3u8';
-
-              // Add thumbnail if missing
-              if (converted['thumbnail'] == null) {
-                converted['thumbnail'] =
-                    'https://vz-$libId.b-cdn.net/$videoId/thumbnail.jpg';
-              }
-            }
-
-            return converted;
-          })
-          .toList();
+      final List<Map<String, dynamic>> videoList =
+          _contents.where((e) => e['type'] == 'video').toList();
 
       final initialIndex = videoList.indexWhere(
         (e) => e['name'] == item['name'],

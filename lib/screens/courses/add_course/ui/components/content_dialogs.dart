@@ -2,6 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../../../utils/app_theme.dart';
 import '../../../../utils/simple_file_explorer.dart';
+import '../../../../../services/config_service.dart';
+import '../../../../../services/bunny_cdn_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ContentDialogs {
   static Future<void> showRenameDialog({
@@ -146,12 +149,30 @@ class ContentDialogs {
                           borderRadius: BorderRadius.circular(3.0),
                           child: AspectRatio(
                             aspectRatio: 16 / 9,
-                            child: Image.file(
-                              File(currentThumbnail!),
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) =>
-                                  const Center(child: Icon(Icons.broken_image)),
-                            ),
+                            child: currentThumbnail!.startsWith('http')
+                                ? CachedNetworkImage(
+                                    imageUrl: currentThumbnail!,
+                                    fit: BoxFit.cover,
+                                    httpHeaders: {
+                                      'Referer': ConfigService.allowedReferer,
+                                      if (currentThumbnail!
+                                          .contains('storage.bunnycdn.com'))
+                                        'AccessKey': BunnyCDNService.apiKey,
+                                    },
+                                    errorWidget: (_, __, ___) => const Center(
+                                      child: Icon(Icons.broken_image),
+                                    ),
+                                    placeholder: (_, __) => const Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  )
+                                : Image.file(
+                                    File(currentThumbnail!),
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) => const Center(
+                                      child: Icon(Icons.broken_image),
+                                    ),
+                                  ),
                           ),
                         ),
                         const SizedBox(height: 16),

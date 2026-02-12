@@ -6,6 +6,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/bunny_cdn_service.dart';
 import '../../utils/app_theme.dart';
+import '../../services/config_service.dart';
 
 class UploadAnnouncementScreen extends StatefulWidget {
   const UploadAnnouncementScreen({super.key});
@@ -264,6 +265,7 @@ class _UploadAnnouncementScreenState extends State<UploadAnnouncementScreen> {
                                   _existingImageUrl!,
                                 ),
                                 httpHeaders: {
+                                  'Referer': ConfigService.allowedReferer,
                                   'AccessKey': BunnyCDNService.apiKey,
                                 },
                                 width: double.infinity,

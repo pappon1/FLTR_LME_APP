@@ -101,10 +101,7 @@ class DraftManager {
       state.websiteUrlController.text = draft['websiteUrl'] ?? '';
 
       if (draft['contents'] != null) {
-        state.courseContents.clear();
-        state.courseContents.addAll(
-          List<Map<String, dynamic>>.from(draft['contents']),
-        );
+        state.setContentsFromDraft(draft['contents']);
       }
 
       state.courseValidityDays = draft['validity'];

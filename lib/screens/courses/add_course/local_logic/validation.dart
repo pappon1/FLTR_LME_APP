@@ -28,7 +28,8 @@ class ValidationLogic {
     String? errorType; // for focusing
 
     // 1. Check Thumbnail
-    if (state.thumbnailImage == null) {
+    if (state.thumbnailImage == null && 
+        (state.currentThumbnailUrl == null || state.currentThumbnailUrl!.isEmpty)) {
       state.thumbnailError = true;
       if (isValid) {
         firstError = 'Please upload a cover image';

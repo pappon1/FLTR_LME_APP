@@ -14,6 +14,8 @@ import 'video_engine_interface.dart';
 import 'mediakit_video_engine.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:media_kit/media_kit.dart'; // Direct access for metadata extraction
+import '../../../services/config_service.dart';
+import '../../../services/bunny_cdn_service.dart';
 
 class VideoPlayerLogicController extends ChangeNotifier
     with WidgetsBindingObserver {
@@ -220,6 +222,11 @@ class VideoPlayerLogicController extends ChangeNotifier
         if (p) {
           if (!_isDisposed) errorMessageNotifier.value = null;
           _session?.setActive(true);
+          // Only reset retry count if the engine actually reports a valid duration,
+          // which confirms the media was successfully opened.
+          if (engine.duration > Duration.zero) {
+            _retryCount = 0;
+          }
         }
       }),
     );
@@ -242,7 +249,8 @@ class VideoPlayerLogicController extends ChangeNotifier
 
     final errorSub = engine.errorStream.listen((error) {
       if (!_isDisposed) {
-        errorMessageNotifier.value = error.toString();
+        debugPrint('❌ [VIDEO_PLAYER_ERROR] Raw error: $error');
+        errorMessageNotifier.value = "Server or Net slow";
         _handleError();
       }
     });
@@ -403,9 +411,21 @@ class VideoPlayerLogicController extends ChangeNotifier
     errorMessageNotifier.value = null;
 
     try {
-      final path = playlistManager.currentPath;
-      if (path != null) {
-        await engine.open(path, play: true);
+      final String? rawPath = playlistManager.currentPath;
+      if (rawPath != null) {
+        final String path = BunnyCDNService.signUrl(rawPath);
+        final bool isStorage = path.contains('storage.bunnycdn.com');
+        
+        debugPrint('🎬 [CONTROLLER] Attempting to play: $path (isStorage: $isStorage)');
+        
+        await engine.open(
+          path,
+          play: true,
+          headers: {
+            if (!isStorage) 'Referer': ConfigService.allowedReferer,
+            if (isStorage) 'AccessKey': BunnyCDNService.apiKey,
+          },
+        );
 
         if (playbackSpeedNotifier.value != 1.0) {
           await engine.setRate(playbackSpeedNotifier.value);
@@ -422,26 +442,124 @@ class VideoPlayerLogicController extends ChangeNotifier
             progress < VideoPlayerConstants.watchedThreshold) {
           _resumeProgress(path, progress);
         }
-        _retryCount = 0; // Reset retry on success
       }
     } catch (e) {
+      debugPrint('❌ [CONTROLLER] playVideo Exception: $e');
       _handleError();
     }
     notifyListeners();
   }
 
   int _retryCount = 0;
-  static const int maxRetries = 3;
+  static const int maxRetries = 5;
 
   void _handleError() {
+    debugPrint('🎬 [VIDEO_PLAYER] Playback error encountered.');
+    
+    // Auto-Fallback Logic
     if (_retryCount < maxRetries) {
+      final currentPath = playlistManager.currentPath;
+      if (currentPath == null) return;
+
       _retryCount++;
-      debugPrint('Retrying video playback... attempt $_retryCount');
-      Future.delayed(Duration(seconds: _retryCount * 2), () {
-        if (!_isDisposed && errorMessageNotifier.value != null) {
-          playVideo(currentIndex);
+      debugPrint('🎬 [VIDEO_PLAYER] Attempting Fallback/Retry (Attempt $_retryCount)...');
+
+      String? fallbackUrl;
+      final Map<String, String> extraHeaders = {};
+
+      final streamCdnHost = ConfigService().bunnyStreamCdnHost;
+      const storageCdnUrl = BunnyCDNService.cdnUrl;
+
+      // DETECT VIDEO TYPE
+      // Type A: Bunny Stream Video (iframe, vz-..., or matches configured stream host)
+      final bool isStreamVideo = currentPath.contains('iframe.mediadelivery.net') || 
+                           currentPath.contains('playlist.m3u8') ||
+                           currentPath.contains(streamCdnHost);
+
+      // Type B: Bunny Storage Video (matches our storage CDN url)
+      final bool isStorageVideo = currentPath.contains(storageCdnUrl);
+
+      // STRATEGY A: Stream Video Progressive Fallback
+      if (isStreamVideo) {
+        debugPrint('🎬 [VIDEO_PLAYER] Strategy: Stream Progressive Fallback');
+        try {
+          // Extract Video ID
+          // Common formats:
+          // 1. https://iframe.mediadelivery.net/play/{libId}/{videoId}
+          // 2. https://{host}/{videoId}/playlist.m3u8
+          
+          final uri = Uri.parse(currentPath);
+          String? videoId;
+
+          if (currentPath.contains('iframe.mediadelivery.net')) {
+            // Path: /play/{libId}/{videoId} or /{libId}/{videoId}/playlist.m3u8
+            final nonUniqueSegments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+            videoId = nonUniqueSegments.firstWhere((s) => s.length > 20, orElse: () => nonUniqueSegments.last);
+          } else {
+            // Path: /{videoId}/playlist.m3u8 or /{libId}/{videoId}/playlist.m3m8
+            final nonUniqueSegments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+            videoId = nonUniqueSegments.firstWhere((s) => s.length > 20, orElse: () => '');
+          }
+
+          if (videoId.isNotEmpty) {
+             final libraryId = ConfigService().bunnyLibraryId;
+             
+             if (_retryCount == 1) {
+               debugPrint('🎬 [VIDEO_PLAYER] Retry 1: PullZone HLS (No LibID)');
+               fallbackUrl = 'https://$streamCdnHost/$videoId/playlist.m3u8';
+             } 
+             else if (_retryCount == 2) {
+               debugPrint('🎬 [VIDEO_PLAYER] Retry 2: Primary Host HLS (With LibID)');
+               fallbackUrl = 'https://iframe.mediadelivery.net/$libraryId/$videoId/playlist.m3u8';
+             } 
+             else if (_retryCount == 3) {
+               debugPrint('🎬 [VIDEO_PLAYER] Retry 3: PullZone MP4 720p (No LibID)');
+               fallbackUrl = 'https://$streamCdnHost/$videoId/play_720p.mp4';
+             }
+             else if (_retryCount == 4) {
+               debugPrint('🎬 [VIDEO_PLAYER] Retry 4: Primary Host MP4 720p (With LibID)');
+               fallbackUrl = 'https://iframe.mediadelivery.net/$libraryId/$videoId/play_720p.mp4';
+             }
+             else if (_retryCount == 5) {
+               debugPrint('🎬 [VIDEO_PLAYER] Retry 5: PullZone MP4 480p');
+               fallbackUrl = 'https://$streamCdnHost/$videoId/play_480p.mp4';
+             }
+          }
+        } catch (e) {
+          debugPrint('❌ [VIDEO_PLAYER] Stream fallback parsing failed: $e');
         }
-      });
+      } 
+      
+      // STRATEGY B: Storage Video Direct Access
+      else if (isStorageVideo) {
+         debugPrint('🎬 [VIDEO_PLAYER] Strategy: Storage Direct Access');
+         // Convert CDN URL to Direct Storage URL
+         // From: https://lme-media-storage.b-cdn.net/...
+         // To:   https://sg.storage.bunnycdn.com/lme-media-storage/...
+         fallbackUrl = BunnyCDNService.signUrl(currentPath);
+         extraHeaders['AccessKey'] = BunnyCDNService.apiKey;
+      }
+
+      if (fallbackUrl != null) {
+        debugPrint('🎬 [VIDEO_PLAYER] Trying Fallback URL: $fallbackUrl');
+        engine.open(
+          fallbackUrl,
+          play: true,
+          headers: {
+            'Referer': ConfigService.allowedReferer,
+            ...extraHeaders,
+          },
+        ).catchError((e) {
+           debugPrint('❌ [VIDEO_PLAYER] Fallback failed: $e');
+        });
+      } else {
+         // Generic Retry with original path if we couldn't determine a fallback
+         debugPrint('🎬 [VIDEO_PLAYER] No specific fallback found. Retrying original path...');
+         retryCurrentVideo(); 
+      }
+    } else {
+       debugPrint('❌ [VIDEO_PLAYER] Max retries reached. Giving up.');
+       errorMessageNotifier.value = "Unable to play video.";
     }
   }
 
@@ -579,8 +697,9 @@ class VideoPlayerLogicController extends ChangeNotifier
       showControlsNotifier.value = false;
       isUnlockControlsVisibleNotifier.value = true;
       _startUnlockHideTimer();
-      if (_isLandscape)
+      if (_isLandscape) {
         SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      }
     } else {
       _unlockHideTimer?.cancel();
       isUnlockControlsVisibleNotifier.value = false;
@@ -791,8 +910,9 @@ class VideoPlayerLogicController extends ChangeNotifier
 
   String formatDurationString(Duration dur) {
     String two(int n) => n.toString().padLeft(2, "0");
-    if (dur.inHours > 0)
+    if (dur.inHours > 0) {
       return "${dur.inHours}:${two(dur.inMinutes % 60)}:${two(dur.inSeconds % 60)}";
+    }
     return "${two(dur.inMinutes)}:${two(dur.inSeconds % 60)}";
   }
 

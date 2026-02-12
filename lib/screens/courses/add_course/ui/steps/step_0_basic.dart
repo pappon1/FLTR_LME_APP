@@ -3,6 +3,9 @@ import '../../../../../utils/app_theme.dart';
 import '../ui_constants.dart';
 import '../../local_logic/state_manager.dart';
 import '../../local_logic/step0_logic.dart';
+import '../../../../../services/bunny_cdn_service.dart';
+import '../../../../../services/config_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../components/collapsing_step_indicator.dart';
 import '../components/text_field.dart';
 
@@ -278,29 +281,66 @@ class Step0BasicWidget extends StatelessWidget {
                                   )
                                 : null,
                           ),
-                          child: state.thumbnailImage == null
-                              ? Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.add_photo_alternate_rounded,
-                                      size: 48,
-                                      color: AppTheme.primaryColor.withValues(
-                                        alpha: 0.8,
-                                      ),
+                          child: state.thumbnailImage != null
+                              ? null
+                              : (state.currentThumbnailUrl != null &&
+                                      state.currentThumbnailUrl!.isNotEmpty)
+                                    ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(
+                                          UIConstants.globalRadius,
+                                        ),
+                                        child: (() {
+                                          final String baseurl = BunnyCDNService.signUrl(state.currentThumbnailUrl!);
+                                          final bool isStorage = baseurl.contains('storage.bunnycdn.com');
+                                          // Add cache buster to bypass old failed cached responses
+                                          final String url = '$baseurl${baseurl.contains('?') ? '&' : '?'}v=${DateTime.now().millisecondsSinceEpoch}';
+
+                                          return CachedNetworkImage(
+                                            imageUrl: url,
+                                            fit: BoxFit.cover,
+                                            httpHeaders: {
+                                              if (!isStorage) 'Referer': ConfigService.allowedReferer,
+                                              if (isStorage) 'AccessKey': BunnyCDNService.apiKey,
+                                            },
+                                            errorWidget: (ctx, err, stack) {
+                                              debugPrint('❌ [IMAGE_LOAD_ERROR] Fail at: $url | Error: $err');
+                                              return const Center(
+                                                child: Icon(
+                                                  Icons.broken_image,
+                                                  size: 48,
+                                                  color: Colors.red,
+                                                ),
+                                              );
+                                            },
+                                            placeholder: (ctx, url) => const Center(
+                                              child: CircularProgressIndicator(strokeWidth: 2),
+                                            ),
+                                          );
+                                        }()),
+                                      )
+                                  : Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.add_photo_alternate_rounded,
+                                          size: 48,
+                                          color:
+                                              AppTheme.primaryColor.withValues(
+                                                alpha: 0.8,
+                                              ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Select 16:9 Image',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: Colors.grey.shade600,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'Select 16:9 Image',
-                                      style: TextStyle(
-                                        fontSize: 12,
-                                        color: Colors.grey.shade600,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                )
-                              : null,
                         ),
                       ),
                     ),
@@ -452,6 +492,7 @@ class Step0BasicWidget extends StatelessWidget {
                                 controller: controller,
                                 label: 'Highlight',
                                 hint: 'Practical Chip Level Training',
+                                maxLength: 100,
                                 hasError:
                                     state.highlightsError &&
                                     controller.text.trim().isEmpty,
@@ -550,6 +591,7 @@ class Step0BasicWidget extends StatelessWidget {
                                       controller: faq['q']!,
                                       label: 'Question',
                                       hint: 'e.g. Who can join this course?',
+                                      maxLength: 100,
                                       hasError:
                                           state.faqsError &&
                                           faq['q']!.text.trim().isEmpty,
@@ -578,6 +620,7 @@ class Step0BasicWidget extends StatelessWidget {
                                 label: 'Answer',
                                 hint: 'Anyone with basic mobile knowledge...',
                                 bottomPadding: 0.0,
+                                maxLength: 100,
                                 hasError:
                                     state.faqsError &&
                                     faq['a']!.text.trim().isEmpty,

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:photo_view/photo_view.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:shimmer/shimmer.dart';
+import '../../services/config_service.dart';
 
 class ImageViewerScreen extends StatefulWidget {
   final String filePath;
@@ -65,6 +66,7 @@ class _ImageViewerScreenState extends State<ImageViewerScreen> {
                     ? CachedNetworkImage(
                         key: ValueKey("network_$_retryKey"),
                         imageUrl: widget.filePath,
+                        httpHeaders: {'Referer': ConfigService.allowedReferer},
                         fit: BoxFit.contain,
                         memCacheWidth: 2048,
                         placeholder: (context, url) =>

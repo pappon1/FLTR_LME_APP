@@ -4,6 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:intl/intl.dart';
 import '../models/student_model.dart';
 import '../utils/app_theme.dart';
+import '../services/config_service.dart';
 import '../screens/user_profile/user_profile_screen.dart';
 import '../services/security/student_deletion_service.dart';
 
@@ -26,6 +27,7 @@ class StudentListItem extends StatelessWidget {
             ClipOval(
               child: CachedNetworkImage(
                 imageUrl: student.avatarUrl,
+                httpHeaders: {'Referer': ConfigService.allowedReferer},
                 width: 56,
                 height: 56,
                 fit: BoxFit.cover,

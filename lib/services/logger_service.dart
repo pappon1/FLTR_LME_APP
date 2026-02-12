@@ -9,9 +9,13 @@ class LoggerService {
     StackTrace? stackTrace,
   }) {
     if (kDebugMode) {
+      final tag = name ?? 'APP';
+      debugPrint('[$tag] $message');
+      if (error != null) debugPrint('[$tag] ERROR: $error');
+      
       developer.log(
         message,
-        name: name ?? 'APP',
+        name: tag,
         error: error,
         stackTrace: stackTrace,
         time: DateTime.now(),

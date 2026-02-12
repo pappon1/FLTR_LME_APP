@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+import 'dart:math' as math;
 import 'package:encrypt/encrypt.dart' as encrypt;
 import 'logger_service.dart';
 
@@ -12,21 +14,26 @@ class SecurityService {
   static final _masterKey = encrypt.Key.fromUtf8(
     'LME_OFFICIAL_SECURE_2026_BY_AIDM',
   ); // 32 chars
-  static final _iv = encrypt.IV.fromLength(16);
+  static final _iv = encrypt.IV(Uint8List(16)); // Fixed Zero IV for consistency
 
   static final _encrypter = encrypt.Encrypter(encrypt.AES(_masterKey));
 
   /// Decrypts a string that was encrypted with AES-256
   String decrypt(String? encryptedText) {
-    if (encryptedText == null || encryptedText.isEmpty) return '';
+    if (encryptedText == null || encryptedText.isEmpty) {
+      LoggerService.warning("Decrypt called with null/empty text", tag: 'SECURITY');
+      return '';
+    }
     try {
       final decrypted = _encrypter.decrypt64(encryptedText, iv: _iv);
       if (decrypted.isNotEmpty) {
-        LoggerService.info("Value decrypted successfully", tag: 'SECURITY');
+        LoggerService.info("Value decrypted successfully (Length: ${decrypted.length})", tag: 'SECURITY');
+      } else {
+        LoggerService.warning("Decrypted value is empty!", tag: 'SECURITY');
       }
       return decrypted;
     } catch (e) {
-      LoggerService.error("Decryption Failed: $e", tag: 'SECURITY');
+      LoggerService.error("Decryption Failed for input: ${encryptedText.substring(0, math.min(10, encryptedText.length))}... Error: $e", tag: 'SECURITY');
       return '';
     }
   }

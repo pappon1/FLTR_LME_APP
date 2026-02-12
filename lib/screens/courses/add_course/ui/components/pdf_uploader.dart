@@ -4,6 +4,7 @@ import '../ui_constants.dart';
 
 class PdfUploader extends StatelessWidget {
   final File? file;
+  final String? networkUrl;
   final VoidCallback onTap;
   final String label;
   final VoidCallback? onRemove;
@@ -12,6 +13,7 @@ class PdfUploader extends StatelessWidget {
   const PdfUploader({
     super.key,
     this.file,
+    this.networkUrl,
     required this.onTap,
     required this.label,
     this.onRemove,
@@ -35,7 +37,7 @@ class PdfUploader extends StatelessWidget {
             style: BorderStyle.solid,
           ),
         ),
-        child: file == null
+        child: (file == null && (networkUrl == null || networkUrl!.isEmpty))
             ? Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -66,7 +68,9 @@ class PdfUploader extends StatelessWidget {
                         const SizedBox(height: 8),
                         Flexible(
                           child: Text(
-                            file!.path.split('/').last,
+                            file != null
+                                ? file!.path.split('/').last
+                                : 'Network File (Design 1)',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(

@@ -70,7 +70,7 @@ class CourseModel {
     this.specialTagColor = 'Blue',
     this.isSpecialTagVisible = true,
     this.specialTagDurationDays = 30,
-  }) : createdAt = createdAt ?? DateTime.now();
+  }) : createdAt = createdAt;
 
   // Convert to Map for Firestore
   Map<String, dynamic> toMap() {

@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../widgets/shimmer_loading.dart';
+import '../../services/config_service.dart';
+import '../../services/bunny_cdn_service.dart';
 
 class GhostHomeScreen extends StatefulWidget {
   final Map<String, dynamic> userData;
@@ -213,8 +215,9 @@ class _GhostHomeScreenState extends State<GhostHomeScreen> {
                                   color: Colors.grey[200],
                                   child: course['thumbnailUrl'] != null
                                       ? CachedNetworkImage(
-                                          imageUrl: course['thumbnailUrl'],
+                                          imageUrl: BunnyCDNService.signUrl(course['thumbnailUrl']),
                                           fit: BoxFit.cover,
+                                          httpHeaders: {'Referer': ConfigService.allowedReferer},
                                           errorWidget: (context, url, error) =>
                                               const Icon(Icons.image),
                                         )

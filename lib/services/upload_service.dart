@@ -900,7 +900,7 @@ void onStart(ServiceInstance service) async {
     await prefs.setString(kPendingUpdateCourseKey, jsonEncode(updateData));
 
     // 2. Add Files to Queue
-    final List<dynamic> items = event['files'] ?? [];
+    final List<dynamic> items = finalEvent['files'] ?? [];
     LoggerService.info(
       "Adding ${items.length} files to queue (Update)",
       tag: 'BG_SERVICE',
@@ -1361,6 +1361,7 @@ Future<void> _finalizeCourseIfPending(
     _updateContentPaths(contents, urlMap);
     if (forceSkip) _removeLocalItems(contents);
     courseData['contents'] = contents;
+    courseData['totalVideos'] = _countVideos(contents);
 
     bool hasLocalPaths = false;
     if (courseData['thumbnailUrl'] != null &&
@@ -1397,14 +1398,12 @@ Future<void> _finalizeCourseIfPending(
     final bool isTargetPublished = courseData['isPublished'] ?? false;
     courseData['status'] = isTargetPublished ? 'active' : 'draft';
 
-    if (courseData.containsKey('createdAt')) {
-      final rawDate = courseData['createdAt'];
-      if (rawDate is String) {
-        courseData['createdAt'] = Timestamp.fromDate(DateTime.parse(rawDate));
-      }
-    } else {
-      courseData['createdAt'] = Timestamp.now();
+    // 🔥 Use Server Timestamp for new records to avoid local clock issues (e.g. 2026 error)
+    if (!courseData.containsKey('createdAt') || courseData['createdAt'] == null) {
+      courseData['createdAt'] = FieldValue.serverTimestamp();
     }
+    // If it's an update and already has a string date, we can keep it or let it be.
+    // For now, let's ensure new ones get Server Time.
 
     final String? courseId = courseData['id'];
 
@@ -1635,11 +1634,22 @@ Future<void> _finalizeUpdateIfPending(
     if (urlMap.containsKey(updateData['thumbnailUrl'])) {
       updateData['thumbnailUrl'] = urlMap[updateData['thumbnailUrl']];
     }
+    if (urlMap.containsKey(updateData['certificateUrl1'])) {
+      updateData['certificateUrl1'] = urlMap[updateData['certificateUrl1']];
+    }
+    if (urlMap.containsKey(updateData['certificateUrl2'])) {
+      updateData['certificateUrl2'] = urlMap[updateData['certificateUrl2']];
+    }
+
+    final bool isTargetPublished = updateData['isPublished'] ?? false;
+    updateData['status'] = isTargetPublished ? 'active' : 'draft';
+
     if (updateData.containsKey('contents')) {
       final List<dynamic> contents = updateData['contents'] ?? [];
       _updateContentPaths(contents, urlMap);
       if (forceSkip) _removeLocalItems(contents);
       updateData['contents'] = contents;
+      updateData['totalVideos'] = _countVideos(contents);
     }
 
     updateData.remove('id');
@@ -1732,4 +1742,22 @@ void _removeLocalItems(List<dynamic> items) {
     final isLocal = item['isLocal'] == true;
     return isLocal && (path.startsWith('/') || path.isEmpty);
   });
+}
+
+int _countVideos(List<dynamic> items) {
+  int count = 0;
+  void countRecursive(dynamic item) {
+    if (item is! Map) return;
+    if (item['type'] == 'video') count++;
+    if (item['type'] == 'folder' && item['contents'] != null) {
+      for (var sub in item['contents']) {
+        countRecursive(sub);
+      }
+    }
+  }
+
+  for (var item in items) {
+    countRecursive(item);
+  }
+  return count;
 }

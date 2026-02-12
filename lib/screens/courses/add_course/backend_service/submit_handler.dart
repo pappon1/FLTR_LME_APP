@@ -238,7 +238,7 @@ class SubmitHandler {
         rating: state.originalCourse?.rating ?? 0.0,
         totalVideos: _countVideos(state.courseContents),
         isPublished: state.isPublished,
-        createdAt: state.originalCourse?.createdAt ?? DateTime.now(),
+        createdAt: state.originalCourse?.createdAt,
         courseValidityDays: finalValidity,
         hasCertificate: state.hasCertificate,
         certificateUrl1:
@@ -409,8 +409,9 @@ class SubmitHandler {
           } else if (map['createdAt'] is DateTime) {
             map['createdAt'] = (map['createdAt'] as DateTime).toIso8601String();
           } else {
-            // Convert FieldValue or others to current time string fallback
-            map['createdAt'] = DateTime.now().toIso8601String();
+            // It's likely a FieldValue, which is not JSON serializable.
+            // Remove it here; UploadService will re-add it as a proper server timestamp.
+            map.remove('createdAt');
           }
         }
       }
@@ -418,6 +419,9 @@ class SubmitHandler {
       if (state.editingCourseId != null) {
         final updateMap = draftCourse.toMap();
         prepareMapForJson(updateMap);
+
+        // DO NOT overwrite createdAt during UPDATE to preserve original timestamp
+        updateMap.remove('createdAt');
 
         payload['updateData'] = updateMap;
         payload['updateData'].remove('id'); // ID is passed separately

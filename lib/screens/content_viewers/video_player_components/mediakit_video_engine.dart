@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import '../../../services/config_service.dart';
 import 'video_engine_interface.dart';
 
 class MediaKitVideoEngine implements BaseVideoEngine {
@@ -21,8 +22,27 @@ class MediaKitVideoEngine implements BaseVideoEngine {
   }
 
   @override
-  Future<void> open(String path, {bool play = true}) async {
-    await player.open(Media(path), play: play);
+  Future<void> open(String path, {bool play = true, Map<String, String>? headers}) async {
+    final Map<String, String> finalHeaders = Map<String, String>.from(headers ?? {});
+    
+    // Standard headers for all requests - Using a real browser User-Agent to avoid bot-blocking
+    finalHeaders['User-Agent'] = 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36';
+    
+    // Use exact Referer/Origin (Most reliable across all Bunny.net zones)
+    final String baseReferer = ConfigService.allowedReferer;
+    finalHeaders['Referer'] = baseReferer;
+    finalHeaders['Origin'] = baseReferer;
+    finalHeaders['X-Requested-With'] = 'com.officialmobileengineer.app';
+    
+    // Auto-inject AccessKey for direct Bunny Storage access
+    if (path.contains('storage.bunnycdn.com')) {
+      finalHeaders['AccessKey'] = ConfigService().bunnyStorageKey;
+    }
+
+    debugPrint('🎬 [ENGINE] Opening Path: $path');
+    debugPrint('🎬 [ENGINE] Headers: $finalHeaders');
+    
+    await player.open(Media(path, httpHeaders: finalHeaders), play: play);
   }
 
   @override

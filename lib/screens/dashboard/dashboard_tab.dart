@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../providers/dashboard_provider.dart';
 import '../../providers/admin_notification_provider.dart';
 import '../../utils/app_theme.dart';
+import '../../services/config_service.dart';
 import '../../widgets/stat_card.dart';
 import '../../widgets/course_card.dart';
 import '../notifications/notification_manager_screen.dart';
@@ -450,7 +451,10 @@ class _DashboardTabState extends State<DashboardTab>
                             imageUrl: (imageUrl != null)
                                 ? BunnyCDNService.signUrl(imageUrl)
                                 : "",
-                            httpHeaders: {'AccessKey': BunnyCDNService.apiKey},
+                            httpHeaders: {
+                              'Referer': ConfigService.allowedReferer,
+                              'AccessKey': BunnyCDNService.apiKey,
+                            },
                             fit: BoxFit.cover,
                             placeholder: (c, u) => Container(
                               color: Colors.grey[900],

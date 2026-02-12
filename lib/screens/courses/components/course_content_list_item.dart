@@ -2,6 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../utils/app_theme.dart';
 import '../../../widgets/video_thumbnail_widget.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../../services/config_service.dart';
+import '../../../services/bunny_cdn_service.dart';
 
 class CourseContentListItem extends StatelessWidget {
   final Map<String, dynamic> item;
@@ -328,9 +331,9 @@ class CourseContentListItem extends StatelessWidget {
                 ),
               ),
             if (isReadOnly)
-              Positioned(
+              const Positioned(
                 right: 12,
-                child: const Icon(Icons.lock, size: 22, color: Colors.red),
+                child: Icon(Icons.lock, size: 22, color: Colors.red),
               ),
           ],
         ),
@@ -537,9 +540,9 @@ class CourseContentListItem extends StatelessWidget {
                 ),
               ),
             if (isReadOnly)
-              Positioned(
+              const Positioned(
                 right: 12,
-                child: const Icon(Icons.lock, size: 22, color: Colors.red),
+                child: Icon(Icons.lock, size: 22, color: Colors.red),
               ),
           ],
         ),
@@ -553,7 +556,7 @@ class CourseContentListItem extends StatelessWidget {
     double width,
     double height,
   ) {
-    final String? pathStr = item['path']?.toString();
+    final String? pathStr = (item['path'] ?? item['videoUrl'] ?? item['url'])?.toString();
     final String? thumb = item['thumbnail']?.toString();
 
     if (item['type'] == 'video') {
@@ -572,16 +575,22 @@ class CourseContentListItem extends StatelessWidget {
         );
       } else if (thumb != null && thumb.isNotEmpty) {
         // Fallback to custom thumbnail if pathStr is missing but thumb is present
-        final bool isNetwork = thumb.startsWith('http');
+        final String effectiveThumb = BunnyCDNService.signUrl(thumb);
+        final bool isNetwork = effectiveThumb.startsWith('http');
+        final bool isStorage = effectiveThumb.contains('storage.bunnycdn.com');
         return Stack(
           fit: StackFit.expand,
           children: [
             isNetwork
-                ? Image.network(
-                    thumb,
+                ? CachedNetworkImage(
+                    imageUrl: effectiveThumb,
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        Container(color: Colors.black),
+                    httpHeaders: {
+                      'Referer': ConfigService.allowedReferer,
+                      if (isStorage) 'AccessKey': BunnyCDNService.apiKey,
+                    },
+                    errorWidget: (context, url, error) => Container(color: Colors.black),
+                    placeholder: (context, url) => Container(color: Colors.black12),
                   )
                 : Image.file(
                     File(thumb),
@@ -603,14 +612,23 @@ class CourseContentListItem extends StatelessWidget {
     }
 
     if (item['type'] == 'image' && pathStr != null && pathStr.isNotEmpty) {
-      final bool isNetwork = pathStr.startsWith('http');
+      final String effectivePath = BunnyCDNService.signUrl(pathStr);
+      final bool isNetwork = effectivePath.startsWith('http');
+      final bool isStorage = effectivePath.contains('storage.bunnycdn.com');
       try {
         return isNetwork
-            ? Image.network(
-                pathStr,
+            ? CachedNetworkImage(
+                imageUrl: effectivePath,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Center(
+                httpHeaders: {
+                  'Referer': ConfigService.allowedReferer,
+                  if (isStorage) 'AccessKey': BunnyCDNService.apiKey,
+                },
+                errorWidget: (context, url, error) => Center(
                   child: Icon(defaultIcon, color: defaultColor, size: 48),
+                ),
+                placeholder: (context, url) => Center(
+                  child: Icon(defaultIcon, color: defaultColor.withValues(alpha: 0.3), size: 48),
                 ),
               )
             : Image.file(

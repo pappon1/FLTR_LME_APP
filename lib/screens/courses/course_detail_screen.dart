@@ -6,16 +6,18 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../models/course_model.dart';
 import '../../services/firestore_service.dart';
 import '../../services/bunny_cdn_service.dart';
-import '../../utils/app_theme.dart';
+import '../../services/config_service.dart';
 import 'tabs/course_content_tab.dart';
 import 'edit_course_info_screen.dart';
-
+import '../../utils/app_theme.dart';
 import '../user_profile/user_profile_screen.dart';
 import '../../models/student_model.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shimmer/shimmer.dart';
+import '../../widgets/course_thumbnail_widget.dart';
 
 class CourseDetailScreen extends StatefulWidget {
   final CourseModel course;
@@ -258,7 +260,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
               IconButton(
                 constraints: const BoxConstraints(),
                 padding: const EdgeInsets.all(8),
-                icon: Icon(
+                icon: const Icon(
                   Icons.delete_outline,
                   color: Colors.redAccent,
                   size: _fHActionIconSize + 2,
@@ -428,22 +430,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                         color: isDark ? Colors.grey[900] : Colors.grey[200],
                       ),
                       clipBehavior: Clip.antiAlias,
-                      child: CachedNetworkImage(
-                        imageUrl: BunnyCDNService.signUrl(course.thumbnailUrl),
-                        httpHeaders:
-                            BunnyCDNService.signUrl(
-                              course.thumbnailUrl,
-                            ).contains('storage.bunnycdn.com')
-                            ? {'AccessKey': BunnyCDNService.apiKey}
-                            : null,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) => Center(
-                          child: CircularProgressIndicator(
-                            color: _primaryPurple,
-                          ),
-                        ),
-                        errorWidget: (context, url, error) =>
-                            const Icon(Icons.broken_image, size: 50),
+                      child: CourseThumbnailWidget(
+                        course: course,
+                        isDark: isDark,
                       ),
                     ),
                   ),
@@ -717,8 +706,9 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                             ? course.certificateUrl1
                             : course.certificateUrl2;
 
-                        if (certUrl == null || certUrl.isEmpty)
+                        if (certUrl == null || certUrl.isEmpty) {
                           return const SizedBox.shrink();
+                        }
 
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1490,16 +1480,16 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                       borderRadius: BorderRadius.circular(3.0),
                       borderSide: BorderSide(
                         color: isDark
-                            ? Colors.white.withValues(alpha: 0.08)
-                            : Colors.grey.withValues(alpha: 0.2),
+                            ? Colors.white.withOpacity(0.08)
+                            : Colors.grey.withOpacity(0.2),
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(3.0),
                       borderSide: BorderSide(
                         color: isDark
-                            ? Colors.white.withValues(alpha: 0.08)
-                            : Colors.grey.withValues(alpha: 0.2),
+                            ? Colors.white.withOpacity(0.08)
+                            : Colors.grey.withOpacity(0.2),
                       ),
                     ),
                     focusedBorder: OutlineInputBorder(

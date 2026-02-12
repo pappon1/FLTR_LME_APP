@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../backend_service/models/course_upload_task.dart';
 import '../../../../services/bunny_cdn_service.dart';
 import '../../../../models/course_model.dart';
+import '../../../../services/config_service.dart';
 
 class CourseStateManager extends ChangeNotifier {
   final formKey = GlobalKey<FormState>();
@@ -448,11 +449,13 @@ class CourseStateManager extends ChangeNotifier {
 
     highlightControllers.clear();
     for (var h in course.highlights) {
-      if (h.isNotEmpty)
+      if (h.isNotEmpty) {
         highlightControllers.add(TextEditingController(text: h));
+      }
     }
-    if (highlightControllers.isEmpty)
+    if (highlightControllers.isEmpty) {
       highlightControllers.add(TextEditingController());
+    }
 
     faqControllers.clear();
     for (var f in course.faqs) {
@@ -471,6 +474,7 @@ class CourseStateManager extends ChangeNotifier {
     // 4. Content & Thumbnail
     // We need to store current thumbnail URL to show it if no new file is picked
     currentThumbnailUrl = course.thumbnailUrl;
+    currentCertificate1Url = course.certificateUrl1;
 
     // Deep copy contents to ensure mutability
     _courseContents.clear();
@@ -480,15 +484,86 @@ class CourseStateManager extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Helper to deep copy contents and ensure they are mutable maps
+  // Helper to deep copy contents and ensure they are mutable maps + Normalize them
   List<Map<String, dynamic>> _deepCopyContents(List<dynamic> source) {
     return source.map((item) {
-      final Map<String, dynamic> copy = Map<String, dynamic>.from(item);
-      if (copy['type'] == 'folder' && copy['contents'] != null) {
-        copy['contents'] = _deepCopyContents(copy['contents']);
-      }
-      return copy;
+      return _normalizeContentItem(Map<String, dynamic>.from(item));
     }).toList();
+  }
+
+  // Normalization Logic (Centralized)
+  Map<String, dynamic> _normalizeContentItem(Map<String, dynamic> item) {
+    final Map<String, dynamic> copy = Map<String, dynamic>.from(item);
+
+    // Default isLocal to false for existing items (if missing)
+    if (!copy.containsKey('isLocal')) {
+      copy['isLocal'] = false;
+    }
+
+    // Support multiple key names for the path
+    final String? rawPath = (copy['path'] ?? copy['videoUrl'] ?? copy['url'])?.toString();
+    if (rawPath == null) return copy;
+
+    if (copy['type'] == 'video') {
+      final cdnHost = ConfigService().bunnyStreamCdnHost;
+
+      if (rawPath.contains('iframe.mediadelivery.net') || rawPath.contains(cdnHost)) {
+        try {
+          final uri = Uri.parse(rawPath);
+          final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+
+          String? videoId;
+          if (rawPath.contains('iframe.mediadelivery.net')) {
+            videoId = segments.last;
+          } else if (segments.isNotEmpty) {
+            // Usually /VIDEO_ID/playlist.m3u8 or /play/LIB/VIDEO_ID
+            // Attempt to find a long ID segment
+            videoId = segments.firstWhere((s) => s.length > 20,
+                orElse: () => segments[0]);
+          }
+
+          if (videoId != null && videoId != cdnHost && !videoId.startsWith('http')) {
+             // Remove query params if any (e.g. ?autoplay=true)
+             if (videoId.contains('?')) {
+               videoId = videoId.split('?').first;
+             }
+
+             // Construct HLS URL
+             final normalizedPath = 'https://$cdnHost/$videoId/playlist.m3u8';
+             copy['path'] = normalizedPath;
+
+            // Fix thumbnail if missing or empty
+            if (copy['thumbnail'] == null ||
+                copy['thumbnail'].toString().isEmpty) {
+              copy['thumbnail'] = 'https://$cdnHost/$videoId/thumbnail.jpg';
+            }
+          } else {
+             copy['path'] = rawPath;
+          }
+        } catch (_) {
+          copy['path'] = rawPath;
+        }
+      } else {
+        copy['path'] = rawPath;
+      }
+    } else if (copy['type'] == 'pdf' || copy['type'] == 'image') {
+      copy['path'] = rawPath;
+    }
+
+    if (copy['type'] == 'folder' && copy['contents'] != null) {
+      copy['contents'] = (copy['contents'] as List)
+          .map((e) => _normalizeContentItem(Map<String, dynamic>.from(e)))
+          .toList();
+    }
+
+    return copy;
+  }
+
+  // Public setter for DraftManager to use (Ensures normalization)
+  void setContentsFromDraft(List<dynamic> rawContents) {
+    _courseContents.clear();
+    _courseContents.addAll(_deepCopyContents(rawContents));
+    notifyListeners();
   }
 
   // Helper for existing URLs
