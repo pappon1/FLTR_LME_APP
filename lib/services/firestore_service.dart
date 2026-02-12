@@ -180,6 +180,27 @@ class FirestoreService {
     await batch.commit();
   }
 
+  /// Get students enrolled in a specific course
+  Stream<List<StudentModel>> getStudentsForCourse(String courseId) {
+    return _firestore
+        .collection('enrollments')
+        .where('courseId', isEqualTo: courseId)
+        .snapshots()
+        .asyncMap((snapshot) async {
+      final studentIds = snapshot.docs
+          .map((doc) => doc.data()['studentId'] as String)
+          .toList();
+      if (studentIds.isEmpty) return [];
+
+      final students = <StudentModel>[];
+      for (var id in studentIds) {
+        final student = await getStudentById(id);
+        if (student != null) students.add(student);
+      }
+      return students;
+    });
+  }
+
   // ==================== ENROLLMENTS ====================
 
   /// Enroll student in course (Atomic Batch Update)
@@ -245,16 +266,21 @@ class FirestoreService {
             String price = 'Free';
 
             if (courseId != null) {
-              final courseDoc = await _firestore
-                  .collection('courses')
-                  .doc(courseId)
-                  .get();
+              final courseDoc =
+                  await _firestore.collection('courses').doc(courseId).get();
               if (courseDoc.exists) {
                 final courseData = courseDoc.data()!;
                 courseTitle = courseData['title'] ?? 'Unknown Course';
-                courseThumbnail =
-                    courseData['thumbnailUrl'] ??
-                    ''; // Adjust key based on CourseModel
+
+                // Handle nested or flat media assets
+                if (courseData.containsKey('media_assets')) {
+                  final media =
+                      courseData['media_assets'] as Map<String, dynamic>? ?? {};
+                  courseThumbnail = media['thumbnailUrl'] ?? '';
+                } else {
+                  courseThumbnail = courseData['thumbnailUrl'] ?? '';
+                }
+
                 price = courseData['price']?.toString() ?? 'Free';
               }
             }

@@ -147,6 +147,14 @@ class CourseStateManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  String? _bunnyCollectionId;
+  String? get bunnyCollectionId => _bunnyCollectionId;
+  set bunnyCollectionId(String? value) {
+    if (_bunnyCollectionId == value) return;
+    _bunnyCollectionId = value;
+    notifyListeners();
+  }
+
   // Removed Syllabus logic as per new requirement
   // Defaulting everything to a single slot logic.
 
@@ -442,6 +450,8 @@ class CourseStateManager extends ChangeNotifier {
       customValidityController.text = course.courseValidityDays.toString();
     }
 
+    bunnyCollectionId = course.bunnyCollectionId;
+
     hasCertificate = course.hasCertificate;
     // Certificates are URLs, so we can't set File objects directly.
     // We need to handle this in UI or keep separate URL variables.
@@ -511,13 +521,15 @@ class CourseStateManager extends ChangeNotifier {
     }
 
     // Support multiple key names for the path
-    final String? rawPath = (copy['path'] ?? copy['videoUrl'] ?? copy['url'])?.toString();
+    final String? rawPath = (copy['path'] ?? copy['videoUrl'] ?? copy['url'])
+        ?.toString();
     if (rawPath == null) return copy;
 
     if (copy['type'] == 'video') {
       final cdnHost = ConfigService().bunnyStreamCdnHost;
 
-      if (rawPath.contains('iframe.mediadelivery.net') || rawPath.contains(cdnHost)) {
+      if (rawPath.contains('iframe.mediadelivery.net') ||
+          rawPath.contains(cdnHost)) {
         try {
           final uri = Uri.parse(rawPath);
           final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
@@ -528,19 +540,23 @@ class CourseStateManager extends ChangeNotifier {
           } else if (segments.isNotEmpty) {
             // Usually /VIDEO_ID/playlist.m3u8 or /play/LIB/VIDEO_ID
             // Attempt to find a long ID segment
-            videoId = segments.firstWhere((s) => s.length > 20,
-                orElse: () => segments[0]);
+            videoId = segments.firstWhere(
+              (s) => s.length > 20,
+              orElse: () => segments[0],
+            );
           }
 
-          if (videoId != null && videoId != cdnHost && !videoId.startsWith('http')) {
-             // Remove query params if any (e.g. ?autoplay=true)
-             if (videoId.contains('?')) {
-               videoId = videoId.split('?').first;
-             }
+          if (videoId != null &&
+              videoId != cdnHost &&
+              !videoId.startsWith('http')) {
+            // Remove query params if any (e.g. ?autoplay=true)
+            if (videoId.contains('?')) {
+              videoId = videoId.split('?').first;
+            }
 
-             // Construct HLS URL
-             final normalizedPath = 'https://$cdnHost/$videoId/playlist.m3u8';
-             copy['path'] = normalizedPath;
+            // Construct HLS URL
+            final normalizedPath = 'https://$cdnHost/$videoId/playlist.m3u8';
+            copy['path'] = normalizedPath;
 
             // Fix thumbnail if missing or empty
             if (copy['thumbnail'] == null ||
@@ -548,7 +564,7 @@ class CourseStateManager extends ChangeNotifier {
               copy['thumbnail'] = 'https://$cdnHost/$videoId/thumbnail.jpg';
             }
           } else {
-             copy['path'] = rawPath;
+            copy['path'] = rawPath;
           }
         } catch (_) {
           copy['path'] = rawPath;

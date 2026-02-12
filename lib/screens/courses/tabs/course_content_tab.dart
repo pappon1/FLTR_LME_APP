@@ -32,37 +32,58 @@ class _CourseContentTabState extends State<CourseContentTab> {
     _contents = _normalizeContents(widget.course.contents);
   }
 
+  @override
+  void didUpdateWidget(covariant CourseContentTab oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.course.contents != widget.course.contents) {
+      setState(() {
+        _contents = _normalizeContents(widget.course.contents);
+      });
+    }
+  }
+
   List<Map<String, dynamic>> _normalizeContents(List<dynamic> rawContents) {
     final cdnHost = ConfigService().bunnyStreamCdnHost;
     return rawContents.map((item) {
       final converted = Map<String, dynamic>.from(item);
       // Support multiple key names for the video path
-      final String? rawPath = (converted['path'] ?? converted['videoUrl'] ?? converted['url'])?.toString();
+      final String? rawPath =
+          (converted['path'] ?? converted['videoUrl'] ?? converted['url'])
+              ?.toString();
 
-      if (rawPath != null && (rawPath.contains('iframe.mediadelivery.net') || rawPath.contains(cdnHost))) {
+      if (rawPath != null &&
+          (rawPath.contains('iframe.mediadelivery.net') ||
+              rawPath.contains(cdnHost))) {
         try {
           final uri = Uri.parse(rawPath);
           final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
-          
+
           String? videoId;
           if (rawPath.contains('iframe.mediadelivery.net')) {
             videoId = segments.last;
           } else if (segments.isNotEmpty) {
-            videoId = segments.firstWhere((s) => s.length > 20, orElse: () => segments[0]);
+            videoId = segments.firstWhere(
+              (s) => s.length > 20,
+              orElse: () => segments[0],
+            );
           }
 
-          if (videoId != null && videoId != cdnHost && !videoId.startsWith('http')) {
+          if (videoId != null &&
+              videoId != cdnHost &&
+              !videoId.startsWith('http')) {
             // Remove query params if any (e.g. ?autoplay=true)
             if (videoId.contains('?')) {
               videoId = videoId.split('?').first;
             }
 
             converted['path'] = 'https://$cdnHost/$videoId/playlist.m3u8';
-            if (converted['thumbnail'] == null || converted['thumbnail'].toString().isEmpty) {
-              converted['thumbnail'] = 'https://$cdnHost/$videoId/thumbnail.jpg';
+            if (converted['thumbnail'] == null ||
+                converted['thumbnail'].toString().isEmpty) {
+              converted['thumbnail'] =
+                  'https://$cdnHost/$videoId/thumbnail.jpg';
             }
           } else {
-             converted['path'] = rawPath;
+            converted['path'] = rawPath;
           }
         } catch (_) {
           converted['path'] = rawPath;
@@ -83,13 +104,14 @@ class _CourseContentTabState extends State<CourseContentTab> {
             folderName: item['name'],
             contentList:
                 (item['contents'] as List?)?.cast<Map<String, dynamic>>() ?? [],
-            isReadOnly: true, // Enable Read-Only
+            isReadOnly: true, // Back to read-only
           ),
         ),
       );
     } else if (item['type'] == 'video') {
-      final List<Map<String, dynamic>> videoList =
-          _contents.where((e) => e['type'] == 'video').toList();
+      final List<Map<String, dynamic>> videoList = _contents
+          .where((e) => e['type'] == 'video')
+          .toList();
 
       final initialIndex = videoList.indexWhere(
         (e) => e['name'] == item['name'],
@@ -157,6 +179,7 @@ class _CourseContentTabState extends State<CourseContentTab> {
 
     return CustomScrollView(
       key: const PageStorageKey('content_tab'),
+      physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         SliverOverlapInjector(
           handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),

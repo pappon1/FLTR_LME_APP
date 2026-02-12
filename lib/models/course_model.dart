@@ -35,6 +35,7 @@ class CourseModel {
   final String specialTagColor; // Blue, Red, Green, Pink
   final bool isSpecialTagVisible;
   final int specialTagDurationDays; // 0 = Always
+  final String? bunnyCollectionId;
 
   CourseModel({
     required this.id,
@@ -70,91 +71,186 @@ class CourseModel {
     this.specialTagColor = 'Blue',
     this.isSpecialTagVisible = true,
     this.specialTagDurationDays = 30,
+    this.bunnyCollectionId,
   }) : createdAt = createdAt;
 
-  // Convert to Map for Firestore
+  // ══════════════════════════════════════════════════════════════════════════════
+  // TO MAP - REFACTORED FOR FIRESTORE (Human Readable)
+  // ══════════════════════════════════════════════════════════════════════════════
   Map<String, dynamic> toMap() {
     return {
+      // 1. Core Info
       'title': title,
       'category': category,
       'price': price,
       'discountPrice': discountPrice,
       'description': description,
-      'thumbnailUrl': thumbnailUrl,
-      'duration': duration,
       'difficulty': difficulty,
-      'enrolledStudents': enrolledStudents,
-      'rating': rating,
-      'totalVideos': totalVideos,
+      'language': language,
+      'courseMode': courseMode,
       'isPublished': isPublished,
       'createdAt': createdAt != null
           ? Timestamp.fromDate(createdAt!)
           : FieldValue.serverTimestamp(),
-      'courseValidityDays': courseValidityDays,
-      'hasCertificate': hasCertificate,
-      'certificateUrl1': certificateUrl1,
-      'certificateUrl2': certificateUrl2,
-      'selectedCertificateSlot': selectedCertificateSlot,
-      'highlights': highlights,
-      'faqs': faqs,
-      'isOfflineDownloadEnabled': isOfflineDownloadEnabled,
-      'contents': contents,
-      'language': language,
-      'courseMode': courseMode,
-      'supportType': supportType,
-      'whatsappNumber': whatsappNumber,
-      'isBigScreenEnabled': isBigScreenEnabled,
-      'websiteUrl': websiteUrl,
-      'specialTag': specialTag,
-      'specialTagColor': specialTagColor,
-      'isSpecialTagVisible': isSpecialTagVisible,
-      'specialTagDurationDays': specialTagDurationDays,
+
+      // 2. Media Assets
+      'media_assets': {
+        'thumbnailUrl': thumbnailUrl,
+        'promoVideoUrl': '', // Placeholder for future
+        'bannerUrl': '', // Placeholder for future
+        'bunnyCollectionId': bunnyCollectionId,
+      },
+
+      // 3. Curriculum (Videos/PDFs/Folders)
+      'curriculum': contents,
+
+      // 4. Certification
+      'certification': {
+        'hasCertificate': hasCertificate,
+        'certificateUrl1': certificateUrl1,
+        'certificateUrl2': certificateUrl2,
+        'selectedSlot': selectedCertificateSlot,
+      },
+
+      // 5. Support & Links
+      'support': {
+        'type': supportType,
+        'whatsappNumber': whatsappNumber,
+        'websiteUrl': websiteUrl,
+      },
+
+      // 6. Marketing & Tags
+      'marketing': {
+        'specialTag': specialTag,
+        'specialTagColor': specialTagColor,
+        'isTagVisible': isSpecialTagVisible,
+        'tagDurationDays': specialTagDurationDays,
+        'highlights': highlights,
+        'faqs': faqs,
+      },
+
+      // 7. System Config
+      'config': {
+        'validityDays': courseValidityDays,
+        'isOfflineDownloadEnabled': isOfflineDownloadEnabled,
+        'isBigScreenEnabled': isBigScreenEnabled,
+      },
+
+      // 8. Real-time Stats
+      'stats': {
+        'enrolledStudents': enrolledStudents,
+        'rating': rating,
+        'totalVideos': totalVideos,
+        'durationText': duration,
+      },
+
+      // Legacy fields for backward compatibility (optional, but good for transition)
+      'thumbnailUrl':
+          thumbnailUrl, // Keep at root for now to avoid breaking existing queries
     };
   }
 
-  // Create from Firestore DocumentSnapshot
+  // ══════════════════════════════════════════════════════════════════════════════
+  // FROM FIRESTORE - REFACTORED
+  // ══════════════════════════════════════════════════════════════════════════════
   factory CourseModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+    return CourseModel._fromData(doc.data() as Map<String, dynamic>, doc.id);
+  }
+
+  factory CourseModel._fromData(Map<String, dynamic> data, String id) {
+    // Grouped Blocks
+    final media = data['media_assets'] as Map<String, dynamic>? ?? {};
+    final cert = data['certification'] as Map<String, dynamic>? ?? {};
+    final support = data['support'] as Map<String, dynamic>? ?? {};
+    final marketing = data['marketing'] as Map<String, dynamic>? ?? {};
+    final config = data['config'] as Map<String, dynamic>? ?? {};
+    final stats = data['stats'] as Map<String, dynamic>? ?? {};
+
     return CourseModel(
-      id: doc.id,
+      id: id,
       title: data['title'] ?? '',
       category: data['category'] ?? '',
       price: _toInt(data['price'], 0),
       discountPrice: _toInt(data['discountPrice'] ?? data['price'], 0),
-      specialTag: data['specialTag'] ?? '',
       description: data['description'] ?? '',
-      thumbnailUrl: data['thumbnailUrl'] ?? '',
-      duration: data['duration'] ?? '0 hours',
       difficulty: data['difficulty'] ?? 'Beginner',
-      enrolledStudents: data['enrolledStudents'] ?? 0,
-      rating: (data['rating'] ?? 0.0).toDouble(),
-      totalVideos: data['totalVideos'] ?? 0,
       isPublished: data['isPublished'] ?? false,
       createdAt: (data['createdAt'] is Timestamp)
           ? (data['createdAt'] as Timestamp).toDate()
-          : null,
-      courseValidityDays: _toInt(data['courseValidityDays'], 0),
-      hasCertificate: data['hasCertificate'] ?? false,
-      certificateUrl1: data['certificateUrl1']?.toString(),
-      certificateUrl2: data['certificateUrl2']?.toString(),
-      selectedCertificateSlot: _toInt(data['selectedCertificateSlot'], 1),
-      highlights: List<String>.from(data['highlights'] ?? []),
+          : (data['createdAt'] is String)
+              ? DateTime.tryParse(data['createdAt'] as String)
+              : null,
+
+      // Reading from Media Assets
+      thumbnailUrl: media['thumbnailUrl'] ?? data['thumbnailUrl'] ?? '',
+      bunnyCollectionId:
+          media['bunnyCollectionId']?.toString() ??
+          data['bunnyCollectionId']?.toString(),
+
+      // Reading from Curriculum
+      contents: data['curriculum'] ?? data['contents'] ?? [],
+
+      // Reading from Certification
+      hasCertificate: cert['hasCertificate'] ?? data['hasCertificate'] ?? false,
+      certificateUrl1:
+          cert['certificateUrl1']?.toString() ??
+          data['certificateUrl1']?.toString(),
+      certificateUrl2:
+          cert['certificateUrl2']?.toString() ??
+          data['certificateUrl2']?.toString(),
+      selectedCertificateSlot: _toInt(
+        cert['selectedSlot'] ?? data['selectedCertificateSlot'],
+        1,
+      ),
+
+      // Reading from Support
+      supportType: support['type'] ?? data['supportType'] ?? 'WhatsApp Group',
+      whatsappNumber: support['whatsappNumber'] ?? data['whatsappNumber'] ?? '',
+      websiteUrl: support['websiteUrl'] ?? data['websiteUrl'] ?? '',
+
+      // Reading from Marketing
+      specialTag: marketing['specialTag'] ?? data['specialTag'] ?? '',
+      specialTagColor:
+          marketing['specialTagColor'] ?? data['specialTagColor'] ?? 'Blue',
+      isSpecialTagVisible:
+          marketing['isTagVisible'] ?? data['isSpecialTagVisible'] ?? true,
+      specialTagDurationDays: _toInt(
+        marketing['tagDurationDays'] ?? data['specialTagDurationDays'],
+        0,
+      ),
+      highlights: List<String>.from(
+        marketing['highlights'] ?? data['highlights'] ?? [],
+      ),
       faqs:
-          (data['faqs'] as List<dynamic>?)
+          (marketing['faqs'] as List<dynamic>? ??
+                  data['faqs'] as List<dynamic>?)
               ?.map((e) => Map<String, String>.from(e))
               .toList() ??
           [],
-      isOfflineDownloadEnabled: data['isOfflineDownloadEnabled'] ?? true,
-      contents: data['contents'] ?? [],
+
+      // Reading from Config
+      courseValidityDays: _toInt(
+        config['validityDays'] ?? data['courseValidityDays'],
+        0,
+      ),
+      isOfflineDownloadEnabled:
+          config['isOfflineDownloadEnabled'] ??
+          data['isOfflineDownloadEnabled'] ??
+          true,
+      isBigScreenEnabled:
+          config['isBigScreenEnabled'] ?? data['isBigScreenEnabled'] ?? false,
+
+      // Reading from Stats
+      enrolledStudents: _toInt(
+        stats['enrolledStudents'] ?? data['enrolledStudents'],
+        0,
+      ),
+      rating: (stats['rating'] ?? data['rating'] ?? 0.0).toDouble(),
+      totalVideos: _toInt(stats['totalVideos'] ?? data['totalVideos'], 0),
+      duration: stats['durationText'] ?? data['duration'] ?? '0 hours',
+
       language: data['language'] ?? 'Hindi',
       courseMode: data['courseMode'] ?? 'Recorded',
-      supportType: data['supportType'] ?? 'WhatsApp Group',
-      whatsappNumber: data['whatsappNumber'] ?? '',
-      isBigScreenEnabled: data['isBigScreenEnabled'] ?? false,
-      websiteUrl: data['websiteUrl'] ?? '',
-      specialTagColor: data['specialTagColor'] ?? 'Blue',
-      isSpecialTagVisible: data['isSpecialTagVisible'] ?? true,
-      specialTagDurationDays: _toInt(data['specialTagDurationDays'], 0),
     );
   }
 
@@ -166,15 +262,20 @@ class CourseModel {
     return defaultValue;
   }
 
-  // Create from Map
+  // Create from Map (Local DTO)
   factory CourseModel.fromMap(Map<String, dynamic> map, String id) {
+    // Check if it's already nested or flat
+    final bool isNested = map.containsKey('media_assets');
+    if (isNested) {
+      return CourseModel._fromData(map, id);
+    }
+
     return CourseModel(
       id: id,
       title: map['title'] ?? '',
       category: map['category'] ?? '',
       price: map['price'] ?? 0,
       discountPrice: map['discountPrice'] ?? map['price'] ?? 0,
-      specialTag: map['specialTag'] ?? '',
       description: map['description'] ?? '',
       thumbnailUrl: map['thumbnailUrl'] ?? '',
       duration: map['duration'] ?? '0 hours',
@@ -185,7 +286,9 @@ class CourseModel {
       isPublished: map['isPublished'] ?? false,
       createdAt: map['createdAt'] is Timestamp
           ? (map['createdAt'] as Timestamp).toDate()
-          : DateTime.now(),
+          : (map['createdAt'] is String
+                ? DateTime.tryParse(map['createdAt'])
+                : DateTime.now()),
       courseValidityDays: map['courseValidityDays'] ?? 0,
       hasCertificate: map['hasCertificate'] ?? false,
       certificateUrl1: map['certificateUrl1'],
@@ -205,6 +308,7 @@ class CourseModel {
       whatsappNumber: map['whatsappNumber'] ?? '',
       isBigScreenEnabled: map['isBigScreenEnabled'] ?? false,
       websiteUrl: map['websiteUrl'] ?? '',
+      specialTag: map['specialTag'] ?? '',
       specialTagColor: map['specialTagColor'] ?? 'Blue',
       isSpecialTagVisible: map['isSpecialTagVisible'] ?? true,
       specialTagDurationDays: map['specialTagDurationDays'] ?? 30,

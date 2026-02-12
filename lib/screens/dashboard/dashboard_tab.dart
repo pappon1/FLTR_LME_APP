@@ -21,6 +21,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/bunny_cdn_service.dart';
+import '../announcements/announcement_list_screen.dart';
 import '../announcements/upload_announcement_screen.dart';
 import '../revenue/revenue_detail_screen.dart';
 import '../contact/contact_links_screen.dart';
@@ -392,7 +393,7 @@ class _DashboardTabState extends State<DashboardTab>
                               context,
                               MaterialPageRoute(
                                 builder: (_) =>
-                                    const UploadAnnouncementScreen(),
+                                    const AnnouncementListScreen(),
                               ),
                             );
                           },
@@ -415,15 +416,29 @@ class _DashboardTabState extends State<DashboardTab>
                   stream: FirebaseFirestore.instance
                       .collection('announcements')
                       .orderBy('createdAt', descending: true)
-                      .limit(1)
+                      .limit(10) // Fetch top 10 to find an active one
                       .snapshots(),
                   builder: (context, snapshot) {
                     final isDark =
                         Theme.of(context).brightness == Brightness.dark;
+                    
                     if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
-                      final data =
-                          snapshot.data!.docs.first.data()
-                              as Map<String, dynamic>;
+                      // Find the latest announcement that is active safely
+                      QueryDocumentSnapshot? activeDoc;
+                      for (var doc in snapshot.data!.docs) {
+                        final d = doc.data() as Map<String, dynamic>;
+                        if (d['isActive'] == true) {
+                          activeDoc = doc;
+                          break;
+                        }
+                      }
+
+                      // If no active announcement found among top 10
+                      if (activeDoc == null) {
+                        return _buildEmptyAnnouncement(context, isDark);
+                      }
+
+                      final data = activeDoc.data() as Map<String, dynamic>;
                       final imageUrl = data['imageUrl'];
 
                       return Container(
@@ -447,75 +462,35 @@ class _DashboardTabState extends State<DashboardTab>
                         clipBehavior: Clip.antiAlias,
                         child: AspectRatio(
                           aspectRatio: 16 / 9,
-                          child: CachedNetworkImage(
-                            imageUrl: (imageUrl != null)
-                                ? BunnyCDNService.signUrl(imageUrl)
-                                : "",
-                            httpHeaders: {
-                              'Referer': ConfigService.allowedReferer,
-                              'AccessKey': BunnyCDNService.apiKey,
-                            },
-                            fit: BoxFit.cover,
-                            placeholder: (c, u) => Container(
-                              color: Colors.grey[900],
-                              child: const Center(
-                                child: CircularProgressIndicator(),
-                              ),
-                            ),
-                            errorWidget: (c, u, e) => Container(
-                              color: Colors.grey[900],
-                              child: const Icon(Icons.broken_image),
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-
-                    // Empty State - No Announcements
-                    return Container(
-                      margin: const EdgeInsets.only(
-                        bottom: 24,
-                        left: 10,
-                        right: 10,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? Colors.grey.shade900
-                            : Colors.grey.shade200,
-                        borderRadius: BorderRadius.circular(3.0),
-                        border: Border.all(
-                          color: isDark
-                              ? Colors.white.withOpacity(0.1)
-                              : Colors.black.withOpacity(0.1),
-                          width: 1.0,
-                        ),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: AspectRatio(
-                        aspectRatio: 16 / 9,
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
+                          child: Stack(
+                            fit: StackFit.expand,
                             children: [
-                              Icon(
-                                Icons.campaign_outlined,
-                                size: 40,
-                                color: Colors.grey.withOpacity(0.5),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                "No Announcements",
-                                style: GoogleFonts.outfit(
-                                  fontSize: 14,
-                                  color: Colors.grey.withOpacity(0.5),
-                                  fontWeight: FontWeight.w500,
+                              CachedNetworkImage(
+                                imageUrl: (imageUrl != null)
+                                    ? BunnyCDNService.signUrl(imageUrl)
+                                    : "",
+                                httpHeaders: {
+                                  'AccessKey': BunnyCDNService.apiKey,
+                                },
+                                fit: BoxFit.cover,
+                                placeholder: (c, u) => Container(
+                                  color: Colors.grey[900],
+                                  child: const Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                ),
+                                errorWidget: (c, u, e) => Container(
+                                  color: Colors.grey[900],
+                                  child: const Icon(Icons.broken_image),
                                 ),
                               ),
                             ],
                           ),
                         ),
-                      ),
-                    );
+                      );
+                    }
+
+                    return _buildEmptyAnnouncement(context, isDark);
                   },
                 ),
 
@@ -899,6 +874,51 @@ class _DashboardTabState extends State<DashboardTab>
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyAnnouncement(BuildContext context, bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(
+        bottom: 24,
+        left: 10,
+        right: 10,
+      ),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.grey.shade900 : Colors.grey.shade200,
+        borderRadius: BorderRadius.circular(3.0),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withOpacity(0.1)
+              : Colors.black.withOpacity(0.1),
+          width: 1.0,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.campaign_outlined,
+                size: 40,
+                color: Colors.grey.withOpacity(0.5),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "No Announcements",
+                style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  color: Colors.grey.withOpacity(0.5),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

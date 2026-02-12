@@ -19,6 +19,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../widgets/course_thumbnail_widget.dart';
 
+import 'package:dio/dio.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:open_file/open_file.dart';
+
+
+import '../../services/bunny_cdn_service.dart';
+
 class CourseDetailScreen extends StatefulWidget {
   final CourseModel course;
 
@@ -37,6 +47,216 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
   final TextEditingController _studentSearchController =
       TextEditingController();
   String _studentSearchQuery = '';
+  bool _isDownloading = false;
+  double _downloadProgress = 0.0;
+
+  Future<void> _downloadCertificate(String url, String fileName) async {
+    try {
+      // 0. Ensure Config is Ready
+      if (!ConfigService().isReady) {
+        debugPrint("ℹ️ ConfigService not ready, initializing...");
+        await ConfigService().initialize();
+      }
+
+      // 1. Check Permissions (Android 13+ handles this differently)
+      if (Platform.isAndroid) {
+        final androidInfo = await DeviceInfoPlugin().androidInfo;
+        if (androidInfo.version.sdkInt <= 32) {
+          final status = await Permission.storage.request();
+          if (!status.isGranted) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Storage permission denied')),
+              );
+            }
+            return;
+          }
+        }
+      }
+
+      setState(() {
+        _isDownloading = true;
+        _downloadProgress = 0.0;
+      });
+
+      // 2. Get Download Directory
+      Directory? directory;
+      if (Platform.isAndroid) {
+        directory = Directory('/storage/emulated/0/Download');
+        if (!await directory.exists()) {
+          directory = await getExternalStorageDirectory();
+        }
+      } else {
+        directory = await getApplicationDocumentsDirectory();
+      }
+
+      final String savePath = '${directory!.path}/$fileName';
+
+      // 3. Simple, Direct Download with Storage API
+      final dio = Dio();
+      
+      // Parse the public CDN URL to get the file path
+      String filePath = '';
+      String currentZone = BunnyCDNService.storageZoneName;
+      
+      if (url.contains('.b-cdn.net')) {
+        final uri = Uri.parse(url);
+        final host = uri.host;
+        
+        // Extract zone from hostname (e.g., lme-media-storage.b-cdn.net)
+        if (host.endsWith('.b-cdn.net')) {
+          currentZone = host.replaceAll('.b-cdn.net', '');
+        }
+        
+        // Get file path (e.g., courses/xxx/certificates/cert1_file.pdf)
+        filePath = uri.path;
+        if (filePath.startsWith('/')) filePath = filePath.substring(1);
+      }
+      
+      debugPrint("🚀 Downloading Certificate:");
+      debugPrint("   Zone: $currentZone");
+      debugPrint("   Path: $filePath");
+      
+      // Build Storage API URL
+      final storageUrl = 'https://${BunnyCDNService.hostname}/$currentZone/$filePath';
+      
+      debugPrint("   Storage URL: $storageUrl");
+      debugPrint("   Using Key: ${BunnyCDNService.apiKey.substring(0, 8)}...");
+      
+      // Direct download with Storage API authentication
+      try {
+        await dio.download(
+          storageUrl,
+          savePath,
+          options: Options(
+            headers: {
+              'AccessKey': BunnyCDNService.apiKey,
+            },
+            validateStatus: (status) => status! < 500,
+          ),
+          onReceiveProgress: (received, total) {
+            if (total != -1) {
+              setState(() => _downloadProgress = received / total);
+            }
+          },
+        );
+        
+        debugPrint("✅ Certificate downloaded successfully!");
+      } catch (e) {
+        debugPrint("❌ Download attempt 1 failed: $e");
+        
+        // Fallback: Try with secondary key for official-mobile-engineer zone
+        if (currentZone != 'official-mobile-engineer') {
+          try {
+            debugPrint("🔄 Trying fallback zone: official-mobile-engineer");
+            final fallbackUrl = 'https://${BunnyCDNService.hostname}/official-mobile-engineer/$filePath';
+            
+            await dio.download(
+              fallbackUrl,
+              savePath,
+              options: Options(
+                headers: {
+                  'AccessKey': '0db49ca1-ac4b-40ae-9aa5d710ef1d-00ec-4077',
+                },
+              ),
+              onReceiveProgress: (received, total) {
+                if (total != -1) {
+                  setState(() => _downloadProgress = received / total);
+                }
+              },
+            );
+            
+            debugPrint("✅ Downloaded from fallback zone!");
+          } catch (e2) {
+            debugPrint("❌ Fallback zone also failed: $e2");
+            rethrow;
+          }
+        } else {
+          rethrow;
+        }
+      }
+
+      if (mounted) {
+        // Show dialog with Open button
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.green, size: 28),
+                SizedBox(width: 12),
+                Text('Download Complete'),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Certificate has been downloaded successfully to your Downloads folder.',
+                  style: TextStyle(fontSize: 15),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  fileName,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[600],
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Later'),
+              ),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  Navigator.pop(context);
+                  try {
+                    // Import at top: import 'package:open_file/open_file.dart';
+                    final result = await OpenFile.open(savePath);
+                    if (result.type != ResultType.done) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Could not open file: ${result.message}'),
+                          ),
+                        );
+                      }
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Error opening file: $e')),
+                      );
+                    }
+                  }
+                },
+                icon: const Icon(Icons.open_in_new),
+                label: const Text('Open'),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint("❌ Download Error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Download failed: $e')));
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDownloading = false;
+        });
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -106,6 +326,20 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
   final Color _textDark = const Color(0xFF1F1F39);
   final Color _textGrey = const Color(0xFF858597);
 
+  Future<void> _onRefresh() async {
+    // Since we are using StreamBuilder, the data is already live.
+    // This refresh indicator provides the UI feedback users expect.
+    // We can add a small delay to show the spinner.
+    debugPrint("🔄 Manual Refresh Triggered");
+    await Future.delayed(const Duration(milliseconds: 1000));
+    if (mounted) {
+      setState(() {
+        // This triggers a rebuild, which will re-evaluate the StreamBuilder
+        // and its children.
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
@@ -135,22 +369,29 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
 
         return Scaffold(
           backgroundColor: bgColor,
-          body: NestedScrollView(
-            headerSliverBuilder: (context, innerBoxIsScrolled) {
-              return [
-                SliverOverlapAbsorber(
-                  handle: NestedScrollView.sliverOverlapAbsorberHandleFor(
-                    context,
+          body: RefreshIndicator(
+            onRefresh: _onRefresh,
+            color: AppTheme.primaryColor,
+            backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+            edgeOffset: 0,
+            notificationPredicate: (notification) => notification.depth == 1,
+            child: NestedScrollView(
+              headerSliverBuilder: (context, innerBoxIsScrolled) {
+                return [
+                  SliverOverlapAbsorber(
+                    handle: NestedScrollView.sliverOverlapAbsorberHandleFor(
+                      context,
+                    ),
+                    sliver: _buildSliverAppBar(isDark, bgColor, course),
                   ),
-                  sliver: _buildSliverAppBar(isDark, bgColor, course),
-                ),
-              ];
-            },
-            body: _selectedTabIndex == 0
-                ? _buildOverviewTab(isDark, course)
-                : _selectedTabIndex == 1
-                ? _buildContentTab(course)
-                : _buildStudentsTab(),
+                ];
+              },
+              body: _selectedTabIndex == 0
+                  ? _buildOverviewTab(isDark, course)
+                  : _selectedTabIndex == 1
+                  ? _buildContentTab(course)
+                  : _buildStudentsTab(course),
+            ),
           ),
           bottomNavigationBar: _selectedTabIndex == 0
               ? _buildBottomBar(isDark, course)
@@ -256,60 +497,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                     ),
                   ),
                 ),
-              // Delete Button
-              IconButton(
-                constraints: const BoxConstraints(),
-                padding: const EdgeInsets.all(8),
-                icon: const Icon(
-                  Icons.delete_outline,
-                  color: Colors.redAccent,
-                  size: _fHActionIconSize + 2,
-                ),
-                onPressed: () async {
-                  final confirm = await showDialog<bool>(
-                    context: context,
-                    builder: (context) => AlertDialog(
-                      title: const Text('Delete Course?'),
-                      content: Text(
-                        'Are you sure you want to delete "${course.title}"? This action cannot be undone.',
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, false),
-                          child: const Text('Cancel'),
-                        ),
-                        TextButton(
-                          onPressed: () => Navigator.pop(context, true),
-                          child: const Text(
-                            'Delete',
-                            style: TextStyle(color: Colors.red),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-
-                  if (confirm == true) {
-                    try {
-                      await _firestoreService.deleteCourse(course.id);
-                      if (context.mounted) {
-                        Navigator.pop(context); // Close screen
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Course deleted successfully'),
-                          ),
-                        );
-                      }
-                    } catch (e) {
-                      if (context.mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Error deleting course: $e')),
-                        );
-                      }
-                    }
-                  }
-                },
-              ),
               IconButton(
                 constraints: const BoxConstraints(),
                 padding: const EdgeInsets.all(8),
@@ -411,6 +598,7 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
       builder: (context) {
         return CustomScrollView(
           key: const PageStorageKey('overview'),
+          physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
             SliverOverlapInjector(
               handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
@@ -611,10 +799,10 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                           'color': course.specialTagColor == 'Red'
                               ? const Color(0xFFFF5252)
                               : course.specialTagColor == 'Green'
-                                  ? const Color(0xFF00E676)
-                                  : course.specialTagColor == 'Pink'
-                                      ? const Color(0xFFFF4081)
-                                      : const Color(0xFF42A5F5), // Default Blue
+                              ? const Color(0xFF00E676)
+                              : course.specialTagColor == 'Pink'
+                              ? const Color(0xFFFF4081)
+                              : const Color(0xFF42A5F5), // Default Blue
                         });
                       }
 
@@ -764,25 +952,30 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                             ),
                             const SizedBox(height: 12),
                             GestureDetector(
-                              onTap: () async {
-                                final uri = Uri.parse(certUrl);
-                                if (await canLaunchUrl(uri)) {
-                                  await launchUrl(
-                                    uri,
-                                    mode: LaunchMode.externalApplication,
-                                  );
-                                } else {
-                                  if (context.mounted) {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Could not open certificate link',
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                }
-                              },
+                              onTap: _isDownloading
+                                  ? null
+                                  : () async {
+                                      String finalCertUrl = certUrl;
+
+                                      // Cleanup any previously malformed repair logic (if any)
+                                      if (finalCertUrl.contains(
+                                        'lme-media-slme-media-storage',
+                                      )) {
+                                        finalCertUrl = finalCertUrl
+                                            .replaceFirst(
+                                              'lme-media-slme-media-storage',
+                                              'lme-media-storage',
+                                            );
+                                      }
+
+                                      // In-app Download Logic
+                                      final String fileName =
+                                          "Certificate_${course.title.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}.pdf";
+                                      await _downloadCertificate(
+                                        finalCertUrl,
+                                        fileName,
+                                      );
+                                    },
                               child:
                                   Container(
                                         width: double.infinity,
@@ -791,17 +984,22 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                                           vertical: 14,
                                         ),
                                         decoration: BoxDecoration(
-                                          gradient: const LinearGradient(
-                                            colors: [
-                                              Color(0xFF6C5DD3),
-                                              Color(0xFF8E81E8),
-                                            ],
+                                          gradient: LinearGradient(
+                                            colors: _isDownloading
+                                                ? [
+                                                    Colors.grey,
+                                                    Colors.grey.shade400,
+                                                  ]
+                                                : [
+                                                    const Color(0xFF6C5DD3),
+                                                    const Color(0xFF8E81E8),
+                                                  ],
                                             begin: Alignment.topLeft,
                                             end: Alignment.bottomRight,
                                           ),
                                           borderRadius: BorderRadius.circular(
                                             100,
-                                          ), // Capsule Shape
+                                          ),
                                           boxShadow: [
                                             BoxShadow(
                                               color: const Color(
@@ -816,14 +1014,32 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                                           mainAxisAlignment:
                                               MainAxisAlignment.center,
                                           children: [
-                                            const Icon(
-                                              Icons.workspace_premium_rounded,
-                                              color: Colors.white,
-                                              size: 20,
-                                            ),
+                                            if (_isDownloading)
+                                              SizedBox(
+                                                width: 18,
+                                                height: 18,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  value: _downloadProgress > 0
+                                                      ? _downloadProgress
+                                                      : null,
+                                                  valueColor:
+                                                      const AlwaysStoppedAnimation<
+                                                        Color
+                                                      >(Colors.white),
+                                                ),
+                                              )
+                                            else
+                                              const Icon(
+                                                Icons.workspace_premium_rounded,
+                                                color: Colors.white,
+                                                size: 20,
+                                              ),
                                             const SizedBox(width: 10),
                                             Text(
-                                              "Download",
+                                              _isDownloading
+                                                  ? "Downloading... ${(_downloadProgress * 100).toStringAsFixed(0)}%"
+                                                  : "Download Certificate",
                                               style: GoogleFonts.poppins(
                                                 color: Colors.white,
                                                 fontSize: 14,
@@ -831,18 +1047,21 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                                                 letterSpacing: 0.5,
                                               ),
                                             ),
-                                            const SizedBox(width: 8),
-                                            const Icon(
-                                              Icons.download_rounded,
-                                              color: Colors.white,
-                                              size: 18,
-                                            ),
+                                            if (!_isDownloading) ...[
+                                              const SizedBox(width: 8),
+                                              const Icon(
+                                                Icons.download_rounded,
+                                                color: Colors.white,
+                                                size: 18,
+                                              ),
+                                            ],
                                           ],
                                         ),
                                       )
                                       .animate(
-                                        onPlay: (controller) =>
-                                            controller.repeat(),
+                                        onPlay: (controller) => !_isDownloading
+                                            ? controller.repeat()
+                                            : null,
                                       )
                                       .shimmer(
                                         duration: 1500.ms,
@@ -942,7 +1161,6 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                     ),
                     const SizedBox(height: 24),
                   ],
-
 
                   // Chat Banner - Show only if link is configured
                   StreamBuilder<DocumentSnapshot>(
@@ -1337,7 +1555,8 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
                         color: Colors.white, // Always white on dark bar
                       ),
                     ),
-                    if (discountPercent > 0 || originalPrice > sellingPrice) ...[
+                    if (discountPercent > 0 ||
+                        originalPrice > sellingPrice) ...[
                       const SizedBox(width: _fElemSpace),
                       Text(
                         '₹${originalPrice.toStringAsFixed(0)}',
@@ -1420,278 +1639,268 @@ class _CourseDetailScreenState extends State<CourseDetailScreen>
     );
   }
 
-  Widget _buildStudentsTab() {
+  Widget _buildStudentsTab(CourseModel course) {
     return Builder(
       builder: (context) {
         final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
-        // Dummy data for students
-        final List<Map<String, String?>> allStudents = [
-          {
-            'name': 'Rahul Sharma',
-            'email': 'rahul.sharma@example.com',
-            'phone': '+91 98765 43210',
-            'image': 'https://i.pravatar.cc/150?u=rahul',
-          },
-          {
-            'name': 'Amit Verma',
-            'email': 'amit.verma@example.com',
-            'phone': '+91 98765 00000',
-            'image': null,
-          },
-        ];
+        return StreamBuilder<List<StudentModel>>(
+          stream: _firestoreService.getStudentsForCourse(course.id),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-        // Filter Logic
-        final filteredStudents = allStudents.where((student) {
-          final query = _studentSearchQuery.toLowerCase().trim();
-          if (query.isEmpty) return true;
+            final List<StudentModel> students = snapshot.data ?? [];
 
-          final name = (student['name'] ?? '').toLowerCase();
-          final email = (student['email'] ?? '').toLowerCase();
-          final phone = (student['phone'] ?? '').toLowerCase();
+            // Filter Logic
+            final filteredStudents = students.where((student) {
+              final query = _studentSearchQuery.toLowerCase().trim();
+              if (query.isEmpty) return true;
 
-          return name.contains(query) ||
-              email.contains(query) ||
-              phone.contains(query);
-        }).toList();
+              final name = student.name.toLowerCase();
+              final email = student.email.toLowerCase();
+              final phone = student.phone.toLowerCase();
 
-        return CustomScrollView(
-          key: const PageStorageKey('students'),
-          slivers: [
-            SliverOverlapInjector(
-              handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
-            ),
+              return name.contains(query) ||
+                  email.contains(query) ||
+                  phone.contains(query);
+            }).toList();
 
-            // Search Bar
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-                child: TextField(
-                  controller: _studentSearchController,
-                  style: GoogleFonts.manrope(
-                    color: isDark ? Colors.white : Colors.black,
-                  ),
-                  onChanged: (value) {
-                    setState(() {
-                      _studentSearchQuery = value;
-                    });
-                  },
-                  decoration: InputDecoration(
-                    hintText: 'Search by Name, Email or Phone...',
-                    hintStyle: GoogleFonts.manrope(
-                      color: isDark ? Colors.grey[600] : Colors.grey[400],
-                      fontSize: 14,
-                    ),
-                    prefixIcon: Icon(
-                      Icons.search,
-                      color: isDark ? Colors.grey[500] : Colors.grey[400],
-                    ),
-                    filled: true,
-                    fillColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(3.0),
-                      borderSide: BorderSide(
-                        color: isDark
-                            ? Colors.white.withOpacity(0.08)
-                            : Colors.grey.withOpacity(0.2),
-                      ),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(3.0),
-                      borderSide: BorderSide(
-                        color: isDark
-                            ? Colors.white.withOpacity(0.08)
-                            : Colors.grey.withOpacity(0.2),
-                      ),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(3.0),
-                      borderSide: const BorderSide(
-                        color: AppTheme.primaryColor,
-                      ),
-                    ),
+            return CustomScrollView(
+              key: const PageStorageKey('students'),
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverOverlapInjector(
+                  handle: NestedScrollView.sliverOverlapAbsorberHandleFor(
+                    context,
                   ),
                 ),
-              ),
-            ),
 
-            if (filteredStudents.isEmpty)
-              SliverFillRemaining(
-                child: Center(
-                  child: Text(
-                    "No students found",
-                    style: GoogleFonts.manrope(color: Colors.grey),
-                  ),
-                ),
-              )
-            else
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate((context, index) {
-                    final student = filteredStudents[index];
-                    final hasImage =
-                        student['image'] != null &&
-                        student['image']!.isNotEmpty;
-
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 7),
-                      decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-                        borderRadius: BorderRadius.circular(3.0),
-                        border: Border.all(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.08)
-                              : Colors.grey.withValues(alpha: 0.15),
-                          width: 1,
+                // Search Bar
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+                    child: TextField(
+                      controller: _studentSearchController,
+                      style: GoogleFonts.manrope(
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          _studentSearchQuery = value;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Search by Name, Email or Phone...',
+                        hintStyle: GoogleFonts.manrope(
+                          color: isDark ? Colors.grey[600] : Colors.grey[400],
+                          fontSize: 14,
                         ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            blurRadius: 4,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
+                        prefixIcon: Icon(
+                          Icons.search,
+                          color: isDark ? Colors.grey[500] : Colors.grey[400],
+                        ),
+                        filled: true,
+                        fillColor: isDark
+                            ? const Color(0xFF1C1C1E)
+                            : Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(3.0),
-                          onTap: () {
-                            final dummyStudent = StudentModel(
-                              id: 'dummy_id_$index',
-                              name: student['name'] ?? 'Unknown',
-                              email: student['email'] ?? '',
-                              phone: student['phone'] ?? '',
-                              enrolledCourses: 1,
-                              joinedDate: DateTime.now().subtract(
-                                const Duration(days: 30),
-                              ),
-                              isActive: true,
-                              avatarUrl: student['image'] ?? '',
-                            );
-                            unawaited(
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) =>
-                                      UserProfileScreen(student: dummyStudent),
-                                ),
-                              ),
-                            );
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(12),
-                            child: Row(
-                              children: [
-                                // Profile Placeholder
-                                Container(
-                                  width: 50,
-                                  height: 50,
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: isDark
-                                        ? Colors.grey[800]
-                                        : Colors.grey[200],
-                                    image: hasImage
-                                        ? DecorationImage(
-                                            image: NetworkImage(
-                                              student['image']!,
-                                            ),
-                                            fit: BoxFit.cover,
-                                          )
-                                        : null,
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: !hasImage
-                                      ? const Icon(
-                                          Icons.person,
-                                          color: Colors.grey,
-                                          size: 24,
-                                        )
-                                      : null,
-                                ),
-                                const SizedBox(width: 16),
+                          borderSide: BorderSide(
+                            color: isDark
+                                ? Colors.white.withOpacity(0.08)
+                                : Colors.grey.withOpacity(0.2),
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(3.0),
+                          borderSide: BorderSide(
+                            color: isDark
+                                ? Colors.white.withOpacity(0.08)
+                                : Colors.grey.withOpacity(0.2),
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(3.0),
+                          borderSide: const BorderSide(
+                            color: AppTheme.primaryColor,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
 
-                                // Info
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        student['name']!,
-                                        style: GoogleFonts.manrope(
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w700,
-                                          color: isDark
-                                              ? Colors.white
-                                              : const Color(0xFF1F1F39),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            Icons.email_outlined,
-                                            size: 12,
-                                            color: isDark
-                                                ? Colors.grey[400]
-                                                : Colors.grey[600],
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            student['email']!,
-                                            style: GoogleFonts.manrope(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w500,
-                                              color: isDark
-                                                  ? Colors.grey[400]
-                                                  : Colors.grey[600],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            Icons.phone_outlined,
-                                            size: 12,
-                                            color: isDark
-                                                ? Colors.grey[400]
-                                                : Colors.grey[600],
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            student['phone']!,
-                                            style: GoogleFonts.manrope(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w500,
-                                              color: isDark
-                                                  ? Colors.grey[400]
-                                                  : Colors.grey[600],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
+                if (filteredStudents.isEmpty)
+                  SliverFillRemaining(
+                    child: Center(
+                      child: Text(
+                        students.isEmpty
+                            ? "No students enrolled in this course"
+                            : "No students matching your search",
+                        style: GoogleFonts.manrope(color: Colors.grey),
+                      ),
+                    ),
+                  )
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final student = filteredStudents[index];
+                        final hasImage = student.avatarUrl.isNotEmpty;
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 7),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0xFF1C1C1E)
+                                : Colors.white,
+                            borderRadius: BorderRadius.circular(3.0),
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.08)
+                                  : Colors.grey.withValues(alpha: 0.15),
+                              width: 1,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.05),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(3.0),
+                              onTap: () {
+                                unawaited(
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) =>
+                                          UserProfileScreen(student: student),
+                                    ),
                                   ),
+                                );
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.all(12),
+                                child: Row(
+                                  children: [
+                                    // Profile Placeholder
+                                    Container(
+                                      width: 50,
+                                      height: 50,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color: isDark
+                                            ? Colors.grey[800]
+                                            : Colors.grey[200],
+                                        image: hasImage
+                                            ? DecorationImage(
+                                                image: NetworkImage(
+                                                  student.avatarUrl,
+                                                ),
+                                                fit: BoxFit.cover,
+                                              )
+                                            : null,
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: !hasImage
+                                          ? const Icon(
+                                              Icons.person,
+                                              color: Colors.grey,
+                                              size: 24,
+                                            )
+                                          : null,
+                                    ),
+                                    const SizedBox(width: 16),
+
+                                    // Info
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            student.name,
+                                            style: GoogleFonts.manrope(
+                                              fontSize: 15,
+                                              fontWeight: FontWeight.w700,
+                                              color: isDark
+                                                  ? Colors.white
+                                                  : const Color(0xFF1F1F39),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.email_outlined,
+                                                size: 12,
+                                                color: isDark
+                                                    ? Colors.grey[400]
+                                                    : Colors.grey[600],
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                student.email,
+                                                style: GoogleFonts.manrope(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: isDark
+                                                      ? Colors.grey[400]
+                                                      : Colors.grey[600],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            children: [
+                                              Icon(
+                                                Icons.phone_outlined,
+                                                size: 12,
+                                                color: isDark
+                                                    ? Colors.grey[400]
+                                                    : Colors.grey[600],
+                                              ),
+                                              const SizedBox(width: 6),
+                                              Text(
+                                                student.phone,
+                                                style: GoogleFonts.manrope(
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w500,
+                                                  color: isDark
+                                                      ? Colors.grey[400]
+                                                      : Colors.grey[600],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ],
+                              ),
                             ),
                           ),
-                        ),
-                      ),
-                    );
-                  }, childCount: filteredStudents.length),
-                ),
-              ),
-          ],
+                        );
+                      }, childCount: filteredStudents.length),
+                    ),
+                  ),
+              ],
+            );
+          },
         );
       },
     );

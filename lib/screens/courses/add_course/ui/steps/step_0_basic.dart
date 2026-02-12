@@ -8,6 +8,8 @@ import '../../../../../services/config_service.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../components/collapsing_step_indicator.dart';
 import '../components/text_field.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 
 class Step0BasicWidget extends StatelessWidget {
   final CourseStateManager state;
@@ -63,6 +65,7 @@ class Step0BasicWidget extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        const Spacer(),
                         Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
@@ -792,4 +795,5 @@ class Step0BasicWidget extends StatelessWidget {
       onChanged: onChanged,
     );
   }
+
 }

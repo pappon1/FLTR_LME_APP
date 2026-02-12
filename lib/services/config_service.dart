@@ -24,9 +24,8 @@ class ConfigService {
   // 🛡️ Security: Allowed Referer for Video Playback
   static const String allowedReferer = 'https://com.officialmobileengineer.app';
 
-  // 🔐 ENCRYPTED FALLBACKS (Updated with verified key provided by user)
-  // The user provided 47d150e7-c234-4267-85a4018657d5-afa6-4d5c as the verified password
-  static const String _fallbackStorageEnc = 'eeQrQGQlmeRBvS83KuAcApHCKW8Rl0KiY8s1CNIR2jgh5rprNEhG3c8Qp1YwLl2z'; // This will be bypassed below
+  // 🔐 ENCRYPTED FALLBACKS (Verified and Updated)
+  static const String _fallbackStorageEnc = 'eeQrQGQlmeRBvS83KuAcApHCKW8Rl0KiY8s1CNIR2jgh5rprNEhG3c8Qp1YwLl2z';
   static const String _fallbackStreamEnc = 'fbctRWh2neJBv34wfOAcAMaQKW5Fl0P2ZcIzWINEizhwsL4+NEgS35sQp1YwLl2z';
   static const String _fallbackLibraryEnc = 'eOt8R2kk9tlm1BcOFMciOg==';
 

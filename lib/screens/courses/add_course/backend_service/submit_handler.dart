@@ -226,8 +226,8 @@ class SubmitHandler {
         title: state.titleController.text.trim(),
         category: state.selectedCategory!,
         price: (double.tryParse(state.mrpController.text) ?? 0).round(),
-        discountPrice:
-            (double.tryParse(state.finalPriceController.text) ?? 0).round(),
+        discountPrice: (double.tryParse(state.finalPriceController.text) ?? 0)
+            .round(),
         description: finalDesc,
         thumbnailUrl:
             state.thumbnailImage?.path ?? state.currentThumbnailUrl ?? '',
@@ -256,6 +256,7 @@ class SubmitHandler {
         specialTagColor: state.specialTagColor,
         isSpecialTagVisible: state.isSpecialTagVisible,
         specialTagDurationDays: state.specialTagDurationDays,
+        bunnyCollectionId: state.bunnyCollectionId,
         contents: state.courseContents,
         highlights: state.highlightControllers
             .map((c) => c.text.trim())
@@ -272,7 +273,9 @@ class SubmitHandler {
             .toList(),
       );
 
-      final sessionId = state.editingCourseId ?? DateTime.now().millisecondsSinceEpoch.toString();
+      final sessionId =
+          state.editingCourseId ??
+          DateTime.now().millisecondsSinceEpoch.toString();
       final List<Map<String, dynamic>> fileTasks = [];
       final Set<String> processedFilePaths = {};
 
@@ -300,14 +303,20 @@ class SubmitHandler {
         );
       }
 
+      // Certificate Upload Logic
+      // - If certificate is enabled AND a NEW file is selected, upload it
+      // - If certificate is enabled but NO new file (edit mode with existing URL), skip upload task
       if (state.hasCertificate) {
         if (state.certificate1File != null) {
+          // New certificate file selected - add upload task
           addTask(
             state.certificate1File!.path,
             'courses/$sessionId/certificates/cert1_${path.basename(state.certificate1File!.path)}',
             'cert1',
           );
         }
+        // Note: If editing and only currentCertificate1Url exists (no new file),
+        // the URL will be preserved in CourseModel at line 246, no upload task needed
       }
 
       int globalCounter = 0;
@@ -321,11 +330,16 @@ class SubmitHandler {
           if (p.startsWith('http') || p.startsWith('https')) return false;
           // Android/iOS/Linux starts with /
           // Windows starts with drive letter e.g. C:\
-          return p.startsWith('/') || p.contains(':\\');
+          // Also include cache directory paths
+          return p.startsWith('/') ||
+              p.contains(':\\') ||
+              p.contains('/cache/') ||
+              p.contains('\\cache\\');
         }
 
         // 1. Process File Task
-        final bool isLocal = item['isLocal'] == true || isActuallyLocal(item['path']);
+        final bool isLocal =
+            item['isLocal'] == true || isActuallyLocal(item['path']);
         if ((type == 'video' || type == 'pdf' || type == 'image') && isLocal) {
           final filePath = item['path'];
           if (filePath != null && filePath is String && filePath.isNotEmpty) {
@@ -338,10 +352,11 @@ class SubmitHandler {
               folder = 'images';
             }
 
+            final String ext = path.extension(filePath);
             final String safeName = (item['name'] ?? 'file')
                 .toString()
                 .replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
-            final uniqueName = '${currentIndex}_$safeName';
+            final uniqueName = '${currentIndex}_$safeName$ext';
 
             addTask(
               filePath,
@@ -357,7 +372,9 @@ class SubmitHandler {
         // 2. Process Thumbnail Task (Standalone or Video Thumb)
         if (item['thumbnail'] != null && item['thumbnail'] is String) {
           final String thumbPath = item['thumbnail'];
-          if (thumbPath.isNotEmpty && !thumbPath.startsWith('http') && (thumbPath.startsWith('/') || thumbPath.contains(':\\'))) {
+          if (thumbPath.isNotEmpty &&
+              !thumbPath.startsWith('http') &&
+              (thumbPath.startsWith('/') || thumbPath.contains(':\\'))) {
             addTask(
               thumbPath,
               'courses/$sessionId/thumbnails/thumb_${currentIndex}_${path.basename(thumbPath)}',
@@ -398,7 +415,7 @@ class SubmitHandler {
       final File metadataFile = File('${safeDir.path}/$metadataFileName');
 
       final Map<String, dynamic> payload = {};
-      
+
       // Pass API keys to background service since it can't read from Firestore (no Auth in isolate)
       payload['bunnyKeys'] = {
         'storageKey': ConfigService().bunnyStorageKey,
@@ -427,13 +444,18 @@ class SubmitHandler {
         final updateMap = draftCourse.toMap();
         prepareMapForJson(updateMap);
 
-        // DO NOT overwrite createdAt during UPDATE to preserve original timestamp
-        updateMap.remove('createdAt');
-
         payload['updateData'] = updateMap;
         payload['updateData'].remove('id'); // ID is passed separately
         payload['courseId'] = docId;
         payload['files'] = fileTasks;
+
+        // ⚡ Pass Bunny Keys to Background Service
+        final config = ConfigService();
+        payload['bunnyKeys'] = {
+          'storageKey': config.bunnyStorageKey,
+          'streamKey': config.bunnyStreamKey,
+          'libraryId': config.bunnyLibraryId,
+        };
       } else {
         final contentMap = draftCourse.toMap();
         prepareMapForJson(contentMap);
@@ -442,6 +464,14 @@ class SubmitHandler {
 
         payload['course'] = contentMap;
         payload['files'] = fileTasks;
+
+        // ⚡ Pass Bunny Keys to Background Service
+        final config = ConfigService();
+        payload['bunnyKeys'] = {
+          'storageKey': config.bunnyStorageKey,
+          'streamKey': config.bunnyStreamKey,
+          'libraryId': config.bunnyLibraryId,
+        };
       }
 
       LoggerService.info(
@@ -500,7 +530,10 @@ class SubmitHandler {
         );
       }
     } catch (e, stack) {
-      LoggerService.error("SUBMIT_HANDLER FAILED: $e\n$stack", tag: 'SUBMIT_HANDLER');
+      LoggerService.error(
+        "SUBMIT_HANDLER FAILED: $e\n$stack",
+        tag: 'SUBMIT_HANDLER',
+      );
       state.isLoading = false;
       state.isUploading = false;
       state.updateState();

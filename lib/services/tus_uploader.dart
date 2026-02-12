@@ -11,6 +11,7 @@ class TusUploader {
   final String apiKey;
   final String libraryId;
   final String videoId;
+  final String? collectionId;
 
   // Bunny Stream TUS Endpoint
   static const String _baseUrl = 'https://video.bunnycdn.com/tusupload';
@@ -19,6 +20,7 @@ class TusUploader {
     required this.apiKey,
     required this.libraryId,
     required this.videoId,
+    this.collectionId,
   });
 
   /// Uploads a file using TUS protocol with Resume capability
@@ -116,6 +118,10 @@ class TusUploader {
 
         if (videoId.isNotEmpty) {
           metadata['video_id'] = base64Encode(utf8.encode(videoId));
+        }
+
+        if (collectionId != null && collectionId!.isNotEmpty) {
+          metadata['collection'] = base64Encode(utf8.encode(collectionId!));
         }
 
         final metadataStr = metadata.entries
