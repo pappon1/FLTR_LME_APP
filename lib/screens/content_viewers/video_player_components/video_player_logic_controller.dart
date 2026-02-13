@@ -471,9 +471,8 @@ class VideoPlayerLogicController extends ChangeNotifier
       const storageCdnUrl = BunnyCDNService.cdnUrl;
 
       // DETECT VIDEO TYPE
-      // Type A: Bunny Stream Video (iframe, vz-..., or matches configured stream host)
-      final bool isStreamVideo = currentPath.contains('iframe.mediadelivery.net') || 
-                           currentPath.contains('playlist.m3u8') ||
+      // Type A: Bunny Stream Video (HLS playlist or matches configured stream host)
+      final bool isStreamVideo = currentPath.contains('playlist.m3u8') ||
                            currentPath.contains(streamCdnHost);
 
       // Type B: Bunny Storage Video (matches our storage CDN url)
@@ -483,45 +482,26 @@ class VideoPlayerLogicController extends ChangeNotifier
       if (isStreamVideo) {
         debugPrint('🎬 [VIDEO_PLAYER] Strategy: Stream Progressive Fallback');
         try {
-          // Extract Video ID
-          // Common formats:
-          // 1. https://iframe.mediadelivery.net/play/{libId}/{videoId}
-          // 2. https://{host}/{videoId}/playlist.m3u8
-          
+          // Extract Video ID from HLS path: https://{host}/{videoId}/playlist.m3u8
           final uri = Uri.parse(currentPath);
-          String? videoId;
-
-          if (currentPath.contains('iframe.mediadelivery.net')) {
-            // Path: /play/{libId}/{videoId} or /{libId}/{videoId}/playlist.m3u8
-            final nonUniqueSegments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
-            videoId = nonUniqueSegments.firstWhere((s) => s.length > 20, orElse: () => nonUniqueSegments.last);
-          } else {
-            // Path: /{videoId}/playlist.m3u8 or /{libId}/{videoId}/playlist.m3m8
-            final nonUniqueSegments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
-            videoId = nonUniqueSegments.firstWhere((s) => s.length > 20, orElse: () => '');
+          final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
+          String videoId = '';
+          
+          if (segments.isNotEmpty) {
+            videoId = segments.firstWhere((s) => s.length > 20, orElse: () => '');
           }
 
           if (videoId.isNotEmpty) {
-             final libraryId = ConfigService().bunnyLibraryId;
-             
              if (_retryCount == 1) {
-               debugPrint('🎬 [VIDEO_PLAYER] Retry 1: PullZone HLS (No LibID)');
+               debugPrint('🎬 [VIDEO_PLAYER] Retry 1: PullZone HLS');
                fallbackUrl = 'https://$streamCdnHost/$videoId/playlist.m3u8';
              } 
              else if (_retryCount == 2) {
-               debugPrint('🎬 [VIDEO_PLAYER] Retry 2: Primary Host HLS (With LibID)');
-               fallbackUrl = 'https://iframe.mediadelivery.net/$libraryId/$videoId/playlist.m3u8';
-             } 
-             else if (_retryCount == 3) {
-               debugPrint('🎬 [VIDEO_PLAYER] Retry 3: PullZone MP4 720p (No LibID)');
+               debugPrint('🎬 [VIDEO_PLAYER] Retry 2: PullZone MP4 720p');
                fallbackUrl = 'https://$streamCdnHost/$videoId/play_720p.mp4';
              }
-             else if (_retryCount == 4) {
-               debugPrint('🎬 [VIDEO_PLAYER] Retry 4: Primary Host MP4 720p (With LibID)');
-               fallbackUrl = 'https://iframe.mediadelivery.net/$libraryId/$videoId/play_720p.mp4';
-             }
-             else if (_retryCount == 5) {
-               debugPrint('🎬 [VIDEO_PLAYER] Retry 5: PullZone MP4 480p');
+             else if (_retryCount == 3) {
+               debugPrint('🎬 [VIDEO_PLAYER] Retry 3: PullZone MP4 480p');
                fallbackUrl = 'https://$streamCdnHost/$videoId/play_480p.mp4';
              }
           }
@@ -546,7 +526,6 @@ class VideoPlayerLogicController extends ChangeNotifier
           fallbackUrl,
           play: true,
           headers: {
-            'Referer': ConfigService.allowedReferer,
             ...extraHeaders,
           },
         ).catchError((e) {

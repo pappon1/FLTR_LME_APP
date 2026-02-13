@@ -486,6 +486,9 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
                   : ListView.builder(
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.fromLTRB(10, 16, 10, 140),
+                      addAutomaticKeepAlives: false,
+                      addRepaintBoundaries: true,
+                      cacheExtent: 800,
                       itemCount: _queue.length,
                       itemBuilder: (context, index) {
                         final task = _queue[index];

@@ -19,10 +19,15 @@ import 'services/upload_service.dart';
 import 'services/logger_service.dart';
 import 'services/config_service.dart';
 import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'dart:async';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // 🔥 INITIALIZE HIVE (High Performance Local Storage)
+  await Hive.initFlutter();
+  await Hive.openBox('upload_queue'); // Pre-warm the box
 
   // Initialize MediaKit
   MediaKit.ensureInitialized();

@@ -114,7 +114,7 @@ class _PDFViewerScreenState extends State<PDFViewerScreen>
       if (widget.isNetwork) {
         final String effectiveUrl = BunnyCDNService.signUrl(widget.filePath);
         final bool isStorage = effectiveUrl.contains('storage.bunnycdn.com');
-        
+
         final dio = Dio();
         final response = await dio.get(
           effectiveUrl,

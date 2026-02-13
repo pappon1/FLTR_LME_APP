@@ -9,7 +9,7 @@ class ConfigService {
   factory ConfigService() => _instance;
   ConfigService._internal();
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  FirebaseFirestore? _firestore;
 
   String? _bunnyStorageKey;
   String? _bunnyStreamKey;
@@ -20,13 +20,15 @@ class ConfigService {
   // 🎥 Bunny.net Video Stream CDN Pull Zone Hostname
   // NOTE: This is DIFFERENT from the Library ID. Library ID (e.g. 583681) is for API calls.
   static const String _bunnyStreamCdnHost = 'vz-6f779b00-3e0.b-cdn.net';
-  
+
   // 🛡️ Security: Allowed Referer for Video Playback
   static const String allowedReferer = 'https://com.officialmobileengineer.app';
 
   // 🔐 ENCRYPTED FALLBACKS (Verified and Updated)
-  static const String _fallbackStorageEnc = 'eeQrQGQlmeRBvS83KuAcApHCKW8Rl0KiY8s1CNIR2jgh5rprNEhG3c8Qp1YwLl2z';
-  static const String _fallbackStreamEnc = 'fbctRWh2neJBv34wfOAcAMaQKW5Fl0P2ZcIzWINEizhwsL4+NEgS35sQp1YwLl2z';
+  static const String _fallbackStorageEnc =
+      'eeQrQGQlmeRBvS83KuAcApHCKW8Rl0KiY8s1CNIR2jgh5rprNEhG3c8Qp1YwLl2z';
+  static const String _fallbackStreamEnc =
+      'fbctRWh2neJBv34wfOAcAMaQKW5Fl0P2ZcIzWINEizhwsL4+NEgS35sQp1YwLl2z';
   static const String _fallbackLibraryEnc = 'eOt8R2kk9tlm1BcOFMciOg==';
 
   Future<void> initialize() async {
@@ -42,11 +44,14 @@ class ConfigService {
         "ℹ️ [CONFIG] Starting Initialization... User: ${FirebaseAuth.instance.currentUser?.uid ?? 'NOT_LOGGED_IN'}",
       );
 
-      final docRef = _firestore.collection('settings').doc('keys');
+      _firestore ??= FirebaseFirestore.instance;
+      final docRef = _firestore!.collection('settings').doc('keys');
       // 🔥 Pro-Tip: Force SERVER source during high-stakes init to avoid cache corruption on slow net
       final doc = await docRef
           .get(const GetOptions(source: Source.server))
-          .timeout(const Duration(seconds: 25)); // Increased timeout for slow hotspot
+          .timeout(
+            const Duration(seconds: 25),
+          ); // Increased timeout for slow hotspot
 
       final security = SecurityService();
       final Map<String, dynamic>? data = doc.exists ? doc.data() : null;
@@ -55,7 +60,7 @@ class ConfigService {
         debugPrint(
           "ℹ️ [CONFIG] Keys fetched from SERVER. Fields: ${data.keys.toList()}",
         );
-        
+
         final storageEnc = data['bunny_storage_key'] ?? data['storage_key'];
         final streamEnc = data['bunny_stream_key'] ?? data['stream_key'];
         final libraryEnc = data['bunny_library_id'] ?? data['library_id'];
@@ -99,7 +104,8 @@ class ConfigService {
       // Emergency Fallback if everything fails
       try {
         final security = SecurityService();
-        _bunnyStorageKey = '47d150e7-c234-4267-85a4018657d5-afa6-4d5c'; // Verified User Override
+        _bunnyStorageKey =
+            '47d150e7-c234-4267-85a4018657d5-afa6-4d5c'; // Verified User Override
         _bunnyStreamKey = security.decrypt(_fallbackStreamEnc);
         _bunnyLibraryId = security.decrypt(_fallbackLibraryEnc);
 

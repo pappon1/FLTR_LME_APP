@@ -39,6 +39,8 @@ class DashboardProvider extends ChangeNotifier {
 
   StreamSubscription? _coursesSubscription;
   StreamSubscription? _studentsSubscription;
+  Timer? _coursesDebounce;
+  int? _lastCourseEventTs;
 
   // Getters
   int get selectedIndex => _selectedIndex;
@@ -69,7 +71,7 @@ class DashboardProvider extends ChangeNotifier {
 
     final user = FirebaseAuth.instance.currentUser;
     debugPrint("🔍 [DASHBOARD_DEBUG] User: ${user?.email} (ID: ${user?.uid})");
-    
+
     if (user != null) {
       try {
         final idToken = await user.getIdTokenResult();
@@ -118,7 +120,10 @@ class DashboardProvider extends ChangeNotifier {
 
   Future<void> _fetchStats() async {
     try {
-      final statsMap = await _firestoreService.getDashboardStats();
+      final currentUserEmail = FirebaseAuth.instance.currentUser?.email;
+      final statsMap = await _firestoreService.getDashboardStats(
+        excludeEmail: currentUserEmail,
+      );
       _stats = _stats.copyWith(
         totalCourses: statsMap['totalCourses'] ?? 0,
         totalVideos: statsMap['totalVideos'] ?? 0,
@@ -153,9 +158,31 @@ class DashboardProvider extends ChangeNotifier {
       _coursesSubscription = _firestoreService.getCourses().listen((
         courseList,
       ) {
-        _courses.clear();
-        _courses.addAll(courseList);
-        if (!silent) notifyListeners();
+        final now = DateTime.now().millisecondsSinceEpoch;
+        _lastCourseEventTs ??= 0;
+        bool changed = _courses.length != courseList.length;
+        if (!changed) {
+          for (int i = 0; i < courseList.length; i++) {
+            if (_courses[i].id != courseList[i].id) {
+              changed = true;
+              break;
+            }
+          }
+        }
+        if (changed) {
+          _courses
+            ..clear()
+            ..addAll(courseList);
+          if (!silent) {
+            if (_coursesDebounce?.isActive ?? false) _coursesDebounce!.cancel();
+            final int elapsed = now - _lastCourseEventTs!;
+            final int delayMs = elapsed < 500 ? 500 - elapsed : 0;
+            _coursesDebounce = Timer(Duration(milliseconds: delayMs), () {
+              _lastCourseEventTs = DateTime.now().millisecondsSinceEpoch;
+              notifyListeners();
+            });
+          }
+        }
       });
     } catch (e) {
       debugPrint('Error fetching courses: $e');
@@ -166,11 +193,21 @@ class DashboardProvider extends ChangeNotifier {
     try {
       final snapshot = await _firestoreService.getStudentsPaginated(limit: 50);
 
+      final currentUserEmail = FirebaseAuth.instance.currentUser?.email
+          ?.toLowerCase();
+
       if (snapshot.docs.isNotEmpty) {
         _lastStudentDoc = snapshot.docs.last;
         _students.clear();
         _students.addAll(
-          snapshot.docs.map((doc) => StudentModel.fromFirestore(doc)).toList(),
+          snapshot.docs.map((doc) => StudentModel.fromFirestore(doc)).where((
+            s,
+          ) {
+            final email = s.email.toLowerCase();
+            return email != 'admin@lme.com' &&
+                !email.contains('admin') &&
+                email != currentUserEmail;
+          }).toList(),
         );
         _hasMoreStudents = snapshot.docs.length == 50;
       } else {
@@ -186,7 +223,14 @@ class DashboardProvider extends ChangeNotifier {
         _lastBuyerDoc = buyerSnap.docs.last;
         _buyers.clear();
         _buyers.addAll(
-          buyerSnap.docs.map((doc) => StudentModel.fromFirestore(doc)).toList(),
+          buyerSnap.docs.map((doc) => StudentModel.fromFirestore(doc)).where((
+            s,
+          ) {
+            final email = s.email.toLowerCase();
+            return email != 'admin@lme.com' &&
+                !email.contains('admin') &&
+                email != currentUserEmail;
+          }).toList(),
         );
         _hasMoreBuyers = buyerSnap.docs.length == 50;
       } else {
@@ -218,8 +262,16 @@ class DashboardProvider extends ChangeNotifier {
       );
 
       if (snapshot.docs.isNotEmpty) {
+        final currentUserEmail = FirebaseAuth.instance.currentUser?.email
+            ?.toLowerCase();
         final newList = snapshot.docs
             .map((doc) => StudentModel.fromFirestore(doc))
+            .where((s) {
+              final email = s.email.toLowerCase();
+              return email != 'admin@lme.com' &&
+                  !email.contains('admin') &&
+                  email != currentUserEmail;
+            })
             .toList();
         if (onlyBuyers) {
           _lastBuyerDoc = snapshot.docs.last;

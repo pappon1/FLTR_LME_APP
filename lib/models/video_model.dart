@@ -35,28 +35,31 @@ class VideoModel {
       'courseId': courseId,
       'title': title,
       'description': description,
-      'videoUrl': videoUrl,
-      'thumbnailUrl': thumbnailUrl,
-      'duration': duration,
+      'media': {
+        'videoUrl': videoUrl,
+        'thumbnailUrl': thumbnailUrl,
+        'duration': duration,
+      },
       'orderIndex': orderIndex,
       'isPublished': isPublished,
       'isFree': isFree,
-      'createdAt': Timestamp.fromDate(createdAt),
-      'updatedAt': updatedAt != null ? Timestamp.fromDate(updatedAt!) : null,
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
     };
   }
 
   // Create from Firestore DocumentSnapshot
   factory VideoModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    final media = data['media'] as Map<String, dynamic>? ?? {};
     return VideoModel(
       id: doc.id,
       courseId: data['courseId'] ?? '',
       title: data['title'] ?? '',
       description: data['description'] ?? '',
-      videoUrl: data['videoUrl'] ?? '',
-      thumbnailUrl: data['thumbnailUrl'] ?? '',
-      duration: data['duration'] ?? '0:00',
+      videoUrl: media['videoUrl'] ?? data['videoUrl'] ?? '',
+      thumbnailUrl: media['thumbnailUrl'] ?? data['thumbnailUrl'] ?? '',
+      duration: media['duration'] ?? data['duration'] ?? '0:00',
       orderIndex: data['orderIndex'] ?? 0,
       isPublished: data['isPublished'] ?? false,
       isFree: data['isFree'] ?? false,
@@ -67,14 +70,15 @@ class VideoModel {
 
   // Create from Map
   factory VideoModel.fromMap(Map<String, dynamic> map) {
+    final media = map['media'] as Map<String, dynamic>? ?? {};
     return VideoModel(
       id: map['id'] ?? '',
       courseId: map['courseId'] ?? '',
       title: map['title'] ?? '',
       description: map['description'] ?? '',
-      videoUrl: map['videoUrl'] ?? '',
-      thumbnailUrl: map['thumbnailUrl'] ?? '',
-      duration: map['duration'] ?? '0:00',
+      videoUrl: media['videoUrl'] ?? map['videoUrl'] ?? '',
+      thumbnailUrl: media['thumbnailUrl'] ?? map['thumbnailUrl'] ?? '',
+      duration: media['duration'] ?? map['duration'] ?? '0:00',
       orderIndex: map['orderIndex'] ?? 0,
       isPublished: map['isPublished'] ?? false,
       isFree: map['isFree'] ?? false,

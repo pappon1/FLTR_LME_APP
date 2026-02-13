@@ -6,6 +6,9 @@ import '../../../../utils/clipboard_manager.dart';
 import '../../../utils/simple_file_explorer.dart';
 import '../../../../utils/app_theme.dart';
 import 'package:media_kit/media_kit.dart';
+import '../../../../services/bunny_cdn_service.dart';
+import '../../../../services/config_service.dart';
+import '../../../../services/logger_service.dart';
 import 'state_manager.dart';
 import 'draft_manager.dart';
 
@@ -174,9 +177,24 @@ class ContentManager {
     final bool? confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Remove Content'),
-        content: Text(
-          'Are you sure you want to remove "${state.courseContents[index]['name']}"?',
+        title: const Text('Delete Content'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to delete "${state.courseContents[index]['name']}"?',
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              '⚠️ This will permanently delete it from the server and database.',
+              style: TextStyle(
+                color: Colors.red,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -185,26 +203,89 @@ class ContentManager {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Remove', style: TextStyle(color: Colors.red)),
+            child: const Text(
+              'Delete Permanently',
+              style: TextStyle(color: Colors.red),
+            ),
           ),
         ],
       ),
     );
 
     if (confirm == true) {
-      // Free up cache space logic from original
-      final item = state.courseContents[index];
-      final path = item['path'];
-      if (path != null && path.toString().contains('/cache/')) {
-        try {
-          final file = File(path);
-          if (file.existsSync()) file.deleteSync();
-        } catch (_) {}
-      }
+      // 1. Show Loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => const Center(child: CircularProgressIndicator()),
+      );
 
-      state.courseContents.removeAt(index);
-      state.updateState();
-      unawaited(draftManager.saveCourseDraft());
+      try {
+        final item = state.courseContents[index];
+
+        // 2. Server-side cleanup (Bunny Stream/Storage)
+        final String? videoId = item['videoId']?.toString();
+        final String? url = item['url']?.toString();
+        final bunnyService = BunnyCDNService();
+        final config = ConfigService();
+        if (!config.isReady) await config.initialize();
+
+        if (item['type'] == 'video' && videoId != null && videoId.isNotEmpty) {
+          LoggerService.info(
+            "Deleting video from Bunny: $videoId",
+            tag: 'CLEANUP',
+          );
+          await bunnyService.deleteVideo(
+            libraryId: config.bunnyLibraryId,
+            videoId: videoId,
+            apiKey: config.bunnyStreamKey,
+          );
+        } else if (url != null && url.contains('bunnycdn.com')) {
+          // Extract remote path from URL for images/PDFs
+          // Example: https://lme-media-storage.b-cdn.net/courses/xyz.pdf
+          final String remotePath = url.split('.net/').last;
+          if (remotePath.isNotEmpty) {
+            LoggerService.info(
+              "Deleting file from Bunny Storage: $remotePath",
+              tag: 'CLEANUP',
+            );
+            await bunnyService.deleteFile(remotePath);
+          }
+        }
+
+        // 3. Local Cache Cleanup
+        final path = item['path'];
+        if (path != null && path.toString().contains('/cache/')) {
+          try {
+            final file = File(path);
+            if (file.existsSync()) file.deleteSync();
+          } catch (_) {}
+        }
+
+        // 4. Update UI & Draft
+        if (context.mounted) Navigator.pop(context); // Close loading
+        state.courseContents.removeAt(index);
+        state.updateState();
+        unawaited(draftManager.saveCourseDraft());
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Successfully deleted from server and UI'),
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) Navigator.pop(context); // Close loading
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error during server deletion: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -328,7 +409,7 @@ class ContentManager {
       builder: (ctx) => AlertDialog(
         title: Text('Delete ${state.selectedIndices.length} items?'),
         content: const Text(
-          'Are you sure you want to delete all selected items?',
+          'This will permanently delete all selected items from the server and database. This cannot be undone.',
         ),
         actions: [
           TextButton(
@@ -337,31 +418,90 @@ class ContentManager {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const Text(
+              'Delete All Permanently',
+              style: TextStyle(color: Colors.red),
+            ),
           ),
         ],
       ),
     );
 
     if (confirm == true) {
-      final List<int> sortedIndices = state.selectedIndices.toList()
-        ..sort((a, b) => b.compareTo(a));
-      for (var index in sortedIndices) {
-        // Free up cache space logic from original
-        final item = state.courseContents[index];
-        final path = item['path'];
-        if (path != null && path.toString().contains('/cache/')) {
-          try {
-            final file = File(path);
-            if (file.existsSync()) file.deleteSync();
-          } catch (_) {}
+      // 1. Show Loading
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => const Center(child: CircularProgressIndicator()),
+      );
+
+      try {
+        final bunnyService = BunnyCDNService();
+        final config = ConfigService();
+        if (!config.isReady) await config.initialize();
+
+        final List<int> sortedIndices = state.selectedIndices.toList()
+          ..sort((a, b) => b.compareTo(a));
+
+        for (var index in sortedIndices) {
+          final item = state.courseContents[index];
+
+          // 2. Server-side cleanup
+          final String? videoId = item['videoId']?.toString();
+          final String? url = item['url']?.toString();
+
+          if (item['type'] == 'video' &&
+              videoId != null &&
+              videoId.isNotEmpty) {
+            await bunnyService.deleteVideo(
+              libraryId: config.bunnyLibraryId,
+              videoId: videoId,
+              apiKey: config.bunnyStreamKey,
+            );
+          } else if (url != null && url.contains('bunnycdn.com')) {
+            final String remotePath = url.split('.net/').last;
+            if (remotePath.isNotEmpty) {
+              await bunnyService.deleteFile(remotePath);
+            }
+          }
+
+          // 3. Local Cache Cleanup
+          final path = item['path'];
+          if (path != null && path.toString().contains('/cache/')) {
+            try {
+              final file = File(path);
+              if (file.existsSync()) file.deleteSync();
+            } catch (_) {}
+          }
+
+          state.courseContents.removeAt(index);
         }
-        state.courseContents.removeAt(index);
+
+        // 4. Update UI & Draft
+        if (context.mounted) Navigator.pop(context); // Close loading
+        state.selectedIndices.clear();
+        state.isSelectionMode = false;
+        state.updateState();
+        unawaited(draftManager.saveCourseDraft());
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('All selected items deleted from server and UI'),
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) Navigator.pop(context); // Close loading
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error during bulk deletion: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
-      state.selectedIndices.clear();
-      state.isSelectionMode = false;
-      state.updateState();
-      unawaited(draftManager.saveCourseDraft());
     }
   }
 

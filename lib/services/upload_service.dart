@@ -14,14 +14,19 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
+import 'package:hive/hive.dart';
 
 import 'bunny_cdn_service.dart';
 import 'config_service.dart';
 import 'logger_service.dart';
 import 'tus_uploader.dart';
+import 'security_service.dart';
+import '../models/course_model.dart' show CourseKeys;
+import '../utils/content_normalizer.dart';
 
 // Key used for storage
-const String kQueueKey = 'upload_queue_v1';
+const String kQueueKey = 'upload_queue_v2'; // Bumped version for Hive
 const String kServiceNotificationChannelId = 'upload_service_channel';
 const String kAlertNotificationChannelId = 'upload_alert_channel';
 const int kServiceNotificationId = 888;
@@ -32,6 +37,9 @@ const String kServiceStateKey = 'service_state_paused';
 /// Initialize the background service
 Future<void> initializeUploadService() async {
   final service = FlutterBackgroundService();
+
+  // Ensure Hive is ready on UI side too
+  await Hive.openBox('upload_queue');
 
   // Create notification channel for Android (Silent Progress)
   const AndroidNotificationChannel channel = AndroidNotificationChannel(
@@ -80,9 +88,9 @@ Future<void> initializeUploadService() async {
   );
 
   // Auto-Resume: Check if we have pending work (Crash Recovery)
+  final box = await Hive.openBox('upload_queue');
+  final String? queueStr = box.get(kQueueKey);
   final prefs = await SharedPreferences.getInstance();
-
-  final String? queueStr = prefs.getString(kQueueKey);
   final String? courseStr = prefs.getString(kPendingCourseKey);
 
   bool shouldStart = false;
@@ -142,24 +150,60 @@ void onStart(ServiceInstance service) async {
   // 1. DART CONTEXT READY
   DartPluginRegistrant.ensureInitialized();
 
-  // 🔥 INITIALIZE FIREBASE FOR BACKGROUND ISOLATE - MOVED TO initDeps TO PREVENT HANG
-  // We don't await here so the service can report "Ready" status immediately.
-
+  // Log Version to verify updates
+  const String serviceVersion = "1.1.5-HIVE-FLIGHT";
   LoggerService.info(
-    "onStart triggered! Time: ${DateTime.now()}",
+    "🚀 Background Service Booting... Version: $serviceVersion | Time: ${DateTime.now()}",
     tag: 'BG_SERVICE',
   );
 
-  // 2. STATE INITIALIZATION (Fast)
-  // Shared Prefs is usually fast enough, but we should still be careful.
+  // 2. INITIALIZE HIVE IN ISOLATE
+  final docsDir = await getApplicationDocumentsDirectory();
+  Hive.init(path.join(docsDir.path, 'hive_background'));
+  final box = await Hive.openBox('upload_queue');
+
+  // 3. STATE INITIALIZATION (Fast)
   final prefs = await SharedPreferences.getInstance();
+
+  // Restore Queue from HIVE (Much faster than SharedPrefs for large JSON)
+  final String? hiveQueueJson = box.get(kQueueKey);
   List<Map<String, dynamic>> queue = [];
+  if (hiveQueueJson != null) {
+    try {
+      final List decoded = jsonDecode(hiveQueueJson);
+      queue = decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+
+      // Fix: Any task left in 'uploading' on boot (crash/kill) should be 'pending'
+      for (var task in queue) {
+        if (task['status'] == 'uploading') task['status'] = 'pending';
+      }
+    } catch (e) {
+      LoggerService.error(
+        "Failed to decode queue from Hive: $e",
+        tag: 'BG_SERVICE',
+      );
+    }
+  }
+
   bool isProcessing = false;
-  bool isPaused = false;
+  bool isPaused = box.get(kServiceStateKey, defaultValue: false);
   final Map<String, CancelToken> activeUploads = {};
   final bunnyService = BunnyCDNService();
   // TUS Uploader - Initialized with empty keys, populated in initDeps
   TusUploader tusUploader = TusUploader(apiKey: '', libraryId: '', videoId: '');
+  final Map<String, String> _collectionCache = {};
+  int? prevLoggedConcurrent;
+  int? prevLoggedChunk;
+  String _fingerprintForPath(String filePath) {
+    try {
+      final st = FileStat.statSync(filePath);
+      final size = st.size;
+      final mtime = st.modified.millisecondsSinceEpoch;
+      return '$filePath:$size:$mtime';
+    } catch (_) {
+      return filePath;
+    }
+  }
 
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
@@ -177,11 +221,11 @@ void onStart(ServiceInstance service) async {
   // 3. HELPER FUNCTIONS
   Future<void> saveQueue() async {
     LoggerService.info(
-      "Saving Queue... size: ${queue.length}",
+      "Saving Queue (Hive)... size: ${queue.length}",
       tag: 'BG_SERVICE',
     );
-    await prefs.setString(kQueueKey, jsonEncode(queue));
-    await prefs.setBool(kServiceStateKey, isPaused);
+    await box.put(kQueueKey, jsonEncode(queue));
+    await box.put(kServiceStateKey, isPaused);
     service.invoke('update', {'queue': queue, 'isPaused': isPaused});
   }
 
@@ -356,31 +400,33 @@ void onStart(ServiceInstance service) async {
   Future<void> initDeps() async {
     try {
       LoggerService.info("Initializing Dependencies...", tag: 'BG_SERVICE');
-      await Firebase.initializeApp();
-      LoggerService.success("Firebase READY", tag: 'BG_SERVICE');
 
-      // Check for User in Background Isolate
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        LoggerService.info(
-          "Auth Found in Background: ${user.email}",
-          tag: 'BG_SERVICE',
-        );
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp();
+        LoggerService.info("✅ Firebase READY", tag: 'BG_SERVICE');
       } else {
-        LoggerService.warning(
-          "Auth NOT Found in Background. Firestore writes might fail.",
+        LoggerService.info(
+          "ℹ️ Firebase already initialized",
           tag: 'BG_SERVICE',
         );
       }
 
-      // Load Config Keys
-      await ConfigService().initialize();
-      LoggerService.info(
-        "Config Loaded. Storage Key Length: ${ConfigService().bunnyStorageKey.length}, Stream Key Length: ${ConfigService().bunnyStreamKey.length}",
-        tag: 'BG_SERVICE',
-      );
+      // Check for User in Background Isolate
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        LoggerService.info("ℹ️ Auth Found: ${user.email}", tag: 'BG_SERVICE');
+      }
 
-      // Re-initialize Uploaders with real keys
+      // Load/Verify Config Keys
+      if (!ConfigService().isReady) {
+        LoggerService.info(
+          "Fetching keys from Firestore...",
+          tag: 'BG_SERVICE',
+        );
+        await ConfigService().initialize();
+      }
+
+      // Re-initialize Uploaders
       tusUploader = TusUploader(
         apiKey: ConfigService().bunnyStreamKey,
         libraryId: ConfigService().bunnyLibraryId,
@@ -388,15 +434,15 @@ void onStart(ServiceInstance service) async {
       );
 
       depsReady = true;
-      LoggerService.success(
-        "Background dependencies initialized successfully.",
-        tag: 'BG_SERVICE',
-      );
-    } catch (e, stack) {
-      LoggerService.error(
-        "Dependency Init Failed: $e\n$stack",
-        tag: 'BG_SERVICE',
-      );
+      LoggerService.success("✅ Dependencies Ready", tag: 'BG_SERVICE');
+    } catch (e) {
+      if (e.toString().contains('ConcurrentModificationException') ||
+          e.toString().contains('already-exists')) {
+        LoggerService.warning("⚠️ Concurrent Init detected, assuming success.");
+        depsReady = true;
+        return;
+      }
+      LoggerService.error("❌ Init Failed: $e", tag: 'BG_SERVICE');
     }
   }
 
@@ -443,15 +489,23 @@ void onStart(ServiceInstance service) async {
       int currentMaxConcurrent = 1;
       int currentTusChunkSize =
           1 * 1024 * 1024; // 1MB for ultra-granular commits & stability
+      currentMaxConcurrent = currentMaxConcurrent;
+      currentTusChunkSize = currentTusChunkSize;
+      prevLoggedConcurrent ??= -1;
+      prevLoggedChunk ??= -1;
 
       if (connectivityResults.contains(ConnectivityResult.wifi) ||
           connectivityResults.contains(ConnectivityResult.ethernet)) {
         currentMaxConcurrent = 3;
         currentTusChunkSize = 2 * 1024 * 1024; // 2MB for WiFi (Smooth + Fast)
-        LoggerService.info(
-          "WiFi/Ethernet Detected. Using 2MB chunks and 3 concurrent uploads.",
-          tag: 'BG_SERVICE',
-        );
+        if (prevLoggedConcurrent != 3 || prevLoggedChunk != (2 * 1024 * 1024)) {
+          LoggerService.info(
+            "WiFi/Ethernet Detected. Using 2MB chunks and 3 concurrent uploads.",
+            tag: 'BG_SERVICE',
+          );
+          prevLoggedConcurrent = 3;
+          prevLoggedChunk = 2 * 1024 * 1024;
+        }
       } else if (connectivityResults.contains(ConnectivityResult.mobile)) {
         currentMaxConcurrent = 2;
         currentTusChunkSize = 1 * 1024 * 1024; // 1MB for Mobile (Safe)
@@ -471,6 +525,26 @@ void onStart(ServiceInstance service) async {
           .where((t) => t['status'] == 'pending' && t['paused'] != true)
           .length;
       final activeCount = activeUploads.length;
+      final failedCount = queue.where((t) => t['status'] == 'failed').length;
+
+      // 🔧 Adaptive tweaks based on workload/health
+      if (failedCount > 0) {
+        currentMaxConcurrent = 1;
+        currentTusChunkSize = (currentTusChunkSize / 2).round();
+        LoggerService.warning(
+          "Reducing concurrency due to failures. Chunk=${currentTusChunkSize}",
+          tag: 'BG_SERVICE',
+        );
+      } else if (pendingCount > 10) {
+        final int boosted = math.min(currentMaxConcurrent + 1, 4);
+        if (boosted != currentMaxConcurrent) {
+          currentMaxConcurrent = boosted;
+          LoggerService.info(
+            "Boosting concurrency for large queue: $currentMaxConcurrent",
+            tag: 'BG_SERVICE',
+          );
+        }
+      }
 
       if (pendingCount == 0 && activeCount == 0) {
         // Check if everything is either completed or paused
@@ -479,7 +553,7 @@ void onStart(ServiceInstance service) async {
         );
         final bool hasFailedTasks = queue.any((t) => t['status'] == 'failed');
 
-        if (allDoneOrPaused && queue.isNotEmpty) {
+        if (allDoneOrPaused) {
           final bool allCompleted = queue.every(
             (t) => t['status'] == 'completed',
           );
@@ -542,11 +616,26 @@ void onStart(ServiceInstance service) async {
             }
           }
 
-          service.invoke('all_completed');
-          LoggerService.info(
-            "Engine going to sleep (stopSelf).",
-            tag: 'BG_SERVICE',
-          );
+          // 🔥 FIX: Only invoke 'all_completed' if there are NO pending/uploading tasks left.
+          // If the user just paused, we should NOT trigger finalization.
+          final remainingActionable = queue
+              .where(
+                (t) => t['status'] == 'pending' || t['status'] == 'uploading',
+              )
+              .length;
+
+          if (remainingActionable == 0 && activeUploads.isEmpty) {
+            service.invoke('all_completed');
+            LoggerService.info(
+              "Engine going to sleep (stopSelf).",
+              tag: 'BG_SERVICE',
+            );
+          } else {
+            LoggerService.info(
+              "Engine pausing. $remainingActionable tasks remain (some might be paused).",
+              tag: 'BG_SERVICE',
+            );
+          }
           // service.stopSelf(); // Disabled for debugging
           return;
         }
@@ -586,9 +675,14 @@ void onStart(ServiceInstance service) async {
 
         if (queue.isEmpty) {
           LoggerService.info(
-            "Queue empty. Syncing and Stopping.",
+            "Queue empty. Checking for pending finalizations...",
             tag: 'BG_SERVICE',
           );
+
+          // 🔥 NEW: Finalize even if queue is empty (e.g. only deletions or text changes)
+          await _finalizeCourseIfPending(service, queue, isPaused);
+          await _finalizeUpdateIfPending(service, queue, isPaused);
+
           await updateNotification("Ready for tasks 🚀", null);
           service.invoke('update', {'queue': queue, 'isPaused': isPaused});
           isProcessing = false;
@@ -669,8 +763,8 @@ void onStart(ServiceInstance service) async {
                   chunkSize: currentTusChunkSize,
                 )
                 .then((videoId) {
-                  // TUS returns Video ID. Construct Playback URL.
-                  return "https://iframe.mediadelivery.net/play/${ConfigService().bunnyLibraryId}/$videoId";
+                  // Construct special result string for videos to pass raw ID
+                  return "VIDEO_ID:$videoId";
                 });
           } else {
             // Standard Storage for Images/PDFs
@@ -691,19 +785,39 @@ void onStart(ServiceInstance service) async {
           // Execute Upload
           unawaited(() async {
             try {
-              final resultUrl = await uploadFuture;
-              LoggerService.success(
-                "Upload Success: $resultUrl",
+              final result = await uploadFuture;
+              LoggerService.info(
+                "⭐ [ENGINE_RESULT_RAW] Processor returned: '$result'",
                 tag: 'BG_SERVICE',
               );
 
               final idx = queue.indexWhere(
                 (t) => (t['taskId'] ?? t['id']) == taskId,
               );
+
               if (idx != -1) {
                 queue[idx]['status'] = 'completed';
                 queue[idx]['progress'] = 1.0;
-                queue[idx]['url'] = resultUrl;
+
+                if (result.startsWith("VIDEO_ID:")) {
+                  final vId = result.substring(9);
+                  LoggerService.success(
+                    "🎥 Video Processed! ID: $vId",
+                    tag: 'BG_SERVICE',
+                  );
+
+                  // Save ID and construct URL - Trusting Uploader's GUID
+                  queue[idx]['videoId'] = vId;
+                  queue[idx]['url'] =
+                      "https://${ConfigService().bunnyStreamCdnHost}/$vId/playlist.m3u8";
+                } else {
+                  LoggerService.info(
+                    "📄 File Processed: $result",
+                    tag: 'BG_SERVICE',
+                  );
+                  queue[idx]['url'] = result;
+                }
+
                 // Ensure bytes are synced on completion
                 if (queue[idx]['totalBytes'] != null) {
                   queue[idx]['uploadedBytes'] = queue[idx]['totalBytes'];
@@ -756,6 +870,7 @@ void onStart(ServiceInstance service) async {
                   service.invoke('upload_error', {
                     'taskId': taskId,
                     'error': e.toString(),
+                    'code': 'UPLOAD_FAIL',
                   });
                 }
               }
@@ -787,12 +902,73 @@ void onStart(ServiceInstance service) async {
   service.on('submit_course').listen((event) async {
     if (event == null) return;
 
-    // 🛡️ Ensure dependencies are ready
-    if (!depsReady) {
+    Map<String, dynamic> finalEvent = Map<String, dynamic>.from(event);
+
+    // 1. 🔥 PRIORITY: Load Metadata & Inject Keys FIRST
+    // This allows initDeps to skip the potentially hanging Firestore fetch.
+    if (event.containsKey('metadataPath')) {
+      final String path = event['metadataPath'];
       LoggerService.info(
-        "Waiting for dependencies before processing submit_course...",
+        "Reading Metadata File (Priority): $path",
         tag: 'BG_SERVICE',
       );
+      try {
+        final file = File(path);
+        if (await file.exists()) {
+          final content = await file.readAsString();
+          Map<String, dynamic>? decoded;
+          try {
+            final jsonStr = utf8.decode(base64Decode(content.trim()));
+            decoded = jsonDecode(jsonStr);
+          } catch (_) {
+            try {
+              decoded = jsonDecode(content);
+            } catch (_) {}
+          }
+          if (decoded is Map<String, dynamic>) {
+            finalEvent = decoded;
+
+            // 🔥 Inject API keys immediately
+            if (finalEvent.containsKey('bunnyKeys')) {
+              final keys = finalEvent['bunnyKeys'];
+              if (keys is Map) {
+                final enc = keys['enc'] == true;
+                if (enc) {
+                  final sec = SecurityService();
+                  ConfigService().setupKeys(
+                    storageKey: sec.decrypt(keys['storageKey']?.toString()),
+                    streamKey: sec.decrypt(keys['streamKey']?.toString()),
+                    libraryId: sec.decrypt(keys['libraryId']?.toString()),
+                  );
+                } else {
+                  ConfigService().setupKeys(
+                    storageKey: keys['storageKey']?.toString() ?? '',
+                    streamKey: keys['streamKey']?.toString() ?? '',
+                    libraryId: keys['libraryId']?.toString() ?? '',
+                  );
+                }
+                LoggerService.info(
+                  "API Keys injected from metadata.",
+                  tag: 'BG_SERVICE',
+                );
+              }
+            }
+          }
+          await file.delete();
+          LoggerService.info("Metadata Temp File Deleted", tag: 'BG_SERVICE');
+        }
+      } catch (e) {
+        LoggerService.error(
+          "Failed to read priority metadata: $e",
+          tag: 'BG_SERVICE',
+        );
+        // Continue anyway, maybe initDeps can recover via fallbacks
+      }
+    }
+
+    // 2. 🛡️ Ensure dependencies are ready (AFTER injection)
+    if (!depsReady) {
+      LoggerService.info("Waiting for dependencies...", tag: 'BG_SERVICE');
       await initDeps();
     }
 
@@ -800,56 +976,6 @@ void onStart(ServiceInstance service) async {
       "Received 'submit_course' event from UI",
       tag: 'BG_SERVICE',
     );
-
-    Map<String, dynamic> finalEvent = Map<String, dynamic>.from(event);
-
-    // 🔥 NEW: Optimized Metadata Loading (File-based)
-    if (event.containsKey('metadataPath')) {
-      final String path = event['metadataPath'];
-      LoggerService.info("Reading Metadata File: $path", tag: 'BG_SERVICE');
-      try {
-        final file = File(path);
-        if (await file.exists()) {
-          final content = await file.readAsString();
-          LoggerService.info(
-            "Metadata File Read Success. Size: ${content.length} chars",
-            tag: 'BG_SERVICE',
-          );
-          final decoded = jsonDecode(content);
-          if (decoded is Map<String, dynamic>) {
-            finalEvent = decoded;
-          }
-
-          // Cleanup the temp file
-          await file.delete();
-          LoggerService.info("Metadata Temp File Deleted", tag: 'BG_SERVICE');
-
-          // 🔥 NEW: Inject API keys if passed from UI
-          if (finalEvent.containsKey('bunnyKeys')) {
-            final keys = finalEvent['bunnyKeys'];
-            if (keys is Map) {
-              ConfigService().setupKeys(
-                storageKey: keys['storageKey']?.toString() ?? '',
-                streamKey: keys['streamKey']?.toString() ?? '',
-                libraryId: keys['libraryId']?.toString() ?? '',
-              );
-            }
-          }
-        } else {
-          LoggerService.error(
-            "Metadata File NOT FOUND at $path",
-            tag: 'BG_SERVICE',
-          );
-          return;
-        }
-      } catch (e) {
-        LoggerService.error(
-          "Failed to read metadata file: $e",
-          tag: 'BG_SERVICE',
-        );
-        return;
-      }
-    }
 
     // 1. Save Course Metadata
     final courseData = finalEvent['course'];
@@ -876,11 +1002,13 @@ void onStart(ServiceInstance service) async {
         tag: 'BG_SERVICE',
       );
       // Try to find existing first to avoid duplicates on restart
-      colId = await bunnyService.findCollectionByName(
-        libraryId: ConfigService().bunnyLibraryId,
-        apiKey: ConfigService().bunnyStreamKey,
-        name: courseTitle,
-      );
+      colId =
+          _collectionCache[courseTitle] ??
+          await bunnyService.findCollectionByName(
+            libraryId: ConfigService().bunnyLibraryId,
+            apiKey: ConfigService().bunnyStreamKey,
+            name: courseTitle,
+          );
 
       if (colId == null) {
         LoggerService.info(
@@ -895,6 +1023,7 @@ void onStart(ServiceInstance service) async {
       }
 
       if (colId != null) {
+        _collectionCache[courseTitle] = colId;
         // Update structured path
         if (courseData['media_assets'] == null) courseData['media_assets'] = {};
         courseData['media_assets']['bunnyCollectionId'] = colId;
@@ -920,13 +1049,19 @@ void onStart(ServiceInstance service) async {
     for (var item in items) {
       // DUPLICATE CHECK: Skip if file already in queue (any status)
       final String filePath = item['filePath'];
-      final bool alreadyExists = queue.any((t) => t['filePath'] == filePath);
+      final String fp = _fingerprintForPath(filePath);
+      final bool alreadyExists = queue.any(
+        (t) => t['fingerprint'] == fp || t['filePath'] == filePath,
+      );
 
       if (!alreadyExists) {
         final task = Map<String, dynamic>.from(item);
         task['status'] = 'pending';
         task['progress'] = 0.0;
         task['retries'] = 0;
+        task['paused'] =
+            false; // 🔥 FIX: Ensure new tasks are NOT paused by default
+        task['fingerprint'] = fp;
 
         // --- NEW: INITIAL SIZE DETECTION ---
         try {
@@ -964,48 +1099,65 @@ void onStart(ServiceInstance service) async {
   service.on('update_course').listen((event) async {
     if (event == null) return;
 
-    // 🛡️ Ensure dependencies are ready
-    if (!depsReady) {
-      LoggerService.info(
-        "Waiting for dependencies before processing update_course...",
-        tag: 'BG_SERVICE',
-      );
-      await initDeps();
-    }
-
     Map<String, dynamic> finalEvent = Map<String, dynamic>.from(event);
 
-    // 🔥 NEW: Optimized Metadata Loading (File-based)
+    // 1. 🔥 PRIORITY: Load Metadata & Inject Keys FIRST
     if (event.containsKey('metadataPath')) {
       try {
         final file = File(event['metadataPath']);
         if (await file.exists()) {
           final content = await file.readAsString();
-          final decoded = jsonDecode(content);
+          Map<String, dynamic>? decoded;
+          try {
+            final jsonStr = utf8.decode(base64Decode(content.trim()));
+            decoded = jsonDecode(jsonStr);
+          } catch (_) {
+            try {
+              decoded = jsonDecode(content);
+            } catch (_) {}
+          }
           if (decoded is Map<String, dynamic>) {
             finalEvent = decoded;
-          }
-          await file.delete();
 
-          // 🔥 NEW: Inject API keys
-          if (finalEvent.containsKey('bunnyKeys')) {
-            final keys = finalEvent['bunnyKeys'];
-            if (keys is Map) {
-              ConfigService().setupKeys(
-                storageKey: keys['storageKey']?.toString() ?? '',
-                streamKey: keys['streamKey']?.toString() ?? '',
-                libraryId: keys['libraryId']?.toString() ?? '',
-              );
+            // 🔥 Inject API keys
+            if (finalEvent.containsKey('bunnyKeys')) {
+              final keys = finalEvent['bunnyKeys'];
+              if (keys is Map) {
+                final enc = keys['enc'] == true;
+                if (enc) {
+                  final sec = SecurityService();
+                  ConfigService().setupKeys(
+                    storageKey: sec.decrypt(keys['storageKey']?.toString()),
+                    streamKey: sec.decrypt(keys['streamKey']?.toString()),
+                    libraryId: sec.decrypt(keys['libraryId']?.toString()),
+                  );
+                } else {
+                  ConfigService().setupKeys(
+                    storageKey: keys['storageKey']?.toString() ?? '',
+                    streamKey: keys['streamKey']?.toString() ?? '',
+                    libraryId: keys['libraryId']?.toString() ?? '',
+                  );
+                }
+              }
             }
           }
+          await file.delete();
         }
       } catch (e) {
         LoggerService.error(
-          "Failed to read metadata file (Update): $e",
+          "Update metadata prep failed: $e",
           tag: 'BG_SERVICE',
         );
-        return;
       }
+    }
+
+    // 2. 🛡️ Ensure dependencies are ready
+    if (!depsReady) {
+      LoggerService.info(
+        "Waiting for dependencies (Update)...",
+        tag: 'BG_SERVICE',
+      );
+      await initDeps();
     }
 
     final updateData = finalEvent['updateData'];
@@ -1040,11 +1192,13 @@ void onStart(ServiceInstance service) async {
         tag: 'BG_SERVICE',
       );
 
-      uColId = await bunnyService.findCollectionByName(
-        libraryId: ConfigService().bunnyLibraryId,
-        apiKey: ConfigService().bunnyStreamKey,
-        name: uTitle,
-      );
+      uColId =
+          _collectionCache[uTitle] ??
+          await bunnyService.findCollectionByName(
+            libraryId: ConfigService().bunnyLibraryId,
+            apiKey: ConfigService().bunnyStreamKey,
+            name: uTitle,
+          );
 
       if (uColId == null) {
         uColId = await bunnyService.createCollection(
@@ -1058,6 +1212,7 @@ void onStart(ServiceInstance service) async {
         if (updateData['media_assets'] == null) updateData['media_assets'] = {};
         updateData['media_assets']['bunnyCollectionId'] = uColId;
         updateData['bunnyCollectionId'] = uColId;
+        _collectionCache[uTitle] = uColId;
       }
     }
 
@@ -1072,13 +1227,19 @@ void onStart(ServiceInstance service) async {
 
     for (var item in items) {
       final String filePath = item['filePath'];
-      final bool alreadyExists = queue.any((t) => t['filePath'] == filePath);
+      final String fp = _fingerprintForPath(filePath);
+      final bool alreadyExists = queue.any(
+        (t) => t['fingerprint'] == fp || t['filePath'] == filePath,
+      );
 
       if (!alreadyExists) {
         final task = Map<String, dynamic>.from(item);
         task['status'] = 'pending';
         task['progress'] = 0.0;
         task['retries'] = 0;
+        task['paused'] =
+            false; // 🔥 FIX: Ensure new tasks are NOT paused by default
+        task['fingerprint'] = fp;
 
         try {
           final file = File(filePath);
@@ -1109,6 +1270,8 @@ void onStart(ServiceInstance service) async {
       task['status'] = 'pending';
       task['progress'] = 0.0;
       task['retries'] = 0;
+      task['paused'] =
+          false; // 🔥 FIX: Ensure new tasks are NOT paused by default
 
       // --- NEW: INITIAL SIZE DETECTION ---
       try {
@@ -1190,10 +1353,10 @@ void onStart(ServiceInstance service) async {
     await prefs.remove(kPendingUpdateCourseKey);
     await prefs.remove(kQueueKey);
 
-    // 5. PHYSICAL CLEANUP (Delete pending_uploads folder contents)
+    // 5. PHYSICAL CLEANUP (Delete upload_metadata folder contents)
     try {
       final directory = await getApplicationDocumentsDirectory();
-      final pendingDir = Directory('${directory.path}/pending_uploads');
+      final pendingDir = Directory('${directory.path}/upload_metadata');
       if (await pendingDir.exists()) {
         final List<FileSystemEntity> content = pendingDir.listSync();
         for (var entity in content) {
@@ -1379,19 +1542,7 @@ void onStart(ServiceInstance service) async {
         }
       }
 
-      // 5. Cleanup Local Safe Copy
-      final String? localPath = task['filePath'];
-      if (localPath != null && localPath.contains('pending_uploads')) {
-        try {
-          final f = File(localPath);
-          if (await f.exists()) await f.delete();
-        } catch (e) {
-          LoggerService.warning(
-            "Local file delete error: $e",
-            tag: 'BG_SERVICE',
-          );
-        }
-      }
+      // 5. Cleanup Metadata Link (No longer needed to delete local file as it's not copied)
 
       if (queue.isEmpty) {
         LoggerService.info(
@@ -1421,9 +1572,6 @@ void onStart(ServiceInstance service) async {
 
   // Heartbeat Timer removed per user request
 
-  // 🔥 RESTORE QUEUE IMMEDIATELY ON START (Before listeners)
-  final String? queueJson = prefs.getString(kQueueKey);
-
   // Log Service Info for Debugging
   final dev.ServiceProtocolInfo info = await dev.Service.getInfo();
   LoggerService.info("VM Service URI: ${info.serverUri}", tag: 'BG_SERVICE');
@@ -1436,22 +1584,23 @@ void onStart(ServiceInstance service) async {
   );
   await prefs.setInt('last_bg_service_pid', pid);
 
-  if (queueJson != null) {
-    try {
-      queue = List<Map<String, dynamic>>.from(jsonDecode(queueJson));
-      // Fix: Any task left in 'uploading' without a token should be 'pending'
-      for (var task in queue) {
-        if (task['status'] == 'uploading') task['status'] = 'pending';
-      }
-    } catch (_) {}
-  }
-  isPaused = prefs.getBool(kServiceStateKey) ?? false;
-
   service.invoke('update', {'queue': queue, 'isPaused': isPaused});
 
   // Wait a small bit for deps before first trigger
-  Future.delayed(const Duration(seconds: 1), () {
-    if (queue.isNotEmpty) triggerProcessing();
+  Future.delayed(const Duration(seconds: 1), () async {
+    final String? courseStr = prefs.getString(kPendingCourseKey);
+    final String? updateStr = prefs.getString(kPendingUpdateCourseKey);
+
+    // Trigger if we have files OR a pending finalization work (Creation/Update)
+    if (queue.isNotEmpty || courseStr != null || updateStr != null) {
+      LoggerService.info(
+        "BOOT: Triggering processing (Work detected)",
+        tag: 'BG_SERVICE',
+      );
+      triggerProcessing();
+    } else {
+      LoggerService.info("BOOT: No work found. Idle.", tag: 'BG_SERVICE');
+    }
   });
 }
 
@@ -1467,11 +1616,30 @@ Future<void> _finalizeCourseIfPending(
 
   if (courseJson == null) return; // No pending course
 
-  final queueJson = prefs.getString(kQueueKey);
-  if (queueJson == null) return;
-  final List<Map<String, dynamic>> diskQueue = List<Map<String, dynamic>>.from(
-    jsonDecode(queueJson),
-  );
+  List<Map<String, dynamic>> diskQueue = [];
+  try {
+    final prefsQueueJson = prefs.getString(kQueueKey);
+    if (prefsQueueJson != null) {
+      diskQueue = List<Map<String, dynamic>>.from(jsonDecode(prefsQueueJson));
+    } else {
+      final box = await Hive.openBox('upload_queue');
+      final String? hiveQueueJson = box.get(kQueueKey);
+      if (hiveQueueJson == null) {
+        LoggerService.warning(
+          "Finalize: No queue snapshot found in SharedPrefs or Hive",
+          tag: 'BG_SERVICE',
+        );
+        return;
+      }
+      diskQueue = List<Map<String, dynamic>>.from(jsonDecode(hiveQueueJson));
+    }
+  } catch (e) {
+    LoggerService.error(
+      "Finalize: Failed to decode queue: $e",
+      tag: 'BG_SERVICE',
+    );
+    return;
+  }
 
   // Check if any failed
   if (!forceSkip && diskQueue.any((t) => t['status'] == 'failed')) {
@@ -1500,11 +1668,12 @@ Future<void> _finalizeCourseIfPending(
   }
 
   final urlMap = <String, String>{};
+  final videoIdMap = <String, String>{};
   for (var task in diskQueue) {
-    if (task['status'] == 'completed' &&
-        task['url'] != null &&
-        task['filePath'] != null) {
-      urlMap[task['filePath']] = task['url'];
+    if (task['status'] == 'completed' && task['filePath'] != null) {
+      if (task['url'] != null) urlMap[task['filePath']] = task['url'];
+      if (task['videoId'] != null)
+        videoIdMap[task['filePath']] = task['videoId'];
     }
   }
 
@@ -1512,59 +1681,87 @@ Future<void> _finalizeCourseIfPending(
     final Map<String, dynamic> courseData = jsonDecode(courseJson);
 
     // 🚀 NEW: Support for Nested Structure in Background Service
-    final media = courseData['media_assets'] as Map<String, dynamic>? ?? {};
-    final cert = courseData['certification'] as Map<String, dynamic>? ?? {};
+    final media =
+        courseData[CourseKeys.mediaAssets] as Map<String, dynamic>? ?? {};
+    final cert =
+        courseData[CourseKeys.certification] as Map<String, dynamic>? ?? {};
 
     // Update URLs in Media Assets
-    if (urlMap.containsKey(media['thumbnailUrl'])) {
-      media['thumbnailUrl'] = urlMap[media['thumbnailUrl']];
+    if (urlMap.containsKey(media[CourseKeys.thumbnailUrl])) {
+      media[CourseKeys.thumbnailUrl] = urlMap[media[CourseKeys.thumbnailUrl]];
     }
     // Update URLs at root (backward compatibility)
-    if (urlMap.containsKey(courseData['thumbnailUrl'])) {
-      courseData['thumbnailUrl'] = urlMap[courseData['thumbnailUrl']];
+    if (urlMap.containsKey(courseData[CourseKeys.thumbnailUrl])) {
+      courseData[CourseKeys.thumbnailUrl] =
+          urlMap[courseData[CourseKeys.thumbnailUrl]];
     }
 
     // Update Certification
-    if (urlMap.containsKey(cert['certificateUrl1'])) {
-      cert['certificateUrl1'] = urlMap[cert['certificateUrl1']];
+    if (urlMap.containsKey(cert[CourseKeys.certUrl1])) {
+      cert[CourseKeys.certUrl1] = urlMap[cert[CourseKeys.certUrl1]];
     }
-    if (urlMap.containsKey(cert['certificateUrl2'])) {
-      cert['certificateUrl2'] = urlMap[cert['certificateUrl2']];
+    if (urlMap.containsKey(cert[CourseKeys.certUrl2])) {
+      cert[CourseKeys.certUrl2] = urlMap[cert[CourseKeys.certUrl2]];
     }
     // Backward compatibility for root certificate URLs
-    if (urlMap.containsKey(courseData['certificateUrl1'])) {
-      courseData['certificateUrl1'] = urlMap[courseData['certificateUrl1']];
+    if (urlMap.containsKey(courseData[CourseKeys.certUrl1])) {
+      courseData[CourseKeys.certUrl1] = urlMap[courseData[CourseKeys.certUrl1]];
     }
-    if (urlMap.containsKey(courseData['certificateUrl2'])) {
-      courseData['certificateUrl2'] = urlMap[courseData['certificateUrl2']];
+    if (urlMap.containsKey(courseData[CourseKeys.certUrl2])) {
+      courseData[CourseKeys.certUrl2] = urlMap[courseData[CourseKeys.certUrl2]];
     }
 
-    // Update Curriculum (New) or Contents (Legacy)
+    // Update Curriculum
     final List<dynamic> curriculum =
-        courseData['curriculum'] ?? courseData['contents'] ?? [];
-    _updateContentPaths(curriculum, urlMap);
+        courseData[CourseKeys.curriculum] ?? courseData['contents'] ?? [];
+    _updateContentPaths(curriculum, urlMap, videoIdMap);
 
     if (forceSkip) _removeLocalItems(curriculum);
 
     // Save back to courseData
-    courseData['curriculum'] = curriculum;
-    courseData['contents'] = curriculum; // Keep legacy field for now
+    courseData[CourseKeys.curriculum] = curriculum;
     courseData['totalVideos'] = _countVideos(curriculum);
+
+    // --- CLEANUP: Prepare Human Readable Firestore Document ---
+    // Remove redundant root-level fields that are already grouped in nested blocks
+    courseData.remove('contents');
+    courseData.remove(CourseKeys.thumbnailUrl);
+    courseData.remove(CourseKeys.bunnyCollectionId);
+    courseData.remove(CourseKeys.hasCertificate);
+    courseData.remove(CourseKeys.certUrl1);
+    courseData.remove(CourseKeys.certUrl2);
+    courseData.remove('selectedCertificateSlot');
+    courseData.remove('supportType');
+    courseData.remove('whatsappNumber');
+    courseData.remove('websiteUrl');
+    courseData.remove(CourseKeys.specialTag);
+    courseData.remove('isSpecialTagVisible');
+    courseData.remove('specialTagColor');
+    courseData.remove('tagDurationDays');
+    courseData.remove('highlights');
+    courseData.remove('faqs');
+    courseData.remove('courseValidityDays');
+    courseData.remove('isOfflineDownloadEnabled');
+    courseData.remove('isBigScreenEnabled');
+    courseData.remove('enrolledStudents');
+    courseData.remove('rating');
+    courseData.remove('totalVideosCount'); // If any
+    courseData.remove('duration');
 
     // Safety Checks for Local Paths
     bool hasLocalPaths = false;
-    if (media['thumbnailUrl'] != null &&
-        media['thumbnailUrl'].toString().startsWith('/')) {
+    if (media[CourseKeys.thumbnailUrl] != null &&
+        media[CourseKeys.thumbnailUrl].toString().startsWith('/')) {
       hasLocalPaths = true;
     }
     if (!hasLocalPaths &&
-        cert['certificateUrl1'] != null &&
-        cert['certificateUrl1'].toString().startsWith('/')) {
+        cert[CourseKeys.certUrl1] != null &&
+        cert[CourseKeys.certUrl1].toString().startsWith('/')) {
       hasLocalPaths = true;
     }
     if (!hasLocalPaths &&
-        cert['certificateUrl2'] != null &&
-        cert['certificateUrl2'].toString().startsWith('/')) {
+        cert[CourseKeys.certUrl2] != null &&
+        cert[CourseKeys.certUrl2].toString().startsWith('/')) {
       hasLocalPaths = true;
     }
     if (!hasLocalPaths) hasLocalPaths = _checkForLocalPaths(curriculum);
@@ -1594,14 +1791,20 @@ Future<void> _finalizeCourseIfPending(
       return;
     }
 
-    final bool isTargetPublished = courseData['isPublished'] ?? false;
+    final bool isTargetPublished = courseData[CourseKeys.isPublished] ?? false;
     courseData['status'] = isTargetPublished ? 'active' : 'draft';
 
     // 🔥 Use Server Timestamp for new records to avoid local clock issues (e.g. 2026 error)
-    if (!courseData.containsKey('createdAt') ||
-        courseData['createdAt'] == null) {
-      courseData['createdAt'] = FieldValue.serverTimestamp();
+    if (!courseData.containsKey(CourseKeys.createdAt) ||
+        courseData[CourseKeys.createdAt] == null) {
+      courseData[CourseKeys.createdAt] = FieldValue.serverTimestamp();
     }
+    final List<dynamic>? _cv = courseData['curriculum'];
+    if (_cv != null && courseData['contents'] == null) {
+      courseData['contents'] = _cv;
+    }
+    courseData.remove('curriculum');
+    courseData['updatedAt'] = FieldValue.serverTimestamp();
     // If it's an update and already has a string date, we can keep it or let it be.
     // For now, let's ensure new ones get Server Time.
 
@@ -1614,25 +1817,59 @@ Future<void> _finalizeCourseIfPending(
         tag: 'BG_SERVICE',
       );
 
+      const String serviceVersion = "1.1.2-LOG-HIGHLIGHT";
+      LoggerService.info(
+        "🚀 Background Service Booting... Version: $serviceVersion",
+        tag: 'BG_SERVICE',
+      );
+
       if (courseId != null && courseId.isNotEmpty) {
         LoggerService.info(
-          "Setting Course Document: $courseId",
+          "🚀🚀🚀 [FIREBASE_SAVE] STARTING UPDATE FOR COURSE: $courseId 🚀🚀🚀",
           tag: 'BG_SERVICE',
         );
-        await FirebaseFirestore.instance
-            .collection('courses')
-            .doc(courseId)
-            .set(courseData);
+
+        // Log curriculum specifically to see IDs
+        final List curriculum = courseData['curriculum'] ?? [];
+        for (var item in curriculum) {
+          if (item['type'] == 'video') {
+            LoggerService.success(
+              "💎 [DB_PAYLOAD] VIDEO: ${item['name']} | GUID: ${item['videoId']}",
+              tag: 'BG_SERVICE',
+            );
+          }
+        }
+
+        await FirebaseFirestore.instance.runTransaction((tx) async {
+          final ref = FirebaseFirestore.instance
+              .collection('courses')
+              .doc(courseId);
+          tx.set(ref, courseData, SetOptions(merge: true));
+        });
+
+        LoggerService.success(
+          "✅✅✅ [FIREBASE_SAVE] SUCCESS! DATA IS NOW LIVE! ✅✅✅",
+          tag: 'BG_SERVICE',
+        );
       } else {
         LoggerService.info(
           "Adding New Course Document (Auto ID)",
           tag: 'BG_SERVICE',
         );
-        await FirebaseFirestore.instance.collection('courses').add(courseData);
+        await FirebaseFirestore.instance.runTransaction((tx) async {
+          final ref = FirebaseFirestore.instance.collection('courses').doc();
+          tx.set(ref, courseData);
+        });
       }
       LoggerService.success("Firestore Write SUCCESS ✅", tag: 'BG_SERVICE');
+      service.invoke('finalize_result', {'code': 'FINALIZE_SUCCESS'});
     } catch (e) {
       LoggerService.error("FIRESTORE WRITE FAILED ❌: $e", tag: 'BG_SERVICE');
+      service.invoke('upload_error', {
+        'code': 'DB_TX_ERROR',
+        'error': e.toString(),
+      });
+      service.invoke('finalize_result', {'code': 'FINALIZE_ERROR'});
 
       final flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
       await flutterLocalNotificationsPlugin.show(
@@ -1653,14 +1890,7 @@ Future<void> _finalizeCourseIfPending(
       throw Exception("Firestore Write Failed: $e");
     }
 
-    try {
-      for (var localPath in urlMap.keys) {
-        if (localPath.contains('pending_uploads')) {
-          final f = File(localPath);
-          if (await f.exists()) await f.delete();
-        }
-      }
-    } catch (_) {}
+    // Local file cleanup skipped (Files are not copied locally anymore)
 
     await prefs.remove(kPendingCourseKey);
     await prefs.remove(kQueueKey);
@@ -1699,22 +1929,50 @@ Future<void> _finalizeCourseIfPending(
   }
 }
 
-void _updateContentPaths(List<dynamic> contents, Map<String, String> urlMap) {
+void _updateContentPaths(
+  List<dynamic> contents,
+  Map<String, String> urlMap, [
+  Map<String, String>? videoIdMap,
+]) {
   for (var item in contents) {
     // Update Path
     if (item['path'] != null && urlMap.containsKey(item['path'])) {
-      item['path'] = urlMap[item['path']];
+      final originalPath = item['path'];
+      item['path'] = urlMap[originalPath];
       item['isLocal'] = false;
+
+      // Update Video ID and item ID (important for Student App)
+      if (videoIdMap != null && videoIdMap.containsKey(originalPath)) {
+        final String vid = videoIdMap[originalPath]!;
+        item['videoId'] = vid;
+        item['id'] = vid; // Use raw Bunny ID as item ID
+
+        // Ensure path is a valid playlist URL
+        if (item['path'] != null &&
+            !item['path'].toString().contains('playlist.m3u8')) {
+          item['path'] =
+              "https://${ConfigService().bunnyStreamCdnHost}/$vid/playlist.m3u8";
+        }
+
+        // Auto-generate thumbnail if missing
+        if (item['thumbnail'] == null || item['thumbnail'].toString().isEmpty) {
+          item['thumbnail'] =
+              "https://${ConfigService().bunnyStreamCdnHost}/$vid/thumbnail.jpg";
+        }
+      }
     }
 
-    // Update Thumbnail
-    if (item['thumbnail'] != null && urlMap.containsKey(item['thumbnail'])) {
-      item['thumbnail'] = urlMap[item['thumbnail']];
+    // Update Thumbnail (Standardize across both keys)
+    final String? thumb = item['thumbnail'] ?? item['thumbnailUrl'];
+    if (thumb != null && urlMap.containsKey(thumb)) {
+      final String uploadedThumb = urlMap[thumb]!;
+      item['thumbnail'] = uploadedThumb;
+      item['thumbnailUrl'] = uploadedThumb;
     }
 
     // Recursion for folders
     if (item['type'] == 'folder' && item['contents'] != null) {
-      _updateContentPaths(item['contents'], urlMap);
+      _updateContentPaths(item['contents'], urlMap, videoIdMap);
     }
   }
 }
@@ -1782,7 +2040,8 @@ bool _checkForLocalPaths(List<dynamic> contents) {
     if (item is! Map) continue;
 
     // Check main path
-    if (item['path'] != null && item['path'].toString().startsWith('/')) {
+    if (item['path'] != null &&
+        ContentNormalizer.isLocalPath(item['path'].toString())) {
       LoggerService.warning(
         "Found local path in content: ${item['name']}",
         tag: 'BG_SERVICE',
@@ -1792,7 +2051,7 @@ bool _checkForLocalPaths(List<dynamic> contents) {
 
     // Check thumbnail if exists
     if (item['thumbnail'] != null &&
-        item['thumbnail'].toString().startsWith('/')) {
+        ContentNormalizer.isLocalPath(item['thumbnail'].toString())) {
       LoggerService.warning(
         "Found local thumbnail in content: ${item['name']}",
         tag: 'BG_SERVICE',
@@ -1820,20 +2079,34 @@ Future<void> _finalizeUpdateIfPending(
 
   if (updateJson == null) return;
 
-  final queueJson = prefs.getString(kQueueKey);
-  if (queueJson == null) return;
-  final List<Map<String, dynamic>> diskQueue = List<Map<String, dynamic>>.from(
-    jsonDecode(queueJson),
-  );
+  final prefsQueueJson = prefs.getString(kQueueKey);
+  List<Map<String, dynamic>> diskQueue = [];
+  try {
+    if (prefsQueueJson != null) {
+      diskQueue = List<Map<String, dynamic>>.from(jsonDecode(prefsQueueJson));
+    } else {
+      final box = await Hive.openBox('upload_queue');
+      final String? hiveQueueJson = box.get(kQueueKey);
+      if (hiveQueueJson == null) return;
+      diskQueue = List<Map<String, dynamic>>.from(jsonDecode(hiveQueueJson));
+    }
+  } catch (e) {
+    LoggerService.error(
+      "Finalize Update: Failed to decode queue: $e",
+      tag: 'BG_SERVICE',
+    );
+    return;
+  }
 
   if (!forceSkip && diskQueue.any((t) => t['status'] == 'failed')) return;
 
   final urlMap = <String, String>{};
+  final videoIdMap = <String, String>{};
   for (var task in diskQueue) {
-    if (task['status'] == 'completed' &&
-        task['url'] != null &&
-        task['filePath'] != null) {
-      urlMap[task['filePath']] = task['url'];
+    if (task['status'] == 'completed' && task['filePath'] != null) {
+      if (task['url'] != null) urlMap[task['filePath']] = task['url'];
+      if (task['videoId'] != null)
+        videoIdMap[task['filePath']] = task['videoId'];
     }
   }
 
@@ -1871,7 +2144,7 @@ Future<void> _finalizeUpdateIfPending(
 
     final List<dynamic> curriculum =
         updateData['curriculum'] ?? updateData['contents'] ?? [];
-    _updateContentPaths(curriculum, urlMap);
+    _updateContentPaths(curriculum, urlMap, videoIdMap);
     if (forceSkip) _removeLocalItems(curriculum);
 
     updateData['curriculum'] = curriculum;
@@ -1879,6 +2152,155 @@ Future<void> _finalizeUpdateIfPending(
     updateData['totalVideos'] = _countVideos(curriculum);
 
     updateData.remove('id');
+
+    // --- 🗑️ DELETION LOGIC FOR REMOVED CONTENT ---
+    try {
+      LoggerService.info(
+        "🔎 Content Cleanup: Fetching old course data for $courseId",
+        tag: 'BG_SERVICE',
+      );
+      final oldCourseDoc = await FirebaseFirestore.instance
+          .collection('courses')
+          .doc(courseId)
+          .get();
+
+      if (oldCourseDoc.exists) {
+        final oldData = oldCourseDoc.data()!;
+        final List<dynamic> oldContents =
+            oldData['curriculum'] ?? oldData['contents'] ?? [];
+        final List<dynamic> newContents = curriculum; // already updated above
+
+        LoggerService.info(
+          "🔎 Old items count: ${oldContents.length} | New items count: ${newContents.length}",
+          tag: 'BG_SERVICE',
+        );
+
+        // Helper defined locally to capture scope if needed, or just pure logic
+        Set<String> extractAllPaths(List<dynamic> items) {
+          final Set<String> paths = {};
+          void recurse(dynamic item) {
+            if (item is! Map) return;
+
+            final type = item['type']?.toString().toLowerCase();
+            final String? p = item['path']?.toString();
+            final String? vidId = item['videoId']?.toString();
+
+            // 1. Detect Videos (Stream or File)
+            if (type == 'video') {
+              if (vidId != null && vidId.isNotEmpty) {
+                paths.add('VID:$vidId');
+              } else if (p != null && p.isNotEmpty) {
+                if (p.contains('playlist.m3u8')) {
+                  try {
+                    final uri = Uri.parse(p);
+                    if (uri.pathSegments.length > 1) {
+                      final extracted =
+                          uri.pathSegments[uri.pathSegments.length - 2];
+                      if (extracted.length > 5) paths.add('VID:$extracted');
+                    }
+                  } catch (_) {}
+                } else if (p.startsWith('http')) {
+                  // Direct Video File
+                  paths.add('FILE:$p');
+                }
+              }
+            }
+            // 2. Detect Other Files (PDF, Image, etc)
+            else if (p != null &&
+                (p.startsWith('http') || p.startsWith('https'))) {
+              paths.add('FILE:$p');
+            }
+
+            // 3. Detect Thumbnails
+            final thumb = item['thumbnail']?.toString();
+            if (thumb != null &&
+                (thumb.startsWith('http') || thumb.startsWith('https'))) {
+              paths.add('FILE:$thumb');
+            }
+
+            // 4. Recurse into folders (Check both keys to be safe)
+            final nested = item['contents'] ?? item['curriculum'];
+            if (nested != null && nested is List) {
+              for (var sub in nested) {
+                recurse(sub);
+              }
+            }
+          }
+
+          for (var i in items) {
+            recurse(i);
+          }
+          return paths;
+        }
+
+        final Set<String> oldSet = extractAllPaths(oldContents);
+        final Set<String> newSet = extractAllPaths(newContents);
+
+        LoggerService.info(
+          "🔎 All Old Resources: ${oldSet.length} | All New Resources: ${newSet.length}",
+          tag: 'BG_SERVICE',
+        );
+
+        // Find items in Old but NOT in New
+        final Set<String> deletedItems = oldSet.difference(newSet);
+
+        if (deletedItems.isNotEmpty) {
+          LoggerService.info(
+            "🗑️ Found ${deletedItems.length} deleted items. Cleaning up from Bunny...",
+            tag: 'BG_SERVICE',
+          );
+          final bunny = BunnyCDNService();
+
+          // Force config check before loop
+          if (!ConfigService().isReady) await ConfigService().initialize();
+
+          for (final itemKey in deletedItems) {
+            try {
+              if (itemKey.startsWith('VID:')) {
+                final vidId = itemKey.substring(4);
+                LoggerService.info(
+                  "♻️ Deleting video from Stream: $vidId",
+                  tag: 'BG_SERVICE',
+                );
+                await bunny.deleteVideo(
+                  libraryId: ConfigService().bunnyLibraryId,
+                  videoId: vidId,
+                  apiKey: ConfigService().bunnyStreamKey,
+                );
+              } else if (itemKey.startsWith('FILE:')) {
+                final filePath = itemKey.substring(5);
+                LoggerService.info(
+                  "♻️ Deleting file from Storage: $filePath",
+                  tag: 'BG_SERVICE',
+                );
+                await bunny.deleteFile(filePath);
+              }
+            } catch (e) {
+              LoggerService.warning(
+                "⚠️ Cleanup fail for $itemKey: $e",
+                tag: 'BG_SERVICE',
+              );
+            }
+          }
+          LoggerService.success(
+            "✅ Content cleanup finished.",
+            tag: 'BG_SERVICE',
+          );
+        } else {
+          LoggerService.info(
+            "✨ No items removed from curriculum. Skipping cleanup.",
+            tag: 'BG_SERVICE',
+          );
+        }
+      } else {
+        LoggerService.warning(
+          "⚠️ Old course document not found during cleanup check.",
+          tag: 'BG_SERVICE',
+        );
+      }
+    } catch (e, stack) {
+      LoggerService.error("❌ Cleanup Error: $e\n$stack", tag: 'BG_SERVICE');
+    }
     // Firestore Write
     try {
       final String projectId = Firebase.app().options.projectId;
@@ -1887,7 +2309,7 @@ Future<void> _finalizeUpdateIfPending(
         tag: 'BG_SERVICE',
       );
       LoggerService.info(
-        "Updating Course Document: $courseId",
+        "Updating Course Document: $courseId (${curriculum.length} items in curriculum)",
         tag: 'BG_SERVICE',
       );
       await FirebaseFirestore.instance
@@ -1917,14 +2339,7 @@ Future<void> _finalizeUpdateIfPending(
       throw Exception("Firestore Update Failed: $e");
     }
 
-    try {
-      for (var localPath in urlMap.keys) {
-        if (localPath.contains('pending_uploads')) {
-          final f = File(localPath);
-          if (await f.exists()) await f.delete();
-        }
-      }
-    } catch (_) {}
+    // Local file cleanup skipped (Files are not copied locally anymore)
 
     await prefs.remove(kPendingUpdateCourseKey);
     await prefs.remove(kQueueKey);

@@ -7,15 +7,11 @@ import '../../backend_service/models/course_upload_task.dart';
 class CourseUploadingOverlay extends StatelessWidget {
   final double totalProgress;
   final List<CourseUploadTask> uploadTasks;
-  final String? preparationMessage;
-  final double? preparationProgress;
 
   const CourseUploadingOverlay({
     super.key,
     required this.totalProgress,
     required this.uploadTasks,
-    this.preparationMessage,
-    this.preparationProgress,
   });
 
   @override
@@ -52,9 +48,7 @@ class CourseUploadingOverlay extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                preparationMessage?.isNotEmpty == true
-                    ? preparationMessage!
-                    : 'Upload will continue even if you switch apps',
+                'Upload will continue even if you switch apps',
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.6),
                   fontSize: 12,
@@ -72,7 +66,7 @@ class CourseUploadingOverlay extends StatelessWidget {
                       children: [
                         Text(
                           uploadTasks.isEmpty
-                              ? 'Preparing Materials...'
+                              ? 'Initializing...'
                               : 'Overall Progress',
                           style: const TextStyle(
                             color: Colors.white,
@@ -80,7 +74,7 @@ class CourseUploadingOverlay extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          '${((uploadTasks.isEmpty ? (preparationProgress ?? 0) : totalProgress) * 100).toInt()}%',
+                          '${(totalProgress * 100).toInt()}%',
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -92,9 +86,7 @@ class CourseUploadingOverlay extends StatelessWidget {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(3.0),
                       child: LinearProgressIndicator(
-                        value: uploadTasks.isEmpty
-                            ? (preparationProgress ?? 0.0)
-                            : totalProgress,
+                        value: totalProgress,
                         minHeight: 12,
                         backgroundColor: Colors.white.withValues(alpha: 0.1),
                         valueColor: const AlwaysStoppedAnimation<Color>(

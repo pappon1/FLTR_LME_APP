@@ -5,6 +5,7 @@ import 'package:flutter_background_service/flutter_background_service.dart';
 import '../../models/course_model.dart';
 import '../../utils/app_theme.dart';
 import '../../services/config_service.dart';
+import '../../utils/content_normalizer.dart';
 
 // Modular Imports
 import 'add_course/local_logic/state_manager.dart';
@@ -91,7 +92,7 @@ class _AddCourseScreenState extends State<AddCourseScreen>
     step1Logic = Step1Logic(state, draftManager, historyManager);
     step2Logic = Step2Logic(state, draftManager, historyManager);
     step3Logic = Step3Logic(state, draftManager, historyManager);
-    submitHandler = SubmitHandler(state, validation);
+    submitHandler = SubmitHandler(state, validation, draftManager);
 
     if (widget.course != null) {
       // Edit Mode
@@ -115,47 +116,59 @@ class _AddCourseScreenState extends State<AddCourseScreen>
     // Initial listeners
     // Auto-save listeners with error clearing (Step 0)
     state.titleController.addListener(() {
-      if (state.titleError && state.titleController.text.trim().isNotEmpty) {
+      final text = state.titleController.text.trim();
+      bool changed = false;
+      if (state.titleError && text.isNotEmpty) {
         state.titleError = false;
-        state.updateState();
+        changed = true;
       }
+      if (changed) state.updateState();
       draftManager.saveCourseDraft();
     });
 
     state.descController.addListener(() {
-      if (state.descError && state.descController.text.trim().isNotEmpty) {
+      final text = state.descController.text.trim();
+      bool changed = false;
+      if (state.descError && text.isNotEmpty) {
         state.descError = false;
-        state.updateState();
+        changed = true;
       }
+      if (changed) state.updateState();
       draftManager.saveCourseDraft();
     });
 
     // Step 1 Listeners
     state.mrpController.addListener(() {
       state.calculateFinalPrice();
-      if (state.mrpError && state.mrpController.text.trim().isNotEmpty) {
+      final text = state.mrpController.text.trim();
+      bool changed =
+          true; // Always notify for price calculation to update the UI
+      if (state.mrpError && text.isNotEmpty) {
         state.mrpError = false;
-        state.updateState();
       }
+      if (changed) state.updateState();
       draftManager.saveCourseDraft();
     });
 
     state.discountAmountController.addListener(() {
       state.calculateFinalPrice();
-      if (state.discountError &&
-          state.discountAmountController.text.trim().isNotEmpty) {
+      final text = state.discountAmountController.text.trim();
+      bool changed = true; // Always notify for price calculation
+      if (state.discountError && text.isNotEmpty) {
         state.discountError = false;
-        state.updateState();
       }
+      if (changed) state.updateState();
       draftManager.saveCourseDraft();
     });
 
     state.whatsappController.addListener(() {
-      if (state.wpGroupLinkError &&
-          state.whatsappController.text.trim().isNotEmpty) {
+      final text = state.whatsappController.text.trim();
+      bool changed = false;
+      if (state.wpGroupLinkError && text.isNotEmpty) {
         state.wpGroupLinkError = false;
-        state.updateState();
+        changed = true;
       }
+      if (changed) state.updateState();
       draftManager.saveCourseDraft();
     });
 
@@ -267,10 +280,12 @@ class _AddCourseScreenState extends State<AddCourseScreen>
       final List<Map<String, dynamic>> rawPlaylist = state.courseContents
           .where((c) => c['type'] == 'video')
           .toList();
-      
+
       // NORMALIZE PLAYLIST (Same logic as CourseContentTab)
       // This ensures iframe URLs are converted to playable HLS URLs
-      final List<Map<String, dynamic>> videoPlaylist = _normalizePlaylist(rawPlaylist);
+      final List<Map<String, dynamic>> videoPlaylist = _normalizePlaylist(
+        rawPlaylist,
+      );
 
       // Find the normalized item to get the correct index
       final normalizedPath = _normalizePath(item);
@@ -278,8 +293,10 @@ class _AddCourseScreenState extends State<AddCourseScreen>
         (v) => v['path'] == normalizedPath || v['name'] == item['name'],
       );
 
-      debugPrint('🎬 [ADD_COURSE] Opening Video Viewer: name=${item['name']}, path=${item['path']}, normalizedPath=$normalizedPath, index=$videoIndex');
-      
+      debugPrint(
+        '🎬 [ADD_COURSE] Opening Video Viewer: name=${item['name']}, path=${item['path']}, normalizedPath=$normalizedPath, index=$videoIndex',
+      );
+
       viewer = VideoPlayerScreen(
         playlist: videoPlaylist,
         initialIndex: videoIndex >= 0 ? videoIndex : 0,
@@ -302,84 +319,21 @@ class _AddCourseScreenState extends State<AddCourseScreen>
 
   // Helper to normalize a single path (for index finding)
   String? _normalizePath(dynamic item) {
-     if (item == null) return null;
-     
-     // Extract path from various possible keys if 'item' is a Map
-     String? rawPath;
-     if (item is Map) {
-       rawPath = (item['path'] ?? item['videoUrl'] ?? item['url'])?.toString();
-     } else {
-       rawPath = item.toString();
-     }
-
-     if (rawPath == null) return null;
-     final String cdnHost = ConfigService().bunnyStreamCdnHost;
-     
-     if (rawPath.contains('iframe.mediadelivery.net') || rawPath.contains(cdnHost)) {
-        try {
-          final uri = Uri.parse(rawPath);
-          final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
-          String? videoId;
-          
-          if (rawPath.contains('iframe.mediadelivery.net')) {
-             videoId = segments.last; 
-          } else if (segments.isNotEmpty) {
-             videoId = segments.firstWhere((s) => s.length > 20, orElse: () => segments[0]);
-          }
-          
-          if (videoId != null && videoId != cdnHost && !videoId.startsWith('http')) {
-             // Remove query params if any
-             if (videoId.contains('?')) {
-               videoId = videoId.split('?').first;
-             }
-             return 'https://$cdnHost/$videoId/playlist.m3u8';
-          }
-        } catch (_) {}
-     }
-     return rawPath;
+    if (item == null) return null;
+    String? rawPath;
+    if (item is Map) {
+      rawPath = (item['path'] ?? item['videoUrl'] ?? item['url'])?.toString();
+    } else {
+      rawPath = item.toString();
+    }
+    if (rawPath == null) return null;
+    return ContentNormalizer.normalizePath(rawPath);
   }
 
-  List<Map<String, dynamic>> _normalizePlaylist(List<Map<String, dynamic>> rawContents) {
-    final cdnHost = ConfigService().bunnyStreamCdnHost;
-    return rawContents.map((item) {
-      final converted = Map<String, dynamic>.from(item);
-      // Support multiple key names for the video path
-      final String? rawPath = (converted['path'] ?? converted['videoUrl'] ?? converted['url'])?.toString();
-
-      if (rawPath != null && (rawPath.contains('iframe.mediadelivery.net') || rawPath.contains(cdnHost))) {
-        try {
-          final uri = Uri.parse(rawPath);
-          final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
-          
-          String? videoId;
-          if (rawPath.contains('iframe.mediadelivery.net')) {
-            videoId = segments.last; 
-          } else if (segments.isNotEmpty) {
-            videoId = segments.firstWhere((s) => s.length > 20, orElse: () => segments[0]);
-          }
-
-          if (videoId != null && videoId != cdnHost && !videoId.startsWith('http')) {
-            // Remove query params if any
-            if (videoId.contains('?')) {
-              videoId = videoId.split('?').first;
-            }
-
-            converted['path'] = 'https://$cdnHost/$videoId/playlist.m3u8';
-            // Also fix thumbnail if missing
-            if (converted['thumbnail'] == null || converted['thumbnail'].toString().isEmpty) {
-              converted['thumbnail'] = 'https://$cdnHost/$videoId/thumbnail.jpg';
-            }
-          } else {
-            converted['path'] = rawPath;
-          }
-        } catch (_) {
-          converted['path'] = rawPath;
-        }
-      } else if (rawPath != null) {
-        converted['path'] = rawPath;
-      }
-      return converted;
-    }).toList();
+  List<Map<String, dynamic>> _normalizePlaylist(
+    List<Map<String, dynamic>> rawContents,
+  ) {
+    return ContentNormalizer.normalizeList(rawContents);
   }
 
   void _showAddContentMenu() {
@@ -579,30 +533,19 @@ class _AddCourseScreenState extends State<AddCourseScreen>
               ],
             ),
             // Progress Overlay (Scoped Listener)
+            // Progress Overlay (Scoped Listener)
             ValueListenableBuilder<double>(
               valueListenable: state.totalProgressNotifier,
               builder: (context, progress, _) {
-                return ValueListenableBuilder<String>(
-                  valueListenable: state.preparationMessageNotifier,
-                  builder: (context, prepMsg, _) {
-                    return ValueListenableBuilder<double>(
-                      valueListenable: state.preparationProgressNotifier,
-                      builder: (context, prepProgress, _) {
-                        return ListenableBuilder(
-                          listenable: state, // For uploadTasks list changes
-                          builder: (context, _) {
-                            if (!state.isUploading) {
-                              return const SizedBox.shrink();
-                            }
-                            return CourseUploadingOverlay(
-                              totalProgress: progress,
-                              uploadTasks: state.uploadTasks,
-                              preparationMessage: prepMsg,
-                              preparationProgress: prepProgress,
-                            );
-                          },
-                        );
-                      },
+                return ListenableBuilder(
+                  listenable: state, // For uploadTasks list changes
+                  builder: (context, _) {
+                    if (!state.isUploading) {
+                      return const SizedBox.shrink();
+                    }
+                    return CourseUploadingOverlay(
+                      totalProgress: progress,
+                      uploadTasks: state.uploadTasks,
                     );
                   },
                 );

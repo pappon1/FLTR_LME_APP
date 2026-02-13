@@ -11,27 +11,20 @@ class FirestoreService {
 
   /// Get all courses
   Stream<List<CourseModel>> getCourses() {
-    print("🚨🚨🚨 [DEBUG_LOG_CRITICAL] ATTEMPTING TO LISTEN TO COURSES STREAM 🚨🚨🚨");
-    print("📡 FETCHING COURSES FROM FIRESTORE...");
-    return _firestore
+    final ref = _firestore
         .collection('courses')
         .orderBy('createdAt', descending: true)
+        .withConverter<CourseModel>(
+          fromFirestore: (snap, _) => CourseModel.fromFirestore(snap),
+          toFirestore: (course, _) => course.toMap(),
+        );
+    return ref
         .snapshots()
         .map((snapshot) {
-          print("📊 Firestore Event: HasData=${snapshot.docs.isNotEmpty}, Count=${snapshot.docs.length}");
-          final courses = <CourseModel>[];
-          for (var doc in snapshot.docs) {
-            try {
-              final course = CourseModel.fromFirestore(doc);
-              print("📖 Loaded Course: ${course.title} (ID: ${doc.id})");
-              courses.add(course);
-            } catch (e) {
-              print("❌ FAILED TO PARSE COURSE [${doc.id}]: $e");
-            }
-          }
-          return courses;
-        }).handleError((error) {
-          print("🚨 FIRESTORE STREAM ERROR [courses]: $error");
+          return snapshot.docs.map((d) => d.data()).toList();
+        })
+        .handleError((error) {
+          debugPrint("🚨 FIRESTORE STREAM ERROR [courses]: $error");
         });
   }
 
@@ -55,11 +48,31 @@ class FirestoreService {
 
   /// Update course
   Future<void> updateCourse(String courseId, Map<String, dynamic> data) async {
+    int delayMs = 100;
+    for (int i = 0; i < 3; i++) {
+      try {
+        await _firestore.collection('courses').doc(courseId).update(data);
+        return;
+      } catch (e) {
+        await Future.delayed(Duration(milliseconds: delayMs));
+        delayMs = delayMs * 2;
+      }
+    }
     await _firestore.collection('courses').doc(courseId).update(data);
   }
 
   /// Delete course
   Future<void> deleteCourse(String courseId) async {
+    int delayMs = 100;
+    for (int i = 0; i < 3; i++) {
+      try {
+        await _firestore.collection('courses').doc(courseId).delete();
+        return;
+      } catch (e) {
+        await Future.delayed(Duration(milliseconds: delayMs));
+        delayMs = delayMs * 2;
+      }
+    }
     await _firestore.collection('courses').doc(courseId).delete();
   }
 
@@ -121,7 +134,9 @@ class FirestoreService {
           (snapshot) => snapshot.docs
               .map((doc) => StudentModel.fromFirestore(doc))
               .where(
-                (s) => s.email != 'admin@lme.com' && !s.email.contains('admin'),
+                (s) =>
+                    s.email != 'admin@lme.com' &&
+                    !s.email.toLowerCase().contains('admin'),
               )
               .toList(),
         );
@@ -187,18 +202,22 @@ class FirestoreService {
         .where('courseId', isEqualTo: courseId)
         .snapshots()
         .asyncMap((snapshot) async {
-      final studentIds = snapshot.docs
-          .map((doc) => doc.data()['studentId'] as String)
-          .toList();
-      if (studentIds.isEmpty) return [];
+          final studentIds = snapshot.docs
+              .map((doc) => doc.data()['studentId'] as String)
+              .toList();
+          if (studentIds.isEmpty) return [];
 
-      final students = <StudentModel>[];
-      for (var id in studentIds) {
-        final student = await getStudentById(id);
-        if (student != null) students.add(student);
-      }
-      return students;
-    });
+          final students = <StudentModel>[];
+          for (var id in studentIds) {
+            final student = await getStudentById(id);
+            if (student != null &&
+                student.email != 'admin@lme.com' &&
+                !student.email.toLowerCase().contains('admin')) {
+              students.add(student);
+            }
+          }
+          return students;
+        });
   }
 
   // ==================== ENROLLMENTS ====================
@@ -266,8 +285,10 @@ class FirestoreService {
             String price = 'Free';
 
             if (courseId != null) {
-              final courseDoc =
-                  await _firestore.collection('courses').doc(courseId).get();
+              final courseDoc = await _firestore
+                  .collection('courses')
+                  .doc(courseId)
+                  .get();
               if (courseDoc.exists) {
                 final courseData = courseDoc.data()!;
                 courseTitle = courseData['title'] ?? 'Unknown Course';
@@ -415,7 +436,7 @@ class FirestoreService {
   // ==================== ANALYTICS ====================
 
   /// Get dashboard statistics
-  Future<Map<String, dynamic>> getDashboardStats() async {
+  Future<Map<String, dynamic>> getDashboardStats({String? excludeEmail}) async {
     try {
       final coursesCount = await _firestore
           .collection('courses')
@@ -427,6 +448,9 @@ class FirestoreService {
           .count()
           .get(source: AggregateSource.server)
           .timeout(const Duration(seconds: 10));
+
+      // Simple query for counting users - role 'user' should be enough
+      // Avoid isNotEqualTo here as it requires composite indexes which might be missing
       final usersCount = await _firestore
           .collection('users')
           .where('role', isEqualTo: 'user')

@@ -44,52 +44,53 @@ class _CourseContentTabState extends State<CourseContentTab> {
 
   List<Map<String, dynamic>> _normalizeContents(List<dynamic> rawContents) {
     final cdnHost = ConfigService().bunnyStreamCdnHost;
+    debugPrint('🛠️ [NORMALIZE] Using CDN Host: $cdnHost');
+    
     return rawContents.map((item) {
       final converted = Map<String, dynamic>.from(item);
-      // Support multiple key names for the video path
-      final String? rawPath =
-          (converted['path'] ?? converted['videoUrl'] ?? converted['url'])
-              ?.toString();
+      final String? rawPath = (converted['path'] ?? converted['videoUrl'] ?? converted['url'])?.toString();
 
-      if (rawPath != null &&
-          (rawPath.contains('iframe.mediadelivery.net') ||
-              rawPath.contains(cdnHost))) {
+      if (rawPath != null && rawPath.contains(cdnHost)) {
         try {
           final uri = Uri.parse(rawPath);
           final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
 
           String? videoId;
-          if (rawPath.contains('iframe.mediadelivery.net')) {
-            videoId = segments.last;
-          } else if (segments.isNotEmpty) {
-            videoId = segments.firstWhere(
-              (s) => s.length > 20,
-              orElse: () => segments[0],
-            );
+          if (segments.isNotEmpty) {
+            try {
+              videoId = segments.firstWhere(
+                (s) => s.length > 20 && !s.contains('.'),
+                orElse: () => segments[0],
+              );
+            } catch (_) {
+              videoId = segments[0];
+            }
           }
 
-          if (videoId != null &&
-              videoId != cdnHost &&
-              !videoId.startsWith('http')) {
-            // Remove query params if any (e.g. ?autoplay=true)
-            if (videoId.contains('?')) {
-              videoId = videoId.split('?').first;
-            }
+          if (videoId != null && videoId != cdnHost && !videoId.startsWith('http') && videoId.length > 5) {
+            if (videoId.contains('?')) videoId = videoId.split('?').first;
 
+            // Standardize to HLS path
             converted['path'] = 'https://$cdnHost/$videoId/playlist.m3u8';
+            
+            // Only set fallback thumbnail if missing
             if (converted['thumbnail'] == null ||
-                converted['thumbnail'].toString().isEmpty) {
-              converted['thumbnail'] =
-                  'https://$cdnHost/$videoId/thumbnail.jpg';
+                converted['thumbnail'].toString().isEmpty ||
+                !converted['thumbnail'].toString().startsWith('http')) {
+              final String thumbUrl = 'https://$cdnHost/$videoId/thumbnail.jpg';
+              converted['thumbnail'] = thumbUrl;
+              converted['thumbnailUrl'] = thumbUrl;
+            } else if (converted['thumbnailUrl'] == null ||
+                       converted['thumbnailUrl'].toString().isEmpty ||
+                       !converted['thumbnailUrl'].toString().startsWith('http')) {
+              converted['thumbnailUrl'] = converted['thumbnail'];
             }
-          } else {
-            converted['path'] = rawPath;
+            
+            debugPrint('✅ [NORMALIZE] Standardized Video: ${converted['name']} -> ID: $videoId');
           }
-        } catch (_) {
-          converted['path'] = rawPath;
+        } catch (e) {
+          debugPrint('❌ [NORMALIZE] Error: $e');
         }
-      } else if (rawPath != null) {
-        converted['path'] = rawPath;
       }
       return converted;
     }).toList();

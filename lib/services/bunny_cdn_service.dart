@@ -116,7 +116,7 @@ class BunnyCDNService {
         );
 
         LoggerService.info(
-          "HTTP Response (${response.statusCode}) from Bunny.net",
+          "📡 [UPLOAD_RESPONSE] Status: ${response.statusCode} | Body: ${response.data}",
           tag: 'BUNNY_CDN',
         );
 
@@ -160,19 +160,24 @@ class BunnyCDNService {
       }
 
       final apiUrl = 'https://$hostname/$storageZoneName/$cleanPath';
+      LoggerService.info("🗑️ [DELETE_REQ] Target: $apiUrl", tag: 'BUNNY_CDN');
 
       final response = await _dio.delete(
         apiUrl,
-        options: Options(headers: {'AccessKey': apiKey}),
+        options: Options(
+          headers: {'AccessKey': apiKey},
+          validateStatus: (status) => status! < 500,
+        ),
       );
 
-      if (response.statusCode == 200) {
-        LoggerService.success("✅ Deleted file: $cleanPath", tag: 'BUNNY_CDN');
-        return true;
-      }
-      return false;
+      LoggerService.info(
+        "📡 [DELETE_RESPONSE] Status: ${response.statusCode} | Data: ${response.data}",
+        tag: 'BUNNY_CDN',
+      );
+
+      return response.statusCode == 200;
     } catch (e) {
-      LoggerService.error('❌ Bunny CDN Storage delete error', tag: 'BUNNY_CDN');
+      LoggerService.error('❌ Bunny CDN Storage delete error: $e', tag: 'BUNNY_CDN');
       return false;
     }
   }
@@ -187,20 +192,24 @@ class BunnyCDNService {
       final apiUrl =
           'https://video.bunnycdn.com/library/$libraryId/videos/$videoId';
 
+      LoggerService.info("🗑️ [STREAM_DELETE] VideoID: $videoId", tag: 'BUNNY_STREAM');
+
       final response = await _dio.delete(
         apiUrl,
         options: Options(
           headers: {'AccessKey': apiKey, 'accept': 'application/json'},
+          validateStatus: (status) => status! < 500,
         ),
       );
 
-      if (response.statusCode == 200) {
-        LoggerService.success("✅ Deleted video: $videoId", tag: 'BUNNY_STREAM');
-        return true;
-      }
-      return false;
+      LoggerService.info(
+        "📡 [STREAM_RESPONSE] Status: ${response.statusCode} | Data: ${response.data}",
+        tag: 'BUNNY_STREAM',
+      );
+
+      return response.statusCode == 200;
     } catch (e) {
-      LoggerService.error('❌ Bunny Stream delete error', tag: 'BUNNY_STREAM');
+      LoggerService.error('❌ Bunny Stream delete error: $e', tag: 'BUNNY_STREAM');
       return false;
     }
   }

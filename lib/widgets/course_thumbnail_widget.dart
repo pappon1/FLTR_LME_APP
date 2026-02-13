@@ -127,9 +127,9 @@ class CourseThumbnailWidget extends StatelessWidget {
       return url;
     }
 
-    // If it's a Bunny Stream URL (iframe or playlist), convert to thumbnail
+    // If it's a Bunny Stream URL (HLS playlist or direct ID), convert to thumbnail
     final String cdnHost = ConfigService().bunnyStreamCdnHost;
-    if (url.contains('iframe.mediadelivery.net') || url.contains(cdnHost) || url.contains('vz-')) {
+    if (url.contains(cdnHost) || url.contains('vz-')) {
        final videoId = _extractVideoId(url);
        if (videoId != null) {
          return 'https://$cdnHost/$videoId/thumbnail.jpg';
@@ -143,10 +143,6 @@ class CourseThumbnailWidget extends StatelessWidget {
     try {
       final uri = Uri.parse(url);
       final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
-      
-      if (url.contains('iframe.mediadelivery.net')) {
-        return segments.last;
-      }
       
       if (segments.isNotEmpty) {
         // Try to find a long hex/uuid segment
@@ -176,7 +172,7 @@ class CourseThumbnailWidget extends StatelessWidget {
         final fixedThumb = _ensureThumbnailFormat(thumb);
         
         if (fixedThumb.isNotEmpty && fixedThumb != 'null' && fixedThumb != 'undefined' && !fixedThumb.startsWith('/')) {
-          if (fixedThumb.contains('b-cdn.net') || fixedThumb.contains('mediadelivery.net')) {
+          if (fixedThumb.contains('b-cdn.net') || fixedThumb.contains(ConfigService().bunnyStreamCdnHost)) {
              return fixedThumb;
           }
         }

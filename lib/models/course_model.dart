@@ -1,5 +1,58 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+// ══════════════════════════════════════════════════════════════════════════════
+// 💎 JSON SAFETY: SINGLE SOURCE OF TRUTH FOR KEYS
+// ══════════════════════════════════════════════════════════════════════════════
+class CourseKeys {
+  static const String id = 'id';
+  static const String title = 'title';
+  static const String category = 'category';
+  static const String price = 'price';
+  static const String discountPrice = 'discountPrice';
+  static const String description = 'description';
+  static const String difficulty = 'difficulty';
+  static const String language = 'language';
+  static const String courseMode = 'courseMode';
+  static const String isPublished = 'isPublished';
+  static const String createdAt = 'createdAt';
+  
+  // Nested Blocks
+  static const String mediaAssets = 'media_assets';
+  static const String curriculum = 'curriculum';
+  static const String certification = 'certification';
+  static const String support = 'support';
+  static const String marketing = 'marketing';
+  static const String config = 'config';
+  static const String stats = 'stats';
+
+  // Sub-keys: Media
+  static const String thumbnailUrl = 'thumbnailUrl';
+  static const String bunnyCollectionId = 'bunnyCollectionId';
+
+  // Sub-keys: Certification
+  static const String hasCertificate = 'hasCertificate';
+  static const String certUrl1 = 'certificateUrl1';
+  static const String certUrl2 = 'certificateUrl2';
+  static const String selectedSlot = 'selectedSlot';
+
+  // Sub-keys: Support
+  static const String supportType = 'type';
+  static const String whatsappNumber = 'whatsappNumber';
+  static const String websiteUrl = 'websiteUrl';
+
+  // Sub-keys: Marketing
+  static const String specialTag = 'specialTag';
+  static const String specialTagColor = 'specialTagColor';
+  static const String isTagVisible = 'isTagVisible';
+  static const String highlights = 'highlights';
+  static const String faqs = 'faqs';
+
+  // Sub-keys: Config
+  static const String validityDays = 'validityDays';
+  static const String offlineEnabled = 'isOfflineDownloadEnabled';
+  static const String bigScreenEnabled = 'isBigScreenEnabled';
+}
+
 class CourseModel {
   final String id;
   final String title;
@@ -75,172 +128,150 @@ class CourseModel {
   }) : createdAt = createdAt;
 
   // ══════════════════════════════════════════════════════════════════════════════
-  // TO MAP - REFACTORED FOR FIRESTORE (Human Readable)
+  // TO MAP - USING CONSTANT KEYS
   // ══════════════════════════════════════════════════════════════════════════════
   Map<String, dynamic> toMap() {
     return {
-      // 1. Core Info
-      'title': title,
-      'category': category,
-      'price': price,
-      'discountPrice': discountPrice,
-      'description': description,
-      'difficulty': difficulty,
-      'language': language,
-      'courseMode': courseMode,
-      'isPublished': isPublished,
-      'createdAt': createdAt != null
+      CourseKeys.title: title,
+      CourseKeys.category: category,
+      CourseKeys.price: price,
+      CourseKeys.discountPrice: discountPrice,
+      CourseKeys.description: description,
+      CourseKeys.difficulty: difficulty,
+      CourseKeys.language: language,
+      CourseKeys.courseMode: courseMode,
+      CourseKeys.isPublished: isPublished,
+      CourseKeys.createdAt: createdAt != null
           ? Timestamp.fromDate(createdAt!)
           : FieldValue.serverTimestamp(),
 
-      // 2. Media Assets
-      'media_assets': {
-        'thumbnailUrl': thumbnailUrl,
-        'promoVideoUrl': '', // Placeholder for future
-        'bannerUrl': '', // Placeholder for future
-        'bunnyCollectionId': bunnyCollectionId,
+      CourseKeys.mediaAssets: {
+        CourseKeys.thumbnailUrl: thumbnailUrl,
+        CourseKeys.bunnyCollectionId: bunnyCollectionId,
       },
 
-      // 3. Curriculum (Videos/PDFs/Folders)
-      'curriculum': contents,
+      CourseKeys.curriculum: contents,
 
-      // 4. Certification
-      'certification': {
-        'hasCertificate': hasCertificate,
-        'certificateUrl1': certificateUrl1,
-        'certificateUrl2': certificateUrl2,
-        'selectedSlot': selectedCertificateSlot,
+      CourseKeys.certification: {
+        CourseKeys.hasCertificate: hasCertificate,
+        CourseKeys.certUrl1: certificateUrl1,
+        CourseKeys.certUrl2: certificateUrl2,
+        CourseKeys.selectedSlot: selectedCertificateSlot,
       },
 
-      // 5. Support & Links
-      'support': {
-        'type': supportType,
-        'whatsappNumber': whatsappNumber,
-        'websiteUrl': websiteUrl,
+      CourseKeys.support: {
+        CourseKeys.supportType: supportType,
+        CourseKeys.whatsappNumber: whatsappNumber,
+        CourseKeys.websiteUrl: websiteUrl,
       },
 
-      // 6. Marketing & Tags
-      'marketing': {
-        'specialTag': specialTag,
-        'specialTagColor': specialTagColor,
-        'isTagVisible': isSpecialTagVisible,
+      CourseKeys.marketing: {
+        CourseKeys.specialTag: specialTag,
+        CourseKeys.specialTagColor: specialTagColor,
+        CourseKeys.isTagVisible: isSpecialTagVisible,
         'tagDurationDays': specialTagDurationDays,
-        'highlights': highlights,
-        'faqs': faqs,
+        CourseKeys.highlights: highlights,
+        CourseKeys.faqs: faqs,
       },
 
-      // 7. System Config
-      'config': {
-        'validityDays': courseValidityDays,
-        'isOfflineDownloadEnabled': isOfflineDownloadEnabled,
-        'isBigScreenEnabled': isBigScreenEnabled,
+      CourseKeys.config: {
+        CourseKeys.validityDays: courseValidityDays,
+        CourseKeys.offlineEnabled: isOfflineDownloadEnabled,
+        CourseKeys.bigScreenEnabled: isBigScreenEnabled,
       },
 
-      // 8. Real-time Stats
-      'stats': {
+      CourseKeys.stats: {
         'enrolledStudents': enrolledStudents,
         'rating': rating,
         'totalVideos': totalVideos,
         'durationText': duration,
       },
-
-      // Legacy fields for backward compatibility (optional, but good for transition)
-      'thumbnailUrl':
-          thumbnailUrl, // Keep at root for now to avoid breaking existing queries
     };
   }
 
   // ══════════════════════════════════════════════════════════════════════════════
-  // FROM FIRESTORE - REFACTORED
+  // FROM FIRESTORE - ROBUST PARSING
   // ══════════════════════════════════════════════════════════════════════════════
   factory CourseModel.fromFirestore(DocumentSnapshot doc) {
     return CourseModel._fromData(doc.data() as Map<String, dynamic>, doc.id);
   }
 
   factory CourseModel._fromData(Map<String, dynamic> data, String id) {
-    // Grouped Blocks
-    final media = data['media_assets'] as Map<String, dynamic>? ?? {};
-    final cert = data['certification'] as Map<String, dynamic>? ?? {};
-    final support = data['support'] as Map<String, dynamic>? ?? {};
-    final marketing = data['marketing'] as Map<String, dynamic>? ?? {};
-    final config = data['config'] as Map<String, dynamic>? ?? {};
-    final stats = data['stats'] as Map<String, dynamic>? ?? {};
+    final media = data[CourseKeys.mediaAssets] as Map<String, dynamic>? ?? {};
+    final cert = data[CourseKeys.certification] as Map<String, dynamic>? ?? {};
+    final support = data[CourseKeys.support] as Map<String, dynamic>? ?? {};
+    final marketing = data[CourseKeys.marketing] as Map<String, dynamic>? ?? {};
+    final config = data[CourseKeys.config] as Map<String, dynamic>? ?? {};
+    final stats = data[CourseKeys.stats] as Map<String, dynamic>? ?? {};
 
     return CourseModel(
       id: id,
-      title: data['title'] ?? '',
-      category: data['category'] ?? '',
-      price: _toInt(data['price'], 0),
-      discountPrice: _toInt(data['discountPrice'] ?? data['price'], 0),
-      description: data['description'] ?? '',
-      difficulty: data['difficulty'] ?? 'Beginner',
-      isPublished: data['isPublished'] ?? false,
-      createdAt: (data['createdAt'] is Timestamp)
-          ? (data['createdAt'] as Timestamp).toDate()
-          : (data['createdAt'] is String)
-              ? DateTime.tryParse(data['createdAt'] as String)
+      title: data[CourseKeys.title] ?? '',
+      category: data[CourseKeys.category] ?? '',
+      price: _toInt(data[CourseKeys.price], 0),
+      discountPrice: _toInt(data[CourseKeys.discountPrice] ?? data[CourseKeys.price], 0),
+      description: data[CourseKeys.description] ?? '',
+      difficulty: data[CourseKeys.difficulty] ?? 'Beginner',
+      isPublished: data[CourseKeys.isPublished] ?? false,
+      createdAt: (data[CourseKeys.createdAt] is Timestamp)
+          ? (data[CourseKeys.createdAt] as Timestamp).toDate()
+          : (data[CourseKeys.createdAt] is String)
+              ? DateTime.tryParse(data[CourseKeys.createdAt] as String)
               : null,
 
-      // Reading from Media Assets
-      thumbnailUrl: media['thumbnailUrl'] ?? data['thumbnailUrl'] ?? '',
+      thumbnailUrl: media[CourseKeys.thumbnailUrl] ?? data['thumbnailUrl'] ?? '',
       bunnyCollectionId:
-          media['bunnyCollectionId']?.toString() ??
+          media[CourseKeys.bunnyCollectionId]?.toString() ??
           data['bunnyCollectionId']?.toString(),
 
-      // Reading from Curriculum
-      contents: data['curriculum'] ?? data['contents'] ?? [],
+      contents: data[CourseKeys.curriculum] ?? data['contents'] ?? [],
 
-      // Reading from Certification
-      hasCertificate: cert['hasCertificate'] ?? data['hasCertificate'] ?? false,
+      hasCertificate: cert[CourseKeys.hasCertificate] ?? data['hasCertificate'] ?? false,
       certificateUrl1:
-          cert['certificateUrl1']?.toString() ??
+          cert[CourseKeys.certUrl1]?.toString() ??
           data['certificateUrl1']?.toString(),
       certificateUrl2:
-          cert['certificateUrl2']?.toString() ??
+          cert[CourseKeys.certUrl2]?.toString() ??
           data['certificateUrl2']?.toString(),
       selectedCertificateSlot: _toInt(
-        cert['selectedSlot'] ?? data['selectedCertificateSlot'],
+        cert[CourseKeys.selectedSlot] ?? data['selectedCertificateSlot'],
         1,
       ),
 
-      // Reading from Support
-      supportType: support['type'] ?? data['supportType'] ?? 'WhatsApp Group',
-      whatsappNumber: support['whatsappNumber'] ?? data['whatsappNumber'] ?? '',
-      websiteUrl: support['websiteUrl'] ?? data['websiteUrl'] ?? '',
+      supportType: support[CourseKeys.supportType] ?? data['supportType'] ?? 'WhatsApp Group',
+      whatsappNumber: support[CourseKeys.whatsappNumber] ?? data['whatsappNumber'] ?? '',
+      websiteUrl: support[CourseKeys.websiteUrl] ?? data['websiteUrl'] ?? '',
 
-      // Reading from Marketing
-      specialTag: marketing['specialTag'] ?? data['specialTag'] ?? '',
+      specialTag: marketing[CourseKeys.specialTag] ?? data['specialTag'] ?? '',
       specialTagColor:
-          marketing['specialTagColor'] ?? data['specialTagColor'] ?? 'Blue',
+          marketing[CourseKeys.specialTagColor] ?? data['specialTagColor'] ?? 'Blue',
       isSpecialTagVisible:
-          marketing['isTagVisible'] ?? data['isSpecialTagVisible'] ?? true,
+          marketing[CourseKeys.isTagVisible] ?? data['isSpecialTagVisible'] ?? true,
       specialTagDurationDays: _toInt(
         marketing['tagDurationDays'] ?? data['specialTagDurationDays'],
         0,
       ),
       highlights: List<String>.from(
-        marketing['highlights'] ?? data['highlights'] ?? [],
+        marketing[CourseKeys.highlights] ?? data['highlights'] ?? [],
       ),
       faqs:
-          (marketing['faqs'] as List<dynamic>? ??
-                  data['faqs'] as List<dynamic>?)
+          (marketing[CourseKeys.faqs] as List<dynamic>? ??
+                  data[CourseKeys.faqs] as List<dynamic>?)
               ?.map((e) => Map<String, String>.from(e))
               .toList() ??
           [],
 
-      // Reading from Config
       courseValidityDays: _toInt(
-        config['validityDays'] ?? data['courseValidityDays'],
+        config[CourseKeys.validityDays] ?? data['courseValidityDays'],
         0,
       ),
       isOfflineDownloadEnabled:
-          config['isOfflineDownloadEnabled'] ??
+          config[CourseKeys.offlineEnabled] ??
           data['isOfflineDownloadEnabled'] ??
           true,
       isBigScreenEnabled:
-          config['isBigScreenEnabled'] ?? data['isBigScreenEnabled'] ?? false,
+          config[CourseKeys.bigScreenEnabled] ?? data['isBigScreenEnabled'] ?? false,
 
-      // Reading from Stats
       enrolledStudents: _toInt(
         stats['enrolledStudents'] ?? data['enrolledStudents'],
         0,
@@ -249,8 +280,8 @@ class CourseModel {
       totalVideos: _toInt(stats['totalVideos'] ?? data['totalVideos'], 0),
       duration: stats['durationText'] ?? data['duration'] ?? '0 hours',
 
-      language: data['language'] ?? 'Hindi',
-      courseMode: data['courseMode'] ?? 'Recorded',
+      language: data[CourseKeys.language] ?? 'Hindi',
+      courseMode: data[CourseKeys.courseMode] ?? 'Recorded',
     );
   }
 
@@ -262,32 +293,29 @@ class CourseModel {
     return defaultValue;
   }
 
-  // Create from Map (Local DTO)
+  // Local DTO from plain map
   factory CourseModel.fromMap(Map<String, dynamic> map, String id) {
-    // Check if it's already nested or flat
-    final bool isNested = map.containsKey('media_assets');
-    if (isNested) {
-      return CourseModel._fromData(map, id);
-    }
+    final bool isNested = map.containsKey(CourseKeys.mediaAssets);
+    if (isNested) return CourseModel._fromData(map, id);
 
     return CourseModel(
       id: id,
-      title: map['title'] ?? '',
-      category: map['category'] ?? '',
-      price: map['price'] ?? 0,
-      discountPrice: map['discountPrice'] ?? map['price'] ?? 0,
-      description: map['description'] ?? '',
-      thumbnailUrl: map['thumbnailUrl'] ?? '',
+      title: map[CourseKeys.title] ?? '',
+      category: map[CourseKeys.category] ?? '',
+      price: map[CourseKeys.price] ?? 0,
+      discountPrice: map[CourseKeys.discountPrice] ?? map[CourseKeys.price] ?? 0,
+      description: map[CourseKeys.description] ?? '',
+      thumbnailUrl: map[CourseKeys.thumbnailUrl] ?? '',
       duration: map['duration'] ?? '0 hours',
-      difficulty: map['difficulty'] ?? 'Beginner',
+      difficulty: map[CourseKeys.difficulty] ?? 'Beginner',
       enrolledStudents: map['enrolledStudents'] ?? 0,
       rating: (map['rating'] ?? 0.0).toDouble(),
       totalVideos: map['totalVideos'] ?? 0,
-      isPublished: map['isPublished'] ?? false,
-      createdAt: map['createdAt'] is Timestamp
-          ? (map['createdAt'] as Timestamp).toDate()
-          : (map['createdAt'] is String
-                ? DateTime.tryParse(map['createdAt'])
+      isPublished: map[CourseKeys.isPublished] ?? false,
+      createdAt: map[CourseKeys.createdAt] is Timestamp
+          ? (map[CourseKeys.createdAt] as Timestamp).toDate()
+          : (map[CourseKeys.createdAt] is String
+                ? DateTime.tryParse(map[CourseKeys.createdAt])
                 : DateTime.now()),
       courseValidityDays: map['courseValidityDays'] ?? 0,
       hasCertificate: map['hasCertificate'] ?? false,
@@ -296,20 +324,20 @@ class CourseModel {
       selectedCertificateSlot: map['selectedCertificateSlot'] ?? 1,
       highlights: List<String>.from(map['highlights'] ?? []),
       faqs:
-          (map['faqs'] as List<dynamic>?)
+          (map[CourseKeys.faqs] as List<dynamic>?)
               ?.map((e) => Map<String, String>.from(e))
               .toList() ??
           [],
       isOfflineDownloadEnabled: map['isOfflineDownloadEnabled'] ?? true,
       contents: map['contents'] ?? [],
-      language: map['language'] ?? 'Hindi',
-      courseMode: map['courseMode'] ?? 'Recorded',
+      language: map[CourseKeys.language] ?? 'Hindi',
+      courseMode: map[CourseKeys.courseMode] ?? 'Recorded',
       supportType: map['supportType'] ?? 'WhatsApp Group',
       whatsappNumber: map['whatsappNumber'] ?? '',
       isBigScreenEnabled: map['isBigScreenEnabled'] ?? false,
       websiteUrl: map['websiteUrl'] ?? '',
-      specialTag: map['specialTag'] ?? '',
-      specialTagColor: map['specialTagColor'] ?? 'Blue',
+      specialTag: map[CourseKeys.specialTag] ?? '',
+      specialTagColor: map[CourseKeys.specialTagColor] ?? 'Blue',
       isSpecialTagVisible: map['isSpecialTagVisible'] ?? true,
       specialTagDurationDays: map['specialTagDurationDays'] ?? 30,
     );

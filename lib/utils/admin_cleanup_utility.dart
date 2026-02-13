@@ -412,7 +412,19 @@ class AdminCleanupUtility {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.clear();
-      LoggerService.success('Cleared all local storage', tag: 'CLEANUP');
+
+      // Clear upload_metadata folder
+      try {
+        final docDir = await getApplicationDocumentsDirectory();
+        final pendingDir = Directory('${docDir.path}/upload_metadata');
+        if (await pendingDir.exists()) {
+          await pendingDir.delete(recursive: true);
+        }
+      } catch (e) {
+        LoggerService.warning('Failed to delete upload_metadata folder: $e');
+      }
+
+      LoggerService.success('Cleared all local storage and temp folders', tag: 'CLEANUP');
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

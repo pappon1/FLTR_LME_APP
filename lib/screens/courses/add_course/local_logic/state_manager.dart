@@ -1,11 +1,14 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../backend_service/models/course_upload_task.dart';
 import '../../../../services/bunny_cdn_service.dart';
 import '../../../../models/course_model.dart';
 import '../../../../services/config_service.dart';
+import '../../../../utils/content_normalizer.dart';
 
 class CourseStateManager extends ChangeNotifier {
+  Timer? _notifyDebounce;
   CourseStateManager() {
     mrpController.addListener(_onPriceChanged);
     discountAmountController.addListener(_onPriceChanged);
@@ -81,22 +84,6 @@ class CourseStateManager extends ChangeNotifier {
     if (_thumbnailImage == value) return;
     _thumbnailImage = value;
     notifyListeners();
-  }
-
-  // Point 1: Preparation Feedback
-  final ValueNotifier<double> preparationProgressNotifier =
-      ValueNotifier<double>(0.0);
-  final ValueNotifier<String> preparationMessageNotifier =
-      ValueNotifier<String>('');
-
-  double get preparationProgress => preparationProgressNotifier.value;
-  set preparationProgress(double value) {
-    preparationProgressNotifier.value = value;
-  }
-
-  String get preparationMessage => preparationMessageNotifier.value;
-  set preparationMessage(String value) {
-    preparationMessageNotifier.value = value;
   }
 
   bool _isLoading = false;
@@ -390,7 +377,10 @@ class CourseStateManager extends ChangeNotifier {
       websiteUrlController.text.trim().isNotEmpty;
 
   void updateState() {
-    notifyListeners();
+    _notifyDebounce ??= Timer(const Duration(milliseconds: 50), () {
+      _notifyDebounce = null;
+      notifyListeners();
+    });
   }
 
   void calculateFinalPrice() {
@@ -506,83 +496,25 @@ class CourseStateManager extends ChangeNotifier {
 
   // Helper to deep copy contents and ensure they are mutable maps + Normalize them
   List<Map<String, dynamic>> _deepCopyContents(List<dynamic> source) {
-    return source.map((item) {
-      return _normalizeContentItem(Map<String, dynamic>.from(item));
-    }).toList();
+    return source
+        .map(
+          (item) =>
+              ContentNormalizer.normalizeItem(Map<String, dynamic>.from(item)),
+        )
+        .toList();
   }
 
   // Normalization Logic (Centralized)
   Map<String, dynamic> _normalizeContentItem(Map<String, dynamic> item) {
     final Map<String, dynamic> copy = Map<String, dynamic>.from(item);
-
-    // Default isLocal to false for existing items (if missing)
-    if (!copy.containsKey('isLocal')) {
-      copy['isLocal'] = false;
-    }
-
-    // Support multiple key names for the path
-    final String? rawPath = (copy['path'] ?? copy['videoUrl'] ?? copy['url'])
-        ?.toString();
-    if (rawPath == null) return copy;
-
-    if (copy['type'] == 'video') {
-      final cdnHost = ConfigService().bunnyStreamCdnHost;
-
-      if (rawPath.contains('iframe.mediadelivery.net') ||
-          rawPath.contains(cdnHost)) {
-        try {
-          final uri = Uri.parse(rawPath);
-          final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
-
-          String? videoId;
-          if (rawPath.contains('iframe.mediadelivery.net')) {
-            videoId = segments.last;
-          } else if (segments.isNotEmpty) {
-            // Usually /VIDEO_ID/playlist.m3u8 or /play/LIB/VIDEO_ID
-            // Attempt to find a long ID segment
-            videoId = segments.firstWhere(
-              (s) => s.length > 20,
-              orElse: () => segments[0],
-            );
-          }
-
-          if (videoId != null &&
-              videoId != cdnHost &&
-              !videoId.startsWith('http')) {
-            // Remove query params if any (e.g. ?autoplay=true)
-            if (videoId.contains('?')) {
-              videoId = videoId.split('?').first;
-            }
-
-            // Construct HLS URL
-            final normalizedPath = 'https://$cdnHost/$videoId/playlist.m3u8';
-            copy['path'] = normalizedPath;
-
-            // Fix thumbnail if missing or empty
-            if (copy['thumbnail'] == null ||
-                copy['thumbnail'].toString().isEmpty) {
-              copy['thumbnail'] = 'https://$cdnHost/$videoId/thumbnail.jpg';
-            }
-          } else {
-            copy['path'] = rawPath;
-          }
-        } catch (_) {
-          copy['path'] = rawPath;
-        }
-      } else {
-        copy['path'] = rawPath;
-      }
-    } else if (copy['type'] == 'pdf' || copy['type'] == 'image') {
-      copy['path'] = rawPath;
-    }
-
-    if (copy['type'] == 'folder' && copy['contents'] != null) {
-      copy['contents'] = (copy['contents'] as List)
+    if (!copy.containsKey('isLocal')) copy['isLocal'] = false;
+    final normalized = ContentNormalizer.normalizeItem(copy);
+    if (normalized['type'] == 'folder' && normalized['contents'] != null) {
+      normalized['contents'] = (normalized['contents'] as List)
           .map((e) => _normalizeContentItem(Map<String, dynamic>.from(e)))
           .toList();
     }
-
-    return copy;
+    return normalized;
   }
 
   // Public setter for DraftManager to use (Ensures normalization)
@@ -595,6 +527,77 @@ class CourseStateManager extends ChangeNotifier {
   // Helper for existing URLs
   String? currentThumbnailUrl;
   String? currentCertificate1Url;
+
+  void resetAll() {
+    titleController.clear();
+    descController.clear();
+    mrpController.clear();
+    discountAmountController.clear();
+    finalPriceController.clear();
+    whatsappController.clear();
+    websiteUrlController.clear();
+    specialTagController.clear();
+    customValidityController.clear();
+
+    selectedCategory = null;
+    difficulty = null;
+    thumbnailImage = null;
+    currentThumbnailUrl = null;
+
+    for (var c in highlightControllers) {
+      c.dispose();
+    }
+    highlightControllers.clear();
+
+    for (var f in faqControllers) {
+      f['q']?.dispose();
+      f['a']?.dispose();
+    }
+    faqControllers.clear();
+
+    selectedLanguage = null;
+    selectedCourseMode = null;
+    selectedSupportType = null;
+    courseValidityDays = null;
+    hasCertificate = false;
+    certificate1File = null;
+    currentCertificate1Url = null;
+
+    _courseContents.clear();
+    selectedIndices.clear();
+    isSelectionMode = false;
+    isDragModeActive = false;
+
+    isOfflineDownloadEnabled = true;
+    isBigScreenEnabled = false;
+    isPublished = false;
+
+    // Reset All Error Flags
+    thumbnailError = false;
+    titleError = false;
+    descError = false;
+    categoryError = false;
+    difficultyError = false;
+    highlightsError = false;
+    faqsError = false;
+    mrpError = false;
+    languageError = false;
+    courseModeError = false;
+    supportTypeError = false;
+    wpGroupLinkError = false;
+    validityError = false;
+    certError = false;
+    bigScreenUrlError = false;
+    discountError = false;
+    discountWarning = false;
+    courseContentError = false;
+
+    currentStep = 0;
+    editingCourseId = null;
+    originalCourse = null;
+
+    notifyListeners();
+  }
 
   @override
   void dispose() {

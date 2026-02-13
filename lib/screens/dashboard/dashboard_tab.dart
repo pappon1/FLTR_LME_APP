@@ -805,10 +805,7 @@ class _DashboardTabState extends State<DashboardTab>
                           .fadeIn(duration: 500.ms, delay: 500.ms)
                           .slideY(begin: 0.1, end: 0),
 
-                      const SizedBox(height: 30),
-
-                      // Developer Console Removed
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 20),
                     ],
                   ),
                 ),

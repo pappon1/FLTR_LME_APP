@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'state_manager.dart';
 import 'validation.dart';
 import 'draft_manager.dart';
@@ -54,6 +55,9 @@ class NavigationLogic {
   Future<void> _animateToPage(int page) async {
     // Unfocus immediately
     FocusScope.of(context).unfocus();
+
+    // Premium Haptic Transition
+    HapticFeedback.lightImpact();
 
     // Jump instantly without animation
     pageController.jumpToPage(page);

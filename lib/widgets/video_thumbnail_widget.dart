@@ -238,22 +238,12 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
           final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
           if (segments.isNotEmpty) {
             final videoId = segments.firstWhere(
-              (s) => s.length > 20, 
+              (s) => s.length > 20 && !s.contains('.'), 
               orElse: () => segments[0]
             );
-            guessedThumb = 'https://$cdnHost/$videoId/thumbnail.jpg';
-          }
-        } catch (_) {}
-      } else if (videoPath.contains('iframe.mediadelivery.net')) {
-        try {
-          final uri = Uri.parse(videoPath);
-          final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
-          if (segments.isNotEmpty) {
-            String videoId = segments.last;
-            if (videoId.contains('?')) {
-              videoId = videoId.split('?').first;
+            if (videoId != cdnHost && videoId.length > 5) {
+              guessedThumb = 'https://$cdnHost/$videoId/thumbnail.jpg';
             }
-            guessedThumb = 'https://$cdnHost/$videoId/thumbnail.jpg';
           }
         } catch (_) {}
       } else if (videoPath.contains('.b-cdn.net') || videoPath.contains('bunnycdn.com')) {
@@ -270,7 +260,6 @@ class _VideoThumbnailWidgetState extends State<VideoThumbnailWidget> {
           height: widget.height,
           fit: widget.fit,
           httpHeaders: {
-            if (!isStorageThumb) 'Referer': ConfigService.allowedReferer,
             if (isStorageThumb) 'AccessKey': BunnyCDNService.apiKey,
           },
           errorWidget: (_, __, ___) => _buildFallbackIcon(),

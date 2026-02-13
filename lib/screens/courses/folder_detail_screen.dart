@@ -80,25 +80,34 @@ class _FolderDetailScreenState extends State<FolderDetailScreen> {
     final String cdnHost = ConfigService().bunnyStreamCdnHost;
     return rawContents.map((item) {
       final converted = Map<String, dynamic>.from(item);
-      // Robust path extraction (same as AddCourseScreen/CourseContentTab)
       final String? path = (converted['path'] ?? converted['videoUrl'] ?? converted['url'])?.toString();
 
-      if (path != null && (path.contains('iframe.mediadelivery.net') || path.contains(cdnHost))) {
+      if (path != null && path.contains(cdnHost)) {
         try {
           final uri = Uri.parse(path);
           final segments = uri.pathSegments.where((s) => s.isNotEmpty).toList();
           
           String? videoId;
-          if (path.contains('iframe.mediadelivery.net')) {
-            videoId = segments.last;
-          } else if (segments.isNotEmpty) {
-            videoId = segments.firstWhere((s) => s.length > 20, orElse: () => segments[0]);
+          if (segments.isNotEmpty) {
+            videoId = segments.firstWhere(
+              (s) => s.length > 20 && !s.contains('.'), 
+              orElse: () => segments[0]
+            );
           }
 
-          if (videoId != null && videoId != cdnHost) {
+          if (videoId != null && videoId != cdnHost && videoId.length > 5) {
             converted['path'] = 'https://$cdnHost/$videoId/playlist.m3u8';
-            if (converted['thumbnail'] == null || converted['thumbnail'].toString().isEmpty) {
-              converted['thumbnail'] = 'https://$cdnHost/$videoId/thumbnail.jpg';
+            if (converted['thumbnail'] == null ||
+                converted['thumbnail'].toString().isEmpty ||
+                !converted['thumbnail'].toString().startsWith('http')) {
+              final String thumbUrl = 'https://$cdnHost/$videoId/thumbnail.jpg';
+              converted['thumbnail'] = thumbUrl;
+              converted['thumbnailUrl'] = thumbUrl;
+            } else if (converted['thumbnailUrl'] == null ||
+                       converted['thumbnailUrl'].toString().isEmpty ||
+                       !converted['thumbnailUrl'].toString().startsWith('http')) {
+              // If thumbnail exists but thumbnailUrl is missing or invalid, populate it
+              converted['thumbnailUrl'] = converted['thumbnail'];
             }
           }
         } catch (_) {}

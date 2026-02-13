@@ -25,14 +25,12 @@ class MediaKitVideoEngine implements BaseVideoEngine {
   Future<void> open(String path, {bool play = true, Map<String, String>? headers}) async {
     final Map<String, String> finalHeaders = Map<String, String>.from(headers ?? {});
     
-    // Standard headers for all requests - Using a real browser User-Agent to avoid bot-blocking
-    finalHeaders['User-Agent'] = 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36';
+    // Standard headers for all requests - Using a consistent Desktop User-Agent
+    finalHeaders['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
     
     // Use exact Referer/Origin (Most reliable across all Bunny.net zones)
-    final String baseReferer = ConfigService.allowedReferer;
-    finalHeaders['Referer'] = baseReferer;
-    finalHeaders['Origin'] = baseReferer;
-    finalHeaders['X-Requested-With'] = 'com.officialmobileengineer.app';
+    finalHeaders['Referer'] = ConfigService.allowedReferer;
+    finalHeaders['Origin'] = ConfigService.allowedReferer;
     
     // Auto-inject AccessKey for direct Bunny Storage access
     if (path.contains('storage.bunnycdn.com')) {

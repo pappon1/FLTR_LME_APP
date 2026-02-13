@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'state_manager.dart';
 import 'draft_manager.dart';
@@ -19,7 +20,15 @@ class Step0Logic {
   ) async {
     try {
       final picker = ImagePicker();
-      final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+      state.isLoading = true;
+      state.updateState();
+
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 1920,
+        maxHeight: 1080,
+      );
 
       if (pickedFile != null) {
         final File file = File(pickedFile.path);
@@ -32,15 +41,26 @@ class Step0Logic {
           if (context.mounted) {
             showWarning('Error: Image must be YouTube Size (16:9 Ratio).');
           }
+          state.isLoading = false;
+          state.updateState();
           return;
         }
 
+        // Success Haptic
+        HapticFeedback.mediumImpact();
+
         state.thumbnailImage = file;
         state.thumbnailError = false;
+        state.isLoading = false;
         state.updateState();
         await draftManager.saveCourseDraft();
+      } else {
+        state.isLoading = false;
+        state.updateState();
       }
     } catch (e) {
+      state.isLoading = false;
+      state.updateState();
       if (context.mounted) {
         showWarning('Error picking image: $e');
       }
@@ -136,74 +156,7 @@ class Step0Logic {
   }
 
   void _performClearAll() {
-    // Step 0
-    state.titleController.clear();
-    state.descController.clear();
-    state.selectedCategory = null;
-    state.difficulty = null;
-    state.thumbnailImage = null;
-    state.currentThumbnailUrl = null;
-
-    // Clear lists while keeping controllers disposed
-    for (var c in state.highlightControllers) c.dispose();
-    state.highlightControllers.clear();
-
-    for (var f in state.faqControllers) {
-      f['q']?.dispose();
-      f['a']?.dispose();
-    }
-    state.faqControllers.clear();
-
-    // Step 1
-    state.mrpController.clear();
-    state.discountAmountController.clear();
-    state.finalPriceController.clear();
-    state.selectedLanguage = null;
-    state.selectedCourseMode = null;
-    state.selectedSupportType = null;
-    state.whatsappController.clear();
-    state.websiteUrlController.clear();
-    state.courseValidityDays = null;
-    state.customValidityController.clear();
-    state.hasCertificate = false;
-    state.certificate1File = null;
-    state.currentCertificate1Url = null;
-
-    // Step 2
-    state.courseContents.clear();
-    state.selectedIndices.clear();
-    state.isSelectionMode = false;
-    state.isDragModeActive = false;
-
-    // Step 3
-    state.specialTagController.clear();
-    state.specialTagColor = 'Blue';
-    state.isSpecialTagVisible = true;
-    state.specialTagDurationDays = 30;
-    state.isOfflineDownloadEnabled = true;
-    state.isBigScreenEnabled = false;
-
-    // Reset All Error Flags
-    state.thumbnailError = false;
-    state.titleError = false;
-    state.descError = false;
-    state.categoryError = false;
-    state.difficultyError = false;
-    state.highlightsError = false;
-    state.faqsError = false;
-    state.mrpError = false;
-    state.languageError = false;
-    state.courseModeError = false;
-    state.supportTypeError = false;
-    state.wpGroupLinkError = false;
-    state.validityError = false;
-    state.certError = false;
-    state.bigScreenUrlError = false;
-    state.discountError = false;
-    state.discountWarning = false;
-    state.courseContentError = false;
-
-    state.updateState();
+    state.resetAll();
     draftManager.saveCourseDraft();
   }
 
